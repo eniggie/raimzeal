@@ -1,16 +1,111 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
+import { useState } from 'react';
+import { Switch, Route } from 'wouter';
+import { queryClient } from './lib/queryClient';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useAppState } from '@/lib/store';
 
-function Router() {
+import { Onboarding } from '@/pages/Onboarding';
+import { Login } from '@/pages/Login';
+import { Home } from '@/pages/Home';
+import { Workouts } from '@/pages/Workouts';
+import { WorkoutDetail } from '@/pages/WorkoutDetail';
+import { WorkoutPlayer } from '@/pages/WorkoutPlayer';
+import { Exercises } from '@/pages/Exercises';
+import { ExerciseDetail } from '@/pages/ExerciseDetail';
+import { Tracking } from '@/pages/Tracking';
+import { Calendar } from '@/pages/Calendar';
+import { Nutrition } from '@/pages/Nutrition';
+import { Programs } from '@/pages/Programs';
+import { Coach } from '@/pages/Coach';
+import { Community } from '@/pages/Community';
+import { Settings } from '@/pages/Settings';
+import NotFound from '@/pages/not-found';
+
+function AppContent() {
+  const {
+    state,
+    completeOnboarding,
+    login,
+    logout,
+    addWorkoutLog,
+    addMealLog,
+    updateWaterIntake,
+    scheduleWorkout,
+    addBodyMeasurement,
+    updateSettings,
+    exportData,
+  } = useAppState();
+
+  const [showLogin, setShowLogin] = useState(false);
+
+  if (!state.isOnboarded && !state.isLoggedIn) {
+    if (showLogin) {
+      return (
+        <Login
+          onLogin={(email, password) => {
+            login(email, password);
+            setShowLogin(false);
+          }}
+          onBack={() => setShowLogin(false)}
+        />
+      );
+    }
+    return (
+      <Onboarding
+        onComplete={completeOnboarding}
+        onLogin={() => setShowLogin(true)}
+      />
+    );
+  }
+
   return (
     <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
+      <Route path="/">
+        <Home state={state} onUpdateWater={updateWaterIntake} />
+      </Route>
+      <Route path="/workouts">
+        <Workouts />
+      </Route>
+      <Route path="/workout/:id">
+        <WorkoutDetail />
+      </Route>
+      <Route path="/workout/:id/play">
+        <WorkoutPlayer onComplete={addWorkoutLog} />
+      </Route>
+      <Route path="/exercises">
+        <Exercises />
+      </Route>
+      <Route path="/exercise/:name">
+        <ExerciseDetail />
+      </Route>
+      <Route path="/tracking">
+        <Tracking state={state} onAddMeasurement={addBodyMeasurement} />
+      </Route>
+      <Route path="/calendar">
+        <Calendar state={state} onScheduleWorkout={scheduleWorkout} />
+      </Route>
+      <Route path="/nutrition">
+        <Nutrition state={state} onAddMeal={addMealLog} />
+      </Route>
+      <Route path="/programs">
+        <Programs />
+      </Route>
+      <Route path="/coach">
+        <Coach state={state} />
+      </Route>
+      <Route path="/community">
+        <Community />
+      </Route>
+      <Route path="/settings">
+        <Settings
+          state={state}
+          onUpdateSettings={updateSettings}
+          onExportData={exportData}
+          onLogout={logout}
+        />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -21,7 +116,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AppContent />
       </TooltipProvider>
     </QueryClientProvider>
   );
