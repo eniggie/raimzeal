@@ -21,7 +21,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, resetPassword } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -99,7 +99,30 @@ export default function LoginScreen() {
             </View>
           </Field>
 
-          <TouchableOpacity style={styles.forgotBtn}>
+          <TouchableOpacity
+            style={styles.forgotBtn}
+            onPress={() => {
+              Alert.prompt(
+                "Reset Password",
+                "Enter your email address and we'll send you a reset link.",
+                async (inputEmail) => {
+                  if (!inputEmail?.trim()) return;
+                  const { error } = await resetPassword(inputEmail.trim().toLowerCase());
+                  if (error) {
+                    Alert.alert("Error", error);
+                  } else {
+                    Alert.alert(
+                      "Email sent",
+                      "Check your inbox for a password reset link. It may take a few minutes to arrive."
+                    );
+                  }
+                },
+                "plain-text",
+                email.trim(),
+                "email-address"
+              );
+            }}
+          >
             <Text style={[styles.forgotText, { color: colors.primary }]}>
               Forgot password?
             </Text>

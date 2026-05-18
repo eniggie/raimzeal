@@ -18,6 +18,7 @@ interface AuthContextType {
   sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
   resendEmailConfirmation: (email: string) => Promise<{ error: string | null }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   updateUserProfile: (data: Record<string, unknown>) => Promise<{ error: string | null }>;
 }
 
@@ -86,6 +87,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const resetPassword = useCallback(async (email: string) => {
+    if (!isSupabaseConfigured) return { error: "Supabase not configured" };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: undefined,
+    });
+    return { error: error?.message ?? null };
+  }, []);
+
   const updateUserProfile = useCallback(async (data: Record<string, unknown>) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
     const { error } = await supabase.auth.updateUser({ data });
@@ -104,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sendPhoneOtp,
         verifyPhoneOtp,
         resendEmailConfirmation,
+        resetPassword,
         updateUserProfile,
       }}
     >

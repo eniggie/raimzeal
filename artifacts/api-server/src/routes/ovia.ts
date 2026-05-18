@@ -18,7 +18,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const weight = ctx.weight ?? null;
   const age = ctx.age ?? null;
   const fitnessLevel = ctx.fitnessLevel ?? "intermediate";
-  const recentWorkouts = ctx.recentWorkouts ?? [];
+  const recentWorkouts = Array.isArray(ctx.recentWorkouts) ? ctx.recentWorkouts : [];
   const todayCalories = ctx.todayCalories ?? null;
   const todayProtein = ctx.todayProtein ?? null;
   const lastMessage = ctx.lastMessage ?? null;
