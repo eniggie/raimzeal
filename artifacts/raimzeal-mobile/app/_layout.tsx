@@ -1,3 +1,4 @@
+import "react-native-url-polyfill/auto";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -11,7 +12,7 @@ import {
   useFonts as useSpaceGroteskFonts,
 } from "@expo-google-fonts/space-grotesk";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -19,18 +20,33 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-function RootLayoutNav() {
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
-  );
+/** Redirects between auth and app based on session */
+function AuthGate() {
+  const { session, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isSupabaseConfigured) return; // no-op: let app run without auth
+
+    const inAuthGroup = segments[0] === "auth";
+    if (!session && !inAuthGroup) {
+      router.replace("/auth/welcome");
+    } else if (session && inAuthGroup) {
+      router.replace("/(tabs)");
+    }
+  }, [session, loading, segments]);
+
+  return <Slot />;
 }
 
 export default function RootLayout() {
@@ -63,9 +79,11 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <FitnessProvider>
-                <RootLayoutNav />
-              </FitnessProvider>
+              <AuthProvider>
+                <FitnessProvider>
+                  <AuthGate />
+                </FitnessProvider>
+              </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
