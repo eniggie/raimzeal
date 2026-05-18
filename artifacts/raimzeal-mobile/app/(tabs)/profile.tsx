@@ -14,32 +14,34 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
+import { useFitness, OviaMessage, UserProfile } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 
 type Tab = "ovia" | "profile";
 
 const GOAL_LABELS: Record<string, string> = {
-  lose_weight: "Lose Weight",
+  muscle_gain: "Build Muscle",
+  weight_loss: "Lose Weight",
+  endurance: "Improve Fitness",
+  flexibility: "Improve Flexibility",
   build_muscle: "Build Muscle",
-  maintain: "Maintain Weight",
   improve_fitness: "Improve Fitness",
 };
 
 const OVIA_RESPONSES: Record<string, string[]> = {
   workout: [
-    "Your workout plan is on point! Focus on progressive overload — add 2.5kg each week.",
+    "Your workout plan is on point! Focus on progressive overload — add weight each week.",
     "Based on your history, Upper Body days are your strongest. Keep it up!",
     "Remember to warm up for 5-10 minutes before each session to prevent injury.",
   ],
   nutrition: [
-    "You're hitting your protein goals well! Make sure to spread intake across 4-5 meals.",
+    "You're hitting your protein goals well! Spread intake across 4-5 meals for best results.",
     "Try adding more complex carbs around your workouts for better energy.",
     "Hydration matters! Aim for 3L of water on training days.",
   ],
   progress: [
     "You're trending in the right direction! Consistency is the key.",
-    "Your 7-day streak is impressive. Most people give up in week 2!",
+    "Your streak is impressive. Most people give up in week 2!",
     "Small daily improvements lead to massive results. Trust the process.",
   ],
   default: [
@@ -68,15 +70,28 @@ function getOviaResponse(input: string): string {
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile, oviaMessages, addOviaMessage, updateProfile, streak, workoutLogs } = useFitness();
+  const {
+    user,
+    oviaMessages,
+    addOviaMessage,
+    updateProfile,
+    streak,
+    workoutLogs,
+  } = useFitness();
 
   const [activeTab, setActiveTab] = useState<Tab>("ovia");
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
-
   const flatListRef = useRef<FlatList>(null);
+
+  const SUGGESTIONS = [
+    "How should I train this week?",
+    "Review my nutrition",
+    "Help me stay motivated",
+    "What are my next goals?",
+  ];
 
   function handleSend() {
     if (!chatInput.trim()) return;
@@ -88,15 +103,11 @@ export default function ProfileScreen() {
     setTimeout(() => {
       addOviaMessage({ role: "assistant", content: getOviaResponse(userMsg) });
       setIsTyping(false);
-    }, 900 + Math.random() * 600);
+    }, 900);
   }
 
-  const SUGGESTIONS = [
-    "How should I train this week?",
-    "Review my nutrition",
-    "Help me stay motivated",
-    "What are my next goals?",
-  ];
+  const userGoals = user?.goals ?? [];
+  const primaryGoal = userGoals[0] ?? "improve_fitness";
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -167,7 +178,10 @@ export default function ProfileScreen() {
                 <View
                   style={[
                     styles.oviaAvatar,
-                    { backgroundColor: colors.accent + "20", borderColor: colors.accent + "40" },
+                    {
+                      backgroundColor: colors.accent + "20",
+                      borderColor: colors.accent + "40",
+                    },
                   ]}
                 >
                   <Ionicons name="sparkles" size={28} color={colors.accent} />
@@ -182,9 +196,7 @@ export default function ProfileScreen() {
                   {SUGGESTIONS.map((s) => (
                     <TouchableOpacity
                       key={s}
-                      onPress={() => {
-                        setChatInput(s);
-                      }}
+                      onPress={() => setChatInput(s)}
                       style={[
                         styles.suggestion,
                         { backgroundColor: colors.muted, borderColor: colors.border },
@@ -264,9 +276,7 @@ export default function ProfileScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.profileContent,
-            {
-              paddingBottom: Platform.OS === "web" ? 34 + 84 : 100,
-            },
+            { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -279,84 +289,30 @@ export default function ProfileScreen() {
               ]}
             >
               <Text style={[styles.avatarInitial, { color: colors.primary }]}>
-                {profile.name.charAt(0).toUpperCase()}
+                {(user?.name ?? "A").charAt(0).toUpperCase()}
               </Text>
             </View>
             <Text style={[styles.profileName, { color: colors.foreground }]}>
-              {profile.name}
+              {user?.name ?? "Athlete"}
             </Text>
             <Text style={[styles.profileGoal, { color: colors.mutedForeground }]}>
-              Goal: {GOAL_LABELS[profile.goal]}
+              Goal: {GOAL_LABELS[primaryGoal] ?? "Improve Fitness"}
             </Text>
           </View>
 
           {/* Stats */}
           <View style={styles.profileStats}>
-            <ProfileStat label="Streak" value={`${streak}d`} icon="flame" color="#f59e0b" />
-            <ProfileStat label="Workouts" value={`${workoutLogs.length}`} icon="barbell-outline" color="#a3e635" />
-            <ProfileStat label="Age" value={`${profile.age}`} icon="person-outline" color="#00d2eb" />
+            <ProfileStat label="Streak" value={`${streak}d`} icon="flame" color={colors.warning} />
+            <ProfileStat label="Workouts" value={`${workoutLogs.length}`} icon="barbell-outline" color={colors.primary} />
+            <ProfileStat label="Age" value={`${user?.age ?? 28}`} icon="person-outline" color={colors.secondary} />
           </View>
 
-          {/* Info Cards */}
+          {/* Info */}
           <GlassCard style={styles.infoCard}>
-            <InfoRow label="Weight" value={`${profile.weight} kg`} icon="scale-outline" />
-            <InfoRow label="Height" value={`${profile.height} cm`} icon="resize-outline" />
-            <InfoRow label="Weekly Target" value={`${profile.weeklyTarget} workouts`} icon="calendar-outline" />
+            <InfoRow label="Weight" value={`${user?.weight ?? 80} ${user?.units === "imperial" ? "lbs" : "kg"}`} icon="scale-outline" />
+            <InfoRow label="Height" value={`${user?.height ?? 178} ${user?.units === "imperial" ? "in" : "cm"}`} icon="resize-outline" />
+            <InfoRow label="Fitness Level" value={user?.fitnessLevel ?? "intermediate"} icon="trophy-outline" />
           </GlassCard>
-
-          {/* Goals */}
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Goal
-          </Text>
-          <View style={styles.goalPicker}>
-            {Object.entries(GOAL_LABELS).map(([key, label]) => (
-              <TouchableOpacity
-                key={key}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  updateProfile({ goal: key as typeof profile.goal });
-                }}
-                style={[
-                  styles.goalBtn,
-                  {
-                    backgroundColor:
-                      profile.goal === key
-                        ? colors.primary + "20"
-                        : colors.muted,
-                    borderColor:
-                      profile.goal === key ? colors.primary + "60" : colors.border,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name={
-                    key === "lose_weight"
-                      ? "trending-down-outline"
-                      : key === "build_muscle"
-                      ? "barbell-outline"
-                      : key === "maintain"
-                      ? "checkmark-circle-outline"
-                      : "flash-outline"
-                  }
-                  size={18}
-                  color={profile.goal === key ? colors.primary : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.goalLabel,
-                    {
-                      color:
-                        profile.goal === key ? colors.primary : colors.mutedForeground,
-                      fontFamily:
-                        profile.goal === key ? "Inter_600SemiBold" : "Inter_400Regular",
-                    },
-                  ]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
 
           {/* Settings */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -422,14 +378,15 @@ function ProfileStat({
 }) {
   const colors = useColors();
   return (
-    <View style={[styles.profileStatItem, { backgroundColor: color + "15", borderColor: color + "30" }]}>
+    <View
+      style={[
+        styles.profileStatItem,
+        { backgroundColor: color + "15", borderColor: color + "30" },
+      ]}
+    >
       <Ionicons name={icon} size={20} color={color} />
-      <Text style={[styles.profileStatValue, { color: colors.foreground }]}>
-        {value}
-      </Text>
-      <Text style={[styles.profileStatLabel, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
+      <Text style={[styles.profileStatValue, { color: colors.foreground }]}>{value}</Text>
+      <Text style={[styles.profileStatLabel, { color: colors.mutedForeground }]}>{label}</Text>
     </View>
   );
 }
@@ -486,12 +443,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: 12,
   },
-  headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
-  tabRow: {
-    flexDirection: "row",
-    borderRadius: 10,
-    padding: 3,
-  },
+  headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  tabRow: { flexDirection: "row", borderRadius: 10, padding: 3 },
   tabBtn: {
     flex: 1,
     paddingVertical: 7,
@@ -503,11 +456,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: { fontSize: 14 },
   chatContent: { padding: 16, gap: 12 },
-  oviaHero: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 8,
-  },
+  oviaHero: { alignItems: "center", paddingVertical: 24, gap: 8 },
   oviaAvatar: {
     width: 64,
     height: 64,
@@ -516,7 +465,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  oviaName: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  oviaName: { fontSize: 20, fontFamily: "SpaceGrotesk_700Bold" },
   oviaSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
   suggestions: {
     flexDirection: "row",
@@ -546,23 +495,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bubble: {
-    maxWidth: "78%",
-    padding: 12,
-    borderRadius: 16,
-  },
-  userBubble: {
-    borderBottomRightRadius: 4,
-  },
-  assistantBubble: {
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-  },
-  bubbleText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-  },
+  bubble: { maxWidth: "78%", padding: 12, borderRadius: 16 },
+  userBubble: { borderBottomRightRadius: 4 },
+  assistantBubble: { borderBottomLeftRadius: 4, borderWidth: 1 },
+  bubbleText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
   typingIndicator: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -576,11 +512,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
   },
-  typingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
+  typingDot: { width: 6, height: 6, borderRadius: 3 },
   inputBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -615,8 +547,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
   },
-  avatarInitial: { fontSize: 36, fontFamily: "Inter_700Bold" },
-  profileName: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  avatarInitial: { fontSize: 36, fontFamily: "SpaceGrotesk_700Bold" },
+  profileName: { fontSize: 22, fontFamily: "SpaceGrotesk_700Bold" },
   profileGoal: { fontSize: 14, fontFamily: "Inter_400Regular" },
   profileStats: { flexDirection: "row", gap: 10 },
   profileStatItem: {
@@ -639,17 +571,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  goalPicker: { gap: 8 },
-  goalBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-  },
-  goalLabel: { fontSize: 14 },
+  sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold" },
   settingsCard: { padding: 0, overflow: "hidden" },
   settingsRow: {
     flexDirection: "row",

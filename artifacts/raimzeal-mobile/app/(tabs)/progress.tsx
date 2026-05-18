@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Svg, { Circle, Line, Path, Polyline, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -25,48 +25,60 @@ type Period = "1M" | "3M" | "6M";
 export default function ProgressScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { progressEntries, workoutLogs, streak, getWeekCalories } = useFitness();
+  const {
+    bodyMeasurements,
+    workoutLogs,
+    streak,
+    getWeekCalories,
+    user,
+  } = useFitness();
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("1M");
-
   const periods: Period[] = ["1M", "3M", "6M"];
 
-  const filteredEntries = progressEntries.slice(
-    selectedPeriod === "1M" ? -4 : selectedPeriod === "3M" ? -8 : -12
-  );
+  const sliceCount = selectedPeriod === "1M" ? 4 : selectedPeriod === "3M" ? 8 : 12;
+  const filteredMeasurements = bodyMeasurements.slice(-sliceCount);
 
-  const weights = filteredEntries.map((e) => e.weight);
-  const minW = Math.min(...weights) - 1;
-  const maxW = Math.max(...weights) + 1;
+  const weights = filteredMeasurements.map((e) => e.weight);
+  const minW = weights.length > 0 ? Math.min(...weights) - 1 : 70;
+  const maxW = weights.length > 0 ? Math.max(...weights) + 1 : 90;
 
   function toPoint(index: number, value: number): { x: number; y: number } {
-    const x = (index / (filteredEntries.length - 1)) * CHART_WIDTH;
-    const y = CHART_HEIGHT - ((value - minW) / (maxW - minW)) * CHART_HEIGHT;
+    const x =
+      filteredMeasurements.length > 1
+        ? (index / (filteredMeasurements.length - 1)) * CHART_WIDTH
+        : CHART_WIDTH / 2;
+    const y =
+      maxW > minW
+        ? CHART_HEIGHT - ((value - minW) / (maxW - minW)) * CHART_HEIGHT
+        : CHART_HEIGHT / 2;
     return { x, y };
   }
 
-  const points = filteredEntries.map((e, i) => toPoint(i, e.weight));
+  const points = filteredMeasurements.map((e, i) => toPoint(i, e.weight));
   const pathD =
     points.length > 1
       ? `M ${points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" L ")}`
       : "";
 
   const weekCalories = getWeekCalories();
-  const maxCal = Math.max(...weekCalories.map((d) => d.calories));
+  const maxCal = Math.max(...weekCalories.map((d) => d.calories), 1);
   const BAR_HEIGHT = 80;
-  const BAR_WIDTH = (CHART_WIDTH - 32) / weekCalories.length - 4;
+  const BAR_WIDTH = Math.floor((CHART_WIDTH - 32) / weekCalories.length) - 4;
 
   const totalWorkouts = workoutLogs.length;
   const thisWeekWorkouts = workoutLogs.filter((w) => {
-    const d = new Date(w.date);
-    const now = new Date();
-    const diff = (now.getTime() - d.getTime()) / 86400000;
+    const diff =
+      (Date.now() - new Date(w.date).getTime()) / 86400000;
     return diff <= 7;
   }).length;
 
-  const currentWeight = progressEntries[progressEntries.length - 1]?.weight ?? 75;
-  const startWeight = progressEntries[0]?.weight ?? 78;
+  const currentWeight =
+    bodyMeasurements.length > 0
+      ? bodyMeasurements[bodyMeasurements.length - 1].weight
+      : user?.weight ?? 80;
+  const startWeight = bodyMeasurements[0]?.weight ?? currentWeight;
   const weightChange = currentWeight - startWeight;
 
   return (
@@ -81,7 +93,6 @@ export default function ProgressScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           Progress
@@ -90,27 +101,12 @@ export default function ProgressScreen() {
 
       {/* Stats Row */}
       <View style={styles.statsRow}>
+        <StatBadge icon="flame" label="Streak" value={`${streak}d`} color={colors.warning} />
+        <StatBadge icon="barbell-outline" label="Workouts" value={totalWorkouts.toString()} color={colors.primary} />
+        <StatBadge icon="calendar-outline" label="This Week" value={`${thisWeekWorkouts}`} color={colors.secondary} />
         <StatBadge
-          icon="flame"
-          label="Streak"
-          value={`${streak}d`}
-          color={colors.warning}
-        />
-        <StatBadge
-          icon="barbell-outline"
-          label="Total Workouts"
-          value={totalWorkouts.toString()}
-          color={colors.primary}
-        />
-        <StatBadge
-          icon="calendar-outline"
-          label="This Week"
-          value={`${thisWeekWorkouts}`}
-          color={colors.secondary}
-        />
-        <StatBadge
-          icon="trending-down-outline"
-          label="Weight Change"
+          icon={weightChange <= 0 ? "trending-down-outline" : "trending-up-outline"}
+          label="Change"
           value={`${weightChange > 0 ? "+" : ""}${weightChange.toFixed(1)}kg`}
           color={weightChange <= 0 ? colors.success : colors.destructive}
         />
@@ -132,10 +128,7 @@ export default function ProgressScreen() {
                 }}
                 style={[
                   styles.periodBtn,
-                  {
-                    backgroundColor:
-                      selectedPeriod === p ? colors.primary : "transparent",
-                  },
+                  { backgroundColor: selectedPeriod === p ? colors.primary : "transparent" },
                 ]}
               >
                 <Text
@@ -143,13 +136,9 @@ export default function ProgressScreen() {
                     styles.periodText,
                     {
                       color:
-                        selectedPeriod === p
-                          ? colors.primaryForeground
-                          : colors.mutedForeground,
+                        selectedPeriod === p ? colors.primaryForeground : colors.mutedForeground,
                       fontFamily:
-                        selectedPeriod === p
-                          ? "Inter_600SemiBold"
-                          : "Inter_400Regular",
+                        selectedPeriod === p ? "Inter_600SemiBold" : "Inter_400Regular",
                     },
                   ]}
                 >
@@ -184,9 +173,7 @@ export default function ProgressScreen() {
             <Text
               style={[
                 styles.weightChangeText,
-                {
-                  color: weightChange <= 0 ? colors.success : colors.destructive,
-                },
+                { color: weightChange <= 0 ? colors.success : colors.destructive },
               ]}
             >
               {Math.abs(weightChange).toFixed(1)} kg
@@ -216,9 +203,10 @@ export default function ProgressScreen() {
               strokeWidth={2}
             />
           ))}
-          {filteredEntries.map((e, i) => {
+          {filteredMeasurements.map((e, i) => {
             const p = points[i];
-            if (i % 2 !== 0 && i !== filteredEntries.length - 1) return null;
+            if (filteredMeasurements.length > 4 && i % 2 !== 0 && i !== filteredMeasurements.length - 1)
+              return null;
             return (
               <SvgText
                 key={i}
@@ -236,7 +224,7 @@ export default function ProgressScreen() {
         </Svg>
       </GlassCard>
 
-      {/* Weekly Calories Chart */}
+      {/* Weekly Calories Bar Chart */}
       <GlassCard style={styles.chartCard}>
         <Text style={[styles.chartTitle, { color: colors.foreground }]}>
           Weekly Calories
@@ -244,6 +232,7 @@ export default function ProgressScreen() {
         <View style={styles.barChart}>
           {weekCalories.map((d, i) => {
             const barH = (d.calories / maxCal) * BAR_HEIGHT;
+            const isToday = i === weekCalories.length - 1;
             return (
               <View key={i} style={styles.barItem}>
                 <View style={[styles.barTrack, { height: BAR_HEIGHT }]}>
@@ -253,9 +242,7 @@ export default function ProgressScreen() {
                       {
                         height: barH,
                         width: BAR_WIDTH,
-                        backgroundColor: i === weekCalories.length - 1
-                          ? colors.primary
-                          : colors.primary + "60",
+                        backgroundColor: isToday ? colors.primary : colors.primary + "60",
                         borderRadius: 4,
                       },
                     ]}
@@ -341,7 +328,11 @@ function AchievementBadge({
         },
       ]}
     >
-      <Ionicons name={icon} size={24} color={unlocked ? color : colors.mutedForeground} />
+      <Ionicons
+        name={icon}
+        size={24}
+        color={unlocked ? color : colors.mutedForeground}
+      />
       <Text
         style={[
           styles.achievementLabel,
@@ -359,11 +350,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 16 },
   header: { marginBottom: 4 },
-  headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  statsRow: { flexDirection: "row", gap: 8 },
   statBadge: {
     flex: 1,
     padding: 10,
@@ -372,28 +360,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  statBadgeValue: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-  },
-  statBadgeLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  statBadgeValue: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  statBadgeLabel: { fontSize: 9, fontFamily: "Inter_400Regular", textAlign: "center" },
   chartCard: { padding: 16, gap: 12 },
   chartHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  chartTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  chartTitle: { fontSize: 16, fontFamily: "SpaceGrotesk_600SemiBold" },
   periodRow: { flexDirection: "row", gap: 4 },
-  periodBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
+  periodBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   periodText: { fontSize: 12 },
   currentWeight: {
     flexDirection: "row",
@@ -423,12 +400,8 @@ const styles = StyleSheet.create({
   barTrack: { justifyContent: "flex-end", alignItems: "center" },
   barFill: {},
   barLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 4 },
-  achievements: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 4 },
+  achievements: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   achievement: {
     width: "47%",
     padding: 14,

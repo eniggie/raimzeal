@@ -11,6 +11,7 @@ interface WorkoutCardProps {
 
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const colors = useColors();
+  const exerciseNames = workout.exercises.map((e) => e.name);
 
   return (
     <TouchableOpacity
@@ -18,25 +19,19 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       activeOpacity={0.75}
       style={[
         styles.card,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-        },
+        { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: colors.primary + "20" }]}>
         <Ionicons name="barbell-outline" size={22} color={colors.primary} />
       </View>
       <View style={styles.info}>
-        <Text
-          style={[styles.name, { color: colors.foreground }]}
-          numberOfLines={1}
-        >
-          {workout.name}
+        <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+          {workout.workoutName}
         </Text>
         <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-          {workout.exercises.slice(0, 2).join(" · ")}
-          {workout.exercises.length > 2 ? ` +${workout.exercises.length - 2}` : ""}
+          {exerciseNames.slice(0, 2).join(" · ")}
+          {exerciseNames.length > 2 ? ` +${exerciseNames.length - 2}` : ""}
         </Text>
       </View>
       <View style={styles.stats}>
@@ -49,7 +44,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
         <View style={styles.statRow}>
           <Ionicons name="flame-outline" size={12} color={colors.warning} />
           <Text style={[styles.statText, { color: colors.mutedForeground }]}>
-            {workout.calories}
+            {workout.caloriesBurned}
           </Text>
         </View>
       </View>
@@ -73,29 +68,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  info: {
-    flex: 1,
-    gap: 3,
-  },
-  name: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  meta: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  stats: {
-    gap: 4,
-    alignItems: "flex-end",
-  },
-  statRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  statText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
+  info: { flex: 1, gap: 3 },
+  name: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  meta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  stats: { gap: 4, alignItems: "flex-end" },
+  statRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  statText: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

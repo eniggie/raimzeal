@@ -10,6 +10,7 @@ interface StatCardProps {
   value: string;
   unit?: string;
   color?: string;
+  /** 0–1 fill ratio */
   progress?: number;
   style?: ViewStyle;
 }
@@ -25,6 +26,7 @@ export function StatCard({
 }: StatCardProps) {
   const colors = useColors();
   const accentColor = color ?? colors.primary;
+  const fillRatio = progress !== undefined ? Math.min(1, Math.max(0, progress)) : 0;
 
   return (
     <GlassCard style={[styles.card, style]}>
@@ -36,9 +38,7 @@ export function StatCard({
           {label}
         </Text>
         <View style={styles.valueRow}>
-          <Text style={[styles.value, { color: colors.foreground }]}>
-            {value}
-          </Text>
+          <Text style={[styles.value, { color: colors.foreground }]}>{value}</Text>
           {unit && (
             <Text style={[styles.unit, { color: colors.mutedForeground }]}>
               {" "}{unit}
@@ -47,15 +47,11 @@ export function StatCard({
         </View>
         {progress !== undefined && (
           <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: accentColor,
-                  width: `${Math.min(100, progress * 100)}%` as any,
-                },
-              ]}
-            />
+            {/* Flex-based progress bar — avoids percentage string type issues */}
+            <View style={styles.progressFlex}>
+              <View style={[styles.progressFill, { flex: fillRatio, backgroundColor: accentColor }]} />
+              <View style={{ flex: 1 - fillRatio }} />
+            </View>
           </View>
         )}
       </View>
@@ -101,10 +97,15 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   progressTrack: {
-    height: 3,
+    height: 4,
     borderRadius: 2,
     marginTop: 6,
     overflow: "hidden",
+  },
+  progressFlex: {
+    flex: 1,
+    flexDirection: "row",
+    height: "100%",
   },
   progressFill: {
     height: "100%",

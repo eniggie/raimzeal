@@ -5,6 +5,5 @@ import colors from "@/constants/colors";
  * RAIMZEAL is always dark-themed — we always return the dark palette.
  */
 export function useColors() {
-  const palette = (colors as Record<string, typeof colors.light>).dark ?? colors.light;
-  return { ...palette, radius: colors.radius };
+  return { ...colors.dark, radius: colors.radius };
 }

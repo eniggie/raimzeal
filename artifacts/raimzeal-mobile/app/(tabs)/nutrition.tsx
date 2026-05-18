@@ -5,7 +5,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -13,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness, NutritionLog } from "@/contexts/FitnessContext";
+import { useFitness, MealLog } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 
@@ -22,37 +21,36 @@ const PROTEIN_GOAL = 150;
 const CARBS_GOAL = 250;
 const FAT_GOAL = 70;
 
-const QUICK_FOODS = [
-  { name: "Protein Shake", calories: 180, protein: 25, carbs: 10, fat: 4, meal: "breakfast" as const },
-  { name: "Chicken Breast", calories: 165, protein: 31, carbs: 0, fat: 3.6, meal: "lunch" as const },
-  { name: "Brown Rice (1 cup)", calories: 215, protein: 5, carbs: 45, fat: 1.8, meal: "lunch" as const },
-  { name: "Greek Yogurt", calories: 130, protein: 17, carbs: 8, fat: 3, meal: "snack" as const },
-  { name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0.3, meal: "snack" as const },
-  { name: "Almonds (30g)", calories: 174, protein: 6, carbs: 6, fat: 15, meal: "snack" as const },
-  { name: "Oatmeal", calories: 147, protein: 5, carbs: 27, fat: 2.5, meal: "breakfast" as const },
-  { name: "Salmon Fillet", calories: 208, protein: 29, carbs: 0, fat: 10, meal: "dinner" as const },
+type MealType = MealLog["mealType"];
+
+const MEAL_COLORS: Record<MealType, string> = {
+  breakfast: "#f59f0a",
+  lunch: "#00c1d6",
+  dinner: "#8c3cdd",
+  snack: "#21c45d",
+};
+
+const QUICK_FOODS: Omit<MealLog, "id" | "date">[] = [
+  { name: "Protein Shake", calories: 180, protein: 25, carbs: 10, fat: 4, mealType: "breakfast" },
+  { name: "Chicken Breast (150g)", calories: 248, protein: 46, carbs: 0, fat: 5, mealType: "lunch" },
+  { name: "Brown Rice (1 cup)", calories: 215, protein: 5, carbs: 45, fat: 2, mealType: "lunch" },
+  { name: "Greek Yogurt", calories: 130, protein: 17, carbs: 8, fat: 3, mealType: "snack" },
+  { name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0, mealType: "snack" },
+  { name: "Almonds (30g)", calories: 174, protein: 6, carbs: 6, fat: 15, mealType: "snack" },
+  { name: "Oatmeal (1 cup)", calories: 147, protein: 5, carbs: 27, fat: 3, mealType: "breakfast" },
+  { name: "Salmon Fillet (150g)", calories: 312, protein: 43, carbs: 0, fat: 15, mealType: "dinner" },
 ];
 
-type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-const MEAL_COLORS: Record<MealType, string> = {
-  breakfast: "#f59e0b",
-  lunch: "#00d2eb",
-  dinner: "#8b5cf6",
-  snack: "#22c55e",
-};
+const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { nutritionLogs, addNutrition, totalCaloriesToday } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog } = useFitness();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const today = new Date().toISOString().split("T")[0];
-  const todayLogs = nutritionLogs.filter((n) => n.date === today);
-
-  const totalProtein = todayLogs.reduce((s, n) => s + n.protein, 0);
-  const totalCarbs = todayLogs.reduce((s, n) => s + n.carbs, 0);
-  const totalFat = todayLogs.reduce((s, n) => s + n.fat, 0);
+  const todayMeals = getTodayMeals();
+  const { calories, protein, carbs, fat } = getTodayMacros();
 
   const [showModal, setShowModal] = useState(false);
   const [selectedFood, setSelectedFood] = useState<typeof QUICK_FOODS[0] | null>(null);
@@ -61,18 +59,22 @@ export default function NutritionScreen() {
   function handleAddFood(food: typeof QUICK_FOODS[0]) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFood(food);
-    setSelectedMeal(food.meal);
+    setSelectedMeal(food.mealType);
     setShowModal(true);
   }
 
   function handleConfirmLog() {
     if (!selectedFood) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addNutrition({ ...selectedFood, meal: selectedMeal, date: today });
+    const meal: MealLog = {
+      ...selectedFood,
+      id: Date.now().toString(),
+      date: new Date().toISOString().split("T")[0],
+      mealType: selectedMeal,
+    };
+    addMealLog(meal);
     setShowModal(false);
   }
-
-  const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -82,7 +84,6 @@ export default function NutritionScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={() => (
           <View style={{ gap: 16 }}>
-            {/* Header */}
             <View style={[styles.header, { paddingTop: topPad + 16 }]}>
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>
                 Nutrition
@@ -96,29 +97,29 @@ export default function NutritionScreen() {
             <GlassCard style={styles.macroCard}>
               <View style={styles.macroRow}>
                 <ProgressRing
-                  progress={totalCaloriesToday / CALORIE_GOAL}
+                  progress={calories / CALORIE_GOAL}
                   size={90}
                   strokeWidth={8}
                   color={colors.primary}
-                  label={totalCaloriesToday.toString()}
+                  label={calories.toString()}
                   sublabel="kcal"
                 />
                 <View style={styles.macros}>
                   <MacroBar
                     label="Protein"
-                    value={Math.round(totalProtein)}
+                    value={Math.round(protein)}
                     goal={PROTEIN_GOAL}
                     color={colors.secondary}
                   />
                   <MacroBar
                     label="Carbs"
-                    value={Math.round(totalCarbs)}
+                    value={Math.round(carbs)}
                     goal={CARBS_GOAL}
                     color={colors.warning}
                   />
                   <MacroBar
                     label="Fat"
-                    value={Math.round(totalFat)}
+                    value={Math.round(fat)}
                     goal={FAT_GOAL}
                     color={colors.accent}
                   />
@@ -126,11 +127,11 @@ export default function NutritionScreen() {
               </View>
             </GlassCard>
 
-            {/* Today's Meals */}
+            {/* Today's logged meals by type */}
             {MEALS.map((meal) => {
-              const mealLogs = todayLogs.filter((n) => n.meal === meal);
+              const mealLogs = todayMeals.filter((m) => m.mealType === meal);
               if (mealLogs.length === 0) return null;
-              const mealCal = mealLogs.reduce((s, n) => s + n.calories, 0);
+              const mealCal = mealLogs.reduce((s, m) => s + m.calories, 0);
               const mealColor = MEAL_COLORS[meal];
               return (
                 <View key={meal} style={styles.mealSection}>
@@ -171,13 +172,13 @@ export default function NutritionScreen() {
             <View
               style={[
                 styles.foodIcon,
-                { backgroundColor: MEAL_COLORS[item.meal] + "20" },
+                { backgroundColor: MEAL_COLORS[item.mealType] + "20" },
               ]}
             >
               <Ionicons
                 name="restaurant-outline"
                 size={18}
-                color={MEAL_COLORS[item.meal]}
+                color={MEAL_COLORS[item.mealType]}
               />
             </View>
             <View style={styles.foodInfo}>
@@ -196,7 +197,6 @@ export default function NutritionScreen() {
         )}
       />
 
-      {/* Add Modal */}
       <Modal
         visible={showModal}
         transparent
@@ -231,9 +231,7 @@ export default function NutritionScreen() {
                     styles.mealPickerBtn,
                     {
                       backgroundColor:
-                        selectedMeal === meal
-                          ? MEAL_COLORS[meal] + "30"
-                          : colors.muted,
+                        selectedMeal === meal ? MEAL_COLORS[meal] + "30" : colors.muted,
                       borderColor:
                         selectedMeal === meal ? MEAL_COLORS[meal] : "transparent",
                     },
@@ -296,7 +294,7 @@ function MacroBar({
   color: string;
 }) {
   const colors = useColors();
-  const progress = Math.min(1, value / goal);
+  const fillRatio = Math.min(1, Math.max(0, value / goal));
   return (
     <View style={styles.macroBarContainer}>
       <View style={styles.macroBarHeader}>
@@ -307,19 +305,18 @@ function MacroBar({
           {value}/{goal}g
         </Text>
       </View>
+      {/* Flex-based progress bar — no percentage string type issues */}
       <View style={[styles.macroTrack, { backgroundColor: colors.muted }]}>
-        <View
-          style={[
-            styles.macroFill,
-            { backgroundColor: color, width: `${progress * 100}%` as any },
-          ]}
-        />
+        <View style={styles.macroFlex}>
+          <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: color }]} />
+          <View style={{ flex: 1 - fillRatio }} />
+        </View>
       </View>
     </View>
   );
 }
 
-function NutritionRow({ log }: { log: NutritionLog }) {
+function NutritionRow({ log }: { log: MealLog }) {
   const colors = useColors();
   return (
     <View style={[styles.nutritionRow, { borderBottomColor: colors.border }]}>
@@ -367,23 +364,17 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     marginBottom: 4,
   },
-  headerTitle: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
   headerDate: { fontSize: 14, fontFamily: "Inter_400Regular" },
   macroCard: { padding: 16 },
-  macroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-  },
+  macroRow: { flexDirection: "row", alignItems: "center", gap: 20 },
   macros: { flex: 1, gap: 10 },
   macroBarContainer: { gap: 4 },
-  macroBarHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  macroBarHeader: { flexDirection: "row", justifyContent: "space-between" },
   macroBarLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   macroBarValue: { fontSize: 11, fontFamily: "Inter_500Medium" },
   macroTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
+  macroFlex: { flex: 1, flexDirection: "row", height: "100%" },
   macroFill: { height: "100%", borderRadius: 3 },
   mealSection: { gap: 6 },
   mealHeader: {
@@ -404,11 +395,7 @@ const styles = StyleSheet.create({
   },
   nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular" },
   nutritionCal: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    marginTop: 8,
-  },
+  sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 8 },
   foodCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -434,18 +421,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000aa",
     justifyContent: "flex-end",
   },
-  modalCard: {
-    margin: 16,
-    padding: 24,
-    borderRadius: 20,
-    gap: 16,
-  },
-  modalTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  modalNutrients: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  modalCard: { margin: 16, padding: 24, borderRadius: 20, gap: 16 },
+  modalTitle: { fontSize: 20, fontFamily: "SpaceGrotesk_700Bold" },
+  modalNutrients: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   nutrientChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -456,11 +434,7 @@ const styles = StyleSheet.create({
   nutrientChipLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
   nutrientChipValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   modalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  mealPicker: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-  },
+  mealPicker: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   mealPickerBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -468,7 +442,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   mealPickerText: { fontSize: 13 },
-  modalBtns: { flexDirection: "row", gap: 10, marginTop: 4 },
+  modalBtns: { flexDirection: "row", gap: 10 },
   modalCancelBtn: {
     flex: 1,
     height: 48,
