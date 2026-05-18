@@ -58,8 +58,8 @@
   "dependencies": {
     "@expo-google-fonts/space-grotesk": "^0.4.1",
     "@supabase/supabase-js": "^2.105.4",
-    "expo-print": "^55.0.15",
-    "expo-sharing": "^55.0.19",
+    "expo-print": "^15.0.8",
+    "expo-sharing": "^14.0.8",
     "react-native-url-polyfill": "^3.0.0"
   }
 }
