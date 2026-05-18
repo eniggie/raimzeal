@@ -355,6 +355,7 @@ export default function ProfileScreen() {
         onClose={() => setShowCustomizeModal(false)}
         onGenerate={handleGenerateCard}
         generating={shareLoading || saveLoading}
+        cardPreviewData={cardProps}
       />
 
       {/* Header */}

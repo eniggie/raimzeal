@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 
-const CARD_WIDTH = 360;
+export const CARD_WIDTH = 360;
 
 export interface CardVisibleStats {
   streak: boolean;

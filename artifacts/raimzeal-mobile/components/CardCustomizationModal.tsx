@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  Dimensions,
   Modal,
   View,
   Text,
@@ -13,7 +14,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { CardVisibleStats, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
+import ShareProgressCard, {
+  CARD_WIDTH,
+  CardVisibleStats,
+  DEFAULT_VISIBLE_STATS,
+  ShareProgressCardProps,
+} from "@/components/ShareProgressCard";
 
 interface StatToggleConfig {
   key: keyof CardVisibleStats;
@@ -66,18 +72,23 @@ export interface CardCustomizationResult {
   customMessage: string;
 }
 
+export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage">;
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   onGenerate: (result: CardCustomizationResult) => void;
   generating?: boolean;
+  cardPreviewData: CardPreviewData;
 }
+
 
 export default function CardCustomizationModal({
   visible,
   onClose,
   onGenerate,
   generating,
+  cardPreviewData,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -87,7 +98,6 @@ export default function CardCustomizationModal({
   });
   const [customMessage, setCustomMessage] = useState("");
 
-  // Reset to defaults each time the modal opens so stale edits never persist
   useEffect(() => {
     if (visible) {
       setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
@@ -104,8 +114,14 @@ export default function CardCustomizationModal({
   }
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
-
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
+
+  const [cardNativeHeight, setCardNativeHeight] = useState(500);
+
+  const screenWidth = Dimensions.get("window").width;
+  const previewContainerWidth = screenWidth - 40;
+  const cardScale = previewContainerWidth / CARD_WIDTH;
+  const scaledCardHeight = cardNativeHeight * cardScale;
 
   return (
     <Modal
@@ -152,6 +168,34 @@ export default function CardCustomizationModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+            {/* Live card preview */}
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              CARD PREVIEW
+            </Text>
+            <View
+              style={[
+                styles.previewContainer,
+                { width: previewContainerWidth, height: scaledCardHeight },
+              ]}
+            >
+              <View
+                style={[
+                  styles.previewScaler,
+                  {
+                    width: CARD_WIDTH,
+                    transform: [{ scale: cardScale }],
+                  },
+                ]}
+                onLayout={(e) => setCardNativeHeight(e.nativeEvent.layout.height)}
+              >
+                <ShareProgressCard
+                  {...cardPreviewData}
+                  visibleStats={visibleStats}
+                  customMessage={customMessage.trim()}
+                />
+              </View>
+            </View>
+
             {/* Stat toggles */}
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               VISIBLE STATS
@@ -344,6 +388,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 6,
     marginTop: 4,
+  },
+  previewContainer: {
+    overflow: "hidden",
+    marginBottom: 16,
+    borderRadius: 20,
+  },
+  previewScaler: {
+    transformOrigin: "top left",
   },
   togglesCard: {
     borderRadius: 14,
