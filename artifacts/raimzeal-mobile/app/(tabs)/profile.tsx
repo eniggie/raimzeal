@@ -40,49 +40,50 @@ const GOAL_LABELS: Record<string, string> = {
   stress_relief: "Stress Relief",
 };
 
-const OVIA_RESPONSES: Record<string, string[]> = {
-  workout: [
-    "Your workout plan is on point! Focus on progressive overload — add weight each week.",
-    "Based on your history, your consistency is impressive. Keep pushing!",
-    "Warm up for 5-10 minutes before each session to prevent injury and improve performance.",
-  ],
-  nutrition: [
-    "You're hitting your protein goals well! Spread intake across 4-5 meals for best absorption.",
-    "Try adding more complex carbs around your workouts for sustained energy.",
-    "Hydration matters — aim for 3L of water on training days.",
-  ],
-  progress: [
-    "You're trending in the right direction! Consistency is your biggest asset.",
-    "Your streak is impressive. Most people give up in week 2 — you're not most people!",
-    "Small daily improvements compound into massive results over time. Trust the process.",
-  ],
-  default: [
-    "Great question! Consistency is your best friend in fitness.",
-    "Based on your profile, I recommend focusing on compound movements first.",
-    "Recovery is just as important as training. Are you getting 7-8 hours of sleep?",
-    "Let's break this down: set a small goal for today, and build from there.",
-    "Your dedication is showing! Keep up the great momentum.",
-    "Have you tried periodization? Cycling intensity helps avoid plateaus.",
-  ],
-};
+const SUGGESTIONS = [
+  "Design my workout plan for this week",
+  "What should I eat today to hit my goals?",
+  "Help me stay motivated right now",
+  "Best supplements for my goals?",
+  "How do I recover faster?",
+  "What are my next fitness goals?",
+];
 
-function getOviaResponse(input: string): string {
-  const lower = input.toLowerCase();
-  if (/workout|exercise|train|lift|run|cardio/.test(lower))
-    return OVIA_RESPONSES.workout[Math.floor(Math.random() * OVIA_RESPONSES.workout.length)];
-  if (/eat|food|nutrition|calorie|protein|carb|macro/.test(lower))
-    return OVIA_RESPONSES.nutrition[Math.floor(Math.random() * OVIA_RESPONSES.nutrition.length)];
-  if (/progress|weight|goal|result|improve/.test(lower))
-    return OVIA_RESPONSES.progress[Math.floor(Math.random() * OVIA_RESPONSES.progress.length)];
-  return OVIA_RESPONSES.default[Math.floor(Math.random() * OVIA_RESPONSES.default.length)];
+function getApiBase(): string {
+  if (Platform.OS === "web") return "/api";
+  const pub = process.env["EXPO_PUBLIC_API_BASE"];
+  if (pub) return pub;
+  return "http://localhost:80/api";
 }
 
-const SUGGESTIONS = [
-  "How should I train this week?",
-  "Review my nutrition",
-  "Help me stay motivated",
-  "What are my next goals?",
-];
+function buildOviaContext(
+  user: ReturnType<typeof useFitness>["user"],
+  streak: number,
+  workoutLogs: ReturnType<typeof useFitness>["workoutLogs"],
+  mealLogs: ReturnType<typeof useFitness>["mealLogs"]
+) {
+  const today = new Date().toISOString().split("T")[0];
+  const todayMeals = mealLogs.filter((m) => m.date === today);
+  const todayCalories = todayMeals.reduce((s, m) => s + m.calories, 0);
+  const todayProtein = todayMeals.reduce((s, m) => s + m.protein, 0);
+  const recent = workoutLogs.slice(0, 5).map((w) => ({
+    name: w.workoutName,
+    calories: w.caloriesBurned,
+    date: w.date,
+    duration: w.duration,
+  }));
+  return {
+    name: user?.name ?? "",
+    goals: user?.goals ?? [],
+    weight: user?.weight ?? null,
+    age: user?.age ?? null,
+    fitnessLevel: user?.fitnessLevel ?? "intermediate",
+    streak,
+    recentWorkouts: recent,
+    todayCalories: todayCalories || null,
+    todayProtein: todayProtein || null,
+  };
+}
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -119,20 +120,71 @@ export default function ProfileScreen() {
 
   const primaryGoal = user?.goals?.[0] ?? "improve_fitness";
 
-  function handleSend() {
-    if (!chatInput.trim()) return;
+  async function handleSend() {
+    if (!chatInput.trim() || isTyping) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const userMsg = chatInput.trim();
     setChatInput("");
     addOviaMessage({ role: "user", content: userMsg });
     setIsTyping(true);
-    setTimeout(
-      () => {
-        addOviaMessage({ role: "assistant", content: getOviaResponse(userMsg) });
-        setIsTyping(false);
-      },
-      700 + Math.random() * 600
-    );
+
+    const allMessages = [
+      ...oviaMessages,
+      { id: "pending", role: "user" as const, content: userMsg },
+    ].map((m) => ({ role: m.role, content: m.content }));
+
+    const userContext = buildOviaContext(user, streak, workoutLogs, mealLogs);
+
+    try {
+      const response = await fetch(`${getApiBase()}/ovia/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: allMessages, userContext }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const json = JSON.parse(line.slice(6)) as {
+              content?: string;
+              done?: boolean;
+              error?: string;
+              searching?: string;
+            };
+            if (json.content) fullContent += json.content;
+            if (json.done || json.error) break;
+          } catch {
+            // skip
+          }
+        }
+      }
+
+      addOviaMessage({
+        role: "assistant",
+        content: fullContent || "I could not generate a response. Please try again.",
+      });
+    } catch {
+      addOviaMessage({
+        role: "assistant",
+        content:
+          `Sorry ${user?.name?.split(" ")[0] ?? "Champion"}, I am having trouble connecting right now. Please check your internet connection and try again.`,
+      });
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   async function handleExportPdf() {
@@ -314,9 +366,9 @@ export default function ProfileScreen() {
                 >
                   <Ionicons name="sparkles" size={28} color={colors.accent} />
                 </View>
-                <Text style={[styles.oviaName, { color: colors.foreground }]}>Ovia AI Coach</Text>
+                <Text style={[styles.oviaName, { color: colors.foreground }]}>Ovia AI</Text>
                 <Text style={[styles.oviaSubtitle, { color: colors.mutedForeground }]}>
-                  Your personal fitness intelligence
+                  World-class fitness coach, nutritionist and mindset mentor
                 </Text>
                 <View style={styles.suggestions}>
                   {SUGGESTIONS.map((s) => (
@@ -371,7 +423,7 @@ export default function ProfileScreen() {
               onChangeText={setChatInput}
               onSubmitEditing={handleSend}
               returnKeyType="send"
-              placeholder="Ask Ovia anything..."
+              placeholder="Ask Ovia about fitness, nutrition, health..."
               placeholderTextColor={colors.mutedForeground}
               style={[
                 styles.chatInput,

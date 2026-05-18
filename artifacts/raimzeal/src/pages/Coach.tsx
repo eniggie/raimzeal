@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, Send, Bot, User } from 'lucide-react';
+import { ChevronLeft, Send, Bot, User, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -18,207 +18,275 @@ interface Message {
   role: 'user' | 'coach';
   content: string;
   timestamp: Date;
+  searching?: string;
 }
 
-const getCoachResponse = (input: string, state: AppState): string => {
-  const lowerInput = input.toLowerCase();
-  const goals = state.user?.goals || [];
-  const streak = state.streak;
-  const recentWorkouts = state.workoutLogs.slice(0, 3);
-  const firstName = state.user?.name?.split(' ')[0] || 'there';
+function buildUserContext(state: AppState) {
+  const recentWorkouts = state.workoutLogs.slice(0, 5).map((w) => ({
+    name: w.workoutName,
+    calories: w.caloriesBurned,
+    date: w.date,
+    duration: w.duration,
+  }));
+  return {
+    name: state.user?.name ?? '',
+    goals: state.user?.goals ?? [],
+    weight: state.user?.weight ?? null,
+    age: state.user?.age ?? null,
+    fitnessLevel: state.user?.fitnessLevel ?? 'intermediate',
+    streak: state.streak,
+    recentWorkouts,
+  };
+}
 
-  if (lowerInput.includes('hello') || lowerInput.includes('hi') || lowerInput.includes('hey')) {
-    return `Hey ${firstName}! Great to see you. You are on a ${streak}-day streak — keep it going! What can I help you with today?`;
-  }
-
-  if (lowerInput.includes('workout') && lowerInput.includes('today')) {
-    if (recentWorkouts.length > 0 && recentWorkouts[0].date === new Date().toISOString().split('T')[0]) {
-      return `You already crushed a workout today — ${recentWorkouts[0].workoutName}, burning ${recentWorkouts[0].caloriesBurned} calories. Well done! Rest is important too, but if you are still feeling energetic, a light mobility session will help with recovery.`;
-    }
-    return `Looking to train today? Based on your goals, I would recommend a strength session. Check out the "Full Body Strength" workout in the library — it is perfect for ${goals.includes('muscle_gain') ? 'building muscle' : 'getting stronger'}.`;
-  }
-
-  if (lowerInput.includes('lose') && (lowerInput.includes('weight') || lowerInput.includes('fat'))) {
-    return `For fat loss, here is what actually moves the needle:\n\nFirst, a caloric deficit. Track your meals in the Nutrition tab so you can see the real numbers.\n\nSecond, HIIT workouts. The "HIIT Cardio Blast" 2 to 3 times per week will torch calories.\n\nThird, keep lifting. Strength training preserves muscle while you lose fat — that is what gives you the lean look, not just cardio.\n\nYour ${streak}-day streak tells me you have the discipline for this. Want me to suggest a weekly schedule?`;
-  }
-
-  if (lowerInput.includes('build') && lowerInput.includes('muscle')) {
-    return `To build muscle effectively, focus on three things:\n\nProgressive overload — increase your weights gradually over time. Your body adapts fast.\n\nProtein intake — aim for around ${Math.round((state.user?.weight || 150) * 0.8)}g of protein per day based on your weight.\n\nRecovery — your muscles grow during rest, not during the workout. Sleep 7 to 9 hours.\n\nThe "8-Week Hypertrophy" program under Programs is built exactly around these principles. Worth starting there.`;
-  }
-
-  if (lowerInput.includes('sore') || lowerInput.includes('recovery')) {
-    return `Soreness after training is normal — it means you challenged your body. Here is how to recover faster:\n\nLight movement actually helps. A walk or the "Mobility and Recovery" workout increases blood flow and clears soreness faster than full rest.\n\nHydration matters more than most people think. Drink water consistently throughout the day.\n\nGet enough protein today. That is the raw material your muscles use to rebuild.\n\nAnd sleep. Sleep is the most underrated recovery tool there is.`;
-  }
-
-  if (lowerInput.includes('motivation') || lowerInput.includes('motivated')) {
-    return `I hear you — some days the motivation is just not there. That is completely normal.\n\nHere is the thing though: you are on a ${streak}-day streak. That did not happen because you felt motivated every single one of those days. It happened because you showed up anyway.\n\nStart with something small. Even a 10-minute walk counts. Movement creates momentum, and momentum brings the motivation back.\n\nYou have already built something real here. One tough day will not erase it.`;
-  }
-
-  if (lowerInput.includes('protein') || lowerInput.includes('nutrition') || lowerInput.includes('eat')) {
-    const proteinGoal = Math.round((state.user?.weight || 150) * 0.8);
-    return `Good question. For your goals, aim for around ${proteinGoal}g of protein per day.\n\nPractically, that looks like this:\n\nBreakfast: 2 to 3 eggs or Greek yogurt with oats — around 30g protein.\nLunch: Grilled chicken or tuna salad — around 40g protein.\nDinner: Salmon or lean beef with vegetables — around 40g protein.\nSnacks: Cottage cheese, almonds, or a protein shake to fill the gaps.\n\nUse the Nutrition tab to log your meals. Once you see the actual numbers, hitting your targets becomes a lot easier.`;
-  }
-
-  if (lowerInput.includes('rest') || lowerInput.includes('rest day')) {
-    return `Rest days are not optional — they are when your muscles actually grow and repair. Training creates the stimulus; rest is where the adaptation happens.\n\nOn a rest day, stay lightly active. Walk, stretch, do some foam rolling. Eat enough protein. Get to bed at a decent time.\n\nDo not feel guilty for resting. The athletes who last the longest treat recovery as seriously as their training.`;
-  }
-
-  if (lowerInput.includes('help') || lowerInput.includes('what can you')) {
-    return `I am Ovia, your personal fitness coach here at RAIMZEAL. Here is what I can help with:\n\nWorkout recommendations tailored to your goals and level\n\nNutrition guidance — what to eat, when, and how much\n\nMotivation when you need a push\n\nRecovery advice when you are sore or tired\n\nProgress questions — understanding what your numbers actually mean\n\nJust talk to me like you would a real coach. What is on your mind?`;
-  }
-
-  const responses = [
-    `Good question. Based on your ${goals.length > 0 ? goals.join(' and ') + ' goals' : 'fitness journey'}, the most important thing right now is staying consistent. Small, daily actions compound into big results over time.`,
-    `Keep going, ${firstName}. You are on a ${streak}-day streak — that kind of consistency is how real change happens. Make sure you are hitting your protein targets and getting enough sleep alongside your training.`,
-    `Check your scheduled workouts for the week and make sure your nutrition is on track. Those two things, done consistently, will take you further than any single workout ever could.`,
-  ];
-
-  return responses[Math.floor(Math.random() * responses.length)];
-};
+const SUGGESTIONS = [
+  'What should I eat today to hit my goals?',
+  'Design me a workout for this week',
+  'How do I build muscle faster?',
+  'I need motivation right now',
+  'Best supplements for my goals?',
+  'How do I improve my recovery?',
+];
 
 export function Coach({ state }: CoachProps) {
+  const firstName = state.user?.name?.split(' ')[0] ?? 'Champion';
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'coach',
-      content: `Hey ${state.user?.name?.split(' ')[0] || 'there'}! I am Ovia, your personal fitness coach. I am here to help with workout recommendations, nutrition advice, motivation, and anything else on your fitness journey. What is on your mind?`,
+      content: `Welcome back, ${firstName}! I am Ovia AI, your dedicated fitness coach, nutritionist, and mindset mentor. You are on a ${state.streak}-day streak and that is something to be genuinely proud of.\n\nI have full access to your profile, your training history, and your goals. I am here to give you real, science-backed guidance every single time you ask.\n\nWhat can I help you with today?`,
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [searchingFor, setSearchingFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    const trimmed = input.trim();
+    if (!trimmed || isTyping) return;
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: input,
+      content: trimmed,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
+    setSearchingFor(null);
 
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: 'coach', content: '', timestamp: new Date() },
+    ]);
 
-    const coachResponse: Message = {
-      id: crypto.randomUUID(),
-      role: 'coach',
-      content: getCoachResponse(input, state),
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, coachResponse]);
-    setIsTyping(false);
+    abortRef.current = new AbortController();
+
+    try {
+      const allMessages = [...messages, userMessage].map((m) => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      }));
+
+      const response = await fetch('/api/ovia/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: allMessages,
+          userContext: buildUserContext(state),
+        }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!response.ok) throw new Error('API error');
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(line.slice(6)) as {
+              content?: string;
+              searching?: string;
+              done?: boolean;
+              error?: string;
+            };
+
+            if (json.searching) {
+              setSearchingFor(json.searching);
+            }
+
+            if (json.content) {
+              setSearchingFor(null);
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, content: m.content + json.content }
+                    : m
+                )
+              );
+            }
+
+            if (json.done || json.error) {
+              setIsTyping(false);
+              setSearchingFor(null);
+            }
+          } catch {
+            // skip malformed chunk
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content:
+                  'I am having trouble connecting right now. Please check your connection and try again.',
+              }
+            : m
+        )
+      );
+    } finally {
+      setIsTyping(false);
+      setSearchingFor(null);
+    }
   };
-
-  const suggestions = [
-    'What should I eat today?',
-    'I need motivation',
-    'How do I build muscle?',
-    'What workout should I do?',
-  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="px-4 py-4 border-b border-border">
-        <div className="flex items-center gap-3 max-w-lg mx-auto">
+      {/* Header */}
+      <div className="px-4 py-4 border-b border-border glass sticky top-0 z-10">
+        <div className="flex items-center gap-3 max-w-2xl mx-auto">
           <Link href="/">
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ChevronLeft className="w-6 h-6" />
+            <Button variant="ghost" size="icon">
+              <ChevronLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <Bot className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-accent" />
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
             </div>
             <div>
-              <h1 className="font-semibold">Ovia AI</h1>
-              <p className="text-xs text-muted-foreground">Always here to help</p>
+              <h1 className="font-semibold text-sm">Ovia AI</h1>
+              <p className="text-xs text-primary">Online — fitness and health expert</p>
             </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Globe className="w-3 h-3" />
+            <span>Web search enabled</span>
           </div>
         </div>
       </div>
 
+      {/* Messages */}
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="max-w-lg mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 pb-4">
           {messages.map((message) => (
             <motion.div
               key={message.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={cn(
-                'flex gap-3',
-                message.role === 'user' && 'flex-row-reverse'
-              )}
+              transition={{ duration: 0.2 }}
+              className={cn('flex gap-3', message.role === 'user' && 'flex-row-reverse')}
             >
-              <div className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-                message.role === 'coach' ? 'bg-primary/20' : 'bg-muted'
-              )}>
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5',
+                  message.role === 'coach'
+                    ? 'bg-accent/20 border border-accent/30'
+                    : 'bg-primary/20 border border-primary/30'
+                )}
+              >
                 {message.role === 'coach' ? (
-                  <Bot className="w-4 h-4 text-primary" />
+                  <Sparkles className="w-4 h-4 text-accent" />
                 ) : (
-                  <User className="w-4 h-4 text-muted-foreground" />
+                  <User className="w-4 h-4 text-primary" />
                 )}
               </div>
-              <Card className={cn(
-                'p-3 max-w-[80%]',
-                message.role === 'user' && 'bg-primary text-primary-foreground'
-              )}>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <Card
+                className={cn(
+                  'p-3 max-w-[82%] shadow-none',
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground border-primary/50'
+                    : 'glass'
+                )}
+              >
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {message.content}
+                  {message.role === 'coach' && message.content === '' && isTyping && (
+                    <span className="inline-flex gap-0.5 ml-1">
+                      {[0, 0.15, 0.3].map((delay, i) => (
+                        <motion.span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block"
+                          animate={{ opacity: [0.3, 1, 0.3] }}
+                          transition={{ duration: 1, repeat: Infinity, delay }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                </p>
               </Card>
             </motion.div>
           ))}
 
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-3"
-            >
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary" />
-              </div>
-              <Card className="p-3">
-                <div className="flex gap-1">
-                  <motion.div
-                    className="w-2 h-2 rounded-full bg-muted-foreground"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                  />
-                  <motion.div
-                    className="w-2 h-2 rounded-full bg-muted-foreground"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                  />
-                  <motion.div
-                    className="w-2 h-2 rounded-full bg-muted-foreground"
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                  />
-                </div>
-              </Card>
-            </motion.div>
-          )}
+          {/* Web search indicator */}
+          <AnimatePresence>
+            {searchingFor && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2 px-2"
+              >
+                <Globe className="w-3.5 h-3.5 text-secondary animate-pulse" />
+                <p className="text-xs text-muted-foreground">
+                  Searching the web for:{' '}
+                  <span className="text-secondary font-medium">{searchingFor}</span>
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Suggestions */}
           {messages.length === 1 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {suggestions.map((suggestion) => (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {SUGGESTIONS.map((suggestion) => (
                 <Button
                   key={suggestion}
                   variant="outline"
                   size="sm"
                   onClick={() => setInput(suggestion)}
-                  data-testid={`suggestion-${suggestion.replace(/\s+/g, '-').toLowerCase()}`}
+                  className="text-xs h-8 glass border-border/50"
                 >
                   {suggestion}
                 </Button>
@@ -228,19 +296,35 @@ export function Coach({ state }: CoachProps) {
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-border">
-        <div className="flex gap-2 max-w-lg mx-auto">
-          <Input
-            placeholder="Ask your coach..."
+      {/* Input */}
+      <div className="p-4 border-t border-border glass">
+        <div className="flex gap-2 max-w-2xl mx-auto items-end">
+          <Textarea
+            placeholder="Ask Ovia anything about your fitness and health..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            data-testid="input-message"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            rows={1}
+            className="resize-none min-h-[42px] max-h-32 text-sm"
+            style={{ height: 'auto' }}
           />
-          <Button onClick={handleSend} disabled={!input.trim() || isTyping} data-testid="button-send">
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim() || isTyping}
+            size="icon"
+            className="shrink-0 h-[42px] w-[42px]"
+          >
             <Send className="w-4 h-4" />
           </Button>
         </div>
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          Ovia AI focuses on fitness and healthcare only. Always consult a doctor for medical decisions.
+        </p>
       </div>
     </div>
   );
