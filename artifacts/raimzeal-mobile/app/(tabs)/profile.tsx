@@ -21,7 +21,9 @@ import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
+import { captureAndShareCard } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import ShareProgressCard from "@/components/ShareProgressCard";
 
 type Tab = "ovia" | "profile";
 
@@ -102,6 +104,9 @@ export default function ProfileScreen() {
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+
+  const cardRef = useRef<View>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -147,6 +152,16 @@ export default function ProfileScreen() {
     setExportLoading(false);
   }
 
+  async function handleShareProgress() {
+    setShareLoading(true);
+    try {
+      await captureAndShareCard(cardRef);
+    } catch (e) {
+      Alert.alert("Share failed", "Could not generate progress card. Please try again.");
+    }
+    setShareLoading(false);
+  }
+
   async function handleLogout() {
     Alert.alert(
       "Sign Out",
@@ -167,8 +182,40 @@ export default function ProfileScreen() {
     );
   }
 
+  // Compute card props (sort measurements by date so first=oldest, last=newest)
+  const sortedMeasurements = [...bodyMeasurements].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+  const startWeight = sortedMeasurements[0]?.weight ?? user?.weight ?? 0;
+  const latestWeight =
+    sortedMeasurements[sortedMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
+  const weightDelta = startWeight > 0 ? +(startWeight - latestWeight).toFixed(1) : 0;
+  const cardProps = {
+    userName: user?.name ?? "Athlete",
+    goalLabel: (user?.goals?.[0] ?? "improve_fitness")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase()),
+    streak,
+    totalWorkouts: workoutLogs.length,
+    totalCalBurned: workoutLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+    totalMinutes: workoutLogs.reduce((s, l) => s + l.duration, 0),
+    weightDelta,
+    weightUnit: settings.weightUnit,
+    topPR: personalRecords[0] ?? null,
+    date: new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      {/* Off-screen progress card for ViewShot capture */}
+      <View style={styles.offScreen} pointerEvents="none">
+        <ShareProgressCard ref={cardRef} {...cardProps} />
+      </View>
+
       {/* Header */}
       <View
         style={[
@@ -406,6 +453,13 @@ export default function ProfileScreen() {
               onPress={() => router.push("/edit-profile")}
             />
             <ActionRow
+              icon="share-social-outline"
+              label={shareLoading ? "Creating Card…" : "Share Progress"}
+              color={colors.accent}
+              onPress={handleShareProgress}
+              loading={shareLoading}
+            />
+            <ActionRow
               icon="document-text-outline"
               label={exportLoading ? "Generating PDF…" : "Export Data as PDF"}
               color={colors.secondary}
@@ -545,6 +599,7 @@ function ActionRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  offScreen: { position: "absolute", left: -9999, top: 0, opacity: 0 },
   header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, gap: 12 },
   headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
   tabRow: { flexDirection: "row", borderRadius: 10, padding: 3 },
