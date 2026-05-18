@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  ImageBackground,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -33,8 +33,12 @@ export default function WelcomeScreen() {
           { paddingTop: insets.top + 40, backgroundColor: colors.card },
         ]}
       >
-        <View style={[styles.logoWrap, { backgroundColor: colors.primary }]}>
-          <Text style={[styles.logoLetter, { color: colors.primaryForeground }]}>R</Text>
+        <View style={styles.logoWrap}>
+          <Image
+            source={require("@/assets/images/icon.png")}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
         </View>
         <Text style={[styles.brand, { color: colors.foreground }]}>RAIMZEAL</Text>
         <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
@@ -104,13 +108,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   logoWrap: {
-    width: 80,
-    height: 80,
+    width: 88,
+    height: 88,
     borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
+    overflow: "hidden",
   },
-  logoLetter: { fontSize: 42, fontFamily: "SpaceGrotesk_700Bold" },
+  logoImage: { width: 88, height: 88 },
   brand: { fontSize: 32, fontFamily: "SpaceGrotesk_700Bold", letterSpacing: -0.5 },
   tagline: { fontSize: 15, fontFamily: "Inter_400Regular" },
   features: { flex: 1, padding: 24, gap: 16, justifyContent: "center" },

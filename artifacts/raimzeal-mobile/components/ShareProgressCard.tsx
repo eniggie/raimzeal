@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 
 const CARD_WIDTH = 360;
 
@@ -61,7 +61,11 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
         <View style={styles.header}>
           <View style={styles.brandRow}>
             <View style={styles.logoBox}>
-              <Text style={styles.logoText}>R</Text>
+              <Image
+                source={require("@/assets/images/icon.png")}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
             </View>
             <View>
               <Text style={styles.brandName}>RAIMZEAL</Text>
@@ -193,6 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logoImage: { width: 34, height: 34 },
   logoBox: {
     width: 38,
     height: 38,
@@ -201,7 +206,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  logoText: { fontSize: 20, fontWeight: "900", color: "#0a0a0b" },
   brandName: { fontSize: 16, fontWeight: "900", color: "#fafafa", letterSpacing: -0.3 },
   brandTagline: { fontSize: 9, fontWeight: "700", color: "#82cb15", letterSpacing: 1.5 },
   dateBox: { alignItems: "flex-end" },

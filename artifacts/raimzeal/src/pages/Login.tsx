@@ -45,15 +45,8 @@ export function Login({ onLogin, onBack }: LoginProps) {
         animate={{ opacity: 1, y: 0 }}
         className="flex-1 max-w-md mx-auto w-full"
       >
-        <div className="relative w-20 h-20 mb-8">
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-accent rounded-2xl"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
-          <div className="absolute inset-1 bg-background rounded-2xl flex items-center justify-center">
-            <span className="text-3xl font-display font-bold text-gradient">A</span>
-          </div>
+        <div className="w-20 h-20 mb-8 rounded-2xl overflow-hidden">
+          <img src="/favicon.png" alt="RAIMZEAL" className="w-full h-full object-cover" />
         </div>
 
         <h1 className="text-3xl font-bold font-display mb-2">Welcome back</h1>

@@ -116,15 +116,8 @@ export function Onboarding({ onComplete, onLogin }: OnboardingProps) {
             <div className="flex-1">
               {step === 0 && (
                 <div className="space-y-6">
-                  <div className="relative w-32 h-32 mx-auto mb-8">
-                    <motion.div
-                      className="absolute inset-0 bg-gradient-to-br from-primary via-secondary to-accent rounded-3xl"
-                      animate={{ rotate: [0, 5, -5, 0] }}
-                      transition={{ duration: 4, repeat: Infinity }}
-                    />
-                    <div className="absolute inset-1 bg-background rounded-3xl flex items-center justify-center">
-                      <span className="text-5xl font-display font-bold text-gradient">A</span>
-                    </div>
+                  <div className="w-32 h-32 mx-auto mb-8 rounded-3xl overflow-hidden">
+                    <img src="/favicon.png" alt="RAIMZEAL" className="w-full h-full object-cover" />
                   </div>
                   <div className="text-center space-y-4">
                     <h2 className="text-xl font-semibold">Welcome to RAIMZEAL</h2>

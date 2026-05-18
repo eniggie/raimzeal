@@ -1,2 +1,14 @@
 uploads = []
 outputs = []
+
+[[generated]]
+id = "t5l8711xWJs85N44ZDEOL"
+uri = "file://attached_assets/generated_images/raimzeal-icon.png"
+type = "image"
+title = "raimzeal fitness icon heartbeat barbell"
+
+[[generated]]
+id = "BiJBer2mlPzbgmX6D7spA"
+uri = "file://attached_assets/generated_images/raimzeal-splash.png"
+type = "image"
+title = "raimzeal splash screen dark"
