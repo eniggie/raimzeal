@@ -96,11 +96,24 @@ const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs } = useFitness();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const todayMeals = getTodayMeals();
   const { calories, protein, carbs, fat } = getTodayMacros();
+
+  const recentFoods = React.useMemo(() => {
+    const seen = new Set<string>();
+    const result: Omit<MealLog, "id" | "date">[] = [];
+    for (const log of mealLogs) {
+      if (!seen.has(log.name)) {
+        seen.add(log.name);
+        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType });
+      }
+      if (result.length >= 5) break;
+    }
+    return result;
+  }, [mealLogs]);
 
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -383,6 +396,50 @@ export default function NutritionScreen() {
                     </View>
                   );
                 })}
+
+                {recentFoods.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                      Recent Foods
+                    </Text>
+                    {recentFoods.map((food, idx) => (
+                      <TouchableOpacity
+                        key={`recent-${food.name}-${idx}`}
+                        activeOpacity={0.8}
+                        onPress={() => handleAddFood(food)}
+                        style={[
+                          styles.foodCard,
+                          { backgroundColor: colors.card, borderColor: colors.primary + "40" },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.foodIcon,
+                            { backgroundColor: colors.primary + "20" },
+                          ]}
+                        >
+                          <Ionicons
+                            name="time-outline"
+                            size={18}
+                            color={colors.primary}
+                          />
+                        </View>
+                        <View style={styles.foodInfo}>
+                          <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                            {food.name}
+                          </Text>
+                          <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                            P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                          </Text>
+                        </View>
+                        <Text style={[styles.foodCal, { color: colors.primary }]}>
+                          {food.calories}
+                        </Text>
+                        <Ionicons name="add" size={20} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
 
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                   Quick Add
