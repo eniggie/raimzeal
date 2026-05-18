@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Platform,
@@ -22,6 +23,8 @@ const CALORIE_GOAL = 2200;
 const PROTEIN_GOAL = 150;
 const CARBS_GOAL = 250;
 const FAT_GOAL = 70;
+const DEBOUNCE_MS = 500;
+const PAGE_SIZE = 20;
 
 type MealType = MealLog["mealType"];
 
@@ -55,6 +58,41 @@ interface ManualForm {
 
 const EMPTY_MANUAL: ManualForm = { name: "", calories: "", protein: "", carbs: "", fat: "" };
 
+interface OFFProduct {
+  product_name?: string;
+  nutriments?: {
+    "energy-kcal_100g"?: number;
+    "energy-kcal"?: number;
+    proteins_100g?: number;
+    proteins?: number;
+    carbohydrates_100g?: number;
+    carbohydrates?: number;
+    fat_100g?: number;
+    fat?: number;
+  };
+}
+
+interface OFFSearchResponse {
+  products?: OFFProduct[];
+}
+
+function parseOFFProduct(p: OFFProduct): ScannedFood | null {
+  const name = p.product_name?.trim();
+  if (!name) return null;
+  const n = p.nutriments ?? {};
+  const calories = Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0);
+  const protein = Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10;
+  const carbs = Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10;
+  const fat = Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
+  return { name, calories, protein, carbs, fat };
+}
+
+type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
+type SearchItem = ScannedFood & { _kind: "search" };
+type FoodListItem = QuickItem | SearchItem;
+
+const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
+
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -67,12 +105,88 @@ export default function NutritionScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
-  const [selectedFood, setSelectedFood] = useState<typeof QUICK_FOODS[0] | null>(null);
+  const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
 
-  function handleAddFood(food: typeof QUICK_FOODS[0]) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<FoodListItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const runSearch = useCallback(async (q: string) => {
+    const trimmed = q.trim();
+
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearchDone(false);
+      setSearchLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setSearchLoading(true);
+
+    try {
+      const params = new URLSearchParams({
+        search_terms: trimmed,
+        json: "1",
+        page_size: PAGE_SIZE.toString(),
+        fields: "product_name,nutriments",
+      });
+      const res = await fetch(
+        `https://world.openfoodfacts.org/cgi/search.pl?${params.toString()}`,
+        { signal: controller.signal }
+      );
+      if (!res.ok) throw new Error("fetch failed");
+      const data: OFFSearchResponse = await res.json();
+      const items: FoodListItem[] = [];
+      for (const p of data.products ?? []) {
+        const food = parseOFFProduct(p);
+        if (food) items.push({ ...food, _kind: "search" });
+      }
+      setSearchResults(items);
+      setSearchDone(true);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setSearchResults([]);
+      setSearchDone(true);
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setSearchLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => runSearch(searchQuery), DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery, runSearch]);
+
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
+
+  const isSearching = searchQuery.trim().length > 0;
+  const listData: FoodListItem[] = isSearching ? searchResults : QUICK_LIST;
+
+  function handleAddFood(food: Omit<MealLog, "id" | "date">) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFood(food);
     setSelectedMeal(food.mealType);
@@ -95,10 +209,15 @@ export default function NutritionScreen() {
   function handleConfirmLog() {
     if (!selectedFood) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const { name, calories, protein, carbs, fat } = selectedFood;
     const meal: MealLog = {
-      ...selectedFood,
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
+      name,
+      calories,
+      protein,
+      carbs,
+      fat,
       mealType: selectedMeal,
     };
     addMealLog(meal);
@@ -126,9 +245,10 @@ export default function NutritionScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
-        data={QUICK_FOODS}
-        keyExtractor={(item) => item.name}
+        data={listData}
+        keyExtractor={(item, i) => `${item._kind}-${item.name}-${i}`}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={() => (
           <View style={{ gap: 16 }}>
             <View style={[styles.header, { paddingTop: topPad + 16 }]}>
@@ -155,108 +275,208 @@ export default function NutritionScreen() {
               </View>
             </View>
 
-            {/* Macro Summary */}
-            <GlassCard style={styles.macroCard}>
-              <View style={styles.macroRow}>
-                <ProgressRing
-                  progress={calories / CALORIE_GOAL}
-                  size={90}
-                  strokeWidth={8}
-                  color={colors.primary}
-                  label={calories.toString()}
-                  sublabel="kcal"
-                />
-                <View style={styles.macros}>
-                  <MacroBar
-                    label="Protein"
-                    value={Math.round(protein)}
-                    goal={PROTEIN_GOAL}
-                    color={colors.secondary}
-                  />
-                  <MacroBar
-                    label="Carbs"
-                    value={Math.round(carbs)}
-                    goal={CARBS_GOAL}
-                    color={colors.warning}
-                  />
-                  <MacroBar
-                    label="Fat"
-                    value={Math.round(fat)}
-                    goal={FAT_GOAL}
-                    color={colors.accent}
-                  />
-                </View>
+            {/* Search bar */}
+            <View
+              style={[
+                styles.searchBar,
+                { backgroundColor: colors.muted, borderColor: isSearching ? colors.primary : colors.border },
+              ]}
+            >
+              <Ionicons name="search-outline" size={17} color={isSearching ? colors.primary : colors.mutedForeground} />
+              <TextInput
+                placeholder="Search food by name…"
+                placeholderTextColor={colors.mutedForeground}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={[styles.searchInput, { color: colors.foreground }]}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  if (debounceRef.current) clearTimeout(debounceRef.current);
+                  runSearch(searchQuery);
+                }}
+                clearButtonMode="while-editing"
+              />
+              {searchLoading && (
+                <ActivityIndicator size="small" color={colors.primary} />
+              )}
+              {isSearching && !searchLoading && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchQuery("");
+                    setSearchResults([]);
+                    setSearchDone(false);
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={17} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Search empty state */}
+            {isSearching && searchDone && searchResults.length === 0 && !searchLoading && (
+              <View style={styles.searchEmpty}>
+                <Ionicons name="search-outline" size={36} color={colors.mutedForeground} />
+                <Text style={[styles.searchEmptyText, { color: colors.mutedForeground }]}>
+                  No results for "{searchQuery.trim()}"
+                </Text>
               </View>
-            </GlassCard>
+            )}
 
-            {/* Today's logged meals by type */}
-            {MEALS.map((meal) => {
-              const mealLogs = todayMeals.filter((m) => m.mealType === meal);
-              if (mealLogs.length === 0) return null;
-              const mealCal = mealLogs.reduce((s, m) => s + m.calories, 0);
-              const mealColor = MEAL_COLORS[meal];
-              return (
-                <View key={meal} style={styles.mealSection}>
-                  <View style={styles.mealHeader}>
-                    <View style={[styles.mealDot, { backgroundColor: mealColor }]} />
-                    <Text style={[styles.mealTitle, { color: colors.foreground }]}>
-                      {meal.charAt(0).toUpperCase() + meal.slice(1)}
-                    </Text>
-                    <Text style={[styles.mealCal, { color: colors.mutedForeground }]}>
-                      {mealCal} kcal
-                    </Text>
+            {/* Normal content — only shown when not searching */}
+            {!isSearching && (
+              <>
+                {/* Macro Summary */}
+                <GlassCard style={styles.macroCard}>
+                  <View style={styles.macroRow}>
+                    <ProgressRing
+                      progress={calories / CALORIE_GOAL}
+                      size={90}
+                      strokeWidth={8}
+                      color={colors.primary}
+                      label={calories.toString()}
+                      sublabel="kcal"
+                    />
+                    <View style={styles.macros}>
+                      <MacroBar
+                        label="Protein"
+                        value={Math.round(protein)}
+                        goal={PROTEIN_GOAL}
+                        color={colors.secondary}
+                      />
+                      <MacroBar
+                        label="Carbs"
+                        value={Math.round(carbs)}
+                        goal={CARBS_GOAL}
+                        color={colors.warning}
+                      />
+                      <MacroBar
+                        label="Fat"
+                        value={Math.round(fat)}
+                        goal={FAT_GOAL}
+                        color={colors.accent}
+                      />
+                    </View>
                   </View>
-                  {mealLogs.map((log) => (
-                    <NutritionRow key={log.id} log={log} />
-                  ))}
-                </View>
-              );
-            })}
+                </GlassCard>
 
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Quick Add
-            </Text>
+                {/* Today's logged meals by type */}
+                {MEALS.map((meal) => {
+                  const mealLogs = todayMeals.filter((m) => m.mealType === meal);
+                  if (mealLogs.length === 0) return null;
+                  const mealCal = mealLogs.reduce((s, m) => s + m.calories, 0);
+                  const mealColor = MEAL_COLORS[meal];
+                  return (
+                    <View key={meal} style={styles.mealSection}>
+                      <View style={styles.mealHeader}>
+                        <View style={[styles.mealDot, { backgroundColor: mealColor }]} />
+                        <Text style={[styles.mealTitle, { color: colors.foreground }]}>
+                          {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                        </Text>
+                        <Text style={[styles.mealCal, { color: colors.mutedForeground }]}>
+                          {mealCal} kcal
+                        </Text>
+                      </View>
+                      {mealLogs.map((log) => (
+                        <NutritionRow key={log.id} log={log} />
+                      ))}
+                    </View>
+                  );
+                })}
+
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Quick Add
+                </Text>
+              </>
+            )}
+
+            {/* Search results header */}
+            {isSearching && searchResults.length > 0 && (
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Results
+              </Text>
+            )}
           </View>
         )}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
         ]}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => handleAddFood(item)}
-            style={[
-              styles.foodCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View
+        renderItem={({ item }) => {
+          if (item._kind === "search") {
+            return (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleScannedFood(item)}
+                style={[
+                  styles.foodCard,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.foodIcon,
+                    { backgroundColor: colors.primary + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="restaurant-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.foodInfo}>
+                  <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                    P {item.protein}g · C {item.carbs}g · F {item.fat}g
+                  </Text>
+                </View>
+                <Text style={[styles.foodCal, { color: colors.primary }]}>
+                  {item.calories}
+                </Text>
+                <Ionicons name="add" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => handleAddFood(item)}
               style={[
-                styles.foodIcon,
-                { backgroundColor: MEAL_COLORS[item.mealType] + "20" },
+                styles.foodCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
-              <Ionicons
-                name="restaurant-outline"
-                size={18}
-                color={MEAL_COLORS[item.mealType]}
-              />
-            </View>
-            <View style={styles.foodInfo}>
-              <Text style={[styles.foodName, { color: colors.foreground }]}>
-                {item.name}
+              <View
+                style={[
+                  styles.foodIcon,
+                  { backgroundColor: MEAL_COLORS[item.mealType] + "20" },
+                ]}
+              >
+                <Ionicons
+                  name="restaurant-outline"
+                  size={18}
+                  color={MEAL_COLORS[item.mealType]}
+                />
+              </View>
+              <View style={styles.foodInfo}>
+                <Text style={[styles.foodName, { color: colors.foreground }]}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                  P {item.protein}g · C {item.carbs}g · F {item.fat}g
+                </Text>
+              </View>
+              <Text style={[styles.foodCal, { color: colors.primary }]}>
+                {item.calories}
               </Text>
-              <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                P {item.protein}g · C {item.carbs}g · F {item.fat}g
-              </Text>
-            </View>
-            <Text style={[styles.foodCal, { color: colors.primary }]}>
-              {item.calories}
-            </Text>
-            <Ionicons name="add" size={20} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        )}
+              <Ionicons name="add" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          );
+        }}
       />
 
       {/* Barcode Scanner Modal */}
@@ -404,7 +624,7 @@ export default function NutritionScreen() {
         </View>
       </Modal>
 
-      {/* Add Food Confirmation Modal (for quick-add & scanned foods) */}
+      {/* Add Food Confirmation Modal (quick-add, scanned & search results) */}
       <Modal
         visible={showModal}
         transparent
@@ -622,6 +842,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    paddingVertical: 0,
+  },
+  searchEmpty: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 10,
+  },
+  searchEmptyText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
   macroCard: { padding: 16 },
   macroRow: { flexDirection: "row", alignItems: "center", gap: 20 },
   macros: { flex: 1, gap: 10 },
@@ -646,86 +891,126 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingLeft: 16,
   },
-  nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   nutritionCal: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 8 },
+  sectionTitle: {
+    fontSize: 17,
+    fontFamily: "SpaceGrotesk_700Bold",
+    marginTop: 4,
+  },
   foodCard: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 10,
-    marginBottom: 8,
   },
   foodIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   foodInfo: { flex: 1, gap: 2 },
   foodName: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  foodMacros: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  foodCal: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  foodMacros: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  foodCal: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "#000000aa",
+    backgroundColor: "#00000088",
     justifyContent: "flex-end",
   },
-  modalCard: { margin: 16, padding: 24, borderRadius: 20, gap: 16 },
-  modalTitle: { fontSize: 20, fontFamily: "SpaceGrotesk_700Bold" },
-  modalNutrients: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  modalCard: {
+    margin: 12,
+    borderRadius: 20,
+    padding: 20,
+    gap: 14,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  modalNutrients: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   nutrientChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
+    minWidth: 72,
   },
-  nutrientChipLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  nutrientChipValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  modalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  mealPicker: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  nutrientChipLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 2,
+  },
+  nutrientChipValue: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  mealPicker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   mealPickerBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
   },
-  mealPickerText: { fontSize: 13 },
-  modalBtns: { flexDirection: "row", gap: 10 },
+  mealPickerText: {
+    fontSize: 13,
+  },
+  modalBtns: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
   modalCancelBtn: {
     flex: 1,
-    height: 48,
+    height: 46,
     borderRadius: 12,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
   modalCancelText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   modalConfirmBtn: {
     flex: 2,
-    height: 48,
+    height: 46,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   modalConfirmText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   textInput: {
-    height: 48,
+    height: 46,
     borderRadius: 10,
-    borderWidth: 1,
     paddingHorizontal: 14,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
+    borderWidth: 1,
   },
-  macroInputRow: { flexDirection: "row", gap: 10 },
-  macroInputItem: { flex: 1, gap: 4 },
-  macroInputLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  macroInputField: { height: 44 },
+  macroInputRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  macroInputItem: { flex: 1, gap: 6 },
+  macroInputLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  macroInputField: { height: 40 },
 });
