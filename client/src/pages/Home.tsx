@@ -36,7 +36,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
 
   const quickActions = [
     { icon: Dumbbell, label: 'Start Workout', href: '/workouts', color: 'bg-primary/20 text-primary' },
-    { icon: MessageCircle, label: 'Ask Coach', href: '/coach', color: 'bg-secondary/20 text-secondary' },
+    { icon: MessageCircle, label: 'Ovia AI', href: '/coach', color: 'bg-secondary/20 text-secondary' },
     { icon: Users, label: 'Community', href: '/community', color: 'bg-accent/20 text-accent' },
     { icon: Zap, label: 'Programs', href: '/programs', color: 'bg-warning/20 text-warning' },
   ];

@@ -1,13 +1,13 @@
 import { useLocation, Link } from 'wouter';
-import { Home, Dumbbell, BarChart3, Calendar, User } from 'lucide-react';
+import { Home, Dumbbell, BarChart3, Bot, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/workouts', icon: Dumbbell, label: 'Workouts' },
+  { path: '/coach', icon: Bot, label: 'Ovia AI' },
   { path: '/tracking', icon: BarChart3, label: 'Progress' },
-  { path: '/calendar', icon: Calendar, label: 'Calendar' },
   { path: '/settings', icon: User, label: 'Profile' },
 ];
 
