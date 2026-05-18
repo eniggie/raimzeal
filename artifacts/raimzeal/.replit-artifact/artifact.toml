@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "RAIMZEAL"
+version = "1.0.0"
+id = "artifacts/raimzeal"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18577
+
+[services.development]
+run = "pnpm --filter @workspace/raimzeal run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/raimzeal", "run", "build" ]
+publicDir = "artifacts/raimzeal/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18577"
+BASE_PATH = "/"
