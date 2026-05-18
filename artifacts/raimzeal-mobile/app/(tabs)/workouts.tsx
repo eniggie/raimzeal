@@ -1,153 +1,34 @@
 import React, { useState } from "react";
 import {
-  Alert,
   FlatList,
-  Modal,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness, WorkoutLog } from "@/contexts/FitnessContext";
+import { useFitness } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
-import { GlassCard } from "@/components/GlassCard";
-
-interface WorkoutTemplate {
-  workoutId: string;
-  name: string;
-  duration: number;
-  calories: number;
-  exercises: { name: string; sets: number; reps: number; weight?: number }[];
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const WORKOUT_TEMPLATES: WorkoutTemplate[] = [
-  {
-    workoutId: "w1",
-    name: "Upper Body Strength",
-    duration: 50,
-    calories: 380,
-    exercises: [
-      { name: "Bench Press", sets: 4, reps: 10, weight: 70 },
-      { name: "Pull-ups", sets: 4, reps: 8 },
-      { name: "Shoulder Press", sets: 3, reps: 12, weight: 45 },
-      { name: "Bicep Curls", sets: 3, reps: 12, weight: 16 },
-      { name: "Tricep Dips", sets: 3, reps: 12 },
-    ],
-    icon: "barbell-outline",
-  },
-  {
-    workoutId: "w2",
-    name: "Leg Day",
-    duration: 65,
-    calories: 460,
-    exercises: [
-      { name: "Squats", sets: 4, reps: 12, weight: 60 },
-      { name: "Deadlifts", sets: 3, reps: 8, weight: 85 },
-      { name: "Lunges", sets: 3, reps: 12 },
-      { name: "Leg Press", sets: 3, reps: 15 },
-      { name: "Calf Raises", sets: 4, reps: 20 },
-    ],
-    icon: "body-outline",
-  },
-  {
-    workoutId: "w3",
-    name: "HIIT Cardio",
-    duration: 30,
-    calories: 320,
-    exercises: [
-      { name: "Burpees", sets: 4, reps: 15 },
-      { name: "Jump Rope", sets: 4, reps: 100 },
-      { name: "Box Jumps", sets: 4, reps: 10 },
-      { name: "Sprint Intervals", sets: 6, reps: 1 },
-      { name: "Mountain Climbers", sets: 4, reps: 20 },
-    ],
-    icon: "flash-outline",
-  },
-  {
-    workoutId: "w4",
-    name: "Core & Abs",
-    duration: 25,
-    calories: 180,
-    exercises: [
-      { name: "Plank", sets: 3, reps: 1 },
-      { name: "Crunches", sets: 4, reps: 20 },
-      { name: "Leg Raises", sets: 3, reps: 15 },
-      { name: "Russian Twists", sets: 3, reps: 20 },
-      { name: "Bicycle Crunches", sets: 3, reps: 20 },
-    ],
-    icon: "fitness-outline",
-  },
-  {
-    workoutId: "w5",
-    name: "Full Body",
-    duration: 60,
-    calories: 420,
-    exercises: [
-      { name: "Deadlifts", sets: 3, reps: 8, weight: 85 },
-      { name: "Push-ups", sets: 4, reps: 15 },
-      { name: "Rows", sets: 4, reps: 10 },
-      { name: "Squat Jumps", sets: 3, reps: 12 },
-      { name: "Shoulder Press", sets: 3, reps: 10, weight: 45 },
-    ],
-    icon: "body-outline",
-  },
-  {
-    workoutId: "w6",
-    name: "Active Recovery",
-    duration: 35,
-    calories: 150,
-    exercises: [
-      { name: "Yoga Flow", sets: 1, reps: 1 },
-      { name: "Foam Rolling", sets: 1, reps: 1 },
-      { name: "Light Stretching", sets: 1, reps: 1 },
-      { name: "Walking", sets: 1, reps: 1 },
-      { name: "Mobility Work", sets: 1, reps: 1 },
-    ],
-    icon: "leaf-outline",
-  },
-];
+import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
 
 export default function WorkoutsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { workoutLogs, addWorkoutLog } = useFitness();
+  const router = useRouter();
+  const { workoutLogs } = useFitness();
 
   const [activeTab, setActiveTab] = useState<"library" | "history">("library");
-  const [showModal, setShowModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<WorkoutTemplate | null>(null);
-  const [customName, setCustomName] = useState("");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  function handleStartWorkout(template: WorkoutTemplate) {
+  function handleStartWorkout(workoutId: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedTemplate(template);
-    setCustomName(template.name);
-    setShowModal(true);
-  }
-
-  function handleLogWorkout() {
-    if (!selectedTemplate) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const log: WorkoutLog = {
-      id: Date.now().toString(),
-      workoutId: selectedTemplate.workoutId,
-      workoutName: customName || selectedTemplate.name,
-      date: new Date().toISOString().split("T")[0],
-      duration: selectedTemplate.duration,
-      caloriesBurned: selectedTemplate.calories,
-      exercises: selectedTemplate.exercises,
-    };
-    addWorkoutLog(log);
-    setShowModal(false);
-    Alert.alert("Workout Logged!", `Great job completing ${log.workoutName}!`);
+    router.push({ pathname: "/workout-player", params: { workoutId } });
   }
 
   return (
@@ -203,7 +84,7 @@ export default function WorkoutsScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => handleStartWorkout(item)}
+              onPress={() => handleStartWorkout(item.workoutId)}
               style={[
                 styles.templateCard,
                 { backgroundColor: colors.card, borderColor: colors.border },
@@ -264,61 +145,6 @@ export default function WorkoutsScreen() {
           renderItem={({ item }) => <WorkoutCard workout={item} />}
         />
       )}
-
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <GlassCard
-            style={[styles.modalCard, { backgroundColor: colors.card }]}
-            variant="elevated"
-          >
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              Log Workout
-            </Text>
-            <TextInput
-              value={customName}
-              onChangeText={setCustomName}
-              style={[
-                styles.modalInput,
-                {
-                  backgroundColor: colors.muted,
-                  color: colors.foreground,
-                  borderColor: colors.border,
-                },
-              ]}
-              placeholderTextColor={colors.mutedForeground}
-              placeholder="Workout name"
-            />
-            {selectedTemplate && (
-              <Text style={[styles.modalMetaText, { color: colors.mutedForeground }]}>
-                {selectedTemplate.duration} min · ~{selectedTemplate.calories} kcal
-              </Text>
-            )}
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                onPress={() => setShowModal(false)}
-                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
-              >
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleLogWorkout}
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
-                  Log Workout
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </GlassCard>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -378,38 +204,4 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptySubtext: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "#000000aa",
-    justifyContent: "flex-end",
-  },
-  modalCard: { margin: 16, padding: 24, borderRadius: 20, gap: 16 },
-  modalTitle: { fontSize: 20, fontFamily: "SpaceGrotesk_700Bold" },
-  modalInput: {
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  modalMetaText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  modalBtns: { flexDirection: "row", gap: 10 },
-  modalCancelBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalCancelText: { fontSize: 15, fontFamily: "Inter_500Medium" },
-  modalConfirmBtn: {
-    flex: 2,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalConfirmText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });
