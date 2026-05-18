@@ -95,6 +95,7 @@ export interface AppState {
 interface FitnessContextType extends AppState {
   addWorkoutLog: (log: WorkoutLog) => void;
   addMealLog: (meal: MealLog) => void;
+  removeMealLog: (id: string) => void;
   addBodyMeasurement: (m: BodyMeasurement) => void;
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
@@ -284,6 +285,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const removeMealLog = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const next = { ...prev, mealLogs: prev.mealLogs.filter((m) => m.id !== id) };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
   const addBodyMeasurement = useCallback(
     (m: BodyMeasurement) => {
       setState((prev) => {
@@ -387,6 +399,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         ...state,
         addWorkoutLog,
         addMealLog,
+        removeMealLog,
         addBodyMeasurement,
         addOviaMessage,
         updateWaterIntake,

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -834,15 +835,44 @@ function MacroBar({
 
 function NutritionRow({ log }: { log: MealLog }) {
   const colors = useColors();
+  const { removeMealLog } = useFitness();
+  const swipeableRef = useRef<Swipeable>(null);
+
+  function handleDelete() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    swipeableRef.current?.close();
+    removeMealLog(log.id);
+  }
+
+  function renderRightActions() {
+    return (
+      <TouchableOpacity
+        onPress={handleDelete}
+        activeOpacity={0.85}
+        style={[styles.deleteAction, { backgroundColor: "#ef4444" }]}
+      >
+        <Ionicons name="trash-outline" size={20} color="#fff" />
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={[styles.nutritionRow, { borderBottomColor: colors.border }]}>
-      <Text style={[styles.nutritionName, { color: colors.foreground }]}>
-        {log.name}
-      </Text>
-      <Text style={[styles.nutritionCal, { color: colors.primary }]}>
-        {log.calories} kcal
-      </Text>
-    </View>
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={60}
+      overshootRight={false}
+    >
+      <View style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+        <Text style={[styles.nutritionName, { color: colors.foreground }]}>
+          {log.name}
+        </Text>
+        <Text style={[styles.nutritionCal, { color: colors.primary }]}>
+          {log.calories} kcal
+        </Text>
+      </View>
+    </Swipeable>
   );
 }
 
@@ -953,6 +983,18 @@ const styles = StyleSheet.create({
   },
   nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
   nutritionCal: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  deleteAction: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    flexDirection: "column",
+    gap: 3,
+  },
+  deleteActionText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
   sectionTitle: {
     fontSize: 17,
     fontFamily: "SpaceGrotesk_700Bold",
