@@ -5,6 +5,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,6 +16,7 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness, MealLog } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
+import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
 
 const CALORIE_GOAL = 2200;
 const PROTEIN_GOAL = 150;
@@ -43,6 +45,16 @@ const QUICK_FOODS: Omit<MealLog, "id" | "date">[] = [
 
 const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
+interface ManualForm {
+  name: string;
+  calories: string;
+  protein: string;
+  carbs: string;
+  fat: string;
+}
+
+const EMPTY_MANUAL: ManualForm = { name: "", calories: "", protein: "", carbs: "", fat: "" };
+
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -53,14 +65,31 @@ export default function NutritionScreen() {
   const { calories, protein, carbs, fat } = getTodayMacros();
 
   const [showModal, setShowModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedFood, setSelectedFood] = useState<typeof QUICK_FOODS[0] | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
+  const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
+  const [manualMeal, setManualMeal] = useState<MealType>("snack");
 
   function handleAddFood(food: typeof QUICK_FOODS[0]) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFood(food);
     setSelectedMeal(food.mealType);
     setShowModal(true);
+  }
+
+  function handleScannedFood(food: ScannedFood) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setSelectedFood({ ...food, mealType: "snack" });
+    setSelectedMeal("snack");
+    setShowModal(true);
+  }
+
+  function handleManualEntry() {
+    setManualForm(EMPTY_MANUAL);
+    setManualMeal("snack");
+    setShowManualEntry(true);
   }
 
   function handleConfirmLog() {
@@ -76,6 +105,24 @@ export default function NutritionScreen() {
     setShowModal(false);
   }
 
+  function handleConfirmManual() {
+    const name = manualForm.name.trim();
+    if (!name) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const meal: MealLog = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split("T")[0],
+      name,
+      calories: parseInt(manualForm.calories, 10) || 0,
+      protein: parseFloat(manualForm.protein) || 0,
+      carbs: parseFloat(manualForm.carbs) || 0,
+      fat: parseFloat(manualForm.fat) || 0,
+      mealType: manualMeal,
+    };
+    addMealLog(meal);
+    setShowManualEntry(false);
+  }
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
@@ -88,9 +135,24 @@ export default function NutritionScreen() {
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>
                 Nutrition
               </Text>
-              <Text style={[styles.headerDate, { color: colors.mutedForeground }]}>
-                Today
-              </Text>
+              <View style={styles.headerActions}>
+                <Text style={[styles.headerDate, { color: colors.mutedForeground }]}>
+                  Today
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowScanner(true);
+                  }}
+                  style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
+                  <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
+                    Scan
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Macro Summary */}
@@ -197,6 +259,152 @@ export default function NutritionScreen() {
         )}
       />
 
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        visible={showScanner}
+        onClose={() => setShowScanner(false)}
+        onFoodFound={handleScannedFood}
+        onManualEntry={() => {
+          setShowScanner(false);
+          handleManualEntry();
+        }}
+      />
+
+      {/* Manual Entry Modal */}
+      <Modal
+        visible={showManualEntry}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowManualEntry(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Add Food Manually
+            </Text>
+
+            <TextInput
+              placeholder="Food name"
+              placeholderTextColor={colors.mutedForeground}
+              value={manualForm.name}
+              onChangeText={(v) => setManualForm((f) => ({ ...f, name: v }))}
+              style={[
+                styles.textInput,
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            />
+
+            <View style={styles.macroInputRow}>
+              <MacroInput
+                label="Calories"
+                value={manualForm.calories}
+                onChangeText={(v) => setManualForm((f) => ({ ...f, calories: v }))}
+                colors={colors}
+              />
+              <MacroInput
+                label="Protein (g)"
+                value={manualForm.protein}
+                onChangeText={(v) => setManualForm((f) => ({ ...f, protein: v }))}
+                colors={colors}
+              />
+            </View>
+            <View style={styles.macroInputRow}>
+              <MacroInput
+                label="Carbs (g)"
+                value={manualForm.carbs}
+                onChangeText={(v) => setManualForm((f) => ({ ...f, carbs: v }))}
+                colors={colors}
+              />
+              <MacroInput
+                label="Fat (g)"
+                value={manualForm.fat}
+                onChangeText={(v) => setManualForm((f) => ({ ...f, fat: v }))}
+                colors={colors}
+              />
+            </View>
+
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Add to meal
+            </Text>
+            <View style={styles.mealPicker}>
+              {MEALS.map((meal) => (
+                <TouchableOpacity
+                  key={meal}
+                  onPress={() => setManualMeal(meal)}
+                  style={[
+                    styles.mealPickerBtn,
+                    {
+                      backgroundColor:
+                        manualMeal === meal ? MEAL_COLORS[meal] + "30" : colors.muted,
+                      borderColor:
+                        manualMeal === meal ? MEAL_COLORS[meal] : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.mealPickerText,
+                      {
+                        color:
+                          manualMeal === meal
+                            ? MEAL_COLORS[meal]
+                            : colors.mutedForeground,
+                        fontFamily:
+                          manualMeal === meal
+                            ? "Inter_600SemiBold"
+                            : "Inter_400Regular",
+                      },
+                    ]}
+                  >
+                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setShowManualEntry(false)}
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmManual}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor: manualForm.name.trim()
+                      ? colors.primary
+                      : colors.muted,
+                  },
+                ]}
+                disabled={!manualForm.name.trim()}
+              >
+                <Text
+                  style={[
+                    styles.modalConfirmText,
+                    {
+                      color: manualForm.name.trim()
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Add Food
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* Add Food Confirmation Modal (for quick-add & scanned foods) */}
       <Modal
         visible={showModal}
         transparent
@@ -282,6 +490,38 @@ export default function NutritionScreen() {
   );
 }
 
+function MacroInput({
+  label,
+  value,
+  onChangeText,
+  colors,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={styles.macroInputItem}>
+      <Text style={[styles.macroInputLabel, { color: colors.mutedForeground }]}>
+        {label}
+      </Text>
+      <TextInput
+        placeholder="0"
+        placeholderTextColor={colors.mutedForeground}
+        keyboardType="numeric"
+        value={value}
+        onChangeText={onChangeText}
+        style={[
+          styles.textInput,
+          styles.macroInputField,
+          { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+        ]}
+      />
+    </View>
+  );
+}
+
 function MacroBar({
   label,
   value,
@@ -305,7 +545,6 @@ function MacroBar({
           {value}/{goal}g
         </Text>
       </View>
-      {/* Flex-based progress bar — no percentage string type issues */}
       <View style={[styles.macroTrack, { backgroundColor: colors.muted }]}>
         <View style={styles.macroFlex}>
           <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: color }]} />
@@ -365,7 +604,24 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   headerDate: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  scanBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
   macroCard: { padding: 16 },
   macroRow: { flexDirection: "row", alignItems: "center", gap: 20 },
   macros: { flex: 1, gap: 10 },
@@ -460,4 +716,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalConfirmText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  textInput: {
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+  macroInputRow: { flexDirection: "row", gap: 10 },
+  macroInputItem: { flex: 1, gap: 4 },
+  macroInputLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  macroInputField: { height: 44 },
 });
