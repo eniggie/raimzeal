@@ -111,9 +111,9 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
             <Text style={styles.statLabel}>CAL BURNED</Text>
           </View>
           <View style={[styles.statCard, styles.statViolet]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#E8B84B" }]} />
+            <View style={[styles.statAccentBar, { backgroundColor: "#8B31C7" }]} />
             <Text style={styles.statIcon}>⏱️</Text>
-            <Text style={[styles.statValue, { color: "#E8B84B" }]}>{timeStr}</Text>
+            <Text style={[styles.statValue, { color: "#8B31C7" }]}>{timeStr}</Text>
             <Text style={styles.statLabel}>TRAINED</Text>
           </View>
         </View>

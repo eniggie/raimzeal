@@ -26,7 +26,7 @@ type MealType = MealLog["mealType"];
 const MEAL_COLORS: Record<MealType, string> = {
   breakfast: "#f59f0a",
   lunch: "#C9A84C",
-  dinner: "#E8B84B",
+  dinner: "#8B31C7",
   snack: "#21c45d",
 };
 
