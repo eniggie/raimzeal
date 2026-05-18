@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'apex_fitness_data';
+const STORAGE_KEY = 'raimzeal_fitness_data';
 
 export interface UserProfile {
   id: string;
@@ -316,7 +316,7 @@ export function useAppState() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'apex_fitness_export.json';
+    a.download = 'raimzeal_export.json';
     a.click();
     URL.revokeObjectURL(url);
   };

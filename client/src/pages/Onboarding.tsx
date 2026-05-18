@@ -127,7 +127,7 @@ export function Onboarding({ onComplete, onLogin }: OnboardingProps) {
                     </div>
                   </div>
                   <div className="text-center space-y-4">
-                    <h2 className="text-xl font-semibold">Welcome to APEX</h2>
+                    <h2 className="text-xl font-semibold">Welcome to RAIMZEAL</h2>
                     <p className="text-muted-foreground">
                       Your premium AI-powered fitness companion. Track workouts, nutrition, and achieve your goals.
                     </p>

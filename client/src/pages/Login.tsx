@@ -25,7 +25,7 @@ export function Login({ onLogin, onBack }: LoginProps) {
   const handleDemoLogin = async () => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 500));
-    onLogin('demo@apex.fit', 'demo123');
+    onLogin('demo@raimzeal.fit', 'demo123');
   };
 
   return (

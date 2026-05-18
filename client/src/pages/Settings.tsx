@@ -205,7 +205,7 @@ export function Settings({ state, onUpdateSettings, onExportData, onLogout }: Se
           transition={{ delay: 0.4 }}
           className="text-center text-xs text-muted-foreground pt-4"
         >
-          <p>APEX Fitness v1.0.0</p>
+          <p>RAIMZEAL v1.0.0</p>
           <p className="mt-1">Made with 💪 for fitness enthusiasts</p>
         </motion.div>
       </div>

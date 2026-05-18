@@ -15,8 +15,8 @@ export function BottomNav() {
   const [location] = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-strong safe-area-inset-bottom">
-      <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
+    <nav className="fixed bottom-6 left-4 right-4 z-50 glass-strong safe-area-inset-bottom rounded-2xl border-white/20 shadow-xl overflow-hidden max-w-lg mx-auto">
+      <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = location === item.path || 
             (item.path !== '/' && location.startsWith(item.path));
@@ -34,7 +34,7 @@ export function BottomNav() {
                 {isActive && (
                   <motion.div
                     layoutId="nav-indicator"
-                    className="absolute inset-0 bg-primary/10 rounded-xl"
+                    className="absolute inset-0 bg-white/10 rounded-xl"
                     transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                   />
                 )}

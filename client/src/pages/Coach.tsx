@@ -63,7 +63,7 @@ const getCoachResponse = (input: string, state: AppState): string => {
   }
 
   if (lowerInput.includes('help') || lowerInput.includes('what can you')) {
-    return `I'm your AI coach! I can help with:\n\n💪 Workout recommendations\n🍎 Nutrition guidance\n🎯 Goal-setting advice\n😴 Recovery tips\n🔥 Motivation when you need it\n📊 Interpreting your progress\n\nJust ask me anything fitness-related!`;
+    return `I'm Ovia, your AI coach! I can help with:\n\n💪 Workout recommendations\n🍎 Nutrition guidance\n🎯 Goal-setting advice\n😴 Recovery tips\n🔥 Motivation when you need it\n📊 Interpreting your progress\n\nJust ask me anything fitness-related!`;
   }
 
   const responses = [
@@ -80,7 +80,7 @@ export function Coach({ state }: CoachProps) {
     {
       id: '1',
       role: 'coach',
-      content: `Hey ${state.user?.name?.split(' ')[0] || 'there'}! 👋 I'm your AI fitness coach. I'm here to help you with workout recommendations, nutrition advice, motivation, and anything else on your fitness journey. What's on your mind?`,
+      content: `Hey ${state.user?.name?.split(' ')[0] || 'there'}! 👋 I'm Ovia, your AI fitness coach. I'm here to help you with workout recommendations, nutrition advice, motivation, and anything else on your fitness journey. What's on your mind?`,
       timestamp: new Date(),
     },
   ]);
@@ -140,7 +140,7 @@ export function Coach({ state }: CoachProps) {
               <Bot className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-semibold">AI Coach</h1>
+              <h1 className="font-semibold">Ovia AI</h1>
               <p className="text-xs text-muted-foreground">Always here to help</p>
             </div>
           </div>
