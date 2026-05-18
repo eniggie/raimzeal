@@ -22,7 +22,7 @@ import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
-import { captureAndShareCard } from "@/lib/shareCard";
+import { captureAndShareCard, captureAndSaveCard } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { CardVisibleStats, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardCustomizationResult } from "@/components/CardCustomizationModal";
@@ -108,7 +108,9 @@ export default function ProfileScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [cardAction, setCardAction] = useState<"share" | "save">("share");
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
 
@@ -210,21 +212,43 @@ export default function ProfileScreen() {
   }
 
   function handleShareProgress() {
+    setCardAction("share");
+    setShowCustomizeModal(true);
+  }
+
+  function handleSaveToLibrary() {
+    setCardAction("save");
     setShowCustomizeModal(true);
   }
 
   async function handleGenerateCard({ visibleStats, customMessage }: CardCustomizationResult) {
     setCardVisibleStats(visibleStats);
     setCardCustomMessage(customMessage);
-    setShareLoading(true);
+    const isSave = cardAction === "save";
+    if (isSave) {
+      setSaveLoading(true);
+    } else {
+      setShareLoading(true);
+    }
     // Wait for all pending interactions and layout to finish before capturing
     // so the offscreen card has fully re-rendered with the new props.
     InteractionManager.runAfterInteractions(async () => {
       try {
-        await captureAndShareCard(cardRef);
+        if (isSave) {
+          const saved = await captureAndSaveCard(cardRef);
+          if (saved) {
+            Alert.alert("Saved!", "Your progress card has been saved to your camera roll.");
+          }
+        } else {
+          await captureAndShareCard(cardRef);
+        }
       } catch (e) {
-        Alert.alert("Share failed", "Could not generate progress card. Please try again.");
+        Alert.alert(
+          isSave ? "Save failed" : "Share failed",
+          "Could not generate progress card. Please try again."
+        );
       }
+      setSaveLoading(false);
       setShareLoading(false);
       setShowCustomizeModal(false);
     });
@@ -294,7 +318,7 @@ export default function ProfileScreen() {
         visible={showCustomizeModal}
         onClose={() => setShowCustomizeModal(false)}
         onGenerate={handleGenerateCard}
-        generating={shareLoading}
+        generating={shareLoading || saveLoading}
       />
 
       {/* Header */}
@@ -539,6 +563,13 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={handleShareProgress}
               loading={shareLoading}
+            />
+            <ActionRow
+              icon="image-outline"
+              label={saveLoading ? "Saving to Photos…" : "Save Card to Camera Roll"}
+              color={colors.primary}
+              onPress={handleSaveToLibrary}
+              loading={saveLoading}
             />
             <ActionRow
               icon="document-text-outline"
