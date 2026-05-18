@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -24,6 +25,7 @@ const STEPS_GOAL = 10000;
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const {
     user,
     streak,
@@ -169,24 +171,40 @@ export default function HomeScreen() {
           label="Start Workout"
           color={colors.primary}
           bg={colors.primary + "20"}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate("/(tabs)/workouts");
+          }}
         />
         <QuickAction
           icon="restaurant-outline"
           label="Log Meal"
           color={colors.secondary}
           bg={colors.secondary + "20"}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate("/(tabs)/nutrition");
+          }}
         />
         <QuickAction
           icon="chatbubble-ellipses-outline"
           label="Ask Ovia"
           color={colors.accent}
           bg={colors.accent + "20"}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate("/(tabs)/profile");
+          }}
         />
         <QuickAction
           icon="trending-up-outline"
           label="Log Weight"
           color={colors.warning}
           bg={colors.warning + "20"}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate("/(tabs)/progress");
+          }}
         />
       </View>
 
@@ -238,19 +256,18 @@ function QuickAction({
   label,
   color,
   bg,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
   bg: string;
+  onPress?: () => void;
 }) {
   const colors = useColors();
-  function handlePress() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
   return (
     <TouchableOpacity
-      onPress={handlePress}
+      onPress={onPress}
       activeOpacity={0.75}
       style={[styles.actionBtn, { backgroundColor: bg, borderColor: color + "30" }]}
     >

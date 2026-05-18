@@ -5,6 +5,11 @@
  * so data structures are compatible across platforms.
  *
  * Storage key: "raimzeal_fitness_data" (matches web app localStorage key)
+ *
+ * Data hierarchy (highest priority wins):
+ *  1. Supabase (remote source of truth for authenticated users)
+ *  2. AsyncStorage (local cache / offline support)
+ *  3. Default state (demo data for unauthenticated users)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
@@ -14,6 +19,15 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  fetchProfile,
+  fetchWorkoutLogs,
+  fetchMealLogs,
+  upsertProfile,
+  insertWorkoutLog,
+  insertMealLog,
+} from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
 export interface WorkoutLog {
@@ -242,19 +256,52 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+    // Step 1: hydrate from AsyncStorage (fast, works offline)
+    AsyncStorage.getItem(STORAGE_KEY).then(async (raw) => {
+      let parsed: Partial<AppState> = {};
       if (raw) {
         try {
-          const saved = JSON.parse(raw) as Partial<AppState>;
-          setState((prev) => ({
-            ...prev,
-            ...saved,
-            settings: { ...prev.settings, ...(saved.settings ?? {}) },
-            oviaMessages: saved.oviaMessages ?? prev.oviaMessages,
-          }));
+          parsed = JSON.parse(raw) as Partial<AppState>;
         } catch {
-          // corrupted storage — keep defaults
+          // corrupted storage — ignore
         }
+      }
+      const hydrated: AppState = {
+        ...defaultState,
+        ...parsed,
+        settings: { ...defaultState.settings, ...(parsed.settings ?? {}) },
+        oviaMessages: parsed.oviaMessages ?? defaultState.oviaMessages,
+      };
+      setState(hydrated);
+
+      // Step 2: sync from Supabase (source of truth for authenticated users)
+      if (!isSupabaseConfigured) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const userId = session.user.id;
+        const [profile, workouts, meals] = await Promise.all([
+          fetchProfile(userId),
+          fetchWorkoutLogs(userId),
+          fetchMealLogs(userId),
+        ]);
+        setState((prev) => ({
+          ...prev,
+          ...(profile
+            ? {
+                user: {
+                  ...(prev.user ?? DEMO_USER),
+                  ...profile,
+                  id: userId,
+                  email: session.user.email ?? prev.user?.email ?? "",
+                },
+              }
+            : {}),
+          workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
+          mealLogs: meals.length > 0 ? meals : prev.mealLogs,
+        }));
+      } catch {
+        // Non-fatal: keep local data if Supabase sync fails
       }
     });
   }, []);
@@ -268,6 +315,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, workoutLogs: [log, ...prev.workoutLogs], streak: prev.streak + 1 };
         persist(next);
+        // Background push to Supabase
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) insertWorkoutLog(session.user.id, log).catch(() => {});
+          });
+        }
         return next;
       });
     },
@@ -279,6 +332,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, mealLogs: [meal, ...prev.mealLogs] };
         persist(next);
+        // Background push to Supabase
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) insertMealLog(session.user.id, meal).catch(() => {});
+          });
+        }
         return next;
       });
     },
@@ -345,6 +404,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, user: prev.user ? { ...prev.user, ...updates } : prev.user };
         persist(next);
+        // Background push to Supabase
+        if (next.user && isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) upsertProfile(session.user.id, next.user!).catch(() => {});
+          });
+        }
         return next;
       });
     },

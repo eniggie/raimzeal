@@ -60,28 +60,64 @@ function buildOviaContext(
   user: ReturnType<typeof useFitness>["user"],
   streak: number,
   workoutLogs: ReturnType<typeof useFitness>["workoutLogs"],
-  mealLogs: ReturnType<typeof useFitness>["mealLogs"]
+  mealLogs: ReturnType<typeof useFitness>["mealLogs"],
+  bodyMeasurements: ReturnType<typeof useFitness>["bodyMeasurements"],
+  waterIntake: ReturnType<typeof useFitness>["waterIntake"],
+  personalRecords: ReturnType<typeof useFitness>["personalRecords"]
 ) {
   const today = new Date().toISOString().split("T")[0];
   const todayMeals = mealLogs.filter((m) => m.date === today);
   const todayCalories = todayMeals.reduce((s, m) => s + m.calories, 0);
   const todayProtein = todayMeals.reduce((s, m) => s + m.protein, 0);
+  const todayCarbs = todayMeals.reduce((s, m) => s + m.carbs, 0);
+  const todayFat = todayMeals.reduce((s, m) => s + m.fat, 0);
+  const todayWater = waterIntake.find((w) => w.date === today)?.glasses ?? 0;
+  const latestMeasurement = bodyMeasurements[0] ?? null;
   const recent = workoutLogs.slice(0, 5).map((w) => ({
     name: w.workoutName,
     calories: w.caloriesBurned,
     date: w.date,
     duration: w.duration,
   }));
+  // Meal breakdown by type
+  const mealBreakdown = todayMeals.reduce<Record<string, { count: number; calories: number }>>(
+    (acc, m) => {
+      if (!acc[m.mealType]) acc[m.mealType] = { count: 0, calories: 0 };
+      acc[m.mealType].count++;
+      acc[m.mealType].calories += m.calories;
+      return acc;
+    },
+    {}
+  );
   return {
     name: user?.name ?? "",
+    email: user?.email ?? "",
     goals: user?.goals ?? [],
     weight: user?.weight ?? null,
+    height: user?.height ?? null,
     age: user?.age ?? null,
+    units: user?.units ?? "metric",
     fitnessLevel: user?.fitnessLevel ?? "intermediate",
     streak,
     recentWorkouts: recent,
     todayCalories: todayCalories || null,
     todayProtein: todayProtein || null,
+    todayCarbs: todayCarbs || null,
+    todayFat: todayFat || null,
+    todayWaterGlasses: todayWater,
+    mealBreakdown: Object.keys(mealBreakdown).length > 0 ? mealBreakdown : null,
+    latestBodyMeasurement: latestMeasurement
+      ? {
+          date: latestMeasurement.date,
+          weight: latestMeasurement.weight,
+          chest: latestMeasurement.chest,
+          waist: latestMeasurement.waist,
+          hips: latestMeasurement.hips,
+          arms: latestMeasurement.arms,
+          thighs: latestMeasurement.thighs,
+        }
+      : null,
+    personalRecords: personalRecords.slice(0, 5),
   };
 }
 
@@ -135,7 +171,7 @@ export default function ProfileScreen() {
       { id: "pending", role: "user" as const, content: userMsg },
     ].map((m) => ({ role: m.role, content: m.content }));
 
-    const userContext = buildOviaContext(user, streak, workoutLogs, mealLogs);
+    const userContext = buildOviaContext(user, streak, workoutLogs, mealLogs, bodyMeasurements, waterIntake, personalRecords);
 
     try {
       const response = await fetch(`${getApiBase()}/ovia/chat`, {
