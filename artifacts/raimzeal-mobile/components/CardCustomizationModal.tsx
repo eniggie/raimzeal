@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -20,6 +21,9 @@ import ShareProgressCard, {
   DEFAULT_VISIBLE_STATS,
   ShareProgressCardProps,
 } from "@/components/ShareProgressCard";
+
+const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
+const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 
 interface StatToggleConfig {
   key: keyof CardVisibleStats;
@@ -99,18 +103,59 @@ export default function CardCustomizationModal({
   const [customMessage, setCustomMessage] = useState("");
 
   useEffect(() => {
-    if (visible) {
-      setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
-      setCustomMessage("");
+    if (!visible) return;
+    async function loadSaved() {
+      try {
+        const [savedStats, savedMessage] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY_STATS),
+          AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
+        ]);
+        if (savedStats) {
+          const parsed = JSON.parse(savedStats) as Partial<CardVisibleStats>;
+          setVisibleStats({ ...DEFAULT_VISIBLE_STATS, ...parsed });
+        } else {
+          setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+        }
+        setCustomMessage(savedMessage ?? "");
+      } catch {
+        setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+        setCustomMessage("");
+      }
     }
+    loadSaved();
   }, [visible]);
 
   function toggleStat(key: keyof CardVisibleStats) {
     setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleGenerate() {
+  async function saveToStorage(stats: CardVisibleStats, message: string) {
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)),
+        AsyncStorage.setItem(STORAGE_KEY_MESSAGE, message),
+      ]);
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  async function handleGenerate() {
+    await saveToStorage(visibleStats, customMessage.trim());
     onGenerate({ visibleStats, customMessage: customMessage.trim() });
+  }
+
+  async function handleResetDefaults() {
+    setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+    setCustomMessage("");
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEY_STATS),
+        AsyncStorage.removeItem(STORAGE_KEY_MESSAGE),
+      ]);
+    } catch {
+      // ignore
+    }
   }
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
@@ -148,7 +193,7 @@ export default function CardCustomizationModal({
 
           {/* Title row */}
           <View style={styles.titleRow}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Customize Your Card
               </Text>
@@ -156,12 +201,21 @@ export default function CardCustomizationModal({
                 Choose what to show on your progress card
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              style={[styles.closeBtn, { backgroundColor: colors.muted }]}
-            >
-              <Ionicons name="close" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            <View style={styles.titleActions}>
+              <TouchableOpacity
+                onPress={handleResetDefaults}
+                style={[styles.resetBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+              >
+                <Ionicons name="refresh-outline" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.resetBtnText, { color: colors.mutedForeground }]}>Reset to defaults</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.closeBtn, { backgroundColor: colors.muted }]}
+              >
+                <Ionicons name="close" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView
@@ -360,6 +414,26 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     marginBottom: 20,
+    gap: 8,
+  },
+  titleActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  resetBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   title: {
     fontSize: 20,
