@@ -1,40 +1,32 @@
 /**
- * Design tokens extracted from artifacts/raimzeal/src/index.css (.dark theme).
- * Values are exact HSL→hex conversions of the web app's CSS custom properties.
+ * Design tokens — RAIMZEAL Luxury Edition
  *
- * --primary: 84 81% 44%         → #82cb15  (lime green)
- * --secondary: 186 100% 42%     → #00c1d6  (cyan)
- * --accent: 270 70% 55%         → #8c3cdd  (violet)
- * --background: 240 6% 4%       → #0a0a0b
- * --foreground: 0 0% 98%        → #fafafa
- * --card: 240 6% 7%             → #111113
- * --muted: 240 5% 14%           → #222225
- * --muted-foreground: 240 5% 55%→ #878792
- * --border: 240 6% 12%          → #1d1d20
- * --success: 142 71% 45%        → #21c45d
- * --warning: 38 92% 50%         → #f59f0a
- * --destructive: 0 72% 51%      → #dc2828
- *
- * Font: 'Space Grotesk' for display/headings, 'Inter' for body (matches web)
- * Radius: 0.75rem = 12px
+ * Palette:
+ * --primary:   Luxury Emerald Green  #2E8B57  (HSL 147 50% 36%)
+ * --secondary: Luxury Antique Gold   #C9A84C  (HSL  44 54% 54%)
+ * --accent:    Luxury Saffron Yellow #E8B84B  (HSL  42 77% 60%)
+ * --background: #0a0a0b  (near black)
+ * --card:       #111113
+ * --muted:      #222225
+ * --border:     #1d1d20
  */
 
 const colors = {
   light: {
     text: "#0a0a0a",
-    tint: "#82cb15",
+    tint: "#2E8B57",
     background: "#ffffff",
     foreground: "#0a0a0a",
     card: "#f4f4f5",
     cardForeground: "#0a0a0a",
-    primary: "#82cb15",
-    primaryForeground: "#0a0a0a",
-    secondary: "#00c1d6",
+    primary: "#2E8B57",
+    primaryForeground: "#ffffff",
+    secondary: "#C9A84C",
     secondaryForeground: "#0a0a0a",
     muted: "#f4f4f5",
     mutedForeground: "#71717a",
-    accent: "#8c3cdd",
-    accentForeground: "#ffffff",
+    accent: "#E8B84B",
+    accentForeground: "#0a0a0a",
     destructive: "#dc2828",
     destructiveForeground: "#ffffff",
     success: "#21c45d",
@@ -44,19 +36,19 @@ const colors = {
   },
   dark: {
     text: "#fafafa",
-    tint: "#82cb15",
+    tint: "#2E8B57",
     background: "#0a0a0b",
     foreground: "#fafafa",
     card: "#111113",
     cardForeground: "#fafafa",
-    primary: "#82cb15",
-    primaryForeground: "#0a0a0b",
-    secondary: "#00c1d6",
+    primary: "#2E8B57",
+    primaryForeground: "#fafafa",
+    secondary: "#C9A84C",
     secondaryForeground: "#0a0a0b",
     muted: "#222225",
     mutedForeground: "#878792",
-    accent: "#8c3cdd",
-    accentForeground: "#fafafa",
+    accent: "#E8B84B",
+    accentForeground: "#0a0a0b",
     destructive: "#dc2828",
     destructiveForeground: "#fafafa",
     success: "#21c45d",

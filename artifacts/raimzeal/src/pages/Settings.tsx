@@ -144,7 +144,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
                     <Label>Fitness Level</Label>
                     <Select
                       value={editForm.fitnessLevel}
-                      onValueChange={v => setEditForm(p => ({ ...p, fitnessLevel: v }))}
+                      onValueChange={v => setEditForm(p => ({ ...p, fitnessLevel: v as "beginner" | "intermediate" | "advanced" }))}
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />

@@ -67,17 +67,20 @@
   --popover: 240 6% 8%;
   --popover-foreground: 0 0% 98%;
 
-  --primary: 84 81% 44%;
-  --primary-foreground: 240 6% 4%;
+  /* Luxury Emerald Green  #2E8B57 */
+  --primary: 147 50% 36%;
+  --primary-foreground: 0 0% 98%;
 
-  --secondary: 186 100% 42%;
+  /* Luxury Antique Gold  #C9A84C */
+  --secondary: 44 54% 54%;
   --secondary-foreground: 240 6% 4%;
 
   --muted: 240 5% 14%;
   --muted-foreground: 240 5% 55%;
 
-  --accent: 270 70% 55%;
-  --accent-foreground: 0 0% 98%;
+  /* Luxury Saffron Yellow  #E8B84B */
+  --accent: 42 77% 60%;
+  --accent-foreground: 240 6% 4%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
@@ -90,22 +93,22 @@
 
   --border: 240 6% 12%;
   --input: 240 6% 14%;
-  --ring: 84 81% 44%;
+  --ring: 147 50% 36%;
 
-  --chart-1: 84 81% 44%;
-  --chart-2: 186 100% 42%;
-  --chart-3: 270 70% 55%;
+  --chart-1: 147 50% 36%;
+  --chart-2: 44 54% 54%;
+  --chart-3: 42 77% 60%;
   --chart-4: 38 92% 50%;
   --chart-5: 0 72% 51%;
 
   --sidebar: 240 6% 5%;
   --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 84 81% 44%;
-  --sidebar-primary-foreground: 240 6% 4%;
+  --sidebar-primary: 147 50% 36%;
+  --sidebar-primary-foreground: 0 0% 98%;
   --sidebar-accent: 240 5% 12%;
   --sidebar-accent-foreground: 0 0% 98%;
   --sidebar-border: 240 6% 12%;
-  --sidebar-ring: 84 81% 44%;
+  --sidebar-ring: 147 50% 36%;
 }
 
 @layer base {

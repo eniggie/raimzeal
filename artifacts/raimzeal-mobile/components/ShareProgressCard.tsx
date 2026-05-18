@@ -99,21 +99,21 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
         {/* ── Stats grid ── */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.statGreen]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#82cb15" }]} />
+            <View style={[styles.statAccentBar, { backgroundColor: "#2E8B57" }]} />
             <Text style={styles.statIcon}>🏋️</Text>
-            <Text style={[styles.statValue, { color: "#82cb15" }]}>{totalWorkouts}</Text>
+            <Text style={[styles.statValue, { color: "#2E8B57" }]}>{totalWorkouts}</Text>
             <Text style={styles.statLabel}>WORKOUTS</Text>
           </View>
           <View style={[styles.statCard, styles.statCyan]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#00c1d6" }]} />
+            <View style={[styles.statAccentBar, { backgroundColor: "#C9A84C" }]} />
             <Text style={styles.statIcon}>⚡</Text>
-            <Text style={[styles.statValue, { color: "#00c1d6" }]}>{calStr}</Text>
+            <Text style={[styles.statValue, { color: "#C9A84C" }]}>{calStr}</Text>
             <Text style={styles.statLabel}>CAL BURNED</Text>
           </View>
           <View style={[styles.statCard, styles.statViolet]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#8c3cdd" }]} />
+            <View style={[styles.statAccentBar, { backgroundColor: "#E8B84B" }]} />
             <Text style={styles.statIcon}>⏱️</Text>
-            <Text style={[styles.statValue, { color: "#8c3cdd" }]}>{timeStr}</Text>
+            <Text style={[styles.statValue, { color: "#E8B84B" }]}>{timeStr}</Text>
             <Text style={styles.statLabel}>TRAINED</Text>
           </View>
         </View>
@@ -202,15 +202,15 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: "#82cb15",
+    backgroundColor: "#2E8B57",
     alignItems: "center",
     justifyContent: "center",
   },
   brandName: { fontSize: 16, fontWeight: "900", color: "#fafafa", letterSpacing: -0.3 },
-  brandTagline: { fontSize: 9, fontWeight: "700", color: "#82cb15", letterSpacing: 1.5 },
+  brandTagline: { fontSize: 9, fontWeight: "700", color: "#2E8B57", letterSpacing: 1.5 },
   dateBox: { alignItems: "flex-end" },
   dateText: { fontSize: 10, color: "#878792", fontWeight: "500" },
-  dateSubtext: { fontSize: 10, color: "#82cb15", fontWeight: "700", marginTop: 2 },
+  dateSubtext: { fontSize: 10, color: "#2E8B57", fontWeight: "700", marginTop: 2 },
   // Hero
   heroSection: { alignItems: "center", gap: 6, paddingVertical: 4 },
   avatarCircle: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 4,
   },
-  avatarInitial: { fontSize: 26, fontWeight: "900", color: "#82cb15" },
+  avatarInitial: { fontSize: 26, fontWeight: "900", color: "#2E8B57" },
   heroName: { fontSize: 22, fontWeight: "800", color: "#fafafa", letterSpacing: -0.4 },
   heroGoal: { fontSize: 12, color: "#878792", fontWeight: "500" },
   // Streak
@@ -295,6 +295,6 @@ const styles = StyleSheet.create({
   },
   footerLeft: { fontSize: 9, color: "#878792", fontWeight: "500" },
   footerRight: { flexDirection: "row", alignItems: "center", gap: 5 },
-  footerDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#82cb15" },
-  footerBrand: { fontSize: 10, fontWeight: "700", color: "#82cb15" },
+  footerDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "#2E8B57" },
+  footerBrand: { fontSize: 10, fontWeight: "700", color: "#2E8B57" },
 });
