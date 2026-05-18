@@ -101,26 +101,40 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.forgotBtn}
-            onPress={() => {
-              Alert.prompt(
-                "Reset Password",
-                "Enter your email address and we'll send you a reset link.",
-                async (inputEmail) => {
-                  if (!inputEmail?.trim()) return;
-                  const { error } = await resetPassword(inputEmail.trim().toLowerCase());
-                  if (error) {
-                    Alert.alert("Error", error);
-                  } else {
-                    Alert.alert(
-                      "Email sent",
-                      "Check your inbox for a password reset link. It may take a few minutes to arrive."
-                    );
-                  }
-                },
-                "plain-text",
-                email.trim(),
-                "email-address"
-              );
+            onPress={async () => {
+              const emailToUse = email.trim().toLowerCase();
+              if (Platform.OS === "ios") {
+                Alert.prompt(
+                  "Reset Password",
+                  "Enter your email address and we'll send you a reset link.",
+                  async (inputEmail) => {
+                    if (!inputEmail?.trim()) return;
+                    const { error } = await resetPassword(inputEmail.trim().toLowerCase());
+                    if (error) {
+                      Alert.alert("Error", error);
+                    } else {
+                      Alert.alert("Email sent", "Check your inbox for a password reset link.");
+                    }
+                  },
+                  "plain-text",
+                  emailToUse,
+                  "email-address"
+                );
+              } else {
+                if (!emailToUse) {
+                  Alert.alert(
+                    "Enter your email",
+                    "Type your email address in the email field above, then tap Forgot password? again."
+                  );
+                  return;
+                }
+                const { error } = await resetPassword(emailToUse);
+                if (error) {
+                  Alert.alert("Error", error);
+                } else {
+                  Alert.alert("Email sent", "Check your inbox for a password reset link.");
+                }
+              }
             }}
           >
             <Text style={[styles.forgotText, { color: colors.primary }]}>

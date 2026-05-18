@@ -1,0 +1,308 @@
+/**
+ * RAIMZEAL Notification Service — Ovia AI daily reminders.
+ *
+ * Schedules recurring daily notifications covering: fasting, hydration,
+ * nutrition, workouts, and sleep recovery.
+ *
+ * Every message carries the Ovia AI disclaimer and is science-backed.
+ */
+import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
+
+// Configure foreground notification presentation
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+const STORAGE_KEY = "raimzeal_reminder_settings";
+
+const DISCLAIMER =
+  "\n\nOvia AI personal recommendation based on the latest health trends and research. Always consult your healthcare provider before making significant changes to your diet or lifestyle.";
+
+export interface ReminderSettings {
+  morningFast: boolean;
+  morningWater: boolean;
+  breakfast: boolean;
+  lunch: boolean;
+  hydration: boolean;
+  preWorkout: boolean;
+  dinner: boolean;
+  fasting: boolean;
+  sleep: boolean;
+}
+
+export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
+  morningFast: false,
+  morningWater: true,
+  breakfast: true,
+  lunch: true,
+  hydration: true,
+  preWorkout: false,
+  dinner: true,
+  fasting: false,
+  sleep: true,
+};
+
+export interface ReminderMeta {
+  label: string;
+  timeLabel: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+export const REMINDER_META: Record<keyof ReminderSettings, ReminderMeta> = {
+  morningFast: {
+    label: "Fasting Morning Check-in",
+    timeLabel: "5:00 AM",
+    description:
+      "A motivating check-in while you are fasted — helps you hold your fast and understand why it matters.",
+    icon: "moon-outline",
+    color: "#8B31C7",
+  },
+  morningWater: {
+    label: "Warm Water Ritual",
+    timeLabel: "6:30 AM",
+    description:
+      "The most powerful morning habit. Warm water on an empty stomach kickstarts digestion, flushes toxins, and activates metabolism.",
+    icon: "water-outline",
+    color: "#2E8B57",
+  },
+  breakfast: {
+    label: "Protein-First Breakfast",
+    timeLabel: "8:00 AM",
+    description:
+      "A reminder to eat a protein-rich breakfast that stabilises blood sugar and fuels muscle protein synthesis for the day.",
+    icon: "sunny-outline",
+    color: "#C9A84C",
+  },
+  lunch: {
+    label: "Midday Nutrition",
+    timeLabel: "12:30 PM",
+    description:
+      "Your midday macro check-in — stay on track with protein, complex carbs, and vegetables to power the afternoon.",
+    icon: "restaurant-outline",
+    color: "#2E8B57",
+  },
+  hydration: {
+    label: "Hydration Alert",
+    timeLabel: "2:00 PM",
+    description:
+      "Most people are dehydrated by afternoon. This reminder prevents the 3 PM energy crash and reduces false hunger.",
+    icon: "water-outline",
+    color: "#2E8B57",
+  },
+  preWorkout: {
+    label: "Workout Reminder",
+    timeLabel: "5:00 PM",
+    description:
+      "Late afternoon is peak performance time. This motivational push gets you into the gym at your body's strongest point.",
+    icon: "barbell-outline",
+    color: "#8B31C7",
+  },
+  dinner: {
+    label: "Evening Meal Guidance",
+    timeLabel: "7:00 PM",
+    description:
+      "Evening nutrition coaching — keep it lean, timed correctly to maximise overnight fat burning and sleep quality.",
+    icon: "partly-sunny-outline",
+    color: "#C9A84C",
+  },
+  fasting: {
+    label: "Fasting Window Reminder",
+    timeLabel: "9:00 PM",
+    description:
+      "A firm reminder that your fasting window is open. Only break it under direct medical instruction.",
+    icon: "timer-outline",
+    color: "#8B31C7",
+  },
+  sleep: {
+    label: "Sleep & Recovery",
+    timeLabel: "10:00 PM",
+    description:
+      "Wind-down guidance to protect sleep quality — the non-negotiable foundation of all physical and mental performance.",
+    icon: "bed-outline",
+    color: "#2E8B57",
+  },
+};
+
+interface NotificationConfig {
+  id: string;
+  title: string;
+  body: string;
+  hour: number;
+  minute: number;
+}
+
+const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
+  morningFast: {
+    id: "ovia_morning_fast",
+    title: "🌙 You Are Fasting — Stay Strong",
+    body:
+      "You are in a fasted state right now. Your body is burning stored fat, reducing inflammation, and activating deep cellular repair through autophagy. Do not break your fast unless your physician has prescribed medication that must be taken with food, or a healthcare provider has specifically advised you to eat at this time. Your body is doing exactly what it needs to do. Trust the process." +
+      DISCLAIMER,
+    hour: 5,
+    minute: 0,
+  },
+  morningWater: {
+    id: "ovia_morning_water",
+    title: "💧 Warm Water First — Before Anything Else",
+    body:
+      "Before coffee, before your phone, before anything — drink a full glass of warm water. Your body has been without water for 7 to 8 hours. Warm water on an empty stomach activates digestion, stimulates the lymphatic system, flushes toxins through the kidneys, rehydrates your cells, and boosts metabolism. Add lemon for alkalising benefits. This single habit, done consistently, changes your body." +
+      DISCLAIMER,
+    hour: 6,
+    minute: 30,
+  },
+  breakfast: {
+    id: "ovia_breakfast",
+    title: "🍳 Protein-First Breakfast Time",
+    body:
+      "Fuel your morning with protein first. Aim for 30 to 40 grams within 60 minutes of waking — this stimulates muscle protein synthesis, stabilises blood glucose, reduces cortisol, and keeps cravings controlled all day. Eggs, Greek yoghurt, cottage cheese, smoked salmon, or a quality whey shake. Whatever fits your plan — make it protein-rich, make it intentional." +
+      DISCLAIMER,
+    hour: 8,
+    minute: 0,
+  },
+  lunch: {
+    id: "ovia_lunch",
+    title: "🥗 Midday Nutrition Check-in",
+    body:
+      "Your midday meal is where consistency is built. Combine lean protein, complex carbohydrates, and colourful vegetables. Chicken and rice. Salmon and sweet potato. Lentils and quinoa. This meal sustains your energy through the afternoon, hits your macro targets, and keeps your metabolism running efficiently. Champions do not skip this." +
+      DISCLAIMER,
+    hour: 12,
+    minute: 30,
+  },
+  hydration: {
+    id: "ovia_hydration",
+    title: "💧 Afternoon Hydration Alert",
+    body:
+      "Stop and drink 400 to 500ml of water right now. Studies show that 75% of people are chronically dehydrated by mid-afternoon. Dehydration reduces cognitive performance by up to 12%, creates false hunger signals that cause unnecessary eating, and significantly slows fat metabolism. Water is the most powerful, most underrated supplement you have. Drink it now." +
+      DISCLAIMER,
+    hour: 14,
+    minute: 0,
+  },
+  preWorkout: {
+    id: "ovia_pre_workout",
+    title: "💪 Time to Train — Your Body is Ready",
+    body:
+      "Late afternoon is scientifically your peak performance window. Core body temperature is elevated, muscle strength is 10 to 20% higher than morning, reaction time is faster, and natural testosterone is at its daily high. You do not need motivation — you need to move. 45 minutes of focused, intentional training will compound into the results you are working for. Get it done." +
+      DISCLAIMER,
+    hour: 17,
+    minute: 0,
+  },
+  dinner: {
+    id: "ovia_dinner",
+    title: "🥩 Evening Meal — Lean and Timed Right",
+    body:
+      "Dinner time. Insulin sensitivity drops significantly in the evening, so minimise simple carbohydrates and starchy foods. Prioritise lean protein — chicken, fish, turkey, eggs, or legumes — with non-starchy vegetables and a small amount of healthy fat. Eat at least 2 to 3 hours before sleep so digestion completes before bed, growth hormone is released efficiently, and overnight fat burning is maximised." +
+      DISCLAIMER,
+    hour: 19,
+    minute: 0,
+  },
+  fasting: {
+    id: "ovia_fasting",
+    title: "🌙 Your Fasting Window is Now Open",
+    body:
+      "Your eating window is closed. This is the most powerful metabolic reset available to you. Over the next hours, your body will shift fully to fat oxidation, reduce systemic inflammation, clear damaged cells through autophagy, reset ghrelin and leptin balance, and restore insulin sensitivity. Do NOT eat anything now. The only exception is if your doctor has prescribed medication that specifically requires food. Your discipline tonight is tomorrow's transformation." +
+      DISCLAIMER,
+    hour: 21,
+    minute: 0,
+  },
+  sleep: {
+    id: "ovia_sleep",
+    title: "😴 Recovery Time — This is Non-Negotiable",
+    body:
+      "Sleep is where the real work happens. During deep sleep your body releases 70% of its daily growth hormone, repairs muscle fibres torn during training, consolidates memory, detoxifies the brain through the glymphatic system, and resets every hormone in your body. Aim for 7 to 9 hours. Dim your lights now. Lower your room temperature to 18 to 20 degrees. Put the phone down. Your performance, your body composition, and your mental health tomorrow are all built tonight." +
+      DISCLAIMER,
+    hour: 22,
+    minute: 0,
+  },
+};
+
+export async function requestNotificationPermissions(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === "granted") return true;
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+}
+
+export async function loadReminderSettings(): Promise<ReminderSettings> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_REMINDER_SETTINGS };
+    return {
+      ...DEFAULT_REMINDER_SETTINGS,
+      ...(JSON.parse(raw) as Partial<ReminderSettings>),
+    };
+  } catch {
+    return { ...DEFAULT_REMINDER_SETTINGS };
+  }
+}
+
+export async function saveReminderSettings(
+  settings: ReminderSettings
+): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+export async function scheduleReminders(
+  settings: ReminderSettings
+): Promise<number> {
+  if (Platform.OS === "web") return 0;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  let count = 0;
+  for (const [key, enabled] of Object.entries(settings) as [
+    keyof ReminderSettings,
+    boolean,
+  ][]) {
+    if (!enabled) continue;
+    const config = CONFIGS[key];
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: config.id,
+        content: {
+          title: config.title,
+          body: config.body,
+          sound: true,
+        },
+        trigger: {
+          hour: config.hour,
+          minute: config.minute,
+          repeats: true,
+        } as Notifications.DailyTriggerInput,
+      });
+      count++;
+    } catch {
+      // Skip unsupported triggers
+    }
+  }
+  return count;
+}
+
+export async function sendTestNotification(): Promise<void> {
+  if (Platform.OS === "web") return;
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "✅ Ovia AI Reminders Active",
+      body: "Your personalised daily reminders are set up and working. Ovia AI will guide you every day across nutrition, hydration, fasting, training, and recovery.",
+      sound: true,
+    },
+    trigger: {
+      seconds: 3,
+      repeats: false,
+    } as Notifications.TimeIntervalTriggerInput,
+  });
+}
+
+export async function getActiveReminderCount(): Promise<number> {
+  if (Platform.OS === "web") return 0;
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  return scheduled.filter((n) => n.identifier.startsWith("ovia_")).length;
+}

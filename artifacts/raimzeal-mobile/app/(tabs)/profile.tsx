@@ -580,11 +580,9 @@ export default function ProfileScreen() {
             />
             <ActionRow
               icon="notifications-outline"
-              label="Notifications"
+              label="Reminders & Notifications"
               color={colors.accent}
-              onPress={() =>
-                Alert.alert("Notifications", "Notification settings coming soon.")
-              }
+              onPress={() => router.push("/reminders")}
             />
             <ActionRow
               icon="shield-checkmark-outline"
