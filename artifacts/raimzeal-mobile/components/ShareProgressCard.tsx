@@ -3,6 +3,24 @@ import { View, Text, Image, StyleSheet } from "react-native";
 
 const CARD_WIDTH = 360;
 
+export interface CardVisibleStats {
+  streak: boolean;
+  workouts: boolean;
+  calories: boolean;
+  time: boolean;
+  weightChange: boolean;
+  topPR: boolean;
+}
+
+export const DEFAULT_VISIBLE_STATS: CardVisibleStats = {
+  streak: true,
+  workouts: true,
+  calories: true,
+  time: true,
+  weightChange: true,
+  topPR: true,
+};
+
 export interface ShareProgressCardProps {
   userName: string;
   goalLabel: string;
@@ -14,6 +32,8 @@ export interface ShareProgressCardProps {
   weightUnit: string;
   topPR: { exercise: string; weight: number } | null;
   date: string;
+  visibleStats?: Partial<CardVisibleStats>;
+  customMessage?: string;
 }
 
 const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
@@ -29,9 +49,13 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
       weightUnit,
       topPR,
       date,
+      visibleStats,
+      customMessage,
     },
     ref
   ) => {
+    const vis: CardVisibleStats = { ...DEFAULT_VISIBLE_STATS, ...visibleStats };
+
     const initial = (userName || "A").charAt(0).toUpperCase();
 
     const calStr =
@@ -49,7 +73,22 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
 
     const streakFires = streak > 0 ? "🔥".repeat(Math.min(streak, 6)) : "🔥";
 
-    const showBottomRow = hasWeightDelta || topPR != null;
+    const showWeightItem = vis.weightChange && weightDeltaStr != null;
+    const showPRItem = vis.topPR && topPR != null;
+    const showBottomRow = showWeightItem || showPRItem;
+
+    const gridStats: Array<{
+      color: string;
+      icon: string;
+      value: string;
+      label: string;
+      show: boolean;
+    }> = [
+      { color: "#2E8B57", icon: "🏋️", value: String(totalWorkouts), label: "WORKOUTS", show: vis.workouts },
+      { color: "#C9A84C", icon: "⚡", value: calStr, label: "CAL BURNED", show: vis.calories },
+      { color: "#8B31C7", icon: "⏱️", value: timeStr, label: "TRAINED", show: vis.time },
+    ];
+    const visibleGridStats = gridStats.filter((s) => s.show);
 
     return (
       <View ref={ref} style={styles.card} collapsable={false}>
@@ -87,41 +126,42 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
           <Text style={styles.heroGoal}>Goal: {goalLabel}</Text>
         </View>
 
-        {/* ── Streak banner ── */}
-        <View style={styles.streakBanner}>
-          <Text style={styles.streakNumber}>{streak}</Text>
-          <View style={styles.streakRight}>
-            <Text style={styles.streakLabel}>DAY STREAK</Text>
-            <Text style={styles.streakFires}>{streakFires}</Text>
+        {/* ── Custom message ── */}
+        {customMessage ? (
+          <View style={styles.customMessageBox}>
+            <Text style={styles.customMessageText}>"{customMessage}"</Text>
           </View>
-        </View>
+        ) : null}
+
+        {/* ── Streak banner ── */}
+        {vis.streak && (
+          <View style={styles.streakBanner}>
+            <Text style={styles.streakNumber}>{streak}</Text>
+            <View style={styles.streakRight}>
+              <Text style={styles.streakLabel}>DAY STREAK</Text>
+              <Text style={styles.streakFires}>{streakFires}</Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Stats grid ── */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, styles.statGreen]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#2E8B57" }]} />
-            <Text style={styles.statIcon}>🏋️</Text>
-            <Text style={[styles.statValue, { color: "#2E8B57" }]}>{totalWorkouts}</Text>
-            <Text style={styles.statLabel}>WORKOUTS</Text>
+        {visibleGridStats.length > 0 && (
+          <View style={styles.statsGrid}>
+            {visibleGridStats.map((s) => (
+              <View key={s.label} style={[styles.statCard, { flex: 1 }]}>
+                <View style={[styles.statAccentBar, { backgroundColor: s.color }]} />
+                <Text style={styles.statIcon}>{s.icon}</Text>
+                <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
           </View>
-          <View style={[styles.statCard, styles.statCyan]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#C9A84C" }]} />
-            <Text style={styles.statIcon}>⚡</Text>
-            <Text style={[styles.statValue, { color: "#C9A84C" }]}>{calStr}</Text>
-            <Text style={styles.statLabel}>CAL BURNED</Text>
-          </View>
-          <View style={[styles.statCard, styles.statViolet]}>
-            <View style={[styles.statAccentBar, { backgroundColor: "#8B31C7" }]} />
-            <Text style={styles.statIcon}>⏱️</Text>
-            <Text style={[styles.statValue, { color: "#8B31C7" }]}>{timeStr}</Text>
-            <Text style={styles.statLabel}>TRAINED</Text>
-          </View>
-        </View>
+        )}
 
         {/* ── Weight / PR row ── */}
         {showBottomRow && (
           <View style={styles.bottomRow}>
-            {weightDeltaStr != null && (
+            {showWeightItem && (
               <View style={styles.bottomItem}>
                 <Text style={styles.bottomIcon}>⚖️</Text>
                 <View>
@@ -130,14 +170,14 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
                 </View>
               </View>
             )}
-            {weightDeltaStr != null && topPR != null && <View style={styles.bottomDivider} />}
-            {topPR != null && (
+            {showWeightItem && showPRItem && <View style={styles.bottomDivider} />}
+            {showPRItem && (
               <View style={styles.bottomItem}>
                 <Text style={styles.bottomIcon}>🏆</Text>
                 <View>
                   <Text style={styles.bottomItemLabel}>Personal Record</Text>
                   <Text style={styles.bottomItemValue}>
-                    {topPR.exercise} {topPR.weight}
+                    {topPR!.exercise} {topPR!.weight}
                     {weightUnit}
                   </Text>
                 </View>
@@ -227,6 +267,23 @@ const styles = StyleSheet.create({
   avatarInitial: { fontSize: 26, fontWeight: "900", color: "#2E8B57" },
   heroName: { fontSize: 22, fontWeight: "800", color: "#fafafa", letterSpacing: -0.4 },
   heroGoal: { fontSize: 12, color: "#878792", fontWeight: "500" },
+  // Custom message
+  customMessageBox: {
+    backgroundColor: "rgba(130,203,21,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(130,203,21,0.20)",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  customMessageText: {
+    fontSize: 12,
+    color: "#c8e6a0",
+    fontStyle: "italic",
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 18,
+  },
   // Streak
   streakBanner: {
     flexDirection: "row",
@@ -247,7 +304,6 @@ const styles = StyleSheet.create({
   // Stats grid
   statsGrid: { flexDirection: "row", gap: 10 },
   statCard: {
-    flex: 1,
     backgroundColor: "#111113",
     borderWidth: 1,
     borderColor: "#1d1d20",
@@ -258,9 +314,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
-  statGreen: {},
-  statCyan: {},
-  statViolet: {},
   statAccentBar: {
     position: "absolute",
     top: 0,

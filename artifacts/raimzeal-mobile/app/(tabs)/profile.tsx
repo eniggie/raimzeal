@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  InteractionManager,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -23,7 +24,8 @@ import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import ShareProgressCard from "@/components/ShareProgressCard";
+import ShareProgressCard, { CardVisibleStats, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
+import CardCustomizationModal, { CardCustomizationResult } from "@/components/CardCustomizationModal";
 
 type Tab = "ovia" | "profile";
 
@@ -105,6 +107,9 @@ export default function ProfileScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
+  const [cardCustomMessage, setCardCustomMessage] = useState("");
 
   const cardRef = useRef<View>(null);
 
@@ -152,14 +157,25 @@ export default function ProfileScreen() {
     setExportLoading(false);
   }
 
-  async function handleShareProgress() {
+  function handleShareProgress() {
+    setShowCustomizeModal(true);
+  }
+
+  async function handleGenerateCard({ visibleStats, customMessage }: CardCustomizationResult) {
+    setCardVisibleStats(visibleStats);
+    setCardCustomMessage(customMessage);
     setShareLoading(true);
-    try {
-      await captureAndShareCard(cardRef);
-    } catch (e) {
-      Alert.alert("Share failed", "Could not generate progress card. Please try again.");
-    }
-    setShareLoading(false);
+    // Wait for all pending interactions and layout to finish before capturing
+    // so the offscreen card has fully re-rendered with the new props.
+    InteractionManager.runAfterInteractions(async () => {
+      try {
+        await captureAndShareCard(cardRef);
+      } catch (e) {
+        Alert.alert("Share failed", "Could not generate progress card. Please try again.");
+      }
+      setShareLoading(false);
+      setShowCustomizeModal(false);
+    });
   }
 
   async function handleLogout() {
@@ -213,8 +229,21 @@ export default function ProfileScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Off-screen progress card for ViewShot capture */}
       <View style={styles.offScreen} pointerEvents="none">
-        <ShareProgressCard ref={cardRef} {...cardProps} />
+        <ShareProgressCard
+          ref={cardRef}
+          {...cardProps}
+          visibleStats={cardVisibleStats}
+          customMessage={cardCustomMessage}
+        />
       </View>
+
+      {/* Card customization modal */}
+      <CardCustomizationModal
+        visible={showCustomizeModal}
+        onClose={() => setShowCustomizeModal(false)}
+        onGenerate={handleGenerateCard}
+        generating={shareLoading}
+      />
 
       {/* Header */}
       <View
