@@ -38,6 +38,7 @@ const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 const STORAGE_KEY_ACTION = "@raimzeal_card_action";
+const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 
 const MAX_PRESETS = 5;
 
@@ -246,6 +247,7 @@ export default function CardCustomizationModal({
   const [customMessage, setCustomMessage] = useState("");
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
+  const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
 
   // Presets
@@ -276,16 +278,18 @@ export default function CardCustomizationModal({
   useEffect(() => {
     if (!visible) return;
     setRestoredFromStorage(false);
+    setBadgeDismissed(false);
     setActivePresetId(null);
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           loadPresets(),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
+          AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
         ]);
 
         setPresets(loadedPresets);
@@ -304,6 +308,7 @@ export default function CardCustomizationModal({
         setCustomMessage(effectiveMessage);
         setSelectedThemeId(effectiveTheme);
         setRestoredFromStorage(hadSavedData);
+        setBadgeDismissed(dismissedFlag === "1");
         const validActions: CardAction[] = ["share", "save", "both"];
         setDefaultAction(
           validActions.includes(savedAction as CardAction) ? (savedAction as CardAction) : null
@@ -313,6 +318,7 @@ export default function CardCustomizationModal({
         setCustomMessage("");
         setSelectedThemeId(DEFAULT_THEME_ID);
         setRestoredFromStorage(false);
+        setBadgeDismissed(false);
         setDefaultAction(null);
       }
     }
@@ -366,17 +372,28 @@ export default function CardCustomizationModal({
     }
   }
 
+  async function handleDismissBadge() {
+    setBadgeDismissed(true);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleResetDefaults() {
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
     setSelectedThemeId(DEFAULT_THEME_ID);
     setRestoredFromStorage(false);
+    setBadgeDismissed(false);
     setActivePresetId(null);
     try {
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
         AsyncStorage.removeItem(STORAGE_KEY_MESSAGE),
         AsyncStorage.removeItem(STORAGE_KEY_THEME),
+        AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED),
       ]);
     } catch {
       // ignore
@@ -532,12 +549,19 @@ export default function CardCustomizationModal({
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
                 Choose what to show on your progress card
               </Text>
-              {restoredFromStorage && (
+              {restoredFromStorage && !badgeDismissed && (
                 <View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
                   <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
                   <Text style={[styles.restoredBadgeText, { color: colors.primary }]}>
                     Restored from last time
                   </Text>
+                  <TouchableOpacity
+                    onPress={handleDismissBadge}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={styles.restoredBadgeDismiss}
+                  >
+                    <Ionicons name="close" size={11} color={colors.primary} />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -1166,6 +1190,11 @@ const styles = StyleSheet.create({
   restoredBadgeText: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
+  },
+  restoredBadgeDismiss: {
+    marginLeft: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   closeBtn: {
     width: 32,
