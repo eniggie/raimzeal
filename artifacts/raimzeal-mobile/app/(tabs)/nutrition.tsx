@@ -128,6 +128,7 @@ const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
+const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
 
 interface CustomFilterPreset {
   id: string;
@@ -536,6 +537,12 @@ export default function NutritionScreen() {
   const filterHintDismissedRef = useRef(false);
   const filterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [reorderHintVisible, setReorderHintVisible] = useState(false);
+  const reorderHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const reorderHintShownRef = useRef(false);
+  const reorderHintDismissedRef = useRef(false);
+  const reorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function dismissFilterHint() {
     if (filterHintTimerRef.current) {
       clearTimeout(filterHintTimerRef.current);
@@ -546,9 +553,52 @@ export default function NutritionScreen() {
     AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
   }
 
+  function dismissReorderHint() {
+    if (reorderHintTimerRef.current) {
+      clearTimeout(reorderHintTimerRef.current);
+      reorderHintTimerRef.current = null;
+    }
+    reorderHintDismissedRef.current = true;
+    Animated.timing(reorderHintFadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setReorderHintVisible(false));
+    AsyncStorage.setItem(REORDER_HINT_STORAGE_KEY, "1").catch(() => {});
+  }
+
+  useEffect(() => {
+    if (favoriteFoods.length < 2) return;
+    if (reorderHintShownRef.current) return;
+    if (reorderHintDismissedRef.current) return;
+    reorderHintShownRef.current = true;
+    AsyncStorage.getItem(REORDER_HINT_STORAGE_KEY).then((val) => {
+      if (val) {
+        reorderHintDismissedRef.current = true;
+        return;
+      }
+      if (reorderHintDismissedRef.current) return;
+      setReorderHintVisible(true);
+      Animated.timing(reorderHintFadeAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start();
+      reorderHintTimerRef.current = setTimeout(() => {
+        dismissReorderHint();
+      }, 4000);
+    }).catch(() => {});
+  }, [favoriteFoods.length]);
+
   useEffect(() => {
     return () => {
       if (filterHintTimerRef.current) clearTimeout(filterHintTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
     };
   }, []);
 
@@ -874,6 +924,7 @@ export default function NutritionScreen() {
   }
 
   function enterReorderMode() {
+    dismissReorderHint();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const items = [...favoriteFoods];
     reorderItemsRef.current = items;
@@ -1471,6 +1522,29 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       ) : null}
                     </View>
+                    {!isReordering && reorderHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: "#f59f0a40",
+                            opacity: reorderHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="hand-left-outline" size={14} color="#f59f0a" />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Long-press a card to reorder
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissReorderHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
                     {isReordering ? (
                       reorderItems.map((food, idx) => (
                         <DraggableFavItem
@@ -3422,6 +3496,21 @@ const styles = StyleSheet.create({
   },
   reorderHint: {
     fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  reorderHintBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  reorderHintBannerText: {
+    flex: 1,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
   tabSwitcher: {
