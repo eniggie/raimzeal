@@ -19,18 +19,25 @@ export interface ScannedFood {
   protein: number;
   carbs: number;
   fat: number;
+  servingLabel?: string;
 }
 
 interface OpenFoodFactsProduct {
   product_name?: string;
+  serving_size?: string;
+  serving_quantity?: number;
   nutriments?: {
     "energy-kcal_100g"?: number;
+    "energy-kcal_serving"?: number;
     "energy-kcal"?: number;
     proteins_100g?: number;
+    proteins_serving?: number;
     proteins?: number;
     carbohydrates_100g?: number;
+    carbohydrates_serving?: number;
     carbohydrates?: number;
     fat_100g?: number;
+    fat_serving?: number;
     fat?: number;
   };
 }
@@ -54,12 +61,39 @@ async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> 
     const name = p.product_name?.trim();
     if (!name) return null;
 
-    const calories = Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0);
-    const protein = Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10;
-    const carbs = Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10;
-    const fat = Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
+    const servingSize = p.serving_size?.trim();
+    const hasAnyServingNutrient =
+      n["energy-kcal_serving"] !== undefined ||
+      n.proteins_serving !== undefined ||
+      n.carbohydrates_serving !== undefined ||
+      n.fat_serving !== undefined;
+    const useServingNutrients = !!(servingSize && hasAnyServingNutrient);
+    const useServingQuantity = !!(servingSize && p.serving_quantity && !hasAnyServingNutrient);
+    const servingLabel = useServingNutrients || useServingQuantity ? servingSize : undefined;
+    const sqFactor = p.serving_quantity ? p.serving_quantity / 100 : 1;
 
-    return { name, calories, protein, carbs, fat };
+    const calories = useServingNutrients
+      ? Math.round(n["energy-kcal_serving"] ?? n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0)
+      : useServingQuantity
+      ? Math.round((n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0) * sqFactor)
+      : Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0);
+    const protein = useServingNutrients
+      ? Math.round((n.proteins_serving ?? n.proteins_100g ?? n.proteins ?? 0) * 10) / 10
+      : useServingQuantity
+      ? Math.round((n.proteins_100g ?? n.proteins ?? 0) * sqFactor * 10) / 10
+      : Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10;
+    const carbs = useServingNutrients
+      ? Math.round((n.carbohydrates_serving ?? n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10
+      : useServingQuantity
+      ? Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * sqFactor * 10) / 10
+      : Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10;
+    const fat = useServingNutrients
+      ? Math.round((n.fat_serving ?? n.fat_100g ?? n.fat ?? 0) * 10) / 10
+      : useServingQuantity
+      ? Math.round((n.fat_100g ?? n.fat ?? 0) * sqFactor * 10) / 10
+      : Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
+
+    return { name, calories, protein, carbs, fat, servingLabel };
   } catch {
     return null;
   }

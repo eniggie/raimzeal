@@ -98,14 +98,20 @@ const EMPTY_MANUAL: ManualForm = { name: "", calories: "", protein: "", carbs: "
 
 interface OFFProduct {
   product_name?: string;
+  serving_size?: string;
+  serving_quantity?: number;
   nutriments?: {
     "energy-kcal_100g"?: number;
+    "energy-kcal_serving"?: number;
     "energy-kcal"?: number;
     proteins_100g?: number;
+    proteins_serving?: number;
     proteins?: number;
     carbohydrates_100g?: number;
+    carbohydrates_serving?: number;
     carbohydrates?: number;
     fat_100g?: number;
+    fat_serving?: number;
     fat?: number;
   };
 }
@@ -118,11 +124,40 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
   const name = p.product_name?.trim();
   if (!name) return null;
   const n = p.nutriments ?? {};
-  const calories = Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0);
-  const protein = Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10;
-  const carbs = Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10;
-  const fat = Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
-  return { name, calories, protein, carbs, fat };
+
+  const servingSize = p.serving_size?.trim();
+  const hasAnyServingNutrient =
+    n["energy-kcal_serving"] !== undefined ||
+    n.proteins_serving !== undefined ||
+    n.carbohydrates_serving !== undefined ||
+    n.fat_serving !== undefined;
+  const useServingNutrients = !!(servingSize && hasAnyServingNutrient);
+  const useServingQuantity = !!(servingSize && p.serving_quantity && !hasAnyServingNutrient);
+  const servingLabel = useServingNutrients || useServingQuantity ? servingSize : undefined;
+  const sqFactor = p.serving_quantity ? p.serving_quantity / 100 : 1;
+
+  const calories = useServingNutrients
+    ? Math.round(n["energy-kcal_serving"] ?? n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0)
+    : useServingQuantity
+    ? Math.round((n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0) * sqFactor)
+    : Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0);
+  const protein = useServingNutrients
+    ? Math.round((n.proteins_serving ?? n.proteins_100g ?? n.proteins ?? 0) * 10) / 10
+    : useServingQuantity
+    ? Math.round((n.proteins_100g ?? n.proteins ?? 0) * sqFactor * 10) / 10
+    : Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10;
+  const carbs = useServingNutrients
+    ? Math.round((n.carbohydrates_serving ?? n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10
+    : useServingQuantity
+    ? Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * sqFactor * 10) / 10
+    : Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10;
+  const fat = useServingNutrients
+    ? Math.round((n.fat_serving ?? n.fat_100g ?? n.fat ?? 0) * 10) / 10
+    : useServingQuantity
+    ? Math.round((n.fat_100g ?? n.fat ?? 0) * sqFactor * 10) / 10
+    : Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
+
+  return { name, calories, protein, carbs, fat, servingLabel };
 }
 
 type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
@@ -157,6 +192,9 @@ export default function NutritionScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
+  const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
+  const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
+  const [servings, setServings] = useState(1);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
@@ -194,7 +232,7 @@ export default function NutritionScreen() {
         search_terms: trimmed,
         json: "1",
         page_size: PAGE_SIZE.toString(),
-        fields: "product_name,nutriments",
+        fields: "product_name,nutriments,serving_size,serving_quantity",
       });
       const res = await fetch(
         `https://world.openfoodfacts.org/cgi/search.pl?${params.toString()}`,
@@ -269,6 +307,9 @@ export default function NutritionScreen() {
   function handleAddFood(food: Omit<MealLog, "id" | "date">) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFood(food);
+    setSelectedFoodServingLabel(undefined);
+    setSelectedFoodIsApiResult(false);
+    setServings(1);
     setSelectedMeal(food.mealType);
     setShowModal(true);
   }
@@ -276,6 +317,9 @@ export default function NutritionScreen() {
   function handleScannedFood(food: ScannedFood) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelectedFood({ ...food, mealType: "snack" });
+    setSelectedFoodServingLabel(food.servingLabel);
+    setSelectedFoodIsApiResult(true);
+    setServings(1);
     setSelectedMeal("snack");
     setShowModal(true);
   }
@@ -294,10 +338,10 @@ export default function NutritionScreen() {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
       name,
-      calories,
-      protein,
-      carbs,
-      fat,
+      calories: Math.round(calories * servings),
+      protein: Math.round(protein * servings * 10) / 10,
+      carbs: Math.round(carbs * servings * 10) / 10,
+      fat: Math.round(fat * servings * 10) / 10,
       mealType: selectedMeal,
     };
     addMealLog(meal);
@@ -860,12 +904,67 @@ export default function NutritionScreen() {
               {selectedFood?.name}
             </Text>
             {selectedFood && (
-              <View style={styles.modalNutrients}>
-                <NutrientChip label="Calories" value={`${selectedFood.calories}`} color={colors.primary} />
-                <NutrientChip label="Protein" value={`${selectedFood.protein}g`} color={colors.secondary} />
-                <NutrientChip label="Carbs" value={`${selectedFood.carbs}g`} color={colors.warning} />
-                <NutrientChip label="Fat" value={`${selectedFood.fat}g`} color={colors.accent} />
-              </View>
+              <>
+                <Text style={[styles.servingBadge, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
+                  {selectedFoodServingLabel
+                    ? `per ${selectedFoodServingLabel}`
+                    : selectedFoodIsApiResult
+                    ? "per 100g"
+                    : "per serving"}
+                </Text>
+                <View style={styles.servingsRow}>
+                  <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
+                  <View style={styles.servingsControl}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (servings > 0.5) {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setServings((s) => Math.max(0.5, Math.round((s - 0.5) * 10) / 10));
+                        }
+                      }}
+                      style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="remove" size={16} color={servings <= 0.5 ? colors.mutedForeground : colors.foreground} />
+                    </TouchableOpacity>
+                    <Text style={[styles.servingsValue, { color: colors.foreground }]}>
+                      {Number.isInteger(servings) ? servings : servings.toFixed(1)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setServings((s) => Math.round((s + 0.5) * 10) / 10);
+                      }}
+                      style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="add" size={16} color={colors.foreground} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.modalNutrients}>
+                  <NutrientChip
+                    label="Calories"
+                    value={`${Math.round(selectedFood.calories * servings)}`}
+                    color={colors.primary}
+                  />
+                  <NutrientChip
+                    label="Protein"
+                    value={`${Math.round(selectedFood.protein * servings * 10) / 10}g`}
+                    color={colors.secondary}
+                  />
+                  <NutrientChip
+                    label="Carbs"
+                    value={`${Math.round(selectedFood.carbs * servings * 10) / 10}g`}
+                    color={colors.warning}
+                  />
+                  <NutrientChip
+                    label="Fat"
+                    value={`${Math.round(selectedFood.fat * servings * 10) / 10}g`}
+                    color={colors.accent}
+                  />
+                </View>
+              </>
             )}
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Add to meal
@@ -1200,6 +1299,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
+  },
+  servingBadge: {
+    alignSelf: "flex-start",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  servingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  servingsLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  servingsControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  servingsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  servingsValue: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 28,
+    textAlign: "center",
   },
   modalNutrients: {
     flexDirection: "row",
