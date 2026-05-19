@@ -24,7 +24,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import ShareProgressCard, { CardVisibleStats, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
+import ShareProgressCard, { CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardCustomizationResult } from "@/components/CardCustomizationModal";
 
 type Tab = "ovia" | "profile";
@@ -149,6 +149,7 @@ export default function ProfileScreen() {
   const [cardAction, setCardAction] = useState<"share" | "save">("share");
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
+  const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
 
   const cardRef = useRef<View>(null);
 
@@ -257,9 +258,10 @@ export default function ProfileScreen() {
     setShowCustomizeModal(true);
   }
 
-  async function handleGenerateCard({ visibleStats, customMessage }: CardCustomizationResult) {
+  async function handleGenerateCard({ visibleStats, customMessage, themeId }: CardCustomizationResult) {
     setCardVisibleStats(visibleStats);
     setCardCustomMessage(customMessage);
+    setCardThemeId(themeId);
     const isSave = cardAction === "save";
     if (isSave) {
       setSaveLoading(true);
@@ -346,6 +348,7 @@ export default function ProfileScreen() {
           {...cardProps}
           visibleStats={cardVisibleStats}
           customMessage={cardCustomMessage}
+          themeId={cardThemeId}
         />
       </View>
 

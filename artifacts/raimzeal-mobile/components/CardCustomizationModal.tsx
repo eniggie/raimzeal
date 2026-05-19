@@ -16,14 +16,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import ShareProgressCard, {
+  CARD_THEMES,
   CARD_WIDTH,
+  CardThemeId,
   CardVisibleStats,
+  DEFAULT_THEME_ID,
   DEFAULT_VISIBLE_STATS,
   ShareProgressCardProps,
 } from "@/components/ShareProgressCard";
 
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
+const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 
 interface StatToggleConfig {
   key: keyof CardVisibleStats;
@@ -74,9 +78,10 @@ const STAT_TOGGLES: StatToggleConfig[] = [
 export interface CardCustomizationResult {
   visibleStats: CardVisibleStats;
   customMessage: string;
+  themeId: CardThemeId;
 }
 
-export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage">;
+export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
 
 interface Props {
   visible: boolean;
@@ -101,14 +106,16 @@ export default function CardCustomizationModal({
     ...DEFAULT_VISIBLE_STATS,
   });
   const [customMessage, setCustomMessage] = useState("");
+  const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
 
   useEffect(() => {
     if (!visible) return;
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
+          AsyncStorage.getItem(STORAGE_KEY_THEME),
         ]);
         if (savedStats) {
           const parsed = JSON.parse(savedStats) as Partial<CardVisibleStats>;
@@ -117,9 +124,11 @@ export default function CardCustomizationModal({
           setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         }
         setCustomMessage(savedMessage ?? "");
+        setSelectedThemeId((savedTheme as CardThemeId) ?? DEFAULT_THEME_ID);
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
+        setSelectedThemeId(DEFAULT_THEME_ID);
       }
     }
     loadSaved();
@@ -129,11 +138,12 @@ export default function CardCustomizationModal({
     setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  async function saveToStorage(stats: CardVisibleStats, message: string) {
+  async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId) {
     try {
       await Promise.all([
         AsyncStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)),
         AsyncStorage.setItem(STORAGE_KEY_MESSAGE, message),
+        AsyncStorage.setItem(STORAGE_KEY_THEME, themeId),
       ]);
     } catch {
       // ignore storage errors
@@ -141,17 +151,19 @@ export default function CardCustomizationModal({
   }
 
   async function handleGenerate() {
-    await saveToStorage(visibleStats, customMessage.trim());
-    onGenerate({ visibleStats, customMessage: customMessage.trim() });
+    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId);
+    onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId });
   }
 
   async function handleResetDefaults() {
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
+    setSelectedThemeId(DEFAULT_THEME_ID);
     try {
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
         AsyncStorage.removeItem(STORAGE_KEY_MESSAGE),
+        AsyncStorage.removeItem(STORAGE_KEY_THEME),
       ]);
     } catch {
       // ignore
@@ -246,8 +258,51 @@ export default function CardCustomizationModal({
                   {...cardPreviewData}
                   visibleStats={visibleStats}
                   customMessage={customMessage.trim()}
+                  themeId={selectedThemeId}
                 />
               </View>
+            </View>
+
+            {/* Color theme picker */}
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              COLOR THEME
+            </Text>
+            <View style={styles.themeRow}>
+              {CARD_THEMES.map((theme) => {
+                const isSelected = selectedThemeId === theme.id;
+                return (
+                  <TouchableOpacity
+                    key={theme.id}
+                    onPress={() => setSelectedThemeId(theme.id)}
+                    activeOpacity={0.75}
+                    style={styles.themeItem}
+                  >
+                    <View
+                      style={[
+                        styles.themeSwatch,
+                        { backgroundColor: theme.accent },
+                        isSelected && styles.themeSwatchSelected,
+                        isSelected && { borderColor: theme.accent },
+                      ]}
+                    >
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.themeLabel,
+                        {
+                          color: isSelected ? colors.foreground : colors.mutedForeground,
+                          fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
+                        },
+                      ]}
+                    >
+                      {theme.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* Stat toggles */}
@@ -471,6 +526,35 @@ const styles = StyleSheet.create({
   previewScaler: {
     transformOrigin: "top left",
   },
+  // Theme picker
+  themeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
+  themeItem: {
+    alignItems: "center",
+    gap: 6,
+    minWidth: 52,
+  },
+  themeSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "transparent",
+  },
+  themeSwatchSelected: {
+    borderWidth: 3,
+  },
+  themeLabel: {
+    fontSize: 11,
+    textAlign: "center",
+  },
+  // Stat toggles
   togglesCard: {
     borderRadius: 14,
     borderWidth: 1,
