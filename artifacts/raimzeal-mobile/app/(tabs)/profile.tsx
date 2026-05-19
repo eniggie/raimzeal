@@ -142,7 +142,7 @@ export default function ProfileScreen() {
     favoriteFoods,
   } = useFitness();
   const { signOut } = useAuth();
-  const { cameraRollStatus, updateCameraRollStatus } = usePermissions();
+  const { cameraRollStatus, requestCameraRollPermission, updateCameraRollStatus } = usePermissions();
 
   const [activeTab, setActiveTab] = useState<Tab>("ovia");
   const [chatInput, setChatInput] = useState("");
@@ -397,6 +397,7 @@ export default function ProfileScreen() {
         const permissionOpts = {
           cachedStatus: cameraRollStatus,
           onStatusChange: updateCameraRollStatus,
+          requestPermission: requestCameraRollPermission,
         };
         if (action === "both") {
           const result: CaptureShareAndSaveResult = await captureShareAndSaveCard(cardRef, permissionOpts);

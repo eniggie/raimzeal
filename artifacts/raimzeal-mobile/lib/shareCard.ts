@@ -11,11 +11,17 @@ export interface PermissionOptions {
    * The cached permission status from PermissionsContext.
    * - "granted"     → skip the system prompt entirely.
    * - "denied"      → show a "Go to Settings" alert and abort.
-   * - "undetermined" / null → request normally and report the result via onStatusChange.
+   * - "undetermined" / null → call requestPermission (if provided) and report the result via onStatusChange.
    */
   cachedStatus?: CameraRollPermissionStatus | null;
   /** Called with the newly-determined status so callers can update their cache. */
   onStatusChange?: (status: CameraRollPermissionStatus) => void;
+  /**
+   * Centralized permission request function from PermissionsContext.
+   * When provided, it is called instead of the raw OS prompt so that the
+   * in-app pre-prompt explanation is always shown to the user.
+   */
+  requestPermission?: () => Promise<CameraRollPermissionStatus>;
 }
 
 function showPermissionDeniedAlert() {
@@ -43,9 +49,17 @@ async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
     return false;
   }
 
-  // undetermined or no cache — request from the OS
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  const resolved = status as CameraRollPermissionStatus;
+  // undetermined or no cache — use the centralized context request (which shows
+  // the in-app pre-prompt) if available, otherwise fall back to a raw OS prompt.
+  let resolved: CameraRollPermissionStatus;
+  if (opts?.requestPermission) {
+    resolved = await opts.requestPermission();
+    // "undetermined" means the user dismissed the pre-prompt — skip silently.
+    if (resolved === "undetermined") return false;
+  } else {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    resolved = status as CameraRollPermissionStatus;
+  }
   opts?.onStatusChange?.(resolved);
 
   if (resolved !== "granted") {
