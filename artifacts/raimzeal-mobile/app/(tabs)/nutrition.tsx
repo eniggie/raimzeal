@@ -513,6 +513,27 @@ export default function NutritionScreen() {
       .filter(({ logs }) => logs.length > 0);
   }, [historyDays, historyDateRange, historyMealFilter]);
 
+  const weeklyAvgSummary = React.useMemo(() => {
+    const count = filteredHistoryDays.length;
+    if (count === 0) return null;
+    const sum = filteredHistoryDays.reduce(
+      (acc, { totals }) => ({
+        calories: acc.calories + totals.calories,
+        protein: acc.protein + totals.protein,
+        carbs: acc.carbs + totals.carbs,
+        fat: acc.fat + totals.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+    return {
+      days: count,
+      avgCalories: Math.round(sum.calories / count),
+      avgProtein: Math.round(sum.protein / count),
+      avgCarbs: Math.round(sum.carbs / count),
+      avgFat: Math.round(sum.fat / count),
+    };
+  }, [filteredHistoryDays]);
+
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
 
   type TrendMetric = "calories" | "protein" | "carbs" | "fat";
@@ -2009,6 +2030,30 @@ export default function NutritionScreen() {
                       .filter(Boolean)
                       .join(" · ")}
                   </Text>
+                )}
+
+                {filteredHistoryDays.length >= 2 && weeklyAvgSummary && (
+                  <View style={[styles.weeklyAvgCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.weeklyAvgHeader}>
+                      <Text style={[styles.weeklyAvgTitle, { color: colors.foreground }]}>Daily Averages</Text>
+                      <Text style={[styles.weeklyAvgSubtitle, { color: colors.mutedForeground }]}>
+                        across {weeklyAvgSummary.days} days
+                      </Text>
+                    </View>
+                    <View style={[styles.weeklyAvgCalRow, { borderBottomColor: colors.border }]}>
+                      <View style={[styles.weeklyAvgCalBadge, { backgroundColor: colors.primary + "18" }]}>
+                        <Ionicons name="flame-outline" size={13} color={colors.primary} />
+                        <Text style={[styles.weeklyAvgCalText, { color: colors.primary }]}>
+                          {weeklyAvgSummary.avgCalories} / {CALORIE_GOAL} kcal avg/day
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.weeklyAvgMacroRow}>
+                      <HistoryMacroChip label="P" value={weeklyAvgSummary.avgProtein} goal={PROTEIN_GOAL} color={colors.secondary} />
+                      <HistoryMacroChip label="C" value={weeklyAvgSummary.avgCarbs} goal={CARBS_GOAL} color={colors.warning} />
+                      <HistoryMacroChip label="F" value={weeklyAvgSummary.avgFat} goal={FAT_GOAL} color={colors.accent} />
+                    </View>
+                  </View>
                 )}
 
                 {filteredHistoryDays.length === 0 ? (
@@ -3884,6 +3929,48 @@ const styles = StyleSheet.create({
   trendMetricPillText: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
+  },
+  weeklyAvgCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 10,
+  },
+  weeklyAvgHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 4,
+  },
+  weeklyAvgTitle: {
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  weeklyAvgSubtitle: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  weeklyAvgCalRow: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 10,
+  },
+  weeklyAvgCalBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  weeklyAvgCalText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  weeklyAvgMacroRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
   },
   historyDay: {
     gap: 0,
