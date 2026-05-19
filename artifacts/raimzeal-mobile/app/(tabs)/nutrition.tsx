@@ -1426,27 +1426,11 @@ export default function NutritionScreen() {
                                 </Text>
                               </View>
                               {mealEntries.map((log) => (
-                                <TouchableOpacity
+                                <HistoryFoodRow
                                   key={log.id}
-                                  activeOpacity={0.75}
-                                  onPress={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
-                                  style={[styles.historyFoodRow, { borderBottomColor: colors.border }]}
-                                >
-                                  <View style={styles.historyFoodInfo}>
-                                    <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
-                                      {log.name}
-                                    </Text>
-                                    <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
-                                      P {log.protein}g · C {log.carbs}g · F {log.fat}g
-                                    </Text>
-                                  </View>
-                                  <View style={styles.historyFoodRight}>
-                                    <Text style={[styles.historyFoodCal, { color: colors.primary }]}>
-                                      {log.calories}
-                                    </Text>
-                                    <Ionicons name="add-circle-outline" size={18} color={colors.mutedForeground} />
-                                  </View>
-                                </TouchableOpacity>
+                                  log={log}
+                                  onAddFood={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
+                                />
                               ))}
                             </View>
                           );
@@ -2130,6 +2114,75 @@ function MacroBar({
         </View>
       </View>
     </View>
+  );
+}
+
+function HistoryFoodRow({ log, onAddFood }: { log: MealLog; onAddFood: () => void }) {
+  const colors = useColors();
+  const { removeMealLog } = useFitness();
+  const swipeableRef = useRef<Swipeable>(null);
+
+  function handleDelete() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    swipeableRef.current?.close();
+    Alert.alert(
+      "Delete meal?",
+      `Remove "${log.name}" from this day's log?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            removeMealLog(log.id);
+          },
+        },
+      ]
+    );
+  }
+
+  function renderRightActions() {
+    return (
+      <TouchableOpacity
+        onPress={handleDelete}
+        activeOpacity={0.85}
+        style={[styles.deleteAction, { backgroundColor: "#ef4444" }]}
+      >
+        <Ionicons name="trash-outline" size={20} color="#fff" />
+        <Text style={styles.deleteActionText}>Delete</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={60}
+      overshootRight={false}
+    >
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onAddFood}
+        style={[styles.historyFoodRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+      >
+        <View style={styles.historyFoodInfo}>
+          <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
+            {log.name}
+          </Text>
+          <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
+            P {log.protein}g · C {log.carbs}g · F {log.fat}g
+          </Text>
+        </View>
+        <View style={styles.historyFoodRight}>
+          <Text style={[styles.historyFoodCal, { color: colors.primary }]}>
+            {log.calories}
+          </Text>
+          <Ionicons name="add-circle-outline" size={18} color={colors.mutedForeground} />
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
   );
 }
 
