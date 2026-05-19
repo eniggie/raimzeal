@@ -199,6 +199,30 @@ export default function NutritionScreen() {
     return result;
   }, [mealLogs, favoriteFoods]);
 
+  const historyDays = React.useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const byDate: Record<string, MealLog[]> = {};
+    for (const log of mealLogs) {
+      if (log.date === today) continue;
+      if (!byDate[log.date]) byDate[log.date] = [];
+      byDate[log.date].push(log);
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => (a < b ? 1 : -1))
+      .map(([date, logs]) => {
+        const totals = logs.reduce(
+          (acc, m) => ({
+            calories: acc.calories + m.calories,
+            protein: acc.protein + m.protein,
+            carbs: acc.carbs + m.carbs,
+            fat: acc.fat + m.fat,
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+        return { date, logs, totals };
+      });
+  }, [mealLogs]);
+
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -209,6 +233,7 @@ export default function NutritionScreen() {
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
+  const [activeTab, setActiveTab] = useState<"today" | "history">("today");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<FoodListItem[]>([]);
@@ -380,7 +405,7 @@ export default function NutritionScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
-        data={listData}
+        data={activeTab === "today" ? listData : []}
         keyExtractor={(item, i) => `${item._kind}-${item.name}-${i}`}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -391,27 +416,74 @@ export default function NutritionScreen() {
                 Nutrition
               </Text>
               <View style={styles.headerActions}>
-                <Text style={[styles.headerDate, { color: colors.mutedForeground }]}>
-                  Today
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setShowScanner(true);
-                  }}
-                  style={[styles.scanBtn, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
-                  <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
-                    Scan
-                  </Text>
-                </TouchableOpacity>
+                <View style={[styles.tabSwitcher, { backgroundColor: colors.muted }]}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setActiveTab("today");
+                    }}
+                    style={[
+                      styles.tabBtn,
+                      activeTab === "today" && { backgroundColor: colors.card },
+                    ]}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.tabBtnText,
+                        {
+                          color: activeTab === "today" ? colors.foreground : colors.mutedForeground,
+                          fontFamily: activeTab === "today" ? "Inter_600SemiBold" : "Inter_400Regular",
+                        },
+                      ]}
+                    >
+                      Today
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setActiveTab("history");
+                    }}
+                    style={[
+                      styles.tabBtn,
+                      activeTab === "history" && { backgroundColor: colors.card },
+                    ]}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.tabBtnText,
+                        {
+                          color: activeTab === "history" ? colors.foreground : colors.mutedForeground,
+                          fontFamily: activeTab === "history" ? "Inter_600SemiBold" : "Inter_400Regular",
+                        },
+                      ]}
+                    >
+                      History
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {activeTab === "today" && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowScanner(true);
+                    }}
+                    style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
+                    <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
+                      Scan
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
-            {/* Search bar */}
-            <View
+            {/* Search bar — only on Today tab */}
+            {activeTab === "today" && <View
               style={[
                 styles.searchBar,
                 { backgroundColor: colors.muted, borderColor: isSearching ? colors.primary : colors.border },
@@ -447,10 +519,10 @@ export default function NutritionScreen() {
                   <Ionicons name="close-circle" size={17} color={colors.mutedForeground} />
                 </TouchableOpacity>
               )}
-            </View>
+            </View>}
 
-            {/* Filter chips — shown while searching */}
-            {isSearching && (
+            {/* Filter chips — shown while searching on Today tab */}
+            {activeTab === "today" && isSearching && (
               <View style={styles.filterRow}>
                 <ScrollView
                   horizontal
@@ -520,7 +592,7 @@ export default function NutritionScreen() {
             )}
 
             {/* Search empty state */}
-            {isSearching && searchDone && !searchLoading && filteredSearchResults.length === 0 && (
+            {activeTab === "today" && isSearching && searchDone && !searchLoading && filteredSearchResults.length === 0 && (
               <View style={styles.searchEmpty}>
                 <Ionicons
                   name={activeFilters.size > 0 ? "options-outline" : "search-outline"}
@@ -546,8 +618,8 @@ export default function NutritionScreen() {
               </View>
             )}
 
-            {/* Normal content — only shown when not searching */}
-            {!isSearching && (
+            {/* Normal content — only shown when not searching on Today tab */}
+            {activeTab === "today" && !isSearching && (
               <>
                 {/* Macro Summary */}
                 <GlassCard style={styles.macroCard}>
@@ -717,8 +789,100 @@ export default function NutritionScreen() {
               </>
             )}
 
+            {/* History view — shown when History tab is active */}
+            {activeTab === "history" && (
+              <>
+                {historyDays.length === 0 ? (
+                  <View style={styles.historyEmpty}>
+                    <Ionicons name="calendar-outline" size={44} color={colors.mutedForeground} />
+                    <Text style={[styles.historyEmptyTitle, { color: colors.foreground }]}>
+                      No past logs yet
+                    </Text>
+                    <Text style={[styles.historyEmptyText, { color: colors.mutedForeground }]}>
+                      Meals you log will appear here day by day
+                    </Text>
+                  </View>
+                ) : (
+                  historyDays.map(({ date, logs, totals }) => {
+                    const d = new Date(date + "T12:00:00");
+                    const today = new Date();
+                    const yesterday = new Date(Date.now() - 86400000);
+                    const isYesterday = d.toDateString() === yesterday.toDateString();
+                    const label = isYesterday
+                      ? "Yesterday"
+                      : d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                    return (
+                      <View key={date} style={styles.historyDay}>
+                        <View style={[styles.historyDayHeader, { borderBottomColor: colors.border }]}>
+                          <View style={styles.historyDayHeaderLeft}>
+                            <Text style={[styles.historyDayLabel, { color: colors.foreground }]}>
+                              {label}
+                            </Text>
+                            <Text style={[styles.historyDayDate, { color: colors.mutedForeground }]}>
+                              {isYesterday ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
+                            </Text>
+                          </View>
+                          <View style={[styles.historyDayBadge, { backgroundColor: colors.primary + "18" }]}>
+                            <Text style={[styles.historyDayBadgeText, { color: colors.primary }]}>
+                              {Math.round(totals.calories)} kcal
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={[styles.historyMacroRow, { borderBottomColor: colors.border }]}>
+                          <HistoryMacroChip label="P" value={Math.round(totals.protein)} color={colors.secondary} />
+                          <HistoryMacroChip label="C" value={Math.round(totals.carbs)} color={colors.warning} />
+                          <HistoryMacroChip label="F" value={Math.round(totals.fat)} color={colors.accent} />
+                        </View>
+                        {MEALS.map((meal) => {
+                          const mealEntries = logs.filter((m) => m.mealType === meal);
+                          if (mealEntries.length === 0) return null;
+                          const mealCal = mealEntries.reduce((s, m) => s + m.calories, 0);
+                          return (
+                            <View key={meal} style={styles.historyMealSection}>
+                              <View style={styles.historyMealHeader}>
+                                <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[meal] }]} />
+                                <Text style={[styles.historyMealTitle, { color: colors.foreground }]}>
+                                  {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                                </Text>
+                                <Text style={[styles.mealCal, { color: colors.mutedForeground }]}>
+                                  {mealCal} kcal
+                                </Text>
+                              </View>
+                              {mealEntries.map((log) => (
+                                <TouchableOpacity
+                                  key={log.id}
+                                  activeOpacity={0.75}
+                                  onPress={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
+                                  style={[styles.historyFoodRow, { borderBottomColor: colors.border }]}
+                                >
+                                  <View style={styles.historyFoodInfo}>
+                                    <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
+                                      {log.name}
+                                    </Text>
+                                    <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
+                                      P {log.protein}g · C {log.carbs}g · F {log.fat}g
+                                    </Text>
+                                  </View>
+                                  <View style={styles.historyFoodRight}>
+                                    <Text style={[styles.historyFoodCal, { color: colors.primary }]}>
+                                      {log.calories}
+                                    </Text>
+                                    <Ionicons name="add-circle-outline" size={18} color={colors.mutedForeground} />
+                                  </View>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  })
+                )}
+              </>
+            )}
+
             {/* Search results header */}
-            {isSearching && filteredSearchResults.length > 0 && (
+            {activeTab === "today" && isSearching && filteredSearchResults.length > 0 && (
               <View style={styles.resultsHeader}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                   Results
@@ -1232,6 +1396,24 @@ function NutritionRow({ log }: { log: MealLog }) {
   );
 }
 
+function HistoryMacroChip({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  const colors = useColors();
+  return (
+    <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
+      <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.historyMacroChipValue, { color }]}>{value}g</Text>
+    </View>
+  );
+}
+
 function NutrientChip({
   label,
   value,
@@ -1552,5 +1734,133 @@ const styles = StyleSheet.create({
   },
   starBtn: {
     padding: 2,
+  },
+  tabSwitcher: {
+    flexDirection: "row",
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  tabBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  tabBtnText: {
+    fontSize: 13,
+  },
+  historyEmpty: {
+    alignItems: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  historyEmptyTitle: {
+    fontSize: 17,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  historyEmptyText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    maxWidth: 240,
+  },
+  historyDay: {
+    gap: 0,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  historyDayHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  historyDayHeaderLeft: {
+    gap: 1,
+  },
+  historyDayLabel: {
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  historyDayDate: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  historyDayBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  historyDayBadgeText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  historyMacroRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  historyMacroChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  historyMacroChipLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  historyMacroChipValue: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  historyMealSection: {
+    gap: 0,
+  },
+  historyMealHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  historyMealTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  historyFoodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 9,
+    paddingLeft: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  historyFoodInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  historyFoodName: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  historyFoodMacros: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  historyFoodRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  historyFoodCal: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 });
