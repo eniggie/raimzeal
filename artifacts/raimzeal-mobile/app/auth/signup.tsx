@@ -40,6 +40,8 @@ async function postSignupEmails(email: string, name: string): Promise<void> {
   ]);
 }
 
+const MIN_AGE = 18;
+
 export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -48,15 +50,37 @@ export default function SignupScreen() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("");
+  const [age, setAge] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const parsedAge = parseInt(age, 10);
+  const ageIsValid = !isNaN(parsedAge) && parsedAge > 0 && parsedAge <= 120;
+  const ageBlocked = ageIsValid && parsedAge < MIN_AGE;
+
   async function handleSignup() {
     if (!name.trim() || !email.trim() || !password || !confirm) {
-      Alert.alert("Missing fields", "Please fill in all required fields.");
+      Alert.alert("Missing fields", "Please fill in your name, email, and password.");
+      return;
+    }
+    if (!age.trim()) {
+      Alert.alert("Age required", "Please enter your age to continue.");
+      return;
+    }
+    if (!ageIsValid) {
+      Alert.alert("Invalid age", "Please enter a valid age.");
+      return;
+    }
+    if (parsedAge < MIN_AGE) {
+      Alert.alert(
+        "Age Restriction",
+        `RAIMZEAL is only available to users aged ${MIN_AGE} and older. You must be at least 18 years old to create an account.`
+      );
       return;
     }
     if (password !== confirm) {
@@ -82,7 +106,6 @@ export default function SignupScreen() {
       setLoading(false);
       Alert.alert("Sign up failed", error);
     } else {
-      // Fire welcome email + digest subscription in background — don't block navigation
       postSignupEmails(cleanEmail, cleanName).catch(() => {});
       setLoading(false);
       router.push({ pathname: "/auth/verify-email", params: { email: cleanEmail } });
@@ -110,6 +133,15 @@ export default function SignupScreen() {
           Start your transformation today — it's free
         </Text>
 
+        {/* Age Policy Banner */}
+        <View style={[styles.policyBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+          <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+          <Text style={[styles.policyText, { color: colors.mutedForeground }]}>
+            <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>18+ only. </Text>
+            RAIMZEAL is a health & fitness platform available exclusively to adults aged 18 and over.
+          </Text>
+        </View>
+
         <View style={styles.form}>
           <InputField
             label="Full name"
@@ -126,6 +158,68 @@ export default function SignupScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             colors={colors}
+          />
+          <InputField
+            label="Phone number"
+            value={phone}
+            onChange={setPhone}
+            placeholder="+1 555 000 0000"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            colors={colors}
+            optional
+          />
+
+          {/* Age field with validation */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Age</Text>
+            <View
+              style={[
+                styles.inputWrap,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: ageBlocked
+                    ? colors.destructive + "80"
+                    : age && ageIsValid
+                    ? colors.primary + "60"
+                    : colors.border,
+                },
+              ]}
+            >
+              <TextInput
+                style={[styles.input, { color: colors.foreground, flex: 1 }]}
+                value={age}
+                onChangeText={(v) => setAge(v.replace(/[^0-9]/g, ""))}
+                placeholder="e.g. 25"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
+              {ageBlocked && (
+                <Ionicons name="close-circle" size={20} color={colors.destructive} />
+              )}
+              {age && ageIsValid && !ageBlocked && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </View>
+            {ageBlocked && (
+              <View style={[styles.ageError, { backgroundColor: colors.destructive + "12", borderColor: colors.destructive + "30" }]}>
+                <Ionicons name="alert-circle-outline" size={14} color={colors.destructive} />
+                <Text style={[styles.ageErrorText, { color: colors.destructive }]}>
+                  You must be at least 18 years old to use RAIMZEAL.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <InputField
+            label="Country / Location"
+            value={country}
+            onChange={setCountry}
+            placeholder="e.g. United States"
+            autoCapitalize="words"
+            colors={colors}
+            optional
           />
 
           <View style={styles.field}>
@@ -208,7 +302,7 @@ export default function SignupScreen() {
                 >
                   Health Disclaimer
                 </Text>
-                . I understand this app is not a substitute for medical advice.
+                . I confirm I am 18 years of age or older and that this app is not a substitute for medical advice.
               </Text>
             </View>
           </View>
@@ -233,13 +327,13 @@ export default function SignupScreen() {
               styles.submitBtn,
               {
                 backgroundColor:
-                  loading || !termsAccepted
+                  loading || !termsAccepted || ageBlocked
                     ? colors.primary + "60"
                     : colors.primary,
               },
             ]}
             onPress={handleSignup}
-            disabled={loading || !termsAccepted}
+            disabled={loading || !termsAccepted || ageBlocked}
           >
             {loading ? (
               <ActivityIndicator color={colors.primaryForeground} />
@@ -272,6 +366,7 @@ function InputField({
   keyboardType,
   autoCapitalize,
   secureTextEntry,
+  optional,
   colors,
 }: {
   label: string;
@@ -281,11 +376,19 @@ function InputField({
   keyboardType?: "default" | "email-address" | "numeric" | "phone-pad";
   autoCapitalize?: "none" | "words" | "sentences";
   secureTextEntry?: boolean;
+  optional?: boolean;
   colors: ReturnType<typeof useColors>;
 }) {
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
+      <View style={styles.labelRow}>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
+        {optional && (
+          <View style={[styles.optionalBadge, { backgroundColor: colors.muted }]}>
+            <Text style={[styles.optionalText, { color: colors.mutedForeground }]}>optional</Text>
+          </View>
+        )}
+      </View>
       <View
         style={[
           styles.inputWrap,
@@ -312,16 +415,22 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 24, gap: 0 },
   back: { marginBottom: 24, alignSelf: "flex-start" },
   title: { fontSize: 30, fontFamily: "SpaceGrotesk_700Bold", marginBottom: 8 },
-  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", marginBottom: 32 },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", marginBottom: 16 },
+  policyBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  policyText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
   form: { gap: 14 },
   field: { gap: 6 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  optionalBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
+  optionalBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 },
   optionalText: { fontSize: 10, fontFamily: "Inter_400Regular" },
   inputWrap: {
     borderRadius: 12,
@@ -332,10 +441,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  input: { fontSize: 15, fontFamily: "Inter_400Regular" },
-  fieldHint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   pwRow: { flexDirection: "row", alignItems: "center", flex: 1 },
   eyeBtn: { padding: 4 },
+  ageError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  ageErrorText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
   termsBox: {
     flexDirection: "row",
     alignItems: "flex-start",

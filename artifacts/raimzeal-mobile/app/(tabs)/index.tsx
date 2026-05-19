@@ -239,7 +239,7 @@ export default function HomeScreen() {
             bg={colors.accent + "20"}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/profile");
+              router.navigate("/(tabs)/ovia");
             }}
           />
           <QuickAction
@@ -250,6 +250,38 @@ export default function HomeScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/body-measurements");
+            }}
+          />
+        </View>
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="people-outline"
+            label="Community"
+            color="#22c55e"
+            bg="#22c55e20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/community");
+            }}
+          />
+          <QuickAction
+            icon="list-outline"
+            label="Programs"
+            color="#3b82f6"
+            bg="#3b82f620"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/workouts");
+            }}
+          />
+          <QuickAction
+            icon="bar-chart-outline"
+            label="Progress"
+            color="#a855f7"
+            bg="#a855f720"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/progress");
             }}
           />
         </View>

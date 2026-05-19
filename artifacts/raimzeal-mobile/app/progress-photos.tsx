@@ -80,20 +80,29 @@ export default function ProgressPhotosScreen() {
     }
   }
 
-  async function handleAddPhoto() {
-    if (Platform.OS === "web") {
-      Alert.alert("Progress Photos", "Photo upload is available on the mobile app. Download RAIMZEAL to track your visual transformation.");
-      return;
-    }
+  async function addPhotoFromAsset(uri: string) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const category = await pickCategory();
+    if (!category) return;
+    const newPhoto: ProgressPhoto = {
+      id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      uri,
+      date: new Date().toISOString(),
+      category,
+    };
+    await savePhotos([newPhoto, ...photos]);
+  }
 
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "RAIMZEAL needs access to your photo library to add progress photos.",
-        [{ text: "OK" }]
-      );
-      return;
+  async function handleAddPhoto() {
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "RAIMZEAL needs access to your photo library to add progress photos."
+        );
+        return;
+      }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -104,25 +113,12 @@ export default function ProgressPhotosScreen() {
     });
 
     if (result.canceled || !result.assets[0]) return;
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    const category = await pickCategory();
-    if (!category) return;
-
-    const newPhoto: ProgressPhoto = {
-      id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      uri: result.assets[0].uri,
-      date: new Date().toISOString(),
-      category,
-    };
-
-    await savePhotos([newPhoto, ...photos]);
+    await addPhotoFromAsset(result.assets[0].uri);
   }
 
   async function handleTakePhoto() {
     if (Platform.OS === "web") {
-      Alert.alert("Progress Photos", "Camera capture is available on the mobile app.");
+      Alert.alert("Camera", "Camera capture is only available in the native app. Use 'Choose from Library' to upload a photo.");
       return;
     }
 
@@ -139,20 +135,7 @@ export default function ProgressPhotosScreen() {
     });
 
     if (result.canceled || !result.assets[0]) return;
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    const category = await pickCategory();
-    if (!category) return;
-
-    const newPhoto: ProgressPhoto = {
-      id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      uri: result.assets[0].uri,
-      date: new Date().toISOString(),
-      category,
-    };
-
-    await savePhotos([newPhoto, ...photos]);
+    await addPhotoFromAsset(result.assets[0].uri);
   }
 
   function pickCategory(): Promise<ProgressPhoto["category"] | null> {
