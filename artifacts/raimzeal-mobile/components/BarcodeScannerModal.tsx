@@ -81,10 +81,7 @@ interface OpenFoodFactsResponse {
   product?: OpenFoodFactsProduct;
 }
 
-async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> {
-  const cached = await getCachedBarcode(barcode);
-  if (cached) return cached;
-
+async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
@@ -145,12 +142,26 @@ async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> 
           }
         : undefined;
 
-    const food: ScannedFood = { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
-    await setCachedBarcode(barcode, food);
-    return food;
+    return { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
   } catch {
     return null;
   }
+}
+
+interface FetchResult {
+  food: ScannedFood;
+  fromCache: boolean;
+}
+
+async function fetchFoodByBarcode(barcode: string): Promise<FetchResult | null> {
+  const cached = await getCachedBarcode(barcode);
+  if (cached) return { food: cached, fromCache: true };
+
+  const food = await fetchFromNetwork(barcode);
+  if (!food) return null;
+
+  await setCachedBarcode(barcode, food);
+  return { food, fromCache: false };
 }
 
 interface Props {
@@ -167,6 +178,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   // Reset scanner state every time the modal opens so it's always ready
   useEffect(() => {
@@ -174,6 +188,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setScanning(true);
       setLoading(false);
       setError(null);
+      setCachedResult(null);
+      setRefreshing(false);
+      setRefreshFailed(false);
     }
   }, [visible]);
 
@@ -184,12 +201,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setLoading(true);
       setError(null);
 
-      const food = await fetchFoodByBarcode(data);
+      const result = await fetchFoodByBarcode(data);
       setLoading(false);
 
-      if (food) {
-        onFoodFound(food);
-        onClose();
+      if (result) {
+        if (result.fromCache) {
+          setCachedResult({ food: result.food, barcode: data });
+        } else {
+          onFoodFound(result.food);
+          onClose();
+        }
       } else {
         setError("Product not found in our database.");
         setScanning(false);
@@ -198,8 +219,31 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     [scanning, loading, onFoodFound, onClose]
   );
 
+  async function handleRefresh() {
+    if (!cachedResult) return;
+    setRefreshing(true);
+    setRefreshFailed(false);
+    const food = await fetchFromNetwork(cachedResult.barcode);
+    setRefreshing(false);
+    if (food) {
+      await setCachedBarcode(cachedResult.barcode, food);
+      onFoodFound(food);
+      onClose();
+    } else {
+      setRefreshFailed(true);
+    }
+  }
+
+  function handleUseCached() {
+    if (!cachedResult) return;
+    onFoodFound(cachedResult.food);
+    onClose();
+  }
+
   function handleRetry() {
     setError(null);
+    setCachedResult(null);
+    setRefreshFailed(false);
     setScanning(true);
   }
 
@@ -207,6 +251,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setScanning(true);
     setLoading(false);
     setError(null);
+    setCachedResult(null);
+    setRefreshing(false);
+    setRefreshFailed(false);
     onClose();
   }
 
@@ -214,6 +261,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setScanning(true);
     setLoading(false);
     setError(null);
+    setCachedResult(null);
+    setRefreshing(false);
+    setRefreshFailed(false);
     onClose();
     onManualEntry();
   }
@@ -356,7 +406,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     <Text style={styles.statusText}>Looking up product…</Text>
                   </View>
                 )}
-                {!loading && !error && scanning && (
+                {!loading && !error && !cachedResult && scanning && (
                   <View style={styles.statusPill}>
                     <View style={styles.scanDot} />
                     <Text style={styles.statusText}>Ready to scan</Text>
@@ -374,6 +424,53 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <Text style={styles.manualText}>Enter Manually</Text>
                       </TouchableOpacity>
                     </View>
+                  </View>
+                )}
+                {cachedResult && (
+                  <View style={styles.resultCard}>
+                    <View style={styles.resultHeader}>
+                      <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
+                      <Text style={styles.resultName} numberOfLines={1}>
+                        {cachedResult.food.name}
+                      </Text>
+                    </View>
+                    <Text style={styles.resultMacros}>
+                      {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
+                    </Text>
+                    {refreshFailed && (
+                      <View style={styles.refreshFailedRow}>
+                        <Ionicons name="cloud-offline-outline" size={13} color="#f87171" />
+                        <Text style={styles.refreshFailedText}>
+                          Couldn't refresh — showing saved data
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.resultActions}>
+                      <TouchableOpacity
+                        onPress={handleUseCached}
+                        style={styles.useBtn}
+                        disabled={refreshing}
+                      >
+                        <Text style={styles.useBtnText}>Add Food</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleRefresh}
+                        style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
+                        disabled={refreshing}
+                      >
+                        {refreshing ? (
+                          <ActivityIndicator color="#fff" size="small" style={{ width: 14, height: 14 }} />
+                        ) : (
+                          <Ionicons name="refresh" size={14} color="#fff" />
+                        )}
+                        <Text style={styles.refreshBtnText}>
+                          {refreshing ? "Updating…" : "Refresh"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity onPress={handleRetry} style={styles.scanAgainLink}>
+                      <Text style={styles.scanAgainText}>Scan a different product</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -547,6 +644,92 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+  },
+  resultCard: {
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 14,
+    padding: 16,
+    gap: 6,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  resultName: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    flex: 1,
+  },
+  resultMacros: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginLeft: 26,
+  },
+  resultActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  useBtn: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  useBtnText: {
+    color: "#09090b",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  refreshBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  refreshBtnDisabled: {
+    opacity: 0.6,
+  },
+  refreshBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  scanAgainLink: {
+    alignSelf: "center",
+    paddingVertical: 4,
+    marginTop: 2,
+  },
+  scanAgainText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  refreshFailedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginLeft: 26,
+    marginTop: 2,
+  },
+  refreshFailedText: {
+    color: "#f87171",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   permTitle: {
     fontSize: 20,
