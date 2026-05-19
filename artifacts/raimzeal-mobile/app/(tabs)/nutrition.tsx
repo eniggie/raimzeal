@@ -397,7 +397,7 @@ function DraggableFavItem({
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods, settings } = useFitness();
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -729,9 +729,10 @@ export default function NutritionScreen() {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoMeal(meal);
     Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    const durationMs = (settings.undoWindowSeconds ?? 3) * 1000;
     undoTimerRef.current = setTimeout(() => {
       dismissUndoToast();
-    }, 3000);
+    }, durationMs);
   }
 
   function dismissUndoToast() {

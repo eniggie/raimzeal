@@ -108,6 +108,7 @@ export interface AppState {
     darkMode: boolean;
     notifications: boolean;
     weightUnit: "lbs" | "kg";
+    undoWindowSeconds: 3 | 5 | 10;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -124,6 +125,7 @@ interface FitnessContextType extends AppState {
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  updateSettings: (updates: Partial<AppState["settings"]>) => void;
   toggleFavoriteFood: (food: FavoriteFood) => void;
   reorderFavoriteFoods: (foods: FavoriteFood[]) => void;
   getTodayWorkouts: () => WorkoutLog[];
@@ -258,6 +260,7 @@ const defaultState: AppState = {
     darkMode: true,
     notifications: true,
     weightUnit: "kg",
+    undoWindowSeconds: 3,
   },
   oviaMessages: INITIAL_OVIA_MESSAGES,
   favoriteFoods: [],
@@ -482,6 +485,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const updateSettings = useCallback(
+    (updates: Partial<AppState["settings"]>) => {
+      setState((prev) => {
+        const next = { ...prev, settings: { ...prev.settings, ...updates } };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
   const getTodayWorkouts = useCallback(
     () => state.workoutLogs.filter((w) => w.date === todayStr()),
     [state.workoutLogs]
@@ -536,6 +550,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         addOviaMessage,
         updateWaterIntake,
         updateProfile,
+        updateSettings,
         toggleFavoriteFood,
         reorderFavoriteFoods,
         getTodayWorkouts,

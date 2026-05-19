@@ -54,6 +54,7 @@ export default function ProfileScreen() {
     personalRecords,
     settings,
     favoriteFoods,
+    updateSettings,
   } = useFitness();
   const { signOut } = useAuth();
   const { cameraRollStatus, requestCameraRollPermission, updateCameraRollStatus } = usePermissions();
@@ -123,6 +124,19 @@ export default function ProfileScreen() {
         { text: LABELS.share, onPress: () => handleSetDefaultCardAction("share") },
         { text: LABELS.save, onPress: () => handleSetDefaultCardAction("save") },
         { text: LABELS.both, onPress: () => handleSetDefaultCardAction("both") },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
+  function handlePickUndoWindow() {
+    Alert.alert(
+      "Undo Window Duration",
+      "How long should the undo option stay visible after deleting a meal?",
+      [
+        { text: "3 seconds", onPress: () => updateSettings({ undoWindowSeconds: 3 }) },
+        { text: "5 seconds", onPress: () => updateSettings({ undoWindowSeconds: 5 }) },
+        { text: "10 seconds", onPress: () => updateSettings({ undoWindowSeconds: 10 }) },
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -420,6 +434,13 @@ export default function ProfileScreen() {
               }
               color={colors.accent}
               onPress={handlePickDefaultCardAction}
+            />
+            <SettingPickerRow
+              icon="timer-outline"
+              label="Undo window duration"
+              value={`${settings.undoWindowSeconds ?? 3}s`}
+              color={colors.secondary}
+              onPress={handlePickUndoWindow}
               isLast
             />
           </GlassCard>
