@@ -1,0 +1,325 @@
+STOP. Do not start coding yet. Read this entire message first.
+
+I am preparing to submit RAIMZEAL to the Apple App Store and Google Play Store within 7 days. Surface fixes and partial work are no longer acceptable. This is a production deployment audit. You will work through this systematically and completely. Do not skip steps. Do not declare anything "fixed" without testing it. Do not move to the next item until the current one is verified working.
+
+═══════════════════════════════════════════════
+PHASE 1: FULL CODEBASE AUDIT (DO THIS FIRST)
+═══════════════════════════════════════════════
+
+Before fixing anything, perform a complete audit and create an audit report. Do not modify code during this phase. Just observe and document.
+
+1. List every page/route in the application (web and mobile)
+2. List every API endpoint
+3. List every Supabase table, RLS policy, and function
+4. List every third-party integration (Stripe, RevenueCat, OpenAI/Claude, etc.)
+5. List every environment variable currently in use
+6. List every button, form, and interactive element on every page
+7. Identify all features marked as "complete" vs "in progress" vs "broken"
+
+Output this as AUDIT_REPORT.md in the root directory. Show it to me before proceeding.
+
+═══════════════════════════════════════════════
+PHASE 2: SYSTEMATIC PAGE-BY-PAGE TESTING
+═══════════════════════════════════════════════
+
+For EVERY page in the app, perform this checklist. Do not skip any page.
+
+PAGE CHECKLIST (run for each page):
+□ Page loads without console errors
+□ Page loads without network errors (check Network tab)
+□ All buttons are clickable and trigger correct actions
+□ All forms submit correctly and show success/error states
+□ All links navigate to correct destinations
+□ Loading states display properly
+□ Empty states display properly (no data scenarios)
+□ Error states display properly
+□ Responsive design works on mobile, tablet, desktop
+□ All images load (no broken image icons)
+□ All text is readable (no overflow, no truncation issues)
+□ Back button works correctly
+□ Page refresh preserves state where appropriate
+□ Protected routes redirect unauthenticated users
+□ Data fetches use proper loading and error handling
+
+Pages to test (confirm and update this list based on your audit):
+- Landing page / Home
+- Sign up
+- Sign in / Login
+- Forgot password
+- Email verification
+- Onboarding flow (every step)
+- Dashboard / Main app
+- Workout library
+- Individual workout page
+- Workout in progress / Active session
+- Nutrition / Calorie tracking
+- Macro tracking
+- Body measurements
+- Progress charts
+- Community feed
+- Community post detail
+- Ovia AI chat
+- Profile / Settings
+- Subscription / Billing page
+- Upgrade prompts
+- Notification settings
+- Help / Support
+- Terms of Service
+- Privacy Policy
+- 404 page
+- Any other pages from audit
+
+Document each page result in PAGE_AUDIT.md with status: PASS, FAIL (with reason), or NEEDS_FIX (with specific issues).
+
+═══════════════════════════════════════════════
+PHASE 3: SUPABASE DATABASE AUDIT
+═══════════════════════════════════════════════
+
+Verify every aspect of the database layer:
+
+□ All tables exist with correct schema
+□ All foreign key relationships are intact
+□ All indexes are in place for performance-critical queries
+□ Row Level Security (RLS) is ENABLED on every table containing user data
+□ RLS policies prevent users from accessing other users' data
+□ RLS policies allow users to access their own data
+□ Service role is used ONLY in server-side code, never exposed to client
+□ Anon key is used in client code (verify this)
+□ All database functions execute correctly
+□ All triggers fire correctly
+□ Auth flow creates user profile records correctly
+□ Cascade deletes work properly (deleting user removes their data)
+□ Backups are configured
+□ Connection pooling is configured for production load
+
+Run these specific security tests:
+1. Create a test user A and test user B
+2. Sign in as user A, try to read user B's data via API → MUST FAIL
+3. Sign in as user A, try to write to user B's data → MUST FAIL
+4. Sign in as user A, try to delete user B's data → MUST FAIL
+5. Try to access protected endpoints without auth token → MUST FAIL
+
+Document results in DATABASE_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 4: API ENDPOINT AUDIT
+═══════════════════════════════════════════════
+
+For every API endpoint:
+
+□ Endpoint exists and responds
+□ Authentication is required where appropriate
+□ Authorization checks user owns the resource
+□ Input validation prevents malformed data
+□ SQL injection is prevented (use parameterized queries)
+□ Rate limiting is configured
+□ CORS is configured correctly (no wildcard origins in production)
+□ Error responses do not leak sensitive info (no stack traces to client)
+□ Success responses return appropriate status codes
+□ Response payloads exclude sensitive fields (password hashes, internal IDs)
+□ Pagination works on list endpoints
+□ Sorting and filtering work where implemented
+
+Test each endpoint with:
+- Valid authenticated request → SUCCESS
+- Invalid/missing auth → 401
+- Valid auth but wrong user → 403
+- Malformed input → 400
+- Non-existent resource → 404
+- Server error scenarios → 500 (with proper logging)
+
+Document in API_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 5: AI INTEGRATION AUDIT (OVIA)
+═══════════════════════════════════════════════
+
+□ AI API key is in environment variables, NEVER in client code
+□ All AI calls go through server-side endpoint (not direct from client)
+□ Rate limiting is enforced per user (Foundation: 3/day, Forge: unlimited, Apex: priority)
+□ Message history is stored correctly in Supabase
+□ Context window is managed properly (no token overflow)
+□ Streaming responses work without breaking UI
+□ Error handling for API timeouts, rate limits, and failures
+□ Content moderation is in place (prevent harmful content)
+□ AI responses are sanitized before display (prevent XSS)
+□ User can clear chat history
+□ Token usage is tracked per user for billing/analytics
+□ Fallback message displays if AI service is down
+
+Test scenarios:
+- Send normal message → response received
+- Send 4 messages on free tier → 4th one blocked with upgrade prompt
+- Send message on paid tier → no limit hit
+- Send extremely long message → handled gracefully
+- Network failure during response → graceful error
+- AI service returns error → user sees friendly message
+
+Document in AI_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 6: STRIPE INTEGRATION AUDIT
+═══════════════════════════════════════════════
+
+□ Stripe keys are in environment variables (test keys for dev, live keys for prod)
+□ Webhook endpoint is configured and verified with Stripe signing secret
+□ Subscription creation flow works end-to-end
+□ Subscription upgrade works (Foundation → Forge → Apex)
+□ Subscription downgrade works
+□ Subscription cancellation works
+□ Failed payment handling works (retries, grace period, eventual downgrade)
+□ Trial period logic works correctly (if implemented)
+□ Annual vs monthly billing both work
+□ Tax calculation is enabled (Stripe Tax)
+□ Customer Portal is enabled and accessible
+□ Invoice generation works
+□ Refund flow is documented (even if manual)
+□ User entitlements update immediately after payment events
+□ Webhook idempotency prevents duplicate processing
+
+Test scenarios with Stripe test cards:
+- 4242 4242 4242 4242 → success
+- 4000 0000 0000 0002 → declined
+- 4000 0000 0000 9995 → insufficient funds
+- 4000 0027 6000 3184 → 3D Secure required
+- Subscription created → user gets correct tier access
+- Subscription canceled → user downgrades on period end
+- Payment fails → user notified and retried
+
+Document in STRIPE_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 7: AUTHENTICATION & SECURITY AUDIT
+═══════════════════════════════════════════════
+
+□ Passwords are hashed with bcrypt or Supabase's built-in auth (never plain text)
+□ Sessions use secure, httpOnly cookies OR proper JWT handling
+□ Token expiration is reasonable (1 hour access token, longer refresh token)
+□ Refresh token rotation is implemented
+□ Email verification is required before full account access
+□ Password reset flow works and tokens expire
+□ Rate limiting on auth endpoints prevents brute force
+□ Account lockout after repeated failed attempts
+□ No sensitive data in localStorage or sessionStorage
+□ HTTPS enforced everywhere (no mixed content)
+□ Security headers configured: CSP, X-Frame-Options, HSTS, X-Content-Type-Options
+□ No console.log statements leaking sensitive info
+□ No API keys, secrets, or tokens in client-side code
+□ Environment variables properly separated (NEXT_PUBLIC_ vs server-only)
+□ .env files are in .gitignore and not committed
+□ Dependencies have no known critical vulnerabilities (run npm audit)
+
+Run these specific tests:
+1. View page source on every page → no secrets visible
+2. Check network tab → no sensitive data in URLs or responses
+3. Try SQL injection in every input field → blocked
+4. Try XSS in every input field → sanitized
+5. Try accessing /admin or protected routes without auth → blocked
+
+Document in SECURITY_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 8: BUTTON & FEATURE AUDIT
+═══════════════════════════════════════════════
+
+For EVERY button, link, toggle, slider, and interactive element:
+
+□ Element is visible and properly styled
+□ Element has hover/active states (where appropriate)
+□ Element is keyboard accessible (Tab navigation works)
+□ Element has appropriate ARIA labels for screen readers
+□ Click/tap triggers correct action
+□ Loading state shows during async operations
+□ Disabled state prevents double-clicks
+□ Success/error feedback is clear to user
+□ Element works on touch devices (mobile)
+□ Element does not break on rapid clicks
+
+Create a master FEATURES_AUDIT.md listing every feature with status.
+
+═══════════════════════════════════════════════
+PHASE 9: MOBILE-SPECIFIC AUDIT (iOS + ANDROID)
+═══════════════════════════════════════════════
+
+□ App runs on iOS simulator without crashes
+□ App runs on Android emulator without crashes
+□ App runs on real iOS device via Expo Go / TestFlight
+□ App runs on real Android device via APK / Play Console
+□ All screens render correctly on iPhone SE (small), iPhone 15 Pro Max (large), iPad
+□ All screens render correctly on Android phones and tablets
+□ Safe areas respected (notches, dynamic islands, navigation bars)
+□ Keyboard does not cover input fields
+□ Pull-to-refresh works where appropriate
+□ Deep links work
+□ Push notifications configured (if applicable)
+□ App icon displays correctly
+□ Splash screen displays correctly
+□ App handles offline state gracefully
+□ App handles slow network gracefully
+□ Camera/photo permissions work (for body measurements feature)
+□ Health integrations work (Apple Health / Google Fit)
+
+App Store readiness:
+□ App icon meets size requirements (1024x1024 for iOS)
+□ Screenshots prepared for all required device sizes
+□ App description written
+□ Privacy policy URL is live and accessible
+□ Terms of service URL is live and accessible
+□ Support URL is live
+□ Apple Developer account active
+□ Google Play Console account active
+□ App built and signed for release
+□ Provisioning profiles configured
+□ Bundle identifiers correct
+
+Document in MOBILE_AUDIT.md.
+
+═══════════════════════════════════════════════
+PHASE 10: PERFORMANCE & POLISH
+═══════════════════════════════════════════════
+
+□ Initial page load under 3 seconds on 3G
+□ Lighthouse score 90+ on Performance, Accessibility, Best Practices, SEO
+□ Images optimized (WebP where possible, proper sizing)
+□ Code splitting implemented for large bundles
+□ Unused dependencies removed
+□ Console has zero errors and zero warnings in production build
+□ Source maps disabled in production
+□ Analytics configured (PostHog, Mixpanel, or similar)
+□ Error tracking configured (Sentry or similar)
+□ All TODO comments resolved or documented
+
+═══════════════════════════════════════════════
+EXECUTION RULES
+═══════════════════════════════════════════════
+
+1. Work through phases in order. Do not skip ahead.
+2. After each phase, show me the audit document.
+3. Do not declare anything "fixed" without testing the actual user flow.
+4. If you find something broken, fix it immediately, then re-test.
+5. If you are uncertain about a fix, ask me before making destructive changes.
+6. Never delete data without explicit permission.
+7. Make a database backup before any schema changes.
+8. Commit to Git after each phase completes successfully.
+9. If a fix requires breaking changes, document them in BREAKING_CHANGES.md.
+10. Final deliverable: a single FINAL_REPORT.md with all checklists complete and every item marked PASS.
+
+═══════════════════════════════════════════════
+FINAL CHECKLIST (must all be PASS before deployment)
+═══════════════════════════════════════════════
+
+□ AUDIT_REPORT.md complete
+□ PAGE_AUDIT.md — every page PASS
+□ DATABASE_AUDIT.md — all security tests PASS
+□ API_AUDIT.md — every endpoint PASS
+□ AI_AUDIT.md — Ovia working perfectly
+□ STRIPE_AUDIT.md — all payment flows PASS
+□ SECURITY_AUDIT.md — no vulnerabilities
+□ FEATURES_AUDIT.md — every feature PASS
+□ MOBILE_AUDIT.md — iOS and Android ready
+□ Performance benchmarks met
+□ Zero console errors in production build
+□ Git committed and tagged as v1.0.0-rc1
+□ FINAL_REPORT.md generated and reviewed
+
+Begin Phase 1 now. Do not start fixing until you have completed the audit and shown me AUDIT_REPORT.md.
