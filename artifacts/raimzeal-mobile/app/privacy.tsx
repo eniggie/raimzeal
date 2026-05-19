@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ExternalLink } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Inter_400Regular, Inter_600SemiBold, Inter_700Bold, useFonts } from "@expo-google-fonts/inter";
 
 const COLORS = {
@@ -53,7 +53,7 @@ export default function PrivacyScreen() {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ChevronLeft size={22} color={COLORS.foreground} />
+          <Ionicons name="chevron-back" size={22} color={COLORS.foreground} />
         </TouchableOpacity>
         <View>
           <Text style={styles.headerTitle}>Privacy Policy</Text>
@@ -71,7 +71,7 @@ export default function PrivacyScreen() {
           style={styles.webLink}
           onPress={() => Linking.openURL("https://www.raimzeal.com/privacy")}
         >
-          <ExternalLink size={14} color={COLORS.primary} />
+          <Ionicons name="open-outline" size={14} color={COLORS.primary} />
           <Text style={styles.webLinkText}>View full policy at raimzeal.com/privacy</Text>
         </TouchableOpacity>
 
