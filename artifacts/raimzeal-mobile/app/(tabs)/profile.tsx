@@ -368,7 +368,7 @@ export default function ProfileScreen() {
     setShowCustomizeModal(true);
   }
 
-  async function handleGenerateCard({ visibleStats, customMessage, themeId, action }: CardCustomizationResult) {
+  async function handleGenerateCard({ visibleStats, customMessage, themeId, action }: CardCustomizationResult): Promise<void> {
     setCardVisibleStats(visibleStats);
     setCardCustomMessage(customMessage);
     setCardThemeId(themeId);
@@ -390,41 +390,47 @@ export default function ProfileScreen() {
       Animated.timing(flashOpacity, { toValue: 0, duration: 480, useNativeDriver: true }),
     ]).start(() => setShowFlashOverlay(false));
 
-    // Wait for all pending interactions and layout to finish before capturing
-    // so the offscreen card has fully re-rendered with the new props.
-    InteractionManager.runAfterInteractions(async () => {
-      try {
-        const permissionOpts = {
-          cachedStatus: cameraRollStatus,
-          onStatusChange: updateCameraRollStatus,
-          requestPermission: requestCameraRollPermission,
-        };
-        if (action === "both") {
-          const result: CaptureShareAndSaveResult = await captureShareAndSaveCard(cardRef, permissionOpts);
-          if (result.saved && result.shared) {
-            Alert.alert("Done!", "Your progress card has been saved to your camera roll and shared.");
-          } else if (result.saved && !result.shared) {
-            Alert.alert("Saved!", "Your progress card has been saved to your camera roll. Sharing is not available on this device.");
+    // Wrap runAfterInteractions in a Promise so the modal can await the result
+    // and show a confirmation only after the action resolves successfully.
+    return new Promise<void>((resolve, reject) => {
+      InteractionManager.runAfterInteractions(async () => {
+        try {
+          const permissionOpts = {
+            cachedStatus: cameraRollStatus,
+            onStatusChange: updateCameraRollStatus,
+            requestPermission: requestCameraRollPermission,
+          };
+          if (action === "both") {
+            const result: CaptureShareAndSaveResult = await captureShareAndSaveCard(cardRef, permissionOpts);
+            if (result.saved) {
+              resolve();
+            } else {
+              // Permission alert already shown inside helper
+              reject(new Error("Could not save card"));
+            }
+          } else if (action === "save") {
+            const saved = await captureAndSaveCard(cardRef, permissionOpts);
+            if (saved) {
+              resolve();
+            } else {
+              reject(new Error("Could not save card"));
+            }
+          } else {
+            await captureAndShareCard(cardRef);
+            resolve();
           }
-          // result.saved === false: permission alert already shown inside helper
-        } else if (action === "save") {
-          const saved = await captureAndSaveCard(cardRef, permissionOpts);
-          if (saved) {
-            Alert.alert("Saved!", "Your progress card has been saved to your camera roll.");
-          }
-        } else {
-          await captureAndShareCard(cardRef);
+        } catch {
+          const label =
+            action === "save" ? "Save failed" :
+            action === "both" ? "Save or share failed" :
+            "Share failed";
+          Alert.alert(label, "Could not generate progress card. Please try again.");
+          reject(new Error(label));
+        } finally {
+          setSaveLoading(false);
+          setShareLoading(false);
         }
-      } catch {
-        const label =
-          action === "save" ? "Save failed" :
-          action === "both" ? "Save or share failed" :
-          "Share failed";
-        Alert.alert(label, "Could not generate progress card. Please try again.");
-      }
-      setSaveLoading(false);
-      setShareLoading(false);
-      setShowCustomizeModal(false);
+      });
     });
   }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
+  Animated,
   Dimensions,
   Modal,
   View,
@@ -103,7 +104,7 @@ export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "cus
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onGenerate: (result: CardCustomizationResult) => void;
+  onGenerate: (result: CardCustomizationResult) => Promise<void>;
   generating?: boolean;
   cardPreviewData: CardPreviewData;
 }
@@ -165,6 +166,23 @@ export default function CardCustomizationModal({
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
+
+  // Confirmation toast
+  const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+  const confirmOpacity = useRef(new Animated.Value(0)).current;
+
+  function showConfirmation(msg: string) {
+    confirmOpacity.stopAnimation();
+    setConfirmMessage(msg);
+    confirmOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1600),
+      Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) setConfirmMessage(null);
+    });
+  }
 
   useEffect(() => {
     if (!visible) return;
@@ -246,7 +264,18 @@ export default function CardCustomizationModal({
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
-    onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action });
+    try {
+      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action });
+      const msg =
+        action === "save"
+          ? "Saved to camera roll"
+          : action === "share"
+          ? "Share sheet opened"
+          : "Saved to camera roll";
+      showConfirmation(msg);
+    } catch {
+      // Error already surfaced by parent via Alert — no inline confirmation shown
+    }
   }
 
   async function handleResetDefaults() {
@@ -760,6 +789,14 @@ export default function CardCustomizationModal({
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
               Enable at least one stat to generate your card
             </Text>
+          )}
+          {confirmMessage && (
+            <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity }]}>
+              <View style={[styles.confirmToast, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                <Text style={[styles.confirmToastText, { color: colors.primary }]}>{confirmMessage}</Text>
+              </View>
+            </Animated.View>
           )}
         </View>
       </View>
@@ -1333,5 +1370,23 @@ const styles = StyleSheet.create({
   presetModalSaveText: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
+  },
+  // Confirmation toast
+  confirmToastWrap: {
+    alignItems: "center",
+    marginTop: 6,
+  },
+  confirmToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  confirmToastText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 });
