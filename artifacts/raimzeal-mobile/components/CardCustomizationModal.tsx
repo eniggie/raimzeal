@@ -28,7 +28,7 @@ import ShareProgressCard, {
 
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
-const STORAGE_KEY_THEME = "@raimzeal_card_theme";
+export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 
 const MAX_PRESETS = 5;

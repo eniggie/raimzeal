@@ -25,8 +25,8 @@ import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import ShareProgressCard, { CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardCustomizationResult } from "@/components/CardCustomizationModal";
+import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
+import CardCustomizationModal, { CardCustomizationResult, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 type Tab = "ovia" | "profile";
 
@@ -152,6 +152,26 @@ export default function ProfileScreen() {
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSavedTheme() {
+      try {
+        const AsyncStorage = (
+          await import("@react-native-async-storage/async-storage")
+        ).default;
+        const saved = await AsyncStorage.getItem(STORAGE_KEY_THEME);
+        const isValid = saved && CARD_THEMES.some((t) => t.id === saved);
+        if (!cancelled && isValid) {
+          setCardThemeId(saved as CardThemeId);
+        }
+      } catch {
+        // ignore read errors; default theme remains
+      }
+    }
+    loadSavedTheme();
+    return () => { cancelled = true; };
+  }, []);
 
   const cardRef = useRef<View>(null);
 
