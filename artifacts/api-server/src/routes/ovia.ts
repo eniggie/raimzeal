@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { oviaRateLimit } from "../lib/rateLimiter";
 
 const oviaRouter = Router();
+
+const MAX_MESSAGES = 40;
+const MAX_CONTENT_LENGTH = 4000;
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const now = new Date().toLocaleDateString("en-US", {
@@ -157,7 +161,7 @@ Whenever you discuss fasting, supplements, medical conditions, or make recommend
 You are not just a fitness coach. You are ${firstName}'s complete wellness partner — a guide for body, mind, and soul. Be direct. Be honest. Be science-backed. Be deeply inspiring. Be ${firstName}'s greatest ally on this journey toward a longer, stronger, healthier, and more meaningful life.`;
 }
 
-oviaRouter.post("/ovia/chat", async (req, res) => {
+oviaRouter.post("/ovia/chat", oviaRateLimit, async (req, res) => {
   try {
     const { messages, userContext, weeklyDigest } = req.body as {
       messages: Array<{ role: string; content: string }>;
@@ -168,6 +172,18 @@ oviaRouter.post("/ovia/chat", async (req, res) => {
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: "messages array required" });
       return;
+    }
+
+    if (messages.length > MAX_MESSAGES) {
+      res.status(400).json({ error: "Too many messages in conversation." });
+      return;
+    }
+
+    for (const m of messages) {
+      if (typeof m.content === "string" && m.content.length > MAX_CONTENT_LENGTH) {
+        res.status(400).json({ error: "Message content too long." });
+        return;
+      }
     }
 
     let systemPrompt = buildSystemPrompt(userContext ?? {});

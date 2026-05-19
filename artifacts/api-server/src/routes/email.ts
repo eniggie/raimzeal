@@ -2,6 +2,7 @@ import { Router } from "express";
 import nodemailer from "nodemailer";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit } from "../lib/rateLimiter";
 
 const emailRouter = Router();
 
@@ -301,7 +302,7 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
 /**
  * POST /api/email/send
  */
-emailRouter.post("/email/send", async (req, res) => {
+emailRouter.post("/email/send", emailSendRateLimit, async (req, res) => {
   const { to, userName, type, message } = req.body as {
     to: string;
     userName: string;
@@ -390,7 +391,7 @@ emailRouter.post("/email/send", async (req, res) => {
 /**
  * POST /api/email/verify
  */
-emailRouter.post("/email/verify", async (req, res) => {
+emailRouter.post("/email/verify", emailVerifyRateLimit, async (req, res) => {
   const { to, userName } = req.body as { to: string; userName: string };
 
   if (!to || !userName) {
@@ -436,7 +437,7 @@ emailRouter.post("/email/verify", async (req, res) => {
  * POST /api/email/digest/subscribe
  * Body: { email, userName }
  */
-emailRouter.post("/email/digest/subscribe", async (req, res) => {
+emailRouter.post("/email/digest/subscribe", emailSubscribeRateLimit, async (req, res) => {
   const { email, userName } = req.body as { email: string; userName: string };
 
   if (!email || !userName) {
