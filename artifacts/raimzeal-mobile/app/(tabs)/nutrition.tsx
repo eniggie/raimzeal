@@ -2101,7 +2101,7 @@ export default function NutritionScreen() {
                           </View>
                           <View style={[styles.historyDayBadge, { backgroundColor: colors.primary + "18" }]}>
                             <Text style={[styles.historyDayBadgeText, { color: colors.primary }]}>
-                              {Math.round(totals.calories)} kcal
+                              {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
                             </Text>
                           </View>
                         </View>
