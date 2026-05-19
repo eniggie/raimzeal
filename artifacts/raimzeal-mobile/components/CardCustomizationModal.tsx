@@ -62,7 +62,7 @@ function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): num
 }
 
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
-const STORAGE_KEY_ACTION = "@raimzeal_card_action";
+export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 
 const MAX_PRESETS = 5;

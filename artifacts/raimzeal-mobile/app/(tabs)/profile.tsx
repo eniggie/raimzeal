@@ -28,7 +28,7 @@ import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardCustomizationResult, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 type Tab = "ovia" | "profile";
 
@@ -154,6 +154,7 @@ export default function ProfileScreen() {
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
@@ -161,23 +162,60 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadSavedTheme() {
+    async function loadSavedPreferences() {
       try {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const saved = await AsyncStorage.getItem(STORAGE_KEY_THEME);
-        const isValid = saved && CARD_THEMES.some((t) => t.id === saved);
-        if (!cancelled && isValid) {
-          setCardThemeId(saved as CardThemeId);
+        const [savedTheme, savedAction] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY_THEME),
+          AsyncStorage.getItem(STORAGE_KEY_ACTION),
+        ]);
+        if (!cancelled) {
+          const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
+          if (isValidTheme) setCardThemeId(savedTheme as CardThemeId);
+          const validActions: CardAction[] = ["share", "save", "both"];
+          if (savedAction && validActions.includes(savedAction as CardAction)) {
+            setDefaultCardAction(savedAction as CardAction);
+          }
         }
       } catch {
-        // ignore read errors; default theme remains
+        // ignore read errors; defaults remain
       }
     }
-    loadSavedTheme();
+    loadSavedPreferences();
     return () => { cancelled = true; };
   }, []);
+
+  async function handleSetDefaultCardAction(action: CardAction) {
+    setDefaultCardAction(action);
+    try {
+      const AsyncStorage = (
+        await import("@react-native-async-storage/async-storage")
+      ).default;
+      await AsyncStorage.setItem(STORAGE_KEY_ACTION, action);
+    } catch {
+      // ignore write errors
+    }
+  }
+
+  function handlePickDefaultCardAction() {
+    const LABELS: Record<CardAction, string> = {
+      share: "Share — opens your share sheet",
+      save: "Save — saves to camera roll",
+      both: "Both — saves & opens share sheet",
+    };
+    Alert.alert(
+      "Default Card Action",
+      "Choose what happens when you generate a progress card.",
+      [
+        { text: LABELS.share, onPress: () => handleSetDefaultCardAction("share") },
+        { text: LABELS.save, onPress: () => handleSetDefaultCardAction("save") },
+        { text: LABELS.both, onPress: () => handleSetDefaultCardAction("both") },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
 
   const cardRef = useRef<View>(null);
 
@@ -746,6 +784,24 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Settings */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Settings</Text>
+          <GlassCard style={styles.actionsCard}>
+            <SettingPickerRow
+              icon="layers-outline"
+              label="Default card action"
+              value={
+                defaultCardAction === "share" ? "Share" :
+                defaultCardAction === "save" ? "Save" :
+                defaultCardAction === "both" ? "Both" :
+                "Not set"
+              }
+              color={colors.accent}
+              onPress={handlePickDefaultCardAction}
+              isLast
+            />
+          </GlassCard>
+
           {/* Account actions */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
           <GlassCard style={styles.actionsCard}>
@@ -864,6 +920,36 @@ function InfoRow({ label, value, icon }: { label: string; value: string; icon: k
   );
 }
 
+function SettingPickerRow({
+  icon, label, value, color, onPress, isLast,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  color: string;
+  onPress: () => void;
+  isLast?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[
+        styles.actionRow,
+        !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border },
+      ]}
+    >
+      <View style={[styles.actionIconWrap, { backgroundColor: color + "20" }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
+      <Text style={[styles.settingPickerValue, { color: colors.mutedForeground }]}>{value}</Text>
+      <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+    </TouchableOpacity>
+  );
+}
+
 function ActionRow({
   icon, label, color, onPress, loading, isLast,
 }: {
@@ -952,5 +1038,6 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   actionIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   actionLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  settingPickerValue: { fontSize: 13, fontFamily: "Inter_400Regular", marginRight: 4 },
   version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 8 },
 });
