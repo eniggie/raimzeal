@@ -213,15 +213,17 @@ export default function ProfileScreen() {
             if (result.saved) {
               resolve();
             } else {
-              // Permission alert already shown inside helper
-              reject(new Error("Could not save card"));
+              // Permission Alert already shown inside helper — reject with a
+              // sentinel so the modal suppresses the redundant inline toast.
+              reject(new Error("PERMISSION_DENIED"));
             }
           } else if (action === "save") {
             const saved = await captureAndSaveCard(cardRef, permissionOpts);
             if (saved) {
               resolve();
             } else {
-              reject(new Error("Could not save card"));
+              // Permission Alert already shown inside helper — sentinel reject.
+              reject(new Error("PERMISSION_DENIED"));
             }
           } else {
             await captureAndShareCard(cardRef);
@@ -229,10 +231,11 @@ export default function ProfileScreen() {
           }
         } catch {
           const label =
-            action === "save" ? "Save failed" :
-            action === "both" ? "Save or share failed" :
-            "Share failed";
-          Alert.alert(label, "Could not generate progress card. Please try again.");
+            action === "save" ? "Couldn't save — check your permissions" :
+            action === "both" ? "Couldn't save or share the card" :
+            "Couldn't open share sheet";
+          // Reject with a descriptive message; the modal shows it as an inline
+          // error toast. No Alert here — the toast is the primary feedback.
           reject(new Error(label));
         } finally {
           setSaveLoading(false);

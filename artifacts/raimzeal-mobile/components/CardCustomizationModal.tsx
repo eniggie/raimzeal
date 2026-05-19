@@ -656,17 +656,20 @@ export default function CardCustomizationModal({
     }
   }, [restoredFromStorage, badgeDismissed]);
 
-  // Confirmation toast
+  // Confirmation / error toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
+  const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
-  function showConfirmation(msg: string) {
+  function showConfirmation(msg: string, variant: "success" | "error" = "success") {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
+    setConfirmVariant(variant);
     confirmOpacity.setValue(0);
+    const holdDuration = variant === "error" ? 2200 : 1600;
     Animated.sequence([
       Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(1600),
+      Animated.delay(holdDuration),
       Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
     ]).start(({ finished }) => {
       if (finished) setConfirmMessage(null);
@@ -784,9 +787,20 @@ export default function CardCustomizationModal({
           : action === "share"
           ? "Share sheet opened"
           : "Saved to camera roll · Share sheet opened";
-      showConfirmation(msg);
-    } catch {
-      // Error already surfaced by parent via Alert — no inline confirmation shown
+      showConfirmation(msg, "success");
+    } catch (err) {
+      // "PERMISSION_DENIED" is a sentinel from the parent — the permission Alert
+      // was already shown there. Skip the inline toast to avoid double feedback.
+      if (err instanceof Error && err.message === "PERMISSION_DENIED") return;
+
+      const fallback =
+        action === "save"
+          ? "Couldn't save — check your permissions"
+          : action === "share"
+          ? "Couldn't open share sheet"
+          : "Couldn't save or share the card";
+      const errMsg = err instanceof Error && err.message ? err.message : fallback;
+      showConfirmation(errMsg, "error");
     }
   }
 
@@ -1429,9 +1443,27 @@ export default function CardCustomizationModal({
           )}
           {confirmMessage && (
             <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity }]}>
-              <View style={[styles.confirmToast, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                <Text style={[styles.confirmToastText, { color: colors.primary }]}>{confirmMessage}</Text>
+              <View
+                style={[
+                  styles.confirmToast,
+                  confirmVariant === "error"
+                    ? { backgroundColor: "#ff443618", borderColor: "#ff443640" }
+                    : { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+                ]}
+              >
+                <Ionicons
+                  name={confirmVariant === "error" ? "alert-circle" : "checkmark-circle"}
+                  size={14}
+                  color={confirmVariant === "error" ? "#ff4436" : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.confirmToastText,
+                    { color: confirmVariant === "error" ? "#ff4436" : colors.primary },
+                  ]}
+                >
+                  {confirmMessage}
+                </Text>
               </View>
             </Animated.View>
           )}
