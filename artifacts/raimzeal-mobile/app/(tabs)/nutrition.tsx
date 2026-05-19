@@ -16,6 +16,11 @@ import {
   UIManager,
   View,
 } from "react-native";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 if (Platform.OS === "android") {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -260,6 +265,8 @@ const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick
 
 const DRAG_ITEM_HEIGHT = 68;
 
+const SPRING_CONFIG = { damping: 22, stiffness: 220, mass: 0.8 };
+
 interface DraggableFavItemProps {
   food: FavoriteFood;
   indexRef: React.MutableRefObject<number>;
@@ -267,6 +274,7 @@ interface DraggableFavItemProps {
   itemHeightRef: React.MutableRefObject<number>;
   isActive: boolean;
   isHover: boolean;
+  displacement: number;
   onDragStart: (index: number) => void;
   onHover: (index: number) => void;
   onDrop: (from: number, to: number) => void;
@@ -280,13 +288,23 @@ function DraggableFavItem({
   itemHeightRef,
   isActive,
   isHover,
+  displacement,
   onDragStart,
   onHover,
   onDrop,
   colors,
 }: DraggableFavItemProps) {
-  const translateY = useRef(new Animated.Value(0)).current;
+  const dragY = useSharedValue(0);
+  const dispY = useSharedValue(0);
   const currentDy = useRef(0);
+
+  useEffect(() => {
+    dispY.value = withSpring(displacement, SPRING_CONFIG);
+  }, [displacement]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dragY.value + dispY.value }],
+  }));
 
   const onDragStartRef = useRef(onDragStart);
   onDragStartRef.current = onDragStart;
@@ -300,13 +318,13 @@ function DraggableFavItem({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        translateY.setValue(0);
+        dragY.value = 0;
         currentDy.current = 0;
         onDragStartRef.current(indexRef.current);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       },
       onPanResponderMove: (_, { dy }) => {
-        translateY.setValue(dy);
+        dragY.value = dy;
         currentDy.current = dy;
         const from = indexRef.current;
         const total = listRef.current.length;
@@ -319,18 +337,18 @@ function DraggableFavItem({
         const total = listRef.current.length;
         const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
         const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDy.current / slotHeight)));
-        translateY.setValue(0);
+        dragY.value = withSpring(0, SPRING_CONFIG);
         onDropRef.current(from, to);
       },
       onPanResponderTerminate: () => {
-        translateY.setValue(0);
+        dragY.value = withSpring(0, SPRING_CONFIG);
         onHoverRef.current(-1);
       },
     })
   ).current;
 
   return (
-    <Animated.View
+    <Reanimated.View
       onLayout={(e) => {
         const h = e.nativeEvent.layout.height;
         if (h > 0 && itemHeightRef.current !== h) {
@@ -342,7 +360,6 @@ function DraggableFavItem({
         {
           backgroundColor: colors.card,
           borderColor: isActive ? "#f59f0a99" : isHover ? "#f59f0a55" : "#f59f0a40",
-          transform: [{ translateY }],
           zIndex: isActive ? 100 : 1,
           elevation: isActive ? 8 : 0,
           shadowColor: "#000",
@@ -351,6 +368,7 @@ function DraggableFavItem({
           shadowOffset: { width: 0, height: 4 },
           opacity: isActive ? 0.92 : 1,
         },
+        animatedStyle,
       ]}
     >
       <View {...panResponder.panHandlers} style={styles.dragHandle}>
@@ -373,7 +391,7 @@ function DraggableFavItem({
         </View>
       </View>
       <Text style={[styles.foodCal, { color: colors.primary }]}>{food.calories}</Text>
-    </Animated.View>
+    </Reanimated.View>
   );
 }
 
@@ -923,6 +941,17 @@ export default function NutritionScreen() {
     AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
   }
 
+  function computeDisplacement(idx: number, active: number, hover: number): number {
+    if (active === -1 || hover === -1 || idx === active) return 0;
+    const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+    if (active < hover) {
+      if (idx > active && idx <= hover) return -slotHeight;
+    } else if (active > hover) {
+      if (idx >= hover && idx < active) return slotHeight;
+    }
+    return 0;
+  }
+
   function enterReorderMode() {
     dismissReorderHint();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -951,7 +980,7 @@ export default function NutritionScreen() {
     setActiveReorderIdx(-1);
     setHoverReorderIdx(-1);
     if (from === to) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     const next = [...reorderItemsRef.current];
     const [removed] = next.splice(from, 1);
     next.splice(to, 0, removed);
@@ -1548,13 +1577,14 @@ export default function NutritionScreen() {
                     {isReordering ? (
                       reorderItems.map((food, idx) => (
                         <DraggableFavItem
-                          key={`drag-${food.name}-${idx}`}
+                          key={`drag-${food.name}`}
                           food={food}
                           indexRef={indexRefsRef.current[idx] ?? { current: idx }}
                           listRef={reorderItemsRef}
                           itemHeightRef={itemHeightRef}
                           isActive={idx === activeReorderIdx}
                           isHover={idx === hoverReorderIdx && idx !== activeReorderIdx}
+                          displacement={computeDisplacement(idx, activeReorderIdx, hoverReorderIdx)}
                           onDragStart={(i) => { setActiveReorderIdx(i); setHoverReorderIdx(i); }}
                           onHover={setHoverReorderIdx}
                           onDrop={handleReorderDrop}
