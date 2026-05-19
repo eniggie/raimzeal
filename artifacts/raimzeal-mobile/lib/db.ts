@@ -386,6 +386,45 @@ export async function checkUserLikes(
   return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
 }
 
+// ─── Ovia AI Messages ───────────────────────────────────────────────────────
+
+export interface OviaMessageRow {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+export async function fetchOviaMessages(userId: string): Promise<OviaMessageRow[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data } = await supabase
+    .from("ovia_messages")
+    .select("id, role, content, timestamp")
+    .eq("user_id", userId)
+    .order("timestamp", { ascending: true })
+    .limit(200);
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    role: r.role as "user" | "assistant",
+    content: r.content as string,
+    timestamp: r.timestamp as string,
+  }));
+}
+
+export async function insertOviaMessage(
+  userId: string,
+  message: OviaMessageRow
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  await supabase.from("ovia_messages").upsert({
+    id: message.id,
+    user_id: userId,
+    role: message.role,
+    content: message.content,
+    timestamp: message.timestamp,
+  });
+}
+
 // ─── Programs ───────────────────────────────────────────────────────────────
 
 export interface ProgramWeek {

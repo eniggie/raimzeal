@@ -19,13 +19,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "dumbbell", selected: "dumbbell.fill" }} />
         <Label>Workouts</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="nutrition">
-        <Icon sf={{ default: "fork.knife", selected: "fork.knife" }} />
-        <Label>Nutrition</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="ovia">
         <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
         <Label>Ovia AI</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="nutrition">
+        <Icon sf={{ default: "fork.knife", selected: "fork.knife" }} />
+        <Label>Nutrition</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="progress">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
@@ -112,18 +112,6 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="nutrition"
-        options={{
-          title: "Nutrition",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="fork.knife" tintColor={color} size={22} />
-            ) : (
-              <Ionicons name="restaurant-outline" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
         name="ovia"
         options={{
           title: "Ovia AI",
@@ -132,6 +120,18 @@ function ClassicTabLayout() {
               <SymbolView name="sparkles" tintColor={color} size={22} />
             ) : (
               <Ionicons name="sparkles-outline" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="nutrition"
+        options={{
+          title: "Nutrition",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="fork.knife" tintColor={color} size={22} />
+            ) : (
+              <Ionicons name="restaurant-outline" size={22} color={color} />
             ),
         }}
       />

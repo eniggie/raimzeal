@@ -127,7 +127,7 @@ export default function EditProfileScreen() {
             </Text>
           </View>
           <Text style={[styles.avatarHint, { color: colors.mutedForeground }]}>
-            Profile photo coming soon
+            Tap to change photo (available in full build)
           </Text>
         </View>
 

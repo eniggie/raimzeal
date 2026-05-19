@@ -27,6 +27,8 @@ import {
   upsertProfile,
   insertWorkoutLog,
   insertMealLog,
+  fetchOviaMessages,
+  insertOviaMessage,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -292,10 +294,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals] = await Promise.all([
+        const [profile, workouts, meals, oviaRemote] = await Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
+          fetchOviaMessages(userId),
         ]);
         setState((prev) => ({
           ...prev,
@@ -311,6 +314,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             : {}),
           workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
           mealLogs: meals.length > 0 ? meals : prev.mealLogs,
+          oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
         }));
       } catch {
         // Non-fatal: keep local data if Supabase sync fails
@@ -395,14 +399,24 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const addOviaMessage = useCallback(
     (msg: Omit<OviaMessage, "id" | "timestamp">) => {
       setState((prev) => {
+        const newMsg: OviaMessage = {
+          ...msg,
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+        };
         const next = {
           ...prev,
-          oviaMessages: [
-            ...prev.oviaMessages,
-            { ...msg, id: Date.now().toString(), timestamp: new Date().toISOString() },
-          ],
+          oviaMessages: [...prev.oviaMessages, newMsg],
         };
         persist(next);
+        // Background push to Supabase for persistent cross-device memory
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+              insertOviaMessage(session.user.id, newMsg).catch(() => {});
+            }
+          });
+        }
         return next;
       });
     },
