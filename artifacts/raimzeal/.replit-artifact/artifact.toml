@@ -19,12 +19,7 @@ run = "pnpm --filter @workspace/raimzeal run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/raimzeal", "run", "build" ]
-publicDir = "artifacts/raimzeal/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = [ "node", "artifacts/raimzeal/server.mjs" ]
 
 [services.env]
 PORT = "18577"
