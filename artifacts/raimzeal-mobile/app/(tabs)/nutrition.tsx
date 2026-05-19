@@ -1093,6 +1093,23 @@ export default function NutritionScreen() {
               </View>
             )}
 
+            {/* Combined filter summary — shown below chips when 2+ filters are active */}
+            {activeTab === "today" && isSearching && activeFilters.size >= 2 && !searchLoading && searchDone && (
+              <Text style={[styles.filterCombinedSummary, { color: colors.primary }]}>
+                {(() => {
+                  const count = filteredSearchResults.length;
+                  const labels = nutritionFilters
+                    .filter((f) => activeFilters.has(f.key))
+                    .map((f) => f.label);
+                  const labelText =
+                    labels.length === 2
+                      ? `${labels[0]} + ${labels[1]}`
+                      : `all ${labels.length} filters`;
+                  return `${count} ${count === 1 ? "result" : "results"} match ${labelText}`;
+                })()}
+              </Text>
+            )}
+
             {/* Long-press hint — shown once below filter chips */}
             {activeTab === "today" && isSearching && filterHintVisible && (
               <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
@@ -2933,6 +2950,15 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 4,
     opacity: 0.75,
+  },
+  filterCombinedSummary: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 2,
+    opacity: 0.9,
   },
   resultsHeader: {
     flexDirection: "row",
