@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RAIMZEAL — Complete User Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --primary: #2E8B57;
+    --primary-light: #3aa86a;
+    --primary-pale: #e8f5ee;
+    --secondary: #C9A84C;
+    --secondary-pale: #fdf6e3;
+    --accent: #8B31C7;
+    --accent-pale: #f3eafc;
+    --dark: #0a0a0b;
+    --dark2: #141416;
+    --dark3: #1e1e22;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --white: #ffffff;
+    --danger: #e53e3e;
+    --warning: #d97706;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--white);
+  }
+
+  /* ── PAGE RULES ── */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  @page cover {
+    margin: 0;
+  }
+  @page content {
+    margin: 2.2cm 2cm 2.5cm 2cm;
+    @bottom-center {
+      content: "RAIMZEAL User Guide  ·  Page " counter(page);
+      font-family: 'Inter', sans-serif;
+      font-size: 8pt;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 6pt;
+    }
+  }
+
+  /* ── COVER PAGE ── */
+  .cover {
+    page: cover;
+    width: 210mm;
+    height: 297mm;
+    background: linear-gradient(155deg, #0a0a0b 0%, #0d1f14 40%, #1a0a30 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+
+  .cover-bg-circle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.12;
+  }
+  .cover-bg-circle.c1 {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #2E8B57, transparent);
+    top: -100px; left: -100px;
+  }
+  .cover-bg-circle.c2 {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, #8B31C7, transparent);
+    bottom: -80px; right: -80px;
+  }
+  .cover-bg-circle.c3 {
+    width: 250px; height: 250px;
+    background: radial-gradient(circle, #C9A84C, transparent);
+    top: 40%; left: 60%;
+    opacity: 0.08;
+  }
+
+  .cover-logo-wrap {
+    width: 90px; height: 90px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #2E8B57, #1a5c38);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 28px;
+    box-shadow: 0 0 60px rgba(46,139,87,0.4);
+  }
+  .cover-logo-icon {
+    font-size: 42px;
+  }
+
+  .cover-brand {
+    font-size: 52pt;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .cover-brand span { color: var(--primary-light); }
+
+  .cover-tagline {
+    font-size: 13pt;
+    color: rgba(255,255,255,0.65);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    margin-bottom: 48px;
+  }
+
+  .cover-badge {
+    display: inline-block;
+    background: rgba(46,139,87,0.2);
+    border: 1px solid rgba(46,139,87,0.5);
+    border-radius: 50px;
+    padding: 8px 24px;
+    color: #6ee8a0;
+    font-size: 10pt;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+  }
+
+  .cover-footer {
+    position: absolute;
+    bottom: 40px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+  }
+  .cover-footer-item {
+    text-align: center;
+  }
+  .cover-footer-item .label {
+    font-size: 7pt;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .cover-footer-item .value {
+    font-size: 9pt;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+  .cover-divider {
+    width: 1px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    align-self: center;
+  }
+
+  /* ── CONTENT PAGES ── */
+  .content-pages {
+    page: content;
+    counter-reset: page 1;
+  }
+
+  /* ── TOC ── */
+  .toc-page {
+    page-break-after: always;
+    padding: 0;
+  }
+  .toc-header {
+    background: linear-gradient(135deg, var(--dark) 0%, #0d1f14 100%);
+    padding: 32px 36px 28px;
+    border-radius: 12px;
+    margin-bottom: 28px;
+  }
+  .toc-header h1 {
+    font-size: 22pt;
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.5px;
+  }
+  .toc-header p {
+    color: rgba(255,255,255,0.5);
+    font-size: 9.5pt;
+    margin-top: 4px;
+  }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fafafa;
+  }
+  .toc-num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    font-size: 8.5pt;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .toc-num.sec { background: var(--secondary); }
+  .toc-num.acc { background: var(--accent); }
+  .toc-num.dark { background: var(--dark); }
+  .toc-label { font-size: 9.5pt; font-weight: 600; color: var(--text); }
+  .toc-sub { font-size: 8pt; color: var(--text-muted); margin-top: 1px; }
+
+  /* ── SECTION HEADERS ── */
+  .section {
+    page-break-before: always;
+    margin-bottom: 28px;
+  }
+  .section:first-of-type {
+    page-break-before: avoid;
+  }
+
+  .section-hero {
+    background: linear-gradient(135deg, var(--dark) 0%, #0d1f14 100%);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .section-hero.purple {
+    background: linear-gradient(135deg, #1a0a30 0%, #2d1050 100%);
+  }
+  .section-hero.gold {
+    background: linear-gradient(135deg, #1a1200 0%, #2d2000 100%);
+  }
+  .section-hero.red {
+    background: linear-gradient(135deg, #1a0808 0%, #2d1010 100%);
+  }
+  .section-hero.blue {
+    background: linear-gradient(135deg, #080d1a 0%, #101a2d 100%);
+  }
+  .section-hero-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .section-hero-num {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--primary-light);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .section-hero.purple .section-hero-num { color: #c084fc; }
+  .section-hero.gold .section-hero-num { color: #fbbf24; }
+  .section-hero.red .section-hero-num { color: #f87171; }
+  .section-hero.blue .section-hero-num { color: #60a5fa; }
+
+  .section-hero h2 {
+    font-size: 20pt;
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .section-hero p {
+    color: rgba(255,255,255,0.55);
+    font-size: 10pt;
+    max-width: 480px;
+  }
+
+  /* ── TYPOGRAPHY ── */
+  h3 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--text);
+    margin: 22px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3::after {
+    content: '';
+    flex: 1;
+    height: 1.5px;
+    background: var(--border);
+    display: inline-block;
+  }
+  h4 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: var(--text);
+    margin: 14px 0 6px;
+  }
+  p { margin-bottom: 10px; color: #374151; }
+
+  /* ── CARDS & BOXES ── */
+  .card {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    background: #fafafa;
+  }
+  .card.green {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+  }
+  .card.purple {
+    border-color: #e9d5ff;
+    background: #faf5ff;
+  }
+  .card.gold {
+    border-color: #fde68a;
+    background: #fffbeb;
+  }
+  .card.dark {
+    background: var(--dark);
+    border-color: #2d2d35;
+    color: rgba(255,255,255,0.85);
+  }
+  .card.dark p, .card.dark li { color: rgba(255,255,255,0.7); }
+  .card-title {
+    font-size: 11pt;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card.green .card-title { color: #166534; }
+  .card.purple .card-title { color: #6b21a8; }
+  .card.gold .card-title { color: #92400e; }
+  .card.dark .card-title { color: var(--white); }
+
+  /* ── STEPS ── */
+  .steps { list-style: none; }
+  .steps li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 9pt;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-weight: 600; font-size: 10pt; margin-bottom: 2px; color: var(--text); }
+  .step-desc { font-size: 9.5pt; color: var(--text-muted); }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .feature-item {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fafafa;
+  }
+  .feature-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+  .feature-name { font-size: 10pt; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .feature-desc { font-size: 8.5pt; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 9.5pt;
+    color: #374151;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    background: var(--primary);
+    color: white;
+    font-size: 9pt;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .check-box.acc { background: var(--accent); }
+  .check-box.sec { background: var(--secondary); }
+
+  /* ── HIGHLIGHT BOXES ── */
+  .tip-box {
+    border-left: 4px solid var(--primary);
+    background: var(--primary-pale);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 9.5pt;
+    color: #166534;
+  }
+  .tip-box strong { color: #15803d; }
+  .warning-box {
+    border-left: 4px solid var(--warning);
+    background: #fffbeb;
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 9.5pt;
+    color: #92400e;
+  }
+
+  /* ── TABLE ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 9.5pt;
+  }
+  th {
+    background: var(--dark);
+    color: white;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9pt;
+    letter-spacing: 0.5px;
+  }
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child { border-radius: 0 8px 0 0; }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: #374151;
+  }
+  tr:nth-child(even) td { background: #f9fafb; }
+
+  /* ── PILL TAGS ── */
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .tag.green { background: #dcfce7; color: #15803d; }
+  .tag.purple { background: #f3e8ff; color: #7e22ce; }
+  .tag.gold { background: #fef3c7; color: #92400e; }
+  .tag.blue { background: #dbeafe; color: #1e40af; }
+  .tag.red { background: #fee2e2; color: #991b1b; }
+  .tag.gray { background: #f3f4f6; color: #4b5563; }
+
+  /* ── COLUMNS ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* ── STAT CARDS ── */
+  .stat-card {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    background: linear-gradient(135deg, #fafafa, #f3f4f6);
+  }
+  .stat-value {
+    font-size: 20pt;
+    font-weight: 900;
+    color: var(--primary);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .stat-label { font-size: 8.5pt; color: var(--text-muted); font-weight: 500; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1.5px;
+    background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+    margin: 20px 0;
+    border-radius: 2px;
+  }
+
+  /* ── NAV FLOW ── */
+  .nav-flow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+  }
+  .nav-step {
+    background: var(--dark);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .nav-arrow { color: var(--primary); font-weight: 700; font-size: 11pt; }
+
+  /* ── SCREEN MOCKUP ── */
+  .screen-box {
+    border: 2px solid var(--dark);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--dark2);
+    padding: 14px;
+  }
+  .screen-title {
+    color: var(--white);
+    font-size: 10pt;
+    font-weight: 700;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 8px;
+  }
+  .screen-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .screen-row:last-child { border-bottom: none; }
+  .screen-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+  .screen-dot.gold { background: var(--secondary); }
+  .screen-dot.purple { background: var(--accent); }
+  .screen-text { color: rgba(255,255,255,0.75); font-size: 8.5pt; }
+
+  /* ── BACK COVER ── */
+  .back-cover {
+    page: cover;
+    page-break-before: always;
+    width: 210mm;
+    height: 297mm;
+    background: linear-gradient(155deg, #0a0a0b 0%, #0d1f14 40%, #1a0a30 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-bg-circle c1"></div>
+  <div class="cover-bg-circle c2"></div>
+  <div class="cover-bg-circle c3"></div>
+
+  <div class="cover-logo-wrap">
+    <span class="cover-logo-icon">💪</span>
+  </div>
+
+  <div class="cover-brand">RAIM<span>ZEAL</span></div>
+  <div class="cover-tagline">Your premium AI-powered fitness companion</div>
+  <div class="cover-badge">Complete User Guide</div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-item">
+      <span class="label">Website</span>
+      <span class="value">www.raimzeal.com</span>
+    </div>
+    <div class="cover-divider"></div>
+    <div class="cover-footer-item">
+      <span class="label">Creator</span>
+      <span class="value">Dr. Ephraim Oviawe</span>
+    </div>
+    <div class="cover-divider"></div>
+    <div class="cover-footer-item">
+      <span class="label">Version</span>
+      <span class="value">1.0  ·  May 2026</span>
+    </div>
+    <div class="cover-divider"></div>
+    <div class="cover-footer-item">
+      <span class="label">Linktree</span>
+      <span class="value">linktr.ee/Raimzy</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     CONTENT PAGES
+══════════════════════════════════════════ -->
+<div class="content-pages">
+
+<!-- ── TABLE OF CONTENTS ── -->
+<div class="toc-page">
+  <div class="toc-header">
+    <h1>Table of Contents</h1>
+    <p>Everything you need to master RAIMZEAL — from first login to advanced AI coaching.</p>
+  </div>
+
+  <div class="toc-grid">
+    <div class="toc-item">
+      <div class="toc-num">1</div>
+      <div>
+        <div class="toc-label">About RAIMZEAL</div>
+        <div class="toc-sub">Vision, creator & key stats</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">2</div>
+      <div>
+        <div class="toc-label">Getting Started</div>
+        <div class="toc-sub">Sign up, verify & onboard</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">3</div>
+      <div>
+        <div class="toc-label">Home Screen</div>
+        <div class="toc-sub">Dashboard, stats & quick actions</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">4</div>
+      <div>
+        <div class="toc-label">Workouts</div>
+        <div class="toc-sub">Library, programs & history</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">5</div>
+      <div>
+        <div class="toc-label">Nutrition Tracking</div>
+        <div class="toc-sub">Logging, macros, scanner & filters</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">6</div>
+      <div>
+        <div class="toc-label">Progress</div>
+        <div class="toc-sub">Charts, streaks & achievements</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">7</div>
+      <div>
+        <div class="toc-label">Community</div>
+        <div class="toc-sub">Feed, questions & social features</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num acc">8</div>
+      <div>
+        <div class="toc-label">Ovia AI Coach</div>
+        <div class="toc-sub">Chat, weekly digest & coaching</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">9</div>
+      <div>
+        <div class="toc-label">Activity Tracker</div>
+        <div class="toc-sub">Steps, calories & weekly chart</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">10</div>
+      <div>
+        <div class="toc-label">Body Measurements</div>
+        <div class="toc-sub">Weight, BMI & body stats</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num sec">11</div>
+      <div>
+        <div class="toc-label">Reminders</div>
+        <div class="toc-sub">9 Ovia AI health reminders</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num sec">12</div>
+      <div>
+        <div class="toc-label">Share Progress Card</div>
+        <div class="toc-sub">Themes, stats & social sharing</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num dark">13</div>
+      <div>
+        <div class="toc-label">Email System</div>
+        <div class="toc-sub">Weekly digest & notifications</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num dark">14</div>
+      <div>
+        <div class="toc-label">Full Features Checklist</div>
+        <div class="toc-sub">Every feature at a glance</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num">15</div>
+      <div>
+        <div class="toc-label">Links & Resources</div>
+        <div class="toc-sub">Websites, socials & contact</div>
+      </div>
+    </div>
+    <div class="toc-item">
+      <div class="toc-num acc">16</div>
+      <div>
+        <div class="toc-label">Why Choose RAIMZEAL</div>
+        <div class="toc-sub">Advantages & key benefits</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 1 — ABOUT
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">🌿</span>
+    <span class="section-hero-num">Section 1</span>
+    <h2>About RAIMZEAL</h2>
+    <p>A comprehensive fitness ecosystem built on AI — designed to transform how you train, eat, and live.</p>
+  </div>
+
+  <div class="three-col">
+    <div class="stat-card">
+      <span class="stat-value">9+</span>
+      <span class="stat-label">Core Screens</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">AI</span>
+      <span class="stat-label">Powered Coach</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value">PWA</span>
+      <span class="stat-label">Works Everywhere</span>
+    </div>
+  </div>
+
+  <h3>What is RAIMZEAL?</h3>
+  <p>RAIMZEAL is a premium fitness platform built as a Progressive Web App (PWA) and native mobile companion. It combines workout tracking, nutrition logging, AI coaching, community engagement, and health analytics into a single seamless experience.</p>
+  <p>The platform was created by <strong>Dr. Ephraim Oviawe</strong> — fitness advocate, medical professional, author, and musician — with the goal of making elite-level health guidance accessible to everyone.</p>
+
+  <div class="card gold">
+    <div class="card-title">✍️ About the Creator</div>
+    <p>Dr. Ephraim Oviawe is a multidisciplinary professional whose passion spans medicine, fitness, music, and writing. RAIMZEAL reflects his belief that holistic health — physical, mental, and nutritional — is the foundation of a fulfilling life. Learn more about his work including books and music at <strong>linktr.ee/Raimzy</strong>.</p>
+  </div>
+
+  <h3>Platform Overview</h3>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">📱 Mobile App</div>
+      <p>Full-featured Expo React Native app with barcode scanner, pedometer step tracking, camera integration, and native notifications. Works on iOS, Android, and web.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-title">🌐 Web App (PWA)</div>
+      <p>Installable on any device via browser. Full parity with the mobile experience. Available at <strong>www.raimzeal.com</strong>. Add to home screen for an app-like experience.</p>
+    </div>
+  </div>
+
+  <div class="card dark">
+    <div class="card-title">⚡ Technology Stack</div>
+    <div class="tags">
+      <span class="tag green">React Native + Expo</span>
+      <span class="tag blue">TypeScript</span>
+      <span class="tag purple">Ovia AI (Streaming)</span>
+      <span class="tag gold">Supabase Auth</span>
+      <span class="tag gray">Open Food Facts API</span>
+      <span class="tag green">Node.js API Server</span>
+      <span class="tag red">PostgreSQL</span>
+      <span class="tag blue">Vite PWA</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 2 — GETTING STARTED
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero gold">
+    <span class="section-hero-icon">🚀</span>
+    <span class="section-hero-num">Section 2</span>
+    <h2>Getting Started</h2>
+    <p>From zero to your first workout logged — here's how to get set up in under 5 minutes.</p>
+  </div>
+
+  <h3>Sign Up Flow</h3>
+  <div class="nav-flow">
+    <div class="nav-step">Welcome Screen</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Enter Name & Email</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">OTP Verification</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Profile Setup</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Home Dashboard</div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Open the App</div>
+        <div class="step-desc">Visit <strong>www.raimzeal.com</strong> or open the mobile app. Tap <em>Get Started</em> on the welcome screen.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Create Your Account</div>
+        <div class="step-desc">Enter your full name, email address, and a secure password. Tap <em>Sign Up</em>.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Verify Your Email</div>
+        <div class="step-desc">Check your inbox for a 6-digit OTP code from RAIMZEAL. Enter it in the app to verify your account. The code expires in 10 minutes.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Complete Your Profile</div>
+        <div class="step-desc">Enter your age, height, current weight, preferred units (kg/lbs, cm/ft), fitness goal (lose weight, gain muscle, maintain), and fitness level (beginner, intermediate, advanced).</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Welcome Email &amp; You're In!</div>
+        <div class="step-desc">A branded welcome email arrives with your getting-started checklist, an Ovia AI motivation message, and your first fitness tip. You're now on the Home dashboard.</div>
+      </div>
+    </li>
+  </ol>
+
+  <div class="tip-box">
+    <strong>Tip:</strong> After signing up, you are automatically enrolled in RAIMZEAL's weekly digest — a Saturday morning email from Ovia AI with personalised motivation and fitness insights.
+  </div>
+
+  <h3>Returning Users — Log In</h3>
+  <div class="nav-flow">
+    <div class="nav-step">Welcome Screen</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Tap "Sign In"</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Enter Email + Password</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Home Dashboard</div>
+  </div>
+
+  <h3>Accept Terms of Service</h3>
+  <p>On first launch you'll be shown the RAIMZEAL Terms of Service. Scroll through and tap <em>Accept &amp; Continue</em>. This only appears once. You can revisit it at any time via Profile → Terms of Service.</p>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 3 — HOME SCREEN
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">🏠</span>
+    <span class="section-hero-num">Section 3</span>
+    <h2>Home Screen</h2>
+    <p>Your daily fitness command centre — everything you need at a glance.</p>
+  </div>
+
+  <h3>Dashboard Overview</h3>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="feature-icon">🔥</span>
+      <div class="feature-name">Calorie Ring</div>
+      <div class="feature-desc">A circular progress ring showing calories consumed vs. your daily goal. Displays consumed, remaining, and goal values at a glance.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">👟</span>
+      <div class="feature-name">Step Counter</div>
+      <div class="feature-desc">Live step progress bar towards your 10,000-step daily goal. On mobile, powered by the device pedometer sensor.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">💧</span>
+      <div class="feature-name">Water Tracker</div>
+      <div class="feature-desc">Track glasses of water consumed. Tap <em>Add glass of water</em> to quickly log one. Goal: 10 glasses per day.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">⚡</span>
+      <div class="feature-name">Activity Banner</div>
+      <div class="feature-desc">Tap to open the full Activity Tracker — view weekly active minutes, calories burned, and WHO fitness benchmarks.</div>
+    </div>
+  </div>
+
+  <h3>Quick Actions Grid</h3>
+  <p>Four large buttons in a 2×2 grid for instant access to the most common tasks:</p>
+
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">▶️ Start Workout</div>
+      <p>Jump directly to the Workouts Library to pick and start a session.</p>
+    </div>
+    <div class="card green">
+      <div class="card-title">🍽️ Log Meal</div>
+      <p>Open the Nutrition tab to search for food or scan a barcode.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-title">🤖 Ask Ovia</div>
+      <p>Open the Ovia AI chat to ask anything about fitness, nutrition, or health.</p>
+    </div>
+    <div class="card gold">
+      <div class="card-title">📏 Log Body</div>
+      <p>Navigate to Body Measurements to record your latest weight and stats.</p>
+    </div>
+  </div>
+
+  <h3>Recent Activity & Body Stats</h3>
+  <p>Below the Quick Actions, the Home screen shows your <strong>3 most recent workouts</strong> with name, date, duration, and calories. A <strong>Body Stats Banner</strong> displays your current weight and total measurement entries — tap it to go to Body Measurements.</p>
+
+  <div class="tip-box">
+    <strong>Good morning greeting:</strong> The home screen greets you by name — "Good morning, [Name]" — adapting to your local time of day throughout the day.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 4 — WORKOUTS
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">🏋️</span>
+    <span class="section-hero-num">Section 4</span>
+    <h2>Workouts</h2>
+    <p>Build strength, endurance, and consistency with structured programs and a comprehensive exercise library.</p>
+  </div>
+
+  <h3>Three Tabs</h3>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title">📚 Library</div>
+      <p>Browse ready-made workout templates sorted by type — Upper Body, Leg Day, HIIT Cardio, Core, Full Body, Active Recovery, and more.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Programs</div>
+      <p>Multi-week structured training plans with phases — e.g. the 8-Week Beginner Builder with Foundation, Strength, and Peak phases.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 History</div>
+      <p>Chronological list of every completed workout session — name, date, duration, and calories burned.</p>
+    </div>
+  </div>
+
+  <h3>Starting a Workout</h3>
+  <div class="nav-flow">
+    <div class="nav-step">Workouts Tab</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Tap a Workout Card</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Tap ▶ Play Button</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Workout Player</div>
+    <span class="nav-arrow">→</span>
+    <div class="nav-step">Complete → Summary</div>
+  </div>
+
+  <h3>Workout Player</h3>
+  <p>The Workout Player is a full-screen real-time tracker that guides you through every exercise:</p>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Exercise name, sets, reps, and weight instructions displayed clearly</li>
+    <li><span class="check-box">✓</span> Progress bar showing your position within the workout</li>
+    <li><span class="check-box">✓</span> Automated 60-second rest timer between sets with a <em>Skip Rest</em> button</li>
+    <li><span class="check-box">✓</span> Haptic feedback on set completion (mobile devices)</li>
+    <li><span class="check-box">✓</span> Live elapsed time and calorie estimate</li>
+    <li><span class="check-box">✓</span> Finish early or complete all sets to reach the summary screen</li>
+  </ul>
+
+  <h3>Workout Summary</h3>
+  <p>After completing a session, a summary screen appears showing: <strong>total duration</strong>, <strong>total calories burned</strong>, <strong>number of sets completed</strong>, and an Ovia AI motivational message. The workout is automatically saved to your History.</p>
+
+  <div class="card green">
+    <div class="card-title">💡 Programs — Structured Training</div>
+    <p>Programs are multi-week plans with specific workout assignments per day. Each program includes a description, total duration (weeks), weekly frequency, and a breakdown of training phases. Tap a program to see the full schedule before starting.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 5 — NUTRITION
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero gold">
+    <span class="section-hero-icon">🥗</span>
+    <span class="section-hero-num">Section 5</span>
+    <h2>Nutrition Tracking</h2>
+    <p>Log every meal, track macros in real time, scan barcodes, and discover the best foods for your goals.</p>
+  </div>
+
+  <h3>Daily Overview</h3>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">🔥 Calorie Ring</div>
+      <p>Large ring showing today's calorie intake vs. your goal. Protein, Carbs, and Fat progress bars update live as you log meals.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Macro Breakdown</div>
+      <p>Protein (g), Carbs (g), and Fat (g) shown as coloured progress bars with current/goal labels — green, yellow, and purple respectively.</p>
+    </div>
+  </div>
+
+  <h3>Logging a Meal</h3>
+  <ol class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Tap the Search Bar</div>
+        <div class="step-desc">Search "Search food by name…" — results appear in real time from the Open Food Facts database (millions of foods).</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Select a Food</div>
+        <div class="step-desc">Tap any result to open the Add Food modal — it shows calories, protein, carbs, fat, and a serving size input.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Set Amount</div>
+        <div class="step-desc">For API foods, type the exact grams or ml. Nutrition chips update live as you type. For packaged foods with a serving size, adjust servings with +/− buttons.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Choose Meal Category</div>
+        <div class="step-desc">Select Breakfast, Lunch, Dinner, or Snack from the dropdown.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Tap "Add Food"</div>
+        <div class="step-desc">The meal is logged instantly. Macros and the calorie ring update. The food is added to your Recent Foods list.</div>
+      </div>
+    </li>
+  </ol>
+
+  <h3>Barcode Scanner</h3>
+  <p>Tap the green <strong>Scan</strong> button in the top-right corner to open the barcode scanner. Point your camera at any food product's barcode — the app fetches full nutritional data from Open Food Facts instantly and opens the Add Food modal pre-filled.</p>
+  <div class="warning-box">Camera permission is required for the barcode scanner. The app will prompt you the first time you tap Scan. This permission is only used for scanning — no photos are stored.</div>
+
+  <h3>Smart Filter Chips</h3>
+  <p>Filter search results by nutritional profile with one tap:</p>
+
+  <table>
+    <tr>
+      <th>Filter</th>
+      <th>Default Threshold</th>
+      <th>What it shows</th>
+    </tr>
+    <tr>
+      <td>⚡ High Protein</td>
+      <td>≥ 15g protein per 100g</td>
+      <td>Foods with significant protein content</td>
+    </tr>
+    <tr>
+      <td>🔥 Low Calorie</td>
+      <td>≤ 150 kcal per 100g</td>
+      <td>Lower energy-density foods</td>
+    </tr>
+    <tr>
+      <td>💧 Low Fat</td>
+      <td>≤ 5g fat per 100g</td>
+      <td>Leaner food options</td>
+    </tr>
+    <tr>
+      <td>🌾 Low Carb</td>
+      <td>≤ 10g carbs per 100g</td>
+      <td>Reduced carbohydrate foods</td>
+    </tr>
+  </table>
+
+  <div class="card purple">
+    <div class="card-title">⚙️ Custom Thresholds</div>
+    <p>Each filter chip has a small settings icon. Tap it to open the threshold editor — adjust the gram or calorie value using ± step buttons or type it directly. A <em>Reset</em> button reverts to the default. Thresholds are saved and persist between sessions. Chip labels update live, e.g. "High Protein ≥25g".</p>
+  </div>
+
+  <div class="tip-box">
+    <strong>Result count badges:</strong> Inactive filter chips show a small badge with the number of results that would remain if you activated that filter — helping you choose the most useful filter before tapping.
+  </div>
+
+  <h3>Favourites & Recent Foods</h3>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">⭐ Favourites</div>
+      <p>Tap the star icon next to any food to save it as a favourite. Favourites appear in their own tab for instant re-logging without searching.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 Recent Foods</div>
+      <p>Your 10 most recently logged foods appear below the meal log for quick re-use. Tap any to open the Add Food modal pre-filled.</p>
+    </div>
+  </div>
+
+  <h3>History Tab</h3>
+  <p>Switch to the <strong>History</strong> tab to view past days' meals organised by date. Tap any day to expand and see all foods logged. You can re-log any historical entry or delete it.</p>
+
+  <h3>Editing & Deleting Meals</h3>
+  <p>In today's meal log, each entry has an edit (✏️) button. Tap it to adjust the amount or swap the meal category. Long-press or tap the delete icon to remove a meal entry — a confirmation prompt appears before deletion.</p>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 6 — PROGRESS
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">📈</span>
+    <span class="section-hero-num">Section 6</span>
+    <h2>Progress</h2>
+    <p>Visualise your transformation — weight trends, calorie history, streaks, and unlockable achievements.</p>
+  </div>
+
+  <h3>Stats Row</h3>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">🔥 Streak</div>
+      <p>Consecutive days with at least one workout logged. Keep it alive — Ovia AI celebrates milestones at 7, 30, and 90 days.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">💪 Workouts</div>
+      <p>Total sessions completed this week, alongside a cumulative all-time count.</p>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">📅 This Week</div>
+      <p>Number of active days in the current calendar week.</p>
+    </div>
+    <div class="card green">
+      <div class="card-title">⚖️ Change</div>
+      <p>Weight delta since your first entry — shown as ↘ kg lost or ↗ kg gained with colour coding.</p>
+    </div>
+  </div>
+
+  <h3>Body Weight Chart</h3>
+  <p>An interactive line chart of your body weight over time. Switch between <strong>1M</strong>, <strong>3M</strong>, and <strong>6M</strong> time ranges. Hover (web) or tap data points (mobile) to see the exact weight and date. The trend line shows your overall direction.</p>
+
+  <h3>Weekly Calories Bar Chart</h3>
+  <p>A bar chart showing calorie intake for each day of the past 7 days. Bars are colour-coded green for days under goal and a lighter shade for days over goal. Use this to identify patterns and spot problem days.</p>
+
+  <h3>Achievements</h3>
+  <p>Unlock badges for reaching milestones. Each achievement has a name, icon, and description:</p>
+  <ul class="checklist">
+    <li><span class="check-box sec">★</span> First Workout — Complete your very first session</li>
+    <li><span class="check-box sec">★</span> 7-Day Streak — Work out 7 consecutive days</li>
+    <li><span class="check-box sec">★</span> 30-Day Streak — The monthly consistency badge</li>
+    <li><span class="check-box sec">★</span> Calorie Crusher — Log 10 days under your calorie goal</li>
+    <li><span class="check-box sec">★</span> Macro Master — Hit all three macro targets in a single day</li>
+    <li><span class="check-box sec">★</span> Social Star — Post in the community 5 times</li>
+    <li><span class="check-box sec">★</span> Century — Complete 100 total workouts</li>
+  </ul>
+
+  <div class="card green">
+    <div class="card-title">➕ Add Measurement</div>
+    <p>Tap the green <strong>+ Measure</strong> button to log a new body measurement entry directly from the Progress screen. This updates all charts immediately.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 7 — COMMUNITY
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero blue">
+    <span class="section-hero-icon">👥</span>
+    <span class="section-hero-num">Section 7</span>
+    <h2>Community</h2>
+    <p>Connect, share, and learn alongside a growing community of RAIMZEAL members.</p>
+  </div>
+
+  <h3>Two Feeds</h3>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">📢 Community Feed</div>
+      <p>A social feed of progress updates, achievements, and general posts from RAIMZEAL members. Each post shows the author, timestamp, content, and like/comment counts.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-title">❓ Questions</div>
+      <p>A dedicated Q&amp;A tab for fitness and nutrition questions. Ask anything — from "best pre-workout meal at 6 AM?" to supplement stacks and recovery tips.</p>
+    </div>
+  </div>
+
+  <h3>Creating a Post</h3>
+  <ol class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Tap "+ New Post"</div>
+        <div class="step-desc">The green button in the top right of the Community screen.</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Choose Post Type</div>
+        <div class="step-desc">Select either <em>Post</em> (general update) or <em>Question</em> (Q&amp;A).</div>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Write &amp; Submit</div>
+        <div class="step-desc">Type your content and submit. Your post appears at the top of the feed instantly.</div>
+      </div>
+    </li>
+  </ol>
+
+  <h3>Interacting with Posts</h3>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Tap the ❤️ icon to like a post — count updates immediately</li>
+    <li><span class="check-box">✓</span> Tap the 💬 icon to view or add comments</li>
+    <li><span class="check-box">✓</span> POST and QUESTION badges distinguish content types visually</li>
+    <li><span class="check-box">✓</span> Timestamps show relative time (2h ago, 1d ago)</li>
+  </ul>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 8 — OVIA AI
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero purple">
+    <span class="section-hero-icon">🤖</span>
+    <span class="section-hero-num">Section 8</span>
+    <h2>Ovia AI Coach</h2>
+    <p>Your personal AI fitness coach, nutritionist, and mindset mentor — available 24/7, personalised to your data.</p>
+  </div>
+
+  <h3>What Ovia Knows About You</h3>
+  <p>Every Ovia response is powered by your real data — Ovia is not a generic chatbot. The AI receives your full context with every message:</p>
+
+  <div class="two-col">
+    <div class="screen-box">
+      <div class="screen-title">Your Context Sent to Ovia</div>
+      <div class="screen-row"><span class="screen-dot"></span><span class="screen-text">Age, height, current weight</span></div>
+      <div class="screen-row"><span class="screen-dot gold"></span><span class="screen-text">Fitness goal &amp; level</span></div>
+      <div class="screen-row"><span class="screen-dot"></span><span class="screen-text">Today's calories consumed</span></div>
+      <div class="screen-row"><span class="screen-dot gold"></span><span class="screen-text">Protein / Carbs / Fat logged</span></div>
+      <div class="screen-row"><span class="screen-dot"></span><span class="screen-text">Water intake today</span></div>
+      <div class="screen-row"><span class="screen-dot purple"></span><span class="screen-text">Recent workouts completed</span></div>
+    </div>
+    <div>
+      <div class="card purple">
+        <div class="card-title">🧠 Why This Matters</div>
+        <p>Ovia gives advice like a coach who knows your full history — not generic tips. Ask "what should I eat?" and Ovia responds based on your actual macro gaps for the day.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">⚡ Streaming Responses</div>
+        <p>Ovia's replies stream word by word — no waiting for the full response to load. Conversations feel natural and fast.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Suggested Prompts</h3>
+  <p>Six pre-built prompts appear on the Ovia screen to help you get started:</p>
+  <div class="tags">
+    <span class="tag purple">Design my workout plan for this week</span>
+    <span class="tag purple">What should I eat today to hit my goals?</span>
+    <span class="tag purple">Help me stay motivated right now</span>
+    <span class="tag purple">Best supplements for my goals</span>
+    <span class="tag purple">How do I recover faster?</span>
+    <span class="tag purple">What are my next fitness goals?</span>
+  </div>
+
+  <h3>Profile Tab</h3>
+  <p>The Profile screen has two tabs — <strong>Ovia AI</strong> (chat) and <strong>Profile</strong> (your personal details). Switch to Profile to view and edit your name, fitness goal, fitness level, personal records, and account settings.</p>
+
+  <div class="card dark">
+    <div class="card-title">✉️ Ovia Weekly Digest</div>
+    <p>Every Saturday at 8 AM WAT (West Africa Time), Ovia sends a personalised weekly digest email to all subscribers. It includes: a motivational message, a science-backed fitness tip, links to www.raimzeal.com and Dr. Oviawe's Linktree, and a reminder about his books and music. All new signups are automatically enrolled.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 9 — ACTIVITY TRACKER
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">⚡</span>
+    <span class="section-hero-num">Section 9</span>
+    <h2>Activity Tracker</h2>
+    <p>Monitor your daily movement, weekly activity, and progress toward WHO fitness benchmarks.</p>
+  </div>
+
+  <h3>Today's Activity Panel</h3>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">👟 Step Ring</div>
+      <p>A circular progress ring showing steps taken today vs. your 10,000-step goal. On mobile, this uses the device pedometer for real-time tracking.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📍 Distance</div>
+      <p>Distance walked in km, calculated from step count using standard stride length. Updates automatically as steps accumulate.</p>
+    </div>
+  </div>
+
+  <h3>Stats Row</h3>
+  <table>
+    <tr>
+      <th>Stat</th>
+      <th>What it Shows</th>
+    </tr>
+    <tr>
+      <td>⏱ Active Minutes</td>
+      <td>Minutes of moderate-to-vigorous activity today</td>
+    </tr>
+    <tr>
+      <td>🔥 Calories</td>
+      <td>Estimated calories burned through activity today</td>
+    </tr>
+    <tr>
+      <td>💪 Workouts</td>
+      <td>Number of workout sessions completed today</td>
+    </tr>
+    <tr>
+      <td>❤️ Streak</td>
+      <td>Consecutive active days</td>
+    </tr>
+  </table>
+
+  <h3>Weekly Active Minutes Chart</h3>
+  <p>A bar chart showing active minutes for each day of the past 7 days. Below the chart: <strong>Total Active</strong> minutes, <strong>Total Calories Burned</strong>, and <strong>Active Days</strong> (e.g. 3/7). The WHO recommendation of 150–300 minutes per week is used as a benchmark.</p>
+
+  <h3>This Week's Workouts</h3>
+  <p>A list of all workouts logged this week — shown with the workout name, date, duration, and calories burned. Provides a quick summary without leaving the Activity Tracker.</p>
+
+  <div class="tip-box">
+    <strong>Access:</strong> Tap the Activity Tracker banner on the Home screen, or navigate to it via Quick Actions. It is available in both the mobile and web versions of RAIMZEAL.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 10 — BODY MEASUREMENTS
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero gold">
+    <span class="section-hero-icon">📏</span>
+    <span class="section-hero-num">Section 10</span>
+    <h2>Body Measurements</h2>
+    <p>Track your physical transformation with precision — beyond just the scale.</p>
+  </div>
+
+  <h3>Stats at a Glance</h3>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">⚖️ Current Weight</div>
+      <p>Your most recently logged body weight, shown prominently at the top.</p>
+    </div>
+    <div class="card gold">
+      <div class="card-title">📊 BMI</div>
+      <p>Automatically calculated from your height and latest weight. Displayed with a category label: Underweight, Healthy, Overweight, or Obese.</p>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">↘ Last Change</div>
+      <p>Difference between your two most recent entries — shown as kg lost or gained with a colour indicator (green = loss, red = gain).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Entries</div>
+      <p>Total number of measurement logs ever recorded.</p>
+    </div>
+  </div>
+
+  <h3>Logging a New Entry</h3>
+  <p>Tap <strong>+ Add Entry</strong> in the top right. A modal appears with fields for:</p>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> <strong>Weight (kg)</strong> — required field</li>
+    <li><span class="check-box">✓</span> Chest (cm) — optional</li>
+    <li><span class="check-box">✓</span> Waist (cm) — optional</li>
+    <li><span class="check-box">✓</span> Hips (cm) — optional</li>
+    <li><span class="check-box">✓</span> Arms (cm) — optional</li>
+    <li><span class="check-box">✓</span> Thighs (cm) — optional</li>
+  </ul>
+
+  <h3>History List</h3>
+  <p>Every past entry is listed chronologically with date, weight, and a delta badge (e.g. ↘ -0.3). Tap any entry to expand it and view the full body measurements logged that day. Entries can be deleted individually.</p>
+
+  <div class="tip-box">
+    <strong>Best practice:</strong> Log your weight at the same time each day — ideally in the morning after waking, before eating or drinking — for the most accurate trend data.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 11 — REMINDERS
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">🔔</span>
+    <span class="section-hero-num">Section 11</span>
+    <h2>Ovia AI Reminders</h2>
+    <p>Science-backed daily reminders curated by Ovia AI — covering fasting, hydration, nutrition, training, and recovery.</p>
+  </div>
+
+  <h3>9 Built-in Reminders</h3>
+  <table>
+    <tr>
+      <th>Reminder</th>
+      <th>Time</th>
+      <th>Purpose</th>
+    </tr>
+    <tr>
+      <td>🌙 Fasting Morning Check-in</td>
+      <td>5:00 AM</td>
+      <td>Motivating check-in while fasted to maintain the fast</td>
+    </tr>
+    <tr>
+      <td>💧 Warm Water Ritual</td>
+      <td>6:30 AM</td>
+      <td>Kickstarts metabolism and digestion</td>
+    </tr>
+    <tr>
+      <td>☀️ Protein-First Breakfast</td>
+      <td>8:00 AM</td>
+      <td>Stabilises blood sugar and fuels the morning</td>
+    </tr>
+    <tr>
+      <td>🍽️ Midday Nutrition</td>
+      <td>12:30 PM</td>
+      <td>Macro check-in — protein, complex carbs, fibre</td>
+    </tr>
+    <tr>
+      <td>💧 Hydration Alert</td>
+      <td>2:00 PM</td>
+      <td>Most people are dehydrated by afternoon</td>
+    </tr>
+    <tr>
+      <td>💪 Pre-Workout Fuel</td>
+      <td>4:00 PM</td>
+      <td>30–45 minute pre-session nutrition reminder</td>
+    </tr>
+    <tr>
+      <td>🏋️ Evening Training</td>
+      <td>5:30 PM</td>
+      <td>Prompt to start today's scheduled workout</td>
+    </tr>
+    <tr>
+      <td>🌿 Post-Workout Recovery</td>
+      <td>7:00 PM</td>
+      <td>Protein window, stretching, and active recovery</td>
+    </tr>
+    <tr>
+      <td>😴 Sleep Optimisation</td>
+      <td>9:30 PM</td>
+      <td">Wind-down routine for optimal sleep and recovery</td>
+    </tr>
+  </table>
+
+  <h3>Managing Reminders</h3>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Toggle individual reminders on or off with the switch on each card</li>
+    <li><span class="check-box">✓</span> Tap <strong>Enable All</strong> to activate all 9 reminders at once</li>
+    <li><span class="check-box">✓</span> Tap <strong>Disable All</strong> to turn off all reminders temporarily</li>
+    <li><span class="check-box">✓</span> Tap <strong>Test</strong> (top right) to trigger a sample notification immediately</li>
+  </ul>
+
+  <div class="warning-box">⚠️ <strong>Medical Disclaimer:</strong> All reminders represent Ovia AI's recommendations based on general health research. Always follow your doctor's specific instructions, especially regarding fasting and medication timing.</div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 12 — SHARE PROGRESS
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero purple">
+    <span class="section-hero-icon">🎴</span>
+    <span class="section-hero-num">Section 12</span>
+    <h2>Share Progress Card</h2>
+    <p>Generate a stunning branded card to share your achievements on social media.</p>
+  </div>
+
+  <h3>5 Visual Themes</h3>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="feature-icon" style="color:#2E8B57">🌿</span>
+      <div class="feature-name">Forest</div>
+      <div class="feature-desc">Deep green tones — RAIMZEAL's signature colour palette. Clean and bold.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">🌑</span>
+      <div class="feature-name">Midnight</div>
+      <div class="feature-desc">Near-black with cool dark tones. Sleek and minimal.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon" style="color:#e55">🔥</span>
+      <div class="feature-name">Ember</div>
+      <div class="feature-desc">Warm reds and oranges. Bold and energetic.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon" style="color:#8B31C7">👑</span>
+      <div class="feature-name">Royal</div>
+      <div class="feature-desc">Deep purple gradient. Regal and premium.</div>
+    </div>
+  </div>
+  <div class="feature-item" style="max-width:50%">
+    <span class="feature-icon" style="color:#c41">🩸</span>
+    <div class="feature-name">Crimson</div>
+    <div class="feature-desc">Deep red tones — intense and striking.</div>
+  </div>
+
+  <h3>What to Show on Your Card</h3>
+  <p>Toggle which stats appear on the card. Options include:</p>
+  <ul class="checklist">
+    <li><span class="check-box acc">✓</span> Current workout streak (🔥 days)</li>
+    <li><span class="check-box acc">✓</span> Total workouts completed</li>
+    <li><span class="check-box acc">✓</span> Total calories burned</li>
+    <li><span class="check-box acc">✓</span> Total weight change (↘ kg lost)</li>
+    <li><span class="check-box acc">✓</span> Your name and current date</li>
+    <li><span class="check-box acc">✓</span> RAIMZEAL branding and logo</li>
+  </ul>
+
+  <h3>Sharing Options</h3>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title">📸 Save</div>
+      <p>Save the card image to your camera roll. Available on mobile.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-title">📤 Share</div>
+      <p>Open the native share sheet to post directly to Instagram, WhatsApp, Twitter, or anywhere.</p>
+    </div>
+    <div class="card green">
+      <div class="card-title">🔄 Both</div>
+      <p>Save and share in a single tap — the card goes to camera roll and the share sheet opens.</p>
+    </div>
+  </div>
+
+  <div class="tip-box">
+    <strong>Named Presets:</strong> Save up to 5 card configurations as named presets — e.g. "Monthly Update" or "Weekly Post". Each preset remembers your theme and stat selections. A <em>Restored from last time</em> badge appears when your previous settings are auto-loaded.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 13 — EMAIL SYSTEM
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero">
+    <span class="section-hero-icon">✉️</span>
+    <span class="section-hero-num">Section 13</span>
+    <h2>Email System</h2>
+    <p>Automated emails that keep you informed, motivated, and connected to the RAIMZEAL community.</p>
+  </div>
+
+  <h3>Emails You'll Receive</h3>
+  <table>
+    <tr>
+      <th>Email Type</th>
+      <th>When</th>
+      <th>Contents</th>
+    </tr>
+    <tr>
+      <td>🎉 Welcome</td>
+      <td>Immediately on signup</td>
+      <td>Getting-started checklist, Ovia motivation, first fitness tip, links to website and creator's Linktree</td>
+    </tr>
+    <tr>
+      <td>🔐 OTP Verification</td>
+      <td>On signup / login</td>
+      <td>6-digit one-time code to verify your email address. Expires in 10 minutes.</td>
+    </tr>
+    <tr>
+      <td>💪 Motivation</td>
+      <td>On demand</td>
+      <td>An Ovia AI generated motivational message personalised to your fitness journey</td>
+    </tr>
+    <tr>
+      <td>💡 Fitness Tip</td>
+      <td>On demand</td>
+      <td>A science-backed tip covering training, recovery, or nutrition</td>
+    </tr>
+    <tr>
+      <td>📊 Weekly Digest</td>
+      <td>Every Saturday 8 AM WAT</td>
+      <td>Motivation, tip, progress encouragement, website link, music/book info from Dr. Oviawe</td>
+    </tr>
+  </table>
+
+  <h3>Managing Your Subscription</h3>
+  <p>All new accounts are automatically subscribed to the weekly digest. To unsubscribe, tap the unsubscribe link at the bottom of any digest email, or contact support at <strong>eniggie@gmail.com</strong>.</p>
+
+  <div class="card dark">
+    <div class="card-title">🕐 Timing</div>
+    <p>The weekly digest fires every <strong>Saturday at 08:00 UTC</strong> (equivalent to 8:00 AM West Africa Time / 9:00 AM Central African Time). All subscribers receive the email simultaneously.</p>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 14 — FEATURES CHECKLIST
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero gold">
+    <span class="section-hero-icon">✅</span>
+    <span class="section-hero-num">Section 14</span>
+    <h2>Complete Features Checklist</h2>
+    <p>Every feature in RAIMZEAL — confirmed working and production-ready.</p>
+  </div>
+
+  <h3>Core Fitness Tracking</h3>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Workout library with 7+ pre-built workout templates</li>
+    <li><span class="check-box">✓</span> Multi-week training programs with phase scheduling</li>
+    <li><span class="check-box">✓</span> Real-time workout player (sets, reps, rest timer, haptics)</li>
+    <li><span class="check-box">✓</span> Workout history with date, duration, and calories</li>
+    <li><span class="check-box">✓</span> Step counter (pedometer, mobile native sensor)</li>
+    <li><span class="check-box">✓</span> Activity tracker (active minutes, weekly bar chart)</li>
+    <li><span class="check-box">✓</span> Body measurements log (weight, chest, waist, hips, arms, thighs)</li>
+    <li><span class="check-box">✓</span> Automatic BMI calculation with category labels</li>
+    <li><span class="check-box">✓</span> Weight trend chart (1M, 3M, 6M views)</li>
+  </ul>
+
+  <h3>Nutrition</h3>
+  <ul class="checklist">
+    <li><span class="check-box sec">✓</span> Real-time food search (Open Food Facts — millions of foods)</li>
+    <li><span class="check-box sec">✓</span> Barcode scanner for packaged food products</li>
+    <li><span class="check-box sec">✓</span> Meal logging by category (Breakfast, Lunch, Dinner, Snack)</li>
+    <li><span class="check-box sec">✓</span> Exact gram/ml input for API foods (live macro preview)</li>
+    <li><span class="check-box sec">✓</span> Serving-based +/− input for packaged foods</li>
+    <li><span class="check-box sec">✓</span> Daily calorie ring and macro progress bars</li>
+    <li><span class="check-box sec">✓</span> Meal edit and delete with confirmation</li>
+    <li><span class="check-box sec">✓</span> Favourites system (star foods for quick re-logging)</li>
+    <li><span class="check-box sec">✓</span> Recent foods list (10 most recent)</li>
+    <li><span class="check-box sec">✓</span> Nutrition history by date</li>
+    <li><span class="check-box sec">✓</span> Smart filter chips (High Protein, Low Calorie, Low Fat, Low Carb)</li>
+    <li><span class="check-box sec">✓</span> Custom filter thresholds (saved to device, live label updates)</li>
+    <li><span class="check-box sec">✓</span> Result count badges on inactive filter chips</li>
+    <li><span class="check-box sec">✓</span> Filters persist across searches (cleared only explicitly)</li>
+  </ul>
+
+  <h3>AI & Intelligence</h3>
+  <ul class="checklist">
+    <li><span class="check-box acc">✓</span> Ovia AI streaming chat (word-by-word responses)</li>
+    <li><span class="check-box acc">✓</span> Personalised context (age, weight, goals, macros, workouts)</li>
+    <li><span class="check-box acc">✓</span> 6 suggested conversation prompts</li>
+    <li><span class="check-box acc">✓</span> 9 Ovia AI daily health reminders with custom times</li>
+    <li><span class="check-box acc">✓</span> Weekly digest email (auto-Saturday 8 AM WAT)</li>
+    <li><span class="check-box acc">✓</span> Motivation and fitness tip emails on demand</li>
+  </ul>
+
+  <h3>Progress & Social</h3>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Workout streak tracker</li>
+    <li><span class="check-box">✓</span> Weekly calorie bar chart</li>
+    <li><span class="check-box">✓</span> Achievements system (7 unlockable badges)</li>
+    <li><span class="check-box">✓</span> Community social feed</li>
+    <li><span class="check-box">✓</span> Q&amp;A questions tab</li>
+    <li><span class="check-box">✓</span> Like and comment on posts</li>
+    <li><span class="check-box">✓</span> Share progress card (5 themes, stat toggles)</li>
+    <li><span class="check-box">✓</span> Named card presets (up to 5, persisted)</li>
+    <li><span class="check-box">✓</span> Save to camera roll / native share sheet</li>
+  </ul>
+
+  <h3>Auth & Account</h3>
+  <ul class="checklist">
+    <li><span class="check-box">✓</span> Supabase email/password authentication</li>
+    <li><span class="check-box">✓</span> 6-digit OTP email verification on signup</li>
+    <li><span class="check-box">✓</span> Onboarding profile setup (age, height, weight, goal, level)</li>
+    <li><span class="check-box">✓</span> Terms of Service with acceptance gate</li>
+    <li><span class="check-box">✓</span> Auto-subscribe to weekly digest on signup</li>
+    <li><span class="check-box">✓</span> Welcome email sent on account creation</li>
+    <li><span class="check-box">✓</span> Branded PWA — installable on home screen</li>
+  </ul>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 15 — LINKS & RESOURCES
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero blue">
+    <span class="section-hero-icon">🔗</span>
+    <span class="section-hero-num">Section 15</span>
+    <h2>Links &amp; Resources</h2>
+    <p>Everything you need to connect with RAIMZEAL and Dr. Ephraim Oviawe.</p>
+  </div>
+
+  <h3>Official Links</h3>
+  <table>
+    <tr>
+      <th>Resource</th>
+      <th>URL</th>
+      <th>What's There</th>
+    </tr>
+    <tr>
+      <td>🌐 Main Website</td>
+      <td><strong>www.raimzeal.com</strong></td>
+      <td>The full RAIMZEAL web app — sign up and start tracking</td>
+    </tr>
+    <tr>
+      <td>🌳 Linktree</td>
+      <td><strong>linktr.ee/Raimzy</strong></td>
+      <td>All Dr. Oviawe's links — books, music, socials, and more</td>
+    </tr>
+    <tr>
+      <td>📧 Contact / Support</td>
+      <td><strong>eniggie@gmail.com</strong></td>
+      <td>Direct email for support, feedback, or inquiries</td>
+    </tr>
+  </table>
+
+  <div class="two-col" style="margin-top:18px">
+    <div class="card gold">
+      <div class="card-title">📚 Books by Dr. Oviawe</div>
+      <p>Dr. Ephraim Oviawe is also an accomplished author. Visit his Linktree to discover his published books covering health, wellbeing, and personal development.</p>
+    </div>
+    <div class="card purple">
+      <div class="card-title">🎵 Music by Dr. Oviawe</div>
+      <p>Beyond medicine and fitness, Dr. Oviawe is a talented musician. Follow his Linktree to stream and download his music.</p>
+    </div>
+  </div>
+
+  <h3>How to Install RAIMZEAL on Your Phone</h3>
+  <div class="two-col">
+    <div class="card green">
+      <div class="card-title">📱 iOS (iPhone)</div>
+      <ol style="padding-left:16px; font-size:9.5pt; color:#374151; margin-top:8px">
+        <li>Open Safari and go to <strong>www.raimzeal.com</strong></li>
+        <li>Tap the Share button (box with arrow)</li>
+        <li>Tap <em>Add to Home Screen</em></li>
+        <li>Name it "RAIMZEAL" and tap <em>Add</em></li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 Android</div>
+      <ol style="padding-left:16px; font-size:9.5pt; color:#374151; margin-top:8px">
+        <li>Open Chrome and go to <strong>www.raimzeal.com</strong></li>
+        <li>Tap the three-dot menu (⋮)</li>
+        <li>Tap <em>Add to Home Screen</em> or <em>Install App</em></li>
+        <li>Tap <em>Install</em> to confirm</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════
+     SECTION 16 — WHY RAIMZEAL
+══════════════════════════════ -->
+<div class="section">
+  <div class="section-hero purple">
+    <span class="section-hero-icon">🏆</span>
+    <span class="section-hero-num">Section 16</span>
+    <h2>Why Choose RAIMZEAL</h2>
+    <p>The advantages and benefits that set RAIMZEAL apart from other fitness apps.</p>
+  </div>
+
+  <h3>Key Advantages</h3>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="feature-icon">🤖</span>
+      <div class="feature-name">Truly Personalised AI</div>
+      <div class="feature-desc">Unlike generic chatbots, Ovia AI receives your real fitness data — workouts, macros, weight, goals — before every response. Advice is genuinely tailored to you.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">📱</span>
+      <div class="feature-name">Works Everywhere</div>
+      <div class="feature-desc">One product, every platform. Mobile (iOS &amp; Android), desktop browser, and installable PWA. No separate download required.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">🍎</span>
+      <div class="feature-name">Millions of Foods</div>
+      <div class="feature-desc">Powered by Open Food Facts — the world's largest open food database. Scan any barcode or search any food from any country.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">📊</span>
+      <div class="feature-name">All-in-One Tracking</div>
+      <div class="feature-desc">Workouts, nutrition, steps, body measurements, and progress charts — all in one app with a unified dashboard. No need for multiple apps.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">✉️</span>
+      <div class="feature-name">Proactive Coaching</div>
+      <div class="feature-desc">RAIMZEAL comes to you. Weekly digest emails every Saturday, daily AI reminders, and OTP-verified security keep you engaged and accountable.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">👥</span>
+      <div class="feature-name">Community Support</div>
+      <div class="feature-desc">A built-in social feed for posts and questions. Share milestones, ask for advice, and celebrate others' progress within the RAIMZEAL family.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">🎨</span>
+      <div class="feature-name">Premium Design</div>
+      <div class="feature-desc">Dark theme with premium brand colours (forest green, gold, royal purple). Beautiful progress cards, smooth animations, and a polished UI throughout.</div>
+    </div>
+    <div class="feature-item">
+      <span class="feature-icon">🔒</span>
+      <div class="feature-name">Secure & Private</div>
+      <div class="feature-desc">Email OTP verification, Supabase Auth, and secure HTTPS throughout. Your health data is yours — not sold to advertisers.</div>
+    </div>
+  </div>
+
+  <h3>Compared to the Competition</h3>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>RAIMZEAL</th>
+      <th>Typical Fitness Apps</th>
+    </tr>
+    <tr>
+      <td>AI Coach with your real data</td>
+      <td>✅ Full context, streaming</td>
+      <td>❌ Generic chatbot or none</td>
+    </tr>
+    <tr>
+      <td>Barcode food scanner</td>
+      <td>✅ Open Food Facts API</td>
+      <td>⚠️ Often behind paywall</td>
+    </tr>
+    <tr>
+      <td>Custom nutrition filter thresholds</td>
+      <td>✅ Per-filter, saved</td>
+      <td>❌ Fixed or none</td>
+    </tr>
+    <tr>
+      <td>Weekly AI email digest</td>
+      <td>✅ Auto every Saturday</td>
+      <td>❌ Generic newsletters only</td>
+    </tr>
+    <tr>
+      <td>Share progress cards (5 themes)</td>
+      <td>✅ Yes</td>
+      <td>⚠️ Limited or none</td>
+    </tr>
+    <tr>
+      <td>Works without app store download</td>
+      <td>✅ PWA — browser-based</td>
+      <td>❌ App store required</td>
+    </tr>
+    <tr>
+      <td>Creator-backed community</td>
+      <td>✅ Dr. Ephraim Oviawe</td>
+      <td>❌ Anonymous corporate</td>
+    </tr>
+  </table>
+
+  <div class="card dark" style="margin-top:20px">
+    <div class="card-title">💬 A Message from the Creator</div>
+    <p>"RAIMZEAL was built for people who are serious about their health but don't want to navigate a dozen different apps. Everything you need is here — a world-class AI coach, the tools to track every aspect of your fitness, and a community to keep you accountable. Welcome to your fitness home."</p>
+    <p style="margin-top:8px; color:#C9A84C; font-weight:600">— Dr. Ephraim Oviawe, Creator of RAIMZEAL</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div style="text-align:center; padding:20px 0">
+    <p style="font-size:11pt; font-weight:700; color:var(--text); margin-bottom:6px">Ready to start your journey?</p>
+    <p style="font-size:10pt; color:var(--text-muted)">Visit <strong style="color:#2E8B57">www.raimzeal.com</strong> or follow <strong style="color:#8B31C7">linktr.ee/Raimzy</strong> for everything Dr. Oviawe offers.</p>
+  </div>
+</div>
+
+</div><!-- end content-pages -->
+
+</body>
+</html>
