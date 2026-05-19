@@ -41,7 +41,7 @@ const FALLBACK_PLANS: Plan[] = [
     id: 'athlete',
     name: 'Athlete',
     tagline: 'For the dedicated',
-    price: 999,
+    price: 9.99,
     priceLabel: '$9.99 / month',
     features: [
       'Full workout library & programs',
@@ -62,7 +62,7 @@ const FALLBACK_PLANS: Plan[] = [
     id: 'elite',
     name: 'Elite',
     tagline: 'Maximum performance',
-    price: 1999,
+    price: 19.99,
     priceLabel: '$19.99 / month',
     features: [
       'Everything in Athlete',
@@ -195,7 +195,7 @@ export function Membership() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-black text-foreground">{plan.price === 0 ? 'Free' : `$${plan.price / 100}`}</p>
+                    <p className="text-xl font-black text-foreground">{plan.price === 0 ? 'Free' : `$${plan.price.toFixed(2)}`}</p>
                     {plan.price > 0 && <p className="text-xs text-foreground/50">/ month</p>}
                   </div>
                 </div>

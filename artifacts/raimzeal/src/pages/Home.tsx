@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
-  Dumbbell, MessageCircle, Users, Trophy, Zap
+  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,6 +51,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
     { icon: MessageCircle, label: 'Ovia AI', href: '/coach', color: 'bg-secondary/20 text-secondary' },
     { icon: Users, label: 'Community', href: '/community', color: 'bg-accent/20 text-accent' },
     { icon: Zap, label: 'Programs', href: '/programs', color: 'bg-warning/20 text-warning' },
+    { icon: Crown, label: 'Upgrade Plan', href: '/membership', color: 'bg-yellow-500/20 text-yellow-400' },
   ];
 
   return (
@@ -171,7 +172,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           transition={{ delay: 0.3 }}
         >
           <h2 className="text-lg font-semibold font-display mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {quickActions.map((action, i) => (
               <Link key={action.label} href={action.href}>
                 <motion.div

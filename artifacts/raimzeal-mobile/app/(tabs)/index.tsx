@@ -285,6 +285,32 @@ export default function HomeScreen() {
             }}
           />
         </View>
+
+        {/* Upgrade Plan — full-width premium CTA */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.push("/membership");
+          }}
+          style={[
+            styles.upgradeBanner,
+            { backgroundColor: "#C9A84C15", borderColor: "#C9A84C40" },
+          ]}
+        >
+          <View style={[styles.upgradeIcon, { backgroundColor: "#C9A84C25" }]}>
+            <Ionicons name="diamond-outline" size={22} color="#C9A84C" />
+          </View>
+          <View style={styles.upgradeInfo}>
+            <Text style={[styles.upgradeTitle, { color: "#C9A84C" }]}>
+              Upgrade Plan
+            </Text>
+            <Text style={[styles.upgradeSub, { color: colors.mutedForeground }]}>
+              Athlete $9.99/mo · Elite $19.99/mo
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#C9A84C" />
+        </TouchableOpacity>
       </View>
 
       {/* Body Stats Banner */}
@@ -482,6 +508,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   bodyBannerBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  upgradeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  upgradeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  upgradeInfo: { flex: 1 },
+  upgradeTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  upgradeSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   workoutList: { gap: 10 },
   noWorkouts: {
     flexDirection: "row",
