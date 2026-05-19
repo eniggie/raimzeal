@@ -10,8 +10,41 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const CACHE_PREFIX = "barcode_cache_v1:";
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface CacheEntry {
+  food: ScannedFood;
+  cachedAt: number;
+}
+
+async function getCachedBarcode(barcode: string): Promise<ScannedFood | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CACHE_PREFIX + barcode);
+    if (!raw) return null;
+    const entry: CacheEntry = JSON.parse(raw);
+    if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+      await AsyncStorage.removeItem(CACHE_PREFIX + barcode);
+      return null;
+    }
+    return entry.food;
+  } catch {
+    return null;
+  }
+}
+
+async function setCachedBarcode(barcode: string, food: ScannedFood): Promise<void> {
+  try {
+    const entry: CacheEntry = { food, cachedAt: Date.now() };
+    await AsyncStorage.setItem(CACHE_PREFIX + barcode, JSON.stringify(entry));
+  } catch {
+    // Non-fatal: cache write failure is ignored
+  }
+}
 
 export interface ScannedFood {
   name: string;
@@ -48,6 +81,9 @@ interface OpenFoodFactsResponse {
 }
 
 async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> {
+  const cached = await getCachedBarcode(barcode);
+  if (cached) return cached;
+
   try {
     const res = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
@@ -93,7 +129,9 @@ async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> 
       ? Math.round((n.fat_100g ?? n.fat ?? 0) * sqFactor * 10) / 10
       : Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
 
-    return { name, calories, protein, carbs, fat, servingLabel };
+    const food: ScannedFood = { name, calories, protein, carbs, fat, servingLabel };
+    await setCachedBarcode(barcode, food);
+    return food;
   } catch {
     return null;
   }
