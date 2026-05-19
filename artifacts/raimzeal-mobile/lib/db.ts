@@ -243,21 +243,27 @@ export async function fetchCommunityPosts(
   if (!isSupabaseConfigured) return [];
   let query = supabase
     .from("community_posts")
-    .select("*")
+    .select("*, community_likes(count), community_comments(count)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (postType) query = (query as typeof query).eq("post_type", postType);
   const { data } = await query;
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    userId: r.user_id,
-    userName: r.user_name,
-    content: r.content,
-    postType: r.post_type as "post" | "question",
-    likesCount: r.likes_count ?? 0,
-    commentsCount: r.comments_count ?? 0,
-    createdAt: r.created_at,
-  }));
+  return (data ?? []).map((r) => {
+    const raw = r as typeof r & {
+      community_likes: Array<{ count: number }>;
+      community_comments: Array<{ count: number }>;
+    };
+    return {
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      content: r.content,
+      postType: r.post_type as "post" | "question",
+      likesCount: raw.community_likes?.[0]?.count ?? r.likes_count ?? 0,
+      commentsCount: raw.community_comments?.[0]?.count ?? r.comments_count ?? 0,
+      createdAt: r.created_at,
+    };
+  });
 }
 
 export async function createCommunityPost(
@@ -315,13 +321,9 @@ export async function createComment(
     .select()
     .single();
   if (error || !data) return null;
-  const { data: post } = await supabase
-    .from("community_posts")
-    .select("comments_count")
-    .eq("id", postId)
-    .single();
-  const newCount = (post?.comments_count ?? 0) + 1;
-  await supabase.from("community_posts").update({ comments_count: newCount }).eq("id", postId);
+  // Count is maintained by the caller's local state and/or a server-side trigger.
+  // We intentionally do NOT update community_posts.comments_count here because
+  // that would allow any authenticated user to write to another user's post row.
   return {
     id: data.id,
     postId: data.post_id,
@@ -343,22 +345,21 @@ export async function toggleLike(
     .eq("post_id", postId)
     .eq("user_id", userId)
     .maybeSingle();
-  const { data: post } = await supabase
-    .from("community_posts")
-    .select("likes_count")
-    .eq("id", postId)
-    .single();
+
   if (existing) {
     await supabase.from("community_likes").delete().eq("post_id", postId).eq("user_id", userId);
-    const newCount = Math.max(0, (post?.likes_count ?? 1) - 1);
-    await supabase.from("community_posts").update({ likes_count: newCount }).eq("id", postId);
-    return { liked: false, newCount };
   } else {
     await supabase.from("community_likes").insert({ post_id: postId, user_id: userId });
-    const newCount = (post?.likes_count ?? 0) + 1;
-    await supabase.from("community_posts").update({ likes_count: newCount }).eq("id", postId);
-    return { liked: true, newCount };
   }
+
+  // Read the authoritative count directly from community_likes — never from
+  // community_posts, which would require a cross-user UPDATE to stay current.
+  const { count } = await supabase
+    .from("community_likes")
+    .select("*", { count: "exact", head: true })
+    .eq("post_id", postId);
+
+  return { liked: !existing, newCount: count ?? 0 };
 }
 
 export async function checkUserLikes(
