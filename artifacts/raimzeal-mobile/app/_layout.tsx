@@ -23,7 +23,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
-import { PermissionsProvider } from "@/contexts/PermissionsContext";
+import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   loadReminderSettings,
@@ -55,6 +55,8 @@ function AuthGate() {
   const segments = useSegments();
   const router = useRouter();
   const notificationsInitialised = useRef(false);
+  const cameraRollRequested = useRef(false);
+  const { cameraRollStatus, requestCameraRollPermission } = usePermissions();
 
   useEffect(() => {
     if (loading) return;
@@ -72,7 +74,16 @@ function AuthGate() {
       notificationsInitialised.current = true;
       initNotifications();
     }
-  }, [session, loading, segments]);
+
+    // Proactively request camera roll permission once per session so the
+    // first save is instant and the prompt doesn't interrupt the flow.
+    if (session && !cameraRollRequested.current && cameraRollStatus === "undetermined") {
+      cameraRollRequested.current = true;
+      requestCameraRollPermission().catch(() => {
+        // Non-fatal — the save flow will fall back to requesting on demand
+      });
+    }
+  }, [session, loading, segments, cameraRollStatus, requestCameraRollPermission]);
 
   return <Slot />;
 }
