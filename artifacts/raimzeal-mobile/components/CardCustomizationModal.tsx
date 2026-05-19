@@ -735,11 +735,11 @@ export default function CardCustomizationModal({
             <View style={styles.actionRow}>
               {(
                 [
-                  { action: "share" as CardAction, icon: "share-social", label: "Share", bg: colors.primary },
-                  { action: "save" as CardAction, icon: "image-outline", label: "Save", bg: colors.secondary },
-                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", bg: colors.accent },
+                  { action: "share" as CardAction, icon: "share-social", label: "Share", subtitle: "Opens your share sheet", bg: colors.primary },
+                  { action: "save" as CardAction, icon: "image-outline", label: "Save", subtitle: "Saves to camera roll", bg: colors.secondary },
+                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", subtitle: "Saves & opens share sheet", bg: colors.accent },
                 ] as const
-              ).map(({ action, icon, label, bg }) => {
+              ).map(({ action, icon, label, subtitle, bg }) => {
                 const isPreferred = anyStatEnabled && defaultAction === action;
                 return (
                   <TouchableOpacity
@@ -760,29 +760,42 @@ export default function CardCustomizationModal({
                     {isPreferred && (
                       <View style={styles.preferredDot} />
                     )}
-                    <Ionicons
-                      name={icon}
-                      size={17}
-                      color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
-                    />
-                    <Text
-                      style={[
-                        styles.actionBtnText,
-                        { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
-                      ]}
-                    >
-                      {label}
-                    </Text>
+                    <View style={styles.actionBtnInner}>
+                      <View style={styles.actionBtnTop}>
+                        <Ionicons
+                          name={icon}
+                          size={17}
+                          color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
+                        />
+                        <Text
+                          style={[
+                            styles.actionBtnText,
+                            { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
+                          ]}
+                        >
+                          {label}
+                        </Text>
+                      </View>
+                      {anyStatEnabled && (
+                        <Text
+                          style={[
+                            styles.actionBtnSubtitle,
+                            { color: colors.primaryForeground + "BB" },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {subtitle}
+                        </Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
-          {anyStatEnabled && (
+          {anyStatEnabled && defaultAction && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              {defaultAction
-                ? `${defaultAction.charAt(0).toUpperCase() + defaultAction.slice(1)} is your saved preference`
-                : "Both saves to your camera roll and opens the share sheet"}
+              {`${defaultAction.charAt(0).toUpperCase() + defaultAction.slice(1)} is your saved preference`}
             </Text>
           )}
           {!anyStatEnabled && (
@@ -1242,16 +1255,29 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   actionBtn: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: 14,
+  },
+  actionBtnInner: {
+    alignItems: "center",
+    gap: 3,
+  },
+  actionBtnTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   actionBtnText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  actionBtnSubtitle: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   preferredDot: {
     position: "absolute",
