@@ -490,6 +490,11 @@ export default function CardCustomizationModal({
               </TouchableOpacity>
             </View>
           )}
+          {anyStatEnabled && (
+            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+              Both saves to your camera roll and opens the share sheet
+            </Text>
+          )}
           {!anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
               Enable at least one stat to generate your card
