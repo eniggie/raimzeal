@@ -50,6 +50,8 @@ export interface MealLog {
   carbs: number;
   fat: number;
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
+  /** Grams logged when the user entered an amount via the grams input */
+  amountGrams?: number;
 }
 
 /** Matches web app store.ts BodyMeasurement exactly */

@@ -112,6 +112,7 @@ export async function syncMealLogs(userId: string, logs: MealLog[]) {
       carbs: m.carbs,
       fat: m.fat,
       meal_type: m.mealType,
+      amount_grams: m.amountGrams ?? null,
     }))
   );
 }
@@ -132,6 +133,7 @@ export async function fetchMealLogs(userId: string): Promise<MealLog[]> {
     carbs: r.carbs,
     fat: r.fat,
     mealType: r.meal_type as MealLog["mealType"],
+    ...(r.amount_grams != null ? { amountGrams: r.amount_grams as number } : {}),
   }));
 }
 
@@ -147,6 +149,7 @@ export async function insertMealLog(userId: string, meal: MealLog) {
     carbs: meal.carbs,
     fat: meal.fat,
     meal_type: meal.mealType,
+    amount_grams: meal.amountGrams ?? null,
   });
 }
 

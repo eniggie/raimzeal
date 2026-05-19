@@ -920,7 +920,8 @@ export default function NutritionScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const { name, calories, protein, carbs, fat } = selectedFood;
     const isGramsMode = selectedFoodIsApiResult && !selectedFoodServingLabel;
-    const factor = isGramsMode ? (parseFloat(grams) || 0) / 100 : servings;
+    const parsedGrams = parseFloat(grams) || 0;
+    const factor = isGramsMode ? parsedGrams / 100 : servings;
     const meal: MealLog = {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
@@ -930,6 +931,7 @@ export default function NutritionScreen() {
       carbs: Math.round(carbs * factor * 10) / 10,
       fat: Math.round(fat * factor * 10) / 10,
       mealType: selectedMeal,
+      ...(isGramsMode && parsedGrams > 0 ? { amountGrams: parsedGrams } : {}),
     };
     addMealLog(meal);
     setShowModal(false);
@@ -2547,9 +2549,16 @@ function HistoryFoodRow({ log, onAddFood }: { log: MealLog; onAddFood: () => voi
         style={[styles.historyFoodRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
       >
         <View style={styles.historyFoodInfo}>
-          <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
-            {log.name}
-          </Text>
+          <View style={styles.nutritionNameRow}>
+            <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
+              {log.name}
+            </Text>
+            {log.amountGrams !== undefined && (
+              <Text style={[styles.nutritionAmountBadge, { color: colors.mutedForeground }]}>
+                {Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)} g
+              </Text>
+            )}
+          </View>
           <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
             P {log.protein}g · C {log.carbs}g · F {log.fat}g
           </Text>
@@ -2654,9 +2663,16 @@ function NutritionRow({ log, onDelete }: { log: MealLog; onDelete: (meal: MealLo
             style={styles.nutritionRowMain}
           >
             <View style={styles.nutritionRowInfo}>
-              <Text style={[styles.nutritionName, { color: colors.foreground }]}>
-                {log.name}
-              </Text>
+              <View style={styles.nutritionNameRow}>
+                <Text style={[styles.nutritionName, { color: colors.foreground }]} numberOfLines={1}>
+                  {log.name}
+                </Text>
+                {log.amountGrams !== undefined && (
+                  <Text style={[styles.nutritionAmountBadge, { color: colors.mutedForeground }]}>
+                    {Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)} g
+                  </Text>
+                )}
+              </View>
               <Text style={[styles.nutritionMacroSub, { color: colors.mutedForeground }]}>
                 {log.protein}g P · {log.carbs}g C · {log.fat}g F
               </Text>
@@ -2961,6 +2977,8 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   nutritionRowInfo: { flex: 1, gap: 2 },
+  nutritionNameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
+  nutritionAmountBadge: { fontSize: 11, fontFamily: "Inter_400Regular", opacity: 0.8 },
   nutritionRowRight: {
     flexDirection: "row",
     alignItems: "center",
