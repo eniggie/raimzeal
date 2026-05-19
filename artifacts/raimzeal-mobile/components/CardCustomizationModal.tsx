@@ -13,6 +13,12 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -139,6 +145,102 @@ async function savePresets(presets: CardPreset[]): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+function ZoomableCard({
+  children,
+  cardWidth,
+  cardHeight,
+}: {
+  children: React.ReactNode;
+  cardWidth: number;
+  cardHeight: number;
+}) {
+  const screenWidth = Dimensions.get("window").width;
+  const screenHeight = Dimensions.get("window").height;
+
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      "worklet";
+      scale.value = Math.min(4, Math.max(1, savedScale.value * e.scale));
+    })
+    .onEnd(() => {
+      "worklet";
+      savedScale.value = scale.value;
+      const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
+      const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
+      const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
+      translateX.value = withSpring(clampedX);
+      translateY.value = withSpring(clampedY);
+      savedTranslateX.value = clampedX;
+      savedTranslateY.value = clampedY;
+    });
+
+  const panGesture = Gesture.Pan()
+    .averageTouches(true)
+    .onUpdate((e) => {
+      "worklet";
+      const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
+      translateX.value = Math.min(maxX, Math.max(-maxX, savedTranslateX.value + e.translationX));
+      translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
+    })
+    .onEnd(() => {
+      "worklet";
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      "worklet";
+      scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+      savedScale.value = 1;
+      translateX.value = withSpring(0, { damping: 15, stiffness: 200 });
+      translateY.value = withSpring(0, { damping: 15, stiffness: 200 });
+      savedTranslateX.value = 0;
+      savedTranslateY.value = 0;
+    });
+
+  const composed = Gesture.Simultaneous(
+    Gesture.Race(doubleTapGesture, panGesture),
+    pinchGesture
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={composed}>
+      <Reanimated.View
+        style={[
+          {
+            width: cardWidth,
+            height: cardHeight,
+            borderRadius: 20,
+            overflow: "hidden",
+          },
+          animatedStyle,
+        ]}
+      >
+        {children}
+      </Reanimated.View>
+    </GestureDetector>
+  );
 }
 
 export default function CardCustomizationModal({
@@ -822,18 +924,17 @@ export default function CardCustomizationModal({
         onRequestClose={() => setZoomVisible(false)}
         statusBarTranslucent
       >
-        <TouchableOpacity
-          style={styles.zoomOverlay}
-          activeOpacity={1}
-          onPress={() => setZoomVisible(false)}
-        >
+        <View style={styles.zoomOverlay}>
           <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={[
-              styles.zoomCardWrap,
-              { width: CARD_WIDTH * zoomScale, height: zoomCardHeight },
-            ]}
+            onPress={() => setZoomVisible(false)}
+          />
+
+          <ZoomableCard
+            key={zoomVisible ? "zoom-open" : "zoom-closed"}
+            cardWidth={CARD_WIDTH * zoomScale}
+            cardHeight={zoomCardHeight}
           >
             <View
               style={[
@@ -851,7 +952,7 @@ export default function CardCustomizationModal({
                 themeId={selectedThemeId}
               />
             </View>
-          </TouchableOpacity>
+          </ZoomableCard>
 
           <TouchableOpacity
             style={[styles.zoomCloseBtn, { top: insets.top + 16 }]}
@@ -861,8 +962,8 @@ export default function CardCustomizationModal({
             <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
           </TouchableOpacity>
 
-          <Text style={styles.zoomDismissHint}>Tap anywhere to close</Text>
-        </TouchableOpacity>
+          <Text style={styles.zoomDismissHint}>Pinch to zoom · double-tap to reset</Text>
+        </View>
       </Modal>
 
       {/* Save Preset modal */}
@@ -1316,10 +1417,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.88)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  zoomCardWrap: {
-    overflow: "hidden",
-    borderRadius: 20,
   },
   zoomCloseBtn: {
     position: "absolute",
