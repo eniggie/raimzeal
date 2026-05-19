@@ -126,6 +126,7 @@ const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
 const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
+const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 
 interface CustomFilterPreset {
   id: string;
@@ -897,15 +898,29 @@ export default function NutritionScreen() {
     setShowModal(true);
   }
 
-  function handleScannedFood(food: ScannedFood) {
+  async function handleScannedFood(food: ScannedFood) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelectedFood({ ...food, mealType: "snack" });
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
     setServings(1);
     setServingsText("1");
-    setGrams("100");
     setSelectedMeal("snack");
+
+    let lastGrams = "100";
+    if (!food.servingLabel) {
+      try {
+        const raw = await AsyncStorage.getItem(LAST_USED_GRAMS_KEY);
+        if (raw) {
+          const map: Record<string, string> = JSON.parse(raw);
+          if (map[food.name]) lastGrams = map[food.name];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setGrams(lastGrams);
+
     setShowModal(true);
   }
 
@@ -934,6 +949,17 @@ export default function NutritionScreen() {
       ...(isGramsMode && parsedGrams > 0 ? { amountGrams: parsedGrams } : {}),
     };
     addMealLog(meal);
+
+    if (isGramsMode && parsedGrams > 0) {
+      AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
+        .then((raw) => {
+          const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+          map[name] = grams;
+          return AsyncStorage.setItem(LAST_USED_GRAMS_KEY, JSON.stringify(map));
+        })
+        .catch(() => {});
+    }
+
     setShowModal(false);
   }
 
