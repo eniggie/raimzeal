@@ -1,0 +1,87 @@
+name: Build Android AAB for Google Play
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/raimzeal-mobile/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build signed Android App Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: artifacts/raimzeal-mobile/package.json
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        working-directory: artifacts/raimzeal-mobile
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Android App Bundle
+        working-directory: artifacts/raimzeal-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          eas build \
+            --platform android \
+            --profile production \
+            --non-interactive \
+            --no-wait \
+            --json > build-output.json
+          echo "Build submitted. Build ID:"
+          cat build-output.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const j=JSON.parse(d);console.log(j[0]?.id ?? 'See expo.dev for build status')"
+
+      - name: Wait for build and download AAB
+        working-directory: artifacts/raimzeal-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          BUILD_ID=$(cat build-output.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const j=JSON.parse(d);console.log(j[0]?.id)")
+          echo "Waiting for build $BUILD_ID to complete..."
+          
+          for i in $(seq 1 60); do
+            STATUS=$(eas build:view $BUILD_ID --json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const j=JSON.parse(d);console.log(j.status)")
+            echo "Attempt $i/60 — status: $STATUS"
+            
+            if [ "$STATUS" = "FINISHED" ]; then
+              AAB_URL=$(eas build:view $BUILD_ID --json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const j=JSON.parse(d);console.log(j.artifacts?.buildUrl ?? '')")
+              echo "Build finished! Downloading AAB from: $AAB_URL"
+              curl -L "$AAB_URL" -o raimzeal-release.aab
+              echo "AAB downloaded successfully"
+              break
+            fi
+            
+            if [ "$STATUS" = "ERRORED" ] || [ "$STATUS" = "CANCELLED" ]; then
+              echo "Build failed with status: $STATUS"
+              exit 1
+            fi
+            
+            sleep 30
+          done
+
+      - name: Upload AAB as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: raimzeal-android-release
+          path: artifacts/raimzeal-mobile/raimzeal-release.aab
+          retention-days: 30
+          if-no-files-found: warn

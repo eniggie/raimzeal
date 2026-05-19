@@ -1,0 +1,46 @@
+name: Build Android AAB (Direct - No Wait)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  submit-build:
+    name: Submit EAS build and get download link
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Install dependencies
+        working-directory: artifacts/raimzeal-mobile
+        run: pnpm install --frozen-lockfile
+
+      - name: Submit EAS build
+        working-directory: artifacts/raimzeal-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "Submitting Android production build to EAS..."
+          eas build \
+            --platform android \
+            --profile production \
+            --non-interactive
+          echo ""
+          echo "✅ Build submitted to EAS."
+          echo "📱 Download your .aab from: https://expo.dev/accounts/[your-username]/projects/raimzeal-mobile/builds"
+          echo "   (replace [your-username] with your Expo account username)"
