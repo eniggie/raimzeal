@@ -417,6 +417,19 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Membership */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="diamond-outline"
+              label="Upgrade Plan"
+              sublabel="Foundation · Free forever"
+              color={colors.secondary}
+              onPress={() => router.push("/membership")}
+              isLast
+            />
+          </GlassCard>
+
           {/* Account actions */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Account</Text>
           <GlassCard style={styles.actionsCard}>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  Download, FileText, LogOut, Scale, Edit2, Check, X
+  Download, FileText, LogOut, Scale, Edit2, Check, X, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -184,6 +185,25 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
               </div>
             </div>
           </Card>
+        </motion.div>
+
+        {/* Membership */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Membership</h3>
+          <Link href="/membership">
+            <Card className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Upgrade Plan</div>
+                  <div className="text-sm text-muted-foreground">Foundation · Free forever</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Card>
+          </Link>
         </motion.div>
 
         {/* Preferences */}

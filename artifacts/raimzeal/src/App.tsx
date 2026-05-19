@@ -21,6 +21,7 @@ import { Programs } from '@/pages/Programs';
 import { Coach } from '@/pages/Coach';
 import { Community } from '@/pages/Community';
 import { Settings } from '@/pages/Settings';
+import { Membership } from '@/pages/Membership';
 import NotFound from '@/pages/not-found';
 
 function AppContent() {
@@ -122,6 +123,9 @@ function AppContent() {
           onExportPdfReport={exportPdfReport}
           onLogout={logout}
         />
+      </Route>
+      <Route path="/membership">
+        <Membership />
       </Route>
       <Route component={NotFound} />
     </Switch>
