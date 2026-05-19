@@ -783,7 +783,7 @@ export default function CardCustomizationModal({
           ? "Saved to camera roll"
           : action === "share"
           ? "Share sheet opened"
-          : "Saved to camera roll";
+          : "Saved to camera roll · Share sheet opened";
       showConfirmation(msg);
     } catch {
       // Error already surfaced by parent via Alert — no inline confirmation shown
