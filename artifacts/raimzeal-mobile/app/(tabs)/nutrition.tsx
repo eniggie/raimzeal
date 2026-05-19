@@ -1364,9 +1364,9 @@ export default function NutritionScreen() {
                           </View>
                         </View>
                         <View style={[styles.historyMacroRow, { borderBottomColor: colors.border }]}>
-                          <HistoryMacroChip label="P" value={Math.round(totals.protein)} color={colors.secondary} />
-                          <HistoryMacroChip label="C" value={Math.round(totals.carbs)} color={colors.warning} />
-                          <HistoryMacroChip label="F" value={Math.round(totals.fat)} color={colors.accent} />
+                          <HistoryMacroChip label="P" value={Math.round(totals.protein)} goal={PROTEIN_GOAL} color={colors.secondary} />
+                          <HistoryMacroChip label="C" value={Math.round(totals.carbs)} goal={CARBS_GOAL} color={colors.warning} />
+                          <HistoryMacroChip label="F" value={Math.round(totals.fat)} goal={FAT_GOAL} color={colors.accent} />
                         </View>
                         {MEALS.map((meal) => {
                           const mealEntries = logs.filter((m) => m.mealType === meal);
@@ -2320,17 +2320,25 @@ function NutritionRow({ log }: { log: MealLog }) {
 function HistoryMacroChip({
   label,
   value,
+  goal,
   color,
 }: {
   label: string;
   value: number;
+  goal: number;
   color: string;
 }) {
   const colors = useColors();
+  const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
   return (
     <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
       <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.historyMacroChipValue, { color }]}>{value}g</Text>
+      <Text style={[styles.historyMacroChipValue, { color }]}>
+        {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
+      </Text>
+      <View style={[styles.historyMacroChipBar, { backgroundColor: color + "30" }]}>
+        <View style={[styles.historyMacroChipBarFill, { backgroundColor: color, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
+      </View>
     </View>
   );
 }
@@ -2868,7 +2876,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -2879,6 +2887,16 @@ const styles = StyleSheet.create({
   historyMacroChipValue: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
+  },
+  historyMacroChipBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  historyMacroChipBarFill: {
+    height: 4,
+    borderRadius: 2,
   },
   historyMealSection: {
     gap: 0,
