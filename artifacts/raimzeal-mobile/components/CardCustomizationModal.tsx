@@ -482,6 +482,27 @@ export default function CardCustomizationModal({
 
   const [cardNativeHeight, setCardNativeHeight] = useState(500);
   const [zoomVisible, setZoomVisible] = useState(false);
+  const zoomAnim = useRef(new Animated.Value(0)).current;
+
+  function openZoom() {
+    setZoomVisible(true);
+    zoomAnim.setValue(0);
+    Animated.timing(zoomAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function closeZoom() {
+    Animated.timing(zoomAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setZoomVisible(false);
+    });
+  }
 
   const screenWidth = Dimensions.get("window").width;
   const previewContainerWidth = screenWidth - 40;
@@ -649,7 +670,7 @@ export default function CardCustomizationModal({
             </Text>
             <TouchableOpacity
               activeOpacity={0.9}
-              onPress={() => setZoomVisible(true)}
+              onPress={openZoom}
               style={[
                 styles.previewContainer,
                 { width: previewContainerWidth, height: scaledCardHeight },
@@ -919,51 +940,90 @@ export default function CardCustomizationModal({
       {/* Full-screen zoom modal */}
       <Modal
         visible={zoomVisible}
-        animationType="fade"
+        animationType="none"
         transparent
-        onRequestClose={() => setZoomVisible(false)}
+        onRequestClose={closeZoom}
         statusBarTranslucent
       >
-        <View style={styles.zoomOverlay}>
+        <Animated.View
+          style={[
+            styles.zoomOverlay,
+            {
+              opacity: zoomAnim,
+            },
+          ]}
+        >
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-            onPress={() => setZoomVisible(false)}
+            onPress={closeZoom}
           />
 
-          <ZoomableCard
-            key={zoomVisible ? "zoom-open" : "zoom-closed"}
-            cardWidth={CARD_WIDTH * zoomScale}
-            cardHeight={zoomCardHeight}
-          >
-            <View
-              style={[
-                styles.previewScaler,
+          <Animated.View
+            style={{
+              transform: [
                 {
-                  width: CARD_WIDTH,
-                  transform: [{ scale: zoomScale }],
+                  scale: zoomAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.85, 1],
+                  }),
                 },
-              ]}
-            >
-              <ShareProgressCard
-                {...cardPreviewData}
-                visibleStats={visibleStats}
-                customMessage={customMessage.trim()}
-                themeId={selectedThemeId}
-              />
-            </View>
-          </ZoomableCard>
-
-          <TouchableOpacity
-            style={[styles.zoomCloseBtn, { top: insets.top + 16 }]}
-            onPress={() => setZoomVisible(false)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              ],
+            }}
           >
-            <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
-          </TouchableOpacity>
+            <ZoomableCard
+              key={zoomVisible ? "zoom-open" : "zoom-closed"}
+              cardWidth={CARD_WIDTH * zoomScale}
+              cardHeight={zoomCardHeight}
+            >
+              <View
+                style={[
+                  styles.previewScaler,
+                  {
+                    width: CARD_WIDTH,
+                    transform: [{ scale: zoomScale }],
+                  },
+                ]}
+              >
+                <ShareProgressCard
+                  {...cardPreviewData}
+                  visibleStats={visibleStats}
+                  customMessage={customMessage.trim()}
+                  themeId={selectedThemeId}
+                />
+              </View>
+            </ZoomableCard>
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.zoomCloseBtnWrap,
+              { top: insets.top + 16 },
+              {
+                opacity: zoomAnim,
+                transform: [
+                  {
+                    translateY: zoomAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-8, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity
+              style={styles.zoomCloseBtn}
+              onPress={closeZoom}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
+            </TouchableOpacity>
+          </Animated.View>
 
           <Text style={styles.zoomDismissHint}>Pinch to zoom · double-tap to reset</Text>
-        </View>
+        </Animated.View>
       </Modal>
 
       {/* Save Preset modal */}
@@ -1418,10 +1478,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  zoomCloseBtn: {
+  zoomCloseBtnWrap: {
     position: "absolute",
     right: 20,
   },
+  zoomCloseBtn: {},
   zoomDismissHint: {
     position: "absolute",
     bottom: 40,
