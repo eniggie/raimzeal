@@ -1356,8 +1356,46 @@ function MacroBar({
 
 function NutritionRow({ log }: { log: MealLog }) {
   const colors = useColors();
-  const { removeMealLog } = useFitness();
+  const { removeMealLog, updateMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
+
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [editForm, setEditForm] = useState<ManualForm>({
+    name: log.name,
+    calories: String(log.calories),
+    protein: String(log.protein),
+    carbs: String(log.carbs),
+    fat: String(log.fat),
+  });
+  const [editMealType, setEditMealType] = useState<MealType>(log.mealType);
+
+  function openEditSheet() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditForm({
+      name: log.name,
+      calories: String(log.calories),
+      protein: String(log.protein),
+      carbs: String(log.carbs),
+      fat: String(log.fat),
+    });
+    setEditMealType(log.mealType);
+    setShowEditSheet(true);
+  }
+
+  function handleSaveEdit() {
+    const name = editForm.name.trim();
+    if (!name) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    updateMealLog(log.id, {
+      name,
+      calories: parseInt(editForm.calories, 10) || 0,
+      protein: parseFloat(editForm.protein) || 0,
+      carbs: parseFloat(editForm.carbs) || 0,
+      fat: parseFloat(editForm.fat) || 0,
+      mealType: editMealType,
+    });
+    setShowEditSheet(false);
+  }
 
   function handleDelete() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1393,21 +1431,168 @@ function NutritionRow({ log }: { log: MealLog }) {
   }
 
   return (
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={renderRightActions}
-      rightThreshold={60}
-      overshootRight={false}
-    >
-      <View style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <Text style={[styles.nutritionName, { color: colors.foreground }]}>
-          {log.name}
-        </Text>
-        <Text style={[styles.nutritionCal, { color: colors.primary }]}>
-          {log.calories} kcal
-        </Text>
-      </View>
-    </Swipeable>
+    <>
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        rightThreshold={60}
+        overshootRight={false}
+      >
+        <TouchableOpacity
+          onPress={openEditSheet}
+          activeOpacity={0.7}
+          style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+        >
+          <View style={styles.nutritionRowInfo}>
+            <Text style={[styles.nutritionName, { color: colors.foreground }]}>
+              {log.name}
+            </Text>
+            <Text style={[styles.nutritionMacroSub, { color: colors.mutedForeground }]}>
+              {log.protein}g P · {log.carbs}g C · {log.fat}g F
+            </Text>
+          </View>
+          <View style={styles.nutritionRowRight}>
+            <Text style={[styles.nutritionCal, { color: colors.primary }]}>
+              {log.calories} kcal
+            </Text>
+            <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+
+      <Modal
+        visible={showEditSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditSheet(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Edit Meal
+            </Text>
+
+            <TextInput
+              placeholder="Food name"
+              placeholderTextColor={colors.mutedForeground}
+              value={editForm.name}
+              onChangeText={(v) => setEditForm((f) => ({ ...f, name: v }))}
+              style={[
+                styles.textInput,
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            />
+
+            <View style={styles.macroInputRow}>
+              <MacroInput
+                label="Calories"
+                value={editForm.calories}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, calories: v }))}
+                colors={colors}
+              />
+              <MacroInput
+                label="Protein (g)"
+                value={editForm.protein}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, protein: v }))}
+                colors={colors}
+              />
+            </View>
+            <View style={styles.macroInputRow}>
+              <MacroInput
+                label="Carbs (g)"
+                value={editForm.carbs}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, carbs: v }))}
+                colors={colors}
+              />
+              <MacroInput
+                label="Fat (g)"
+                value={editForm.fat}
+                onChangeText={(v) => setEditForm((f) => ({ ...f, fat: v }))}
+                colors={colors}
+              />
+            </View>
+
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Meal type
+            </Text>
+            <View style={styles.mealPicker}>
+              {MEALS.map((meal) => (
+                <TouchableOpacity
+                  key={meal}
+                  onPress={() => setEditMealType(meal)}
+                  style={[
+                    styles.mealPickerBtn,
+                    {
+                      backgroundColor:
+                        editMealType === meal ? MEAL_COLORS[meal] + "30" : colors.muted,
+                      borderColor:
+                        editMealType === meal ? MEAL_COLORS[meal] : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.mealPickerText,
+                      {
+                        color:
+                          editMealType === meal
+                            ? MEAL_COLORS[meal]
+                            : colors.mutedForeground,
+                        fontFamily:
+                          editMealType === meal
+                            ? "Inter_600SemiBold"
+                            : "Inter_400Regular",
+                      },
+                    ]}
+                  >
+                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setShowEditSheet(false)}
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveEdit}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor: editForm.name.trim()
+                      ? colors.primary
+                      : colors.muted,
+                  },
+                ]}
+                disabled={!editForm.name.trim()}
+              >
+                <Text
+                  style={[
+                    styles.modalConfirmText,
+                    {
+                      color: editForm.name.trim()
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Save Changes
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -1530,11 +1715,20 @@ const styles = StyleSheet.create({
   nutritionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
+    alignItems: "center",
+    paddingVertical: 9,
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingLeft: 16,
+    paddingRight: 12,
   },
-  nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular", flex: 1 },
+  nutritionRowInfo: { flex: 1, gap: 2 },
+  nutritionRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  nutritionMacroSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
   nutritionCal: { fontSize: 14, fontFamily: "Inter_500Medium" },
   deleteAction: {
     justifyContent: "center",
