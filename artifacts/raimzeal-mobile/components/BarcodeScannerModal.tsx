@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -113,6 +113,15 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset scanner state every time the modal opens so it's always ready
+  useEffect(() => {
+    if (visible) {
+      setScanning(true);
+      setLoading(false);
+      setError(null);
+    }
+  }, [visible]);
 
   const handleBarcodeScanned = useCallback(
     async ({ data }: { data: string }) => {
@@ -241,7 +250,23 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
             <CameraView
               style={StyleSheet.absoluteFillObject}
               facing="back"
-              barcodeScannerSettings={{ barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e"] }}
+              barcodeScannerSettings={{
+                barcodeTypes: [
+                  "ean13",
+                  "ean8",
+                  "upc_a",
+                  "upc_e",
+                  "qr",
+                  "code128",
+                  "code39",
+                  "code93",
+                  "itf14",
+                  "codabar",
+                  "pdf417",
+                  "aztec",
+                  "datamatrix",
+                ],
+              }}
               onBarcodeScanned={scanning ? handleBarcodeScanned : undefined}
             />
 
