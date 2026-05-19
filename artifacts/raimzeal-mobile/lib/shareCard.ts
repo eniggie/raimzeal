@@ -1,9 +1,59 @@
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { captureRef } from "react-native-view-shot";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 import type { RefObject } from "react";
 import type { View } from "react-native";
+import type { CameraRollPermissionStatus } from "@/contexts/PermissionsContext";
+
+export interface PermissionOptions {
+  /**
+   * The cached permission status from PermissionsContext.
+   * - "granted"     → skip the system prompt entirely.
+   * - "denied"      → show a "Go to Settings" alert and abort.
+   * - "undetermined" / null → request normally and report the result via onStatusChange.
+   */
+  cachedStatus?: CameraRollPermissionStatus | null;
+  /** Called with the newly-determined status so callers can update their cache. */
+  onStatusChange?: (status: CameraRollPermissionStatus) => void;
+}
+
+function showPermissionDeniedAlert() {
+  Alert.alert(
+    "Permission Denied",
+    "RAIMZEAL cannot save to your camera roll. Please enable photo access in Settings.",
+    [
+      { text: "Cancel", style: "cancel" },
+      { text: "Open Settings", onPress: () => Linking.openSettings() },
+    ]
+  );
+}
+
+/**
+ * Resolves camera roll permission using a cached value when available.
+ * Returns true if permission is granted, false otherwise (alert already shown).
+ */
+async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
+  if (opts?.cachedStatus === "granted") {
+    return true;
+  }
+
+  if (opts?.cachedStatus === "denied") {
+    showPermissionDeniedAlert();
+    return false;
+  }
+
+  // undetermined or no cache — request from the OS
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  const resolved = status as CameraRollPermissionStatus;
+  opts?.onStatusChange?.(resolved);
+
+  if (resolved !== "granted") {
+    showPermissionDeniedAlert();
+    return false;
+  }
+  return true;
+}
 
 /**
  * Captures a React Native view ref as a PNG and opens the native share sheet.
@@ -29,16 +79,16 @@ export async function captureAndShareCard(ref: RefObject<View | null>): Promise<
 /**
  * Captures a React Native view ref as a PNG and saves it to the camera roll.
  * Returns true if saved successfully, false if permission was denied.
+ *
+ * Pass `permissionOpts` to skip redundant OS permission prompts when the
+ * status is already known from PermissionsContext.
  */
-export async function captureAndSaveCard(ref: RefObject<View | null>): Promise<boolean> {
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert(
-      "Permission Required",
-      "Allow RAIMZEAL to access your photos to save your progress card."
-    );
-    return false;
-  }
+export async function captureAndSaveCard(
+  ref: RefObject<View | null>,
+  permissionOpts?: PermissionOptions
+): Promise<boolean> {
+  const granted = await resolvePermission(permissionOpts);
+  if (!granted) return false;
 
   const uri = await captureRef(ref, {
     format: "png",
@@ -64,16 +114,16 @@ export interface CaptureShareAndSaveResult {
  * Returns a result object so the caller can show accurate feedback:
  * - `saved: false` means camera roll permission was denied (and an alert was shown).
  * - `shared: false` means sharing is not supported on this device, but save may still have succeeded.
+ *
+ * Pass `permissionOpts` to skip redundant OS permission prompts when the
+ * status is already known from PermissionsContext.
  */
-export async function captureShareAndSaveCard(ref: RefObject<View | null>): Promise<CaptureShareAndSaveResult> {
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert(
-      "Permission Required",
-      "Allow RAIMZEAL to access your photos to save your progress card."
-    );
-    return { saved: false, shared: false };
-  }
+export async function captureShareAndSaveCard(
+  ref: RefObject<View | null>,
+  permissionOpts?: PermissionOptions
+): Promise<CaptureShareAndSaveResult> {
+  const granted = await resolvePermission(permissionOpts);
+  if (!granted) return { saved: false, shared: false };
 
   const uri = await captureRef(ref, {
     format: "png",

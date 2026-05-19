@@ -23,6 +23,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
+import { PermissionsProvider } from "@/contexts/PermissionsContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   loadReminderSettings,
@@ -108,7 +109,9 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AuthProvider>
                 <FitnessProvider>
-                  <AuthGate />
+                  <PermissionsProvider>
+                    <AuthGate />
+                  </PermissionsProvider>
                 </FitnessProvider>
               </AuthProvider>
             </KeyboardProvider>

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
@@ -138,6 +139,7 @@ export default function ProfileScreen() {
     settings,
   } = useFitness();
   const { signOut } = useAuth();
+  const { cameraRollStatus, updateCameraRollStatus } = usePermissions();
 
   const [activeTab, setActiveTab] = useState<Tab>("ovia");
   const [chatInput, setChatInput] = useState("");
@@ -267,8 +269,12 @@ export default function ProfileScreen() {
     // so the offscreen card has fully re-rendered with the new props.
     InteractionManager.runAfterInteractions(async () => {
       try {
+        const permissionOpts = {
+          cachedStatus: cameraRollStatus,
+          onStatusChange: updateCameraRollStatus,
+        };
         if (action === "both") {
-          const result: CaptureShareAndSaveResult = await captureShareAndSaveCard(cardRef);
+          const result: CaptureShareAndSaveResult = await captureShareAndSaveCard(cardRef, permissionOpts);
           if (result.saved && result.shared) {
             Alert.alert("Done!", "Your progress card has been saved to your camera roll and shared.");
           } else if (result.saved && !result.shared) {
@@ -276,7 +282,7 @@ export default function ProfileScreen() {
           }
           // result.saved === false: permission alert already shown inside helper
         } else if (action === "save") {
-          const saved = await captureAndSaveCard(cardRef);
+          const saved = await captureAndSaveCard(cardRef, permissionOpts);
           if (saved) {
             Alert.alert("Saved!", "Your progress card has been saved to your camera roll.");
           }
