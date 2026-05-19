@@ -17,9 +17,52 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const CACHE_PREFIX = "barcode_cache_v1:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+const RECENT_SCANS_KEY = "barcode_recent_scans_v1";
+const MAX_RECENT_SCANS = 20;
+
+export interface RecentScan {
+  barcode: string;
+  food: ScannedFood;
+  scannedAt: number;
+}
+
 interface CacheEntry {
   food: ScannedFood;
   cachedAt: number;
+}
+
+export async function getRecentScans(): Promise<RecentScan[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_SCANS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed as RecentScan[];
+  } catch {
+    return [];
+  }
+}
+
+export async function removeRecentScan(barcode: string): Promise<void> {
+  try {
+    const scans = await getRecentScans();
+    const next = scans.filter((s) => s.barcode !== barcode);
+    await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+  } catch {
+    // Non-fatal
+  }
+}
+
+async function addToRecentScans(barcode: string, food: ScannedFood): Promise<void> {
+  try {
+    const scans = await getRecentScans();
+    const filtered = scans.filter((s) => s.barcode !== barcode);
+    const entry: RecentScan = { barcode, food, scannedAt: Date.now() };
+    const next = [entry, ...filtered].slice(0, MAX_RECENT_SCANS);
+    await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+  } catch {
+    // Non-fatal
+  }
 }
 
 async function getCachedBarcode(barcode: string): Promise<ScannedFood | null> {
@@ -155,12 +198,16 @@ interface FetchResult {
 
 async function fetchFoodByBarcode(barcode: string): Promise<FetchResult | null> {
   const cached = await getCachedBarcode(barcode);
-  if (cached) return { food: cached, fromCache: true };
+  if (cached) {
+    await addToRecentScans(barcode, cached);
+    return { food: cached, fromCache: true };
+  }
 
   const food = await fetchFromNetwork(barcode);
   if (!food) return null;
 
   await setCachedBarcode(barcode, food);
+  await addToRecentScans(barcode, food);
   return { food, fromCache: false };
 }
 

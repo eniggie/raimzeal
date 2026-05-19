@@ -30,6 +30,7 @@ import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
+import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 
 const CALORIE_GOAL = 2200;
@@ -490,6 +491,7 @@ export default function NutritionScreen() {
 
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showRecentScans, setShowRecentScans] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
@@ -1076,19 +1078,31 @@ export default function NutritionScreen() {
                   </TouchableOpacity>
                 </View>
                 {activeTab === "today" && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setShowScanner(true);
-                    }}
-                    style={[styles.scanBtn, { backgroundColor: colors.primary }]}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
-                    <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
-                      Scan
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.scanBtnGroup}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowRecentScans(true);
+                      }}
+                      style={[styles.recentBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="time-outline" size={17} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowScanner(true);
+                      }}
+                      style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
+                      <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
+                        Scan
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             </View>
@@ -1946,6 +1960,13 @@ export default function NutritionScreen() {
           setShowScanner(false);
           handleManualEntry();
         }}
+      />
+
+      {/* Recently Scanned Modal */}
+      <RecentlyScannedModal
+        visible={showRecentScans}
+        onClose={() => setShowRecentScans(false)}
+        onFoodFound={handleScannedFood}
       />
 
       {/* Manual Entry Modal */}
@@ -2997,6 +3018,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerDate: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  scanBtnGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  recentBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   scanBtn: {
     flexDirection: "row",
     alignItems: "center",
