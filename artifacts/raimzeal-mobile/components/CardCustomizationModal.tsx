@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dimensions,
   Modal,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,12 +29,24 @@ import ShareProgressCard, {
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 const STORAGE_KEY_THEME = "@raimzeal_card_theme";
+const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
+
+const MAX_PRESETS = 5;
 
 interface StatToggleConfig {
   key: keyof CardVisibleStats;
   label: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
+}
+
+export interface CardPreset {
+  id: string;
+  name: string;
+  visibleStats: CardVisibleStats;
+  customMessage: string;
+  themeId: CardThemeId;
+  createdAt: number;
 }
 
 const STAT_TOGGLES: StatToggleConfig[] = [
@@ -108,6 +121,24 @@ function isDefaultCustomization(
   return true;
 }
 
+async function loadPresets(): Promise<CardPreset[]> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_PRESETS);
+    if (!raw) return [];
+    return JSON.parse(raw) as CardPreset[];
+  } catch {
+    return [];
+  }
+}
+
+async function savePresets(presets: CardPreset[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY_PRESETS, JSON.stringify(presets));
+  } catch {
+    // ignore
+  }
+}
+
 export default function CardCustomizationModal({
   visible,
   onClose,
@@ -125,16 +156,29 @@ export default function CardCustomizationModal({
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
 
+  // Presets
+  const [presets, setPresets] = useState<CardPreset[]>([]);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [presetNameInput, setPresetNameInput] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+  const presetNameRef = useRef<TextInput>(null);
+
   useEffect(() => {
     if (!visible) return;
     setRestoredFromStorage(false);
+    setActivePresetId(null);
+
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
+          loadPresets(),
         ]);
+
+        setPresets(loadedPresets);
 
         let effectiveStats = { ...DEFAULT_VISIBLE_STATS };
         if (savedStats) {
@@ -163,6 +207,17 @@ export default function CardCustomizationModal({
 
   function toggleStat(key: keyof CardVisibleStats) {
     setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
+    setActivePresetId(null);
+  }
+
+  function handleThemeChange(themeId: CardThemeId) {
+    setSelectedThemeId(themeId);
+    setActivePresetId(null);
+  }
+
+  function handleMessageChange(text: string) {
+    setCustomMessage(text);
+    setActivePresetId(null);
   }
 
   async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId) {
@@ -187,6 +242,7 @@ export default function CardCustomizationModal({
     setCustomMessage("");
     setSelectedThemeId(DEFAULT_THEME_ID);
     setRestoredFromStorage(false);
+    setActivePresetId(null);
     try {
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
@@ -196,6 +252,86 @@ export default function CardCustomizationModal({
     } catch {
       // ignore
     }
+  }
+
+  function loadPreset(preset: CardPreset) {
+    setVisibleStats({ ...DEFAULT_VISIBLE_STATS, ...preset.visibleStats });
+    setCustomMessage(preset.customMessage);
+    setSelectedThemeId(preset.themeId);
+    setActivePresetId(preset.id);
+    setRestoredFromStorage(false);
+  }
+
+  function openSavePresetModal() {
+    const activePreset = presets.find((p) => p.id === activePresetId);
+    setPresetNameInput(activePreset ? activePreset.name : "");
+    setShowSavePresetModal(true);
+    setTimeout(() => presetNameRef.current?.focus(), 150);
+  }
+
+  async function handleSavePreset() {
+    const name = presetNameInput.trim();
+    if (!name) return;
+    setSavingPreset(true);
+
+    let updatedPresets: CardPreset[];
+
+    if (activePresetId) {
+      // Overwrite existing preset
+      updatedPresets = presets.map((p) =>
+        p.id === activePresetId
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId }
+          : p
+      );
+    } else {
+      if (presets.length >= MAX_PRESETS) {
+        setSavingPreset(false);
+        setShowSavePresetModal(false);
+        Alert.alert(
+          "Preset limit reached",
+          `You can save up to ${MAX_PRESETS} presets. Delete one to make room.`
+        );
+        return;
+      }
+      const newPreset: CardPreset = {
+        id: `preset_${Date.now()}`,
+        name,
+        visibleStats: { ...visibleStats },
+        customMessage: customMessage.trim(),
+        themeId: selectedThemeId,
+        createdAt: Date.now(),
+      };
+      updatedPresets = [...presets, newPreset];
+      setActivePresetId(newPreset.id);
+    }
+
+    await savePresets(updatedPresets);
+    setPresets(updatedPresets);
+    setSavingPreset(false);
+    setShowSavePresetModal(false);
+  }
+
+  async function handleDeletePreset(presetId: string) {
+    const preset = presets.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    Alert.alert(
+      "Delete Preset",
+      `Delete "${preset.name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const updated = presets.filter((p) => p.id !== presetId);
+            await savePresets(updated);
+            setPresets(updated);
+            if (activePresetId === presetId) setActivePresetId(null);
+          },
+        },
+      ]
+    );
   }
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
@@ -211,6 +347,8 @@ export default function CardCustomizationModal({
 
   const zoomScale = Math.min((screenWidth - 48) / CARD_WIDTH, 1);
   const zoomCardHeight = cardNativeHeight * zoomScale;
+
+  const activePreset = presets.find((p) => p.id === activePresetId);
 
   return (
     <Modal
@@ -259,7 +397,7 @@ export default function CardCustomizationModal({
                 style={[styles.resetBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
               >
                 <Ionicons name="refresh-outline" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.resetBtnText, { color: colors.mutedForeground }]}>Reset to defaults</Text>
+                <Text style={[styles.resetBtnText, { color: colors.mutedForeground }]}>Reset</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onClose}
@@ -274,6 +412,94 @@ export default function CardCustomizationModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+            {/* ── Presets section ── */}
+            <View style={styles.presetsHeader}>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                PRESETS
+              </Text>
+              <TouchableOpacity
+                onPress={openSavePresetModal}
+                style={[styles.savePresetBtn, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}
+              >
+                <Ionicons name={activePresetId ? "save-outline" : "add-circle-outline"} size={13} color={colors.primary} />
+                <Text style={[styles.savePresetBtnText, { color: colors.primary }]}>
+                  {activePresetId ? "Update Preset" : "Save Preset"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {presets.length === 0 ? (
+              <View style={[styles.presetsEmptyCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name="bookmark-outline" size={20} color={colors.mutedForeground} />
+                <Text style={[styles.presetsEmptyText, { color: colors.mutedForeground }]}>
+                  No presets yet — set up a card and tap "Save Preset"
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.presetsScroll}
+              >
+                {presets.map((preset) => {
+                  const isActive = preset.id === activePresetId;
+                  const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
+                  return (
+                    <TouchableOpacity
+                      key={preset.id}
+                      onPress={() => loadPreset(preset)}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.presetChip,
+                        {
+                          backgroundColor: isActive ? colors.primary + "18" : colors.card,
+                          borderColor: isActive ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+                      <Text
+                        style={[
+                          styles.presetChipText,
+                          {
+                            color: isActive ? colors.primary : colors.foreground,
+                            fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {preset.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeletePreset(preset.id)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={15}
+                          color={isActive ? colors.primary : colors.mutedForeground}
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })}
+                {presets.length < MAX_PRESETS && (
+                  <Text style={[styles.presetsSlotHint, { color: colors.mutedForeground }]}>
+                    {MAX_PRESETS - presets.length} slot{MAX_PRESETS - presets.length !== 1 ? "s" : ""} left
+                  </Text>
+                )}
+              </ScrollView>
+            )}
+
+            {activePreset && (
+              <View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+                <Ionicons name="bookmark" size={12} color={colors.primary} />
+                <Text style={[styles.activePresetBannerText, { color: colors.primary }]}>
+                  Viewing "{activePreset.name}" — edit below to update it
+                </Text>
+              </View>
+            )}
+
             {/* Live card preview */}
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               CARD PREVIEW
@@ -319,7 +545,7 @@ export default function CardCustomizationModal({
                 return (
                   <TouchableOpacity
                     key={theme.id}
-                    onPress={() => setSelectedThemeId(theme.id)}
+                    onPress={() => handleThemeChange(theme.id)}
                     activeOpacity={0.75}
                     style={styles.themeItem}
                   >
@@ -428,7 +654,7 @@ export default function CardCustomizationModal({
               <Ionicons name="chatbubble-outline" size={16} color={colors.mutedForeground} style={styles.messageIcon} />
               <TextInput
                 value={customMessage}
-                onChangeText={setCustomMessage}
+                onChangeText={handleMessageChange}
                 placeholder="Add a motivational quote or personal note…"
                 placeholderTextColor={colors.mutedForeground}
                 maxLength={120}
@@ -596,6 +822,83 @@ export default function CardCustomizationModal({
           <Text style={styles.zoomDismissHint}>Tap anywhere to close</Text>
         </TouchableOpacity>
       </Modal>
+
+      {/* Save Preset modal */}
+      <Modal
+        visible={showSavePresetModal}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setShowSavePresetModal(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.presetModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSavePresetModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={[styles.presetModalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+          >
+            <Text style={[styles.presetModalTitle, { color: colors.foreground }]}>
+              {activePresetId ? "Update Preset" : "Save Preset"}
+            </Text>
+            <Text style={[styles.presetModalSubtitle, { color: colors.mutedForeground }]}>
+              {activePresetId
+                ? "Rename or overwrite this preset with the current settings."
+                : "Give this combination a name so you can quickly switch back to it."}
+            </Text>
+            <TextInput
+              ref={presetNameRef}
+              value={presetNameInput}
+              onChangeText={setPresetNameInput}
+              placeholder="e.g. Workout Card, Full Stats…"
+              placeholderTextColor={colors.mutedForeground}
+              maxLength={32}
+              returnKeyType="done"
+              onSubmitEditing={handleSavePreset}
+              style={[
+                styles.presetNameInput,
+                {
+                  color: colors.foreground,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            />
+            <Text style={[styles.presetCharCount, { color: colors.mutedForeground }]}>
+              {presetNameInput.trim().length}/32
+            </Text>
+            <View style={styles.presetModalActions}>
+              <TouchableOpacity
+                onPress={() => setShowSavePresetModal(false)}
+                style={[styles.presetModalCancelBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+              >
+                <Text style={[styles.presetModalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSavePreset}
+                disabled={!presetNameInput.trim() || savingPreset}
+                style={[
+                  styles.presetModalSaveBtn,
+                  {
+                    backgroundColor: presetNameInput.trim() ? colors.primary : colors.muted,
+                  },
+                ]}
+              >
+                {savingPreset ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Text style={[styles.presetModalSaveText, { color: presetNameInput.trim() ? colors.primaryForeground : colors.mutedForeground }]}>
+                    {activePresetId ? "Update" : "Save"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 }
@@ -667,7 +970,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 6,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -678,26 +981,106 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 2,
   },
   scrollContent: {
-    paddingBottom: 12,
-    gap: 8,
+    paddingBottom: 8,
   },
   sectionLabel: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.8,
-    marginBottom: 6,
-    marginTop: 4,
+    marginBottom: 10,
   },
-  previewContainer: {
-    overflow: "hidden",
-    marginBottom: 16,
+  // Presets
+  presetsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  savePresetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 20,
+    borderWidth: 1,
+  },
+  savePresetBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  presetsEmptyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  presetsEmptyText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  presetsScroll: {
+    gap: 8,
+    paddingBottom: 4,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  presetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    maxWidth: 180,
+  },
+  presetDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  presetChipText: {
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  presetsSlotHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 4,
+  },
+  activePresetBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  activePresetBannerText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+  // Card preview
+  previewContainer: {
+    alignSelf: "center",
+    overflow: "hidden",
+    borderRadius: 20,
+    marginBottom: 16,
   },
   previewScaler: {
     transformOrigin: "top left",
@@ -875,5 +1258,70 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.5)",
+  },
+  // Save preset modal
+  presetModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  presetModalCard: {
+    width: "100%",
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+  },
+  presetModalTitle: {
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_700Bold",
+    marginBottom: 6,
+  },
+  presetModalSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+    marginBottom: 18,
+  },
+  presetNameInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+  },
+  presetCharCount: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "right",
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  presetModalActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  presetModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  presetModalCancelText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  presetModalSaveBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  presetModalSaveText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
 });
