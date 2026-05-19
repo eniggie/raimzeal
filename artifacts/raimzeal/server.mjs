@@ -31,6 +31,16 @@ const MIME = {
 };
 
 function handleRequest(req, res) {
+  // Canonical redirect: www → non-www (301 permanent)
+  const host = (req.headers['host'] || '').toLowerCase();
+  if (host.startsWith('www.')) {
+    const bare = host.slice(4);
+    res.writeHead(301, { Location: `https://${bare}${req.url}` });
+    res.end();
+    return;
+  }
+
+  // Override any platform-level noindex header
   res.setHeader('X-Robots-Tag', 'index, follow');
 
   let urlPath;
