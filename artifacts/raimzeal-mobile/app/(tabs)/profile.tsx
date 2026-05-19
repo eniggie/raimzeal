@@ -6,6 +6,7 @@ import {
   FlatList,
   InteractionManager,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -812,11 +813,22 @@ export default function ProfileScreen() {
               onPress={() => router.push("/edit-profile")}
             />
             <ActionRow
-              icon="share-social-outline"
-              label={shareLoading || saveLoading ? "Creating Card…" : "Share / Save Progress Card"}
-              color={colors.accent}
-              onPress={handleOpenCardModal}
+              icon={cameraRollStatus === "denied" ? "lock-closed-outline" : "share-social-outline"}
+              label={
+                cameraRollStatus === "denied"
+                  ? "Enable in Settings to save"
+                  : shareLoading || saveLoading
+                  ? "Creating Card…"
+                  : "Share / Save Progress Card"
+              }
+              color={cameraRollStatus === "denied" ? colors.warning : colors.accent}
+              onPress={
+                cameraRollStatus === "denied"
+                  ? () => Linking.openSettings()
+                  : handleOpenCardModal
+              }
               loading={shareLoading || saveLoading}
+              sublabel={cameraRollStatus === "denied" ? "Tap to open Settings" : undefined}
             />
             <ActionRow
               icon="document-text-outline"
@@ -951,10 +963,11 @@ function SettingPickerRow({
 }
 
 function ActionRow({
-  icon, label, color, onPress, loading, isLast,
+  icon, label, sublabel, color, onPress, loading, isLast,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  sublabel?: string;
   color: string;
   onPress: () => void;
   loading?: boolean;
@@ -974,7 +987,14 @@ function ActionRow({
       <View style={[styles.actionIconWrap, { backgroundColor: color + "20" }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.actionLabel, { color: colors.foreground, flex: 0 }]}>{label}</Text>
+        {sublabel ? (
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+            {sublabel}
+          </Text>
+        ) : null}
+      </View>
       {loading ? (
         <ActivityIndicator size="small" color={colors.mutedForeground} />
       ) : (
