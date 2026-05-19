@@ -115,6 +115,7 @@ export default function OviaScreen() {
 
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -214,6 +215,7 @@ export default function OviaScreen() {
       user, streak, workoutLogs, mealLogs, bodyMeasurements, waterIntake, personalRecords
     );
 
+    let accumulated = "";
     try {
       const response = await fetch(`${getApiBase()}/ovia/chat`, {
         method: "POST",
@@ -221,12 +223,14 @@ export default function OviaScreen() {
         body: JSON.stringify({ messages: allMessages, userContext }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.body) throw new Error("No response stream");
 
-      const reader = response.body!.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let fullContent = "";
-      while (true) {
+      let streamDone = false;
+
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -240,14 +244,20 @@ export default function OviaScreen() {
               done?: boolean;
               error?: string;
             };
-            if (json.content) fullContent += json.content;
-            if (json.done || json.error) break;
+            if (json.content) {
+              accumulated += json.content;
+              setStreamingContent(accumulated);
+            }
+            if (json.done || json.error) {
+              streamDone = true;
+              break;
+            }
           } catch { }
         }
       }
       addOviaMessage({
         role: "assistant",
-        content: fullContent || "I could not generate a response. Please try again.",
+        content: accumulated || "I could not generate a response. Please try again.",
       });
     } catch {
       addOviaMessage({
@@ -255,6 +265,7 @@ export default function OviaScreen() {
         content: `Sorry ${user?.name?.split(" ")[0] ?? "Champion"}, I am having trouble connecting right now. Please check your connection and try again.`,
       });
     } finally {
+      setStreamingContent("");
       setIsTyping(false);
     }
   }
@@ -328,18 +339,39 @@ export default function OviaScreen() {
           renderItem={({ item }) => <ChatBubble message={item} />}
           ListFooterComponent={
             isTyping ? (
-              <View style={styles.typingRow}>
-                <View
-                  style={[
-                    styles.typingBubble,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                >
-                  <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
-                  <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
-                  <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
+              streamingContent ? (
+                /* Live streaming bubble — shows content as it arrives */
+                <View style={[styles.bubbleRow]}>
+                  <View style={[styles.smallAvatar, { backgroundColor: colors.accent + "20" }]}>
+                    <Ionicons name="sparkles" size={12} color={colors.accent} />
+                  </View>
+                  <View
+                    style={[
+                      styles.bubble,
+                      styles.assistantBubble,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <Text style={[styles.bubbleText, { color: colors.foreground }]}>
+                      {streamingContent}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              ) : (
+                /* Waiting dots — shown before first chunk arrives */
+                <View style={styles.typingRow}>
+                  <View
+                    style={[
+                      styles.typingBubble,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
+                    <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
+                    <View style={[styles.tDot, { backgroundColor: colors.mutedForeground }]} />
+                  </View>
+                </View>
+              )
             ) : null
           }
         />

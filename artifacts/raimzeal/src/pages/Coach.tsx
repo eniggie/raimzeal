@@ -111,13 +111,15 @@ export function Coach({ state }: CoachProps) {
         signal: abortRef.current.signal,
       });
 
-      if (!response.ok) throw new Error('API error');
+      if (!response.ok) throw new Error(`API error ${response.status}`);
+      if (!response.body) throw new Error('No response stream');
 
-      const reader = response.body!.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let streamDone = false;
 
-      while (true) {
+      while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -151,8 +153,8 @@ export function Coach({ state }: CoachProps) {
             }
 
             if (json.done || json.error) {
-              setIsTyping(false);
-              setSearchingFor(null);
+              streamDone = true;
+              break;
             }
           } catch {
             // skip malformed chunk
@@ -160,7 +162,11 @@ export function Coach({ state }: CoachProps) {
         }
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Remove the empty placeholder bubble left by the aborted request
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+        return;
+      }
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
