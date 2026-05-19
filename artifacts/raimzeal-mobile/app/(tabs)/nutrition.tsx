@@ -286,6 +286,7 @@ export default function NutritionScreen() {
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
   const [servings, setServings] = useState(1);
+  const [grams, setGrams] = useState("100");
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
@@ -476,6 +477,7 @@ export default function NutritionScreen() {
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
     setServings(1);
+    setGrams("100");
     setSelectedMeal("snack");
     setShowModal(true);
   }
@@ -490,14 +492,16 @@ export default function NutritionScreen() {
     if (!selectedFood) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const { name, calories, protein, carbs, fat } = selectedFood;
+    const isGramsMode = selectedFoodIsApiResult && !selectedFoodServingLabel;
+    const factor = isGramsMode ? (parseFloat(grams) || 0) / 100 : servings;
     const meal: MealLog = {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
       name,
-      calories: Math.round(calories * servings),
-      protein: Math.round(protein * servings * 10) / 10,
-      carbs: Math.round(carbs * servings * 10) / 10,
-      fat: Math.round(fat * servings * 10) / 10,
+      calories: Math.round(calories * factor),
+      protein: Math.round(protein * factor * 10) / 10,
+      carbs: Math.round(carbs * factor * 10) / 10,
+      fat: Math.round(fat * factor * 10) / 10,
       mealType: selectedMeal,
     };
     addMealLog(meal);
@@ -1416,69 +1420,103 @@ export default function NutritionScreen() {
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
               {selectedFood?.name}
             </Text>
-            {selectedFood && (
-              <>
-                <Text style={[styles.servingBadge, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
-                  {selectedFoodServingLabel
-                    ? `per ${selectedFoodServingLabel}`
-                    : selectedFoodIsApiResult
-                    ? "per 100g"
-                    : "per serving"}
-                </Text>
-                <View style={styles.servingsRow}>
-                  <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
-                  <View style={styles.servingsControl}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (servings > 0.5) {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          setServings((s) => Math.max(0.5, Math.round((s - 0.5) * 10) / 10));
-                        }
-                      }}
-                      style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="remove" size={16} color={servings <= 0.5 ? colors.mutedForeground : colors.foreground} />
-                    </TouchableOpacity>
-                    <Text style={[styles.servingsValue, { color: colors.foreground }]}>
-                      {Number.isInteger(servings) ? servings : servings.toFixed(1)}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setServings((s) => Math.round((s + 0.5) * 10) / 10);
-                      }}
-                      style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="add" size={16} color={colors.foreground} />
-                    </TouchableOpacity>
+            {selectedFood && (() => {
+              const isGramsMode = selectedFoodIsApiResult && !selectedFoodServingLabel;
+              const factor = isGramsMode ? (parseFloat(grams) || 0) / 100 : servings;
+              return (
+                <>
+                  <Text style={[styles.servingBadge, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
+                    {selectedFoodServingLabel
+                      ? `per ${selectedFoodServingLabel}`
+                      : selectedFoodIsApiResult
+                      ? "per 100g"
+                      : "per serving"}
+                  </Text>
+                  {isGramsMode ? (
+                    <View style={styles.servingsRow}>
+                      <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount</Text>
+                      <View style={styles.gramsInputRow}>
+                        <TextInput
+                          style={[styles.gramsInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border }]}
+                          value={grams}
+                          onChangeText={(v) => {
+                            const stripped = v.replace(/[^0-9.]/g, "");
+                            const parts = stripped.split(".");
+                            const normalized = parts.length > 2
+                              ? parts[0] + "." + parts.slice(1).join("")
+                              : stripped;
+                            setGrams(normalized);
+                          }}
+                          onBlur={() => {
+                            const n = parseFloat(grams);
+                            if (!isNaN(n) && n > 0) setGrams(String(n));
+                            else setGrams("100");
+                          }}
+                          keyboardType="decimal-pad"
+                          selectTextOnFocus
+                          returnKeyType="done"
+                          maxLength={7}
+                        />
+                        <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g / ml</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.servingsRow}>
+                      <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
+                      <View style={styles.servingsControl}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (servings > 0.5) {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setServings((s) => Math.max(0.5, Math.round((s - 0.5) * 10) / 10));
+                            }
+                          }}
+                          style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="remove" size={16} color={servings <= 0.5 ? colors.mutedForeground : colors.foreground} />
+                        </TouchableOpacity>
+                        <Text style={[styles.servingsValue, { color: colors.foreground }]}>
+                          {Number.isInteger(servings) ? servings : servings.toFixed(1)}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setServings((s) => Math.round((s + 0.5) * 10) / 10);
+                          }}
+                          style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="add" size={16} color={colors.foreground} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  <View style={styles.modalNutrients}>
+                    <NutrientChip
+                      label="Calories"
+                      value={`${Math.round(selectedFood.calories * factor)}`}
+                      color={colors.primary}
+                    />
+                    <NutrientChip
+                      label="Protein"
+                      value={`${Math.round(selectedFood.protein * factor * 10) / 10}g`}
+                      color={colors.secondary}
+                    />
+                    <NutrientChip
+                      label="Carbs"
+                      value={`${Math.round(selectedFood.carbs * factor * 10) / 10}g`}
+                      color={colors.warning}
+                    />
+                    <NutrientChip
+                      label="Fat"
+                      value={`${Math.round(selectedFood.fat * factor * 10) / 10}g`}
+                      color={colors.accent}
+                    />
                   </View>
-                </View>
-                <View style={styles.modalNutrients}>
-                  <NutrientChip
-                    label="Calories"
-                    value={`${Math.round(selectedFood.calories * servings)}`}
-                    color={colors.primary}
-                  />
-                  <NutrientChip
-                    label="Protein"
-                    value={`${Math.round(selectedFood.protein * servings * 10) / 10}g`}
-                    color={colors.secondary}
-                  />
-                  <NutrientChip
-                    label="Carbs"
-                    value={`${Math.round(selectedFood.carbs * servings * 10) / 10}g`}
-                    color={colors.warning}
-                  />
-                  <NutrientChip
-                    label="Fat"
-                    value={`${Math.round(selectedFood.fat * servings * 10) / 10}g`}
-                    color={colors.accent}
-                  />
-                </View>
-              </>
-            )}
+                </>
+              );
+            })()}
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Add to meal
             </Text>
@@ -1528,9 +1566,28 @@ export default function NutritionScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleConfirmLog}
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
+                disabled={selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor:
+                      selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)
+                        ? colors.muted
+                        : colors.primary,
+                  },
+                ]}
               >
-                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
+                <Text
+                  style={[
+                    styles.modalConfirmText,
+                    {
+                      color:
+                        selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)
+                          ? colors.mutedForeground
+                          : colors.primaryForeground,
+                    },
+                  ]}
+                >
                   Add Food
                 </Text>
               </TouchableOpacity>
@@ -2075,6 +2132,25 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     minWidth: 28,
     textAlign: "center",
+  },
+  gramsInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  gramsInput: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    width: 80,
+    textAlign: "center",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  gramsUnit: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
   modalNutrients: {
     flexDirection: "row",
