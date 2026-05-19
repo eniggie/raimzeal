@@ -474,6 +474,7 @@ export default function NutritionScreen() {
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
   const [servings, setServings] = useState(1);
+  const [servingsText, setServingsText] = useState("1");
   const [grams, setGrams] = useState("100");
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
@@ -891,6 +892,7 @@ export default function NutritionScreen() {
     setSelectedFoodServingLabel(undefined);
     setSelectedFoodIsApiResult(false);
     setServings(1);
+    setServingsText("1");
     setSelectedMeal(food.mealType);
     setShowModal(true);
   }
@@ -901,6 +903,7 @@ export default function NutritionScreen() {
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
     setServings(1);
+    setServingsText("1");
     setGrams("100");
     setSelectedMeal("snack");
     setShowModal(true);
@@ -2154,7 +2157,11 @@ export default function NutritionScreen() {
                           onPress={() => {
                             if (servings > 0.5) {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setServings((s) => Math.max(0.5, Math.round((s - 0.5) * 10) / 10));
+                              setServings((s) => {
+                                const next = Math.max(0.5, Math.round((s - 0.5) * 10) / 10);
+                                setServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                                return next;
+                              });
                             }
                           }}
                           style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
@@ -2162,13 +2169,38 @@ export default function NutritionScreen() {
                         >
                           <Ionicons name="remove" size={16} color={servings <= 0.5 ? colors.mutedForeground : colors.foreground} />
                         </TouchableOpacity>
-                        <Text style={[styles.servingsValue, { color: colors.foreground }]}>
-                          {Number.isInteger(servings) ? servings : servings.toFixed(1)}
-                        </Text>
+                        <TextInput
+                          style={[styles.servingsValue, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 }]}
+                          value={servingsText}
+                          onChangeText={(v) => {
+                            const stripped = v.replace(/[^0-9.]/g, "");
+                            const parts = stripped.split(".");
+                            const normalized = parts.length > 2
+                              ? parts[0] + "." + parts.slice(1).join("")
+                              : stripped;
+                            setServingsText(normalized);
+                            const n = parseFloat(normalized);
+                            if (!isNaN(n) && n > 0) setServings(n);
+                          }}
+                          onBlur={() => {
+                            const n = parseFloat(servingsText);
+                            const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
+                            setServings(valid);
+                            setServingsText(String(valid));
+                          }}
+                          keyboardType="decimal-pad"
+                          selectTextOnFocus
+                          returnKeyType="done"
+                          maxLength={7}
+                        />
                         <TouchableOpacity
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setServings((s) => Math.round((s + 0.5) * 10) / 10);
+                            setServings((s) => {
+                              const next = Math.round((s + 0.5) * 10) / 10;
+                              setServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                              return next;
+                            });
                           }}
                           style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
