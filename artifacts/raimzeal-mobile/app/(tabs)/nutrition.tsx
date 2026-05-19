@@ -232,7 +232,22 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
     ? Math.round((n.fat_100g ?? n.fat ?? 0) * sqFactor * 10) / 10
     : Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
 
-  return { name, calories, protein, carbs, fat, servingLabel };
+  const has100g =
+    n["energy-kcal_100g"] !== undefined ||
+    n.proteins_100g !== undefined ||
+    n.carbohydrates_100g !== undefined ||
+    n.fat_100g !== undefined;
+  const nutrients100g =
+    (useServingNutrients || useServingQuantity) && has100g
+      ? {
+          calories: Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0),
+          protein: Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10,
+          carbs: Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10,
+          fat: Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10,
+        }
+      : undefined;
+
+  return { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
 }
 
 type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
@@ -492,6 +507,7 @@ export default function NutritionScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
 
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
@@ -726,6 +742,7 @@ export default function NutritionScreen() {
 
     if (!trimmed) {
       setSearchResults([]);
+      setPer100gItems(new Set());
       setSearchDone(false);
       setSearchLoading(false);
       return;
@@ -754,10 +771,12 @@ export default function NutritionScreen() {
         if (food) items.push({ ...food, _kind: "search" });
       }
       setSearchResults(items);
+      setPer100gItems(new Set());
       setSearchDone(true);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;
       setSearchResults([]);
+      setPer100gItems(new Set());
       setSearchDone(true);
     } finally {
       if (abortRef.current === controller) {
@@ -1103,6 +1122,7 @@ export default function NutritionScreen() {
                   onPress={() => {
                     setSearchQuery("");
                     setSearchResults([]);
+                    setPer100gItems(new Set());
                     setSearchDone(false);
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1776,6 +1796,18 @@ export default function NutritionScreen() {
         ]}
         renderItem={({ item }) => {
           if (item._kind === "search") {
+            const itemKey = `${item.name}:${item.servingLabel ?? ""}:${item.calories}`;
+            const canToggle = !!(item.servingLabel && item.nutrients100g);
+            const showing100g = canToggle && per100gItems.has(itemKey);
+            const displayCalories = showing100g ? item.nutrients100g!.calories : item.calories;
+            const displayProtein = showing100g ? item.nutrients100g!.protein : item.protein;
+            const displayCarbs = showing100g ? item.nutrients100g!.carbs : item.carbs;
+            const displayFat = showing100g ? item.nutrients100g!.fat : item.fat;
+            const pillLabel = showing100g
+              ? "per 100g"
+              : item.servingLabel
+              ? `per ${item.servingLabel}`
+              : "per 100g";
             const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack" };
             const starred = isFavorite(item.name);
             return (
@@ -1804,16 +1836,36 @@ export default function NutritionScreen() {
                     {item.name}
                   </Text>
                   <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                    P {item.protein}g · C {item.carbs}g · F {item.fat}g
+                    P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
                   </Text>
-                  <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                  <TouchableOpacity
+                    activeOpacity={canToggle ? 0.7 : 1}
+                    onPress={canToggle ? (e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setPer100gItems((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(itemKey)) next.delete(itemKey);
+                        else next.add(itemKey);
+                        return next;
+                      });
+                    } : undefined}
+                    style={[
+                      styles.servingPill,
+                      { backgroundColor: colors.primary + "18" },
+                      canToggle && { paddingRight: 6 },
+                    ]}
+                  >
                     <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                      per {item.servingLabel ?? "100g"}
+                      {pillLabel}
                     </Text>
-                  </View>
+                    {canToggle && (
+                      <Ionicons name="swap-horizontal-outline" size={11} color={colors.primary} style={{ marginLeft: 3 }} />
+                    )}
+                  </TouchableOpacity>
                 </View>
                 <Text style={[styles.foodCal, { color: colors.primary }]}>
-                  {item.calories}
+                  {displayCalories}
                 </Text>
                 <TouchableOpacity
                   onPress={() => handleToggleFavorite(favFood)}
@@ -3071,6 +3123,8 @@ const styles = StyleSheet.create({
   foodMacros: { fontSize: 12, fontFamily: "Inter_400Regular" },
   servingPill: {
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 1,

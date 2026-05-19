@@ -53,6 +53,7 @@ export interface ScannedFood {
   carbs: number;
   fat: number;
   servingLabel?: string;
+  nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
 }
 
 interface OpenFoodFactsProduct {
@@ -129,7 +130,22 @@ async function fetchFoodByBarcode(barcode: string): Promise<ScannedFood | null> 
       ? Math.round((n.fat_100g ?? n.fat ?? 0) * sqFactor * 10) / 10
       : Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10;
 
-    const food: ScannedFood = { name, calories, protein, carbs, fat, servingLabel };
+    const has100g =
+      n["energy-kcal_100g"] !== undefined ||
+      n.proteins_100g !== undefined ||
+      n.carbohydrates_100g !== undefined ||
+      n.fat_100g !== undefined;
+    const nutrients100g =
+      (useServingNutrients || useServingQuantity) && has100g
+        ? {
+            calories: Math.round(n["energy-kcal_100g"] ?? n["energy-kcal"] ?? 0),
+            protein: Math.round((n.proteins_100g ?? n.proteins ?? 0) * 10) / 10,
+            carbs: Math.round((n.carbohydrates_100g ?? n.carbohydrates ?? 0) * 10) / 10,
+            fat: Math.round((n.fat_100g ?? n.fat ?? 0) * 10) / 10,
+          }
+        : undefined;
+
+    const food: ScannedFood = { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
     await setCachedBarcode(barcode, food);
     return food;
   } catch {
