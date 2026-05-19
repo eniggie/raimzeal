@@ -125,6 +125,13 @@ const FILTER_DEFS: NutritionFilterDef[] = [
 const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
 const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
+const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
+
+interface CustomFilterPreset {
+  id: string;
+  name: string;
+  filterKeys: string[];
+}
 
 type FilterThresholds = Record<string, number>;
 
@@ -495,6 +502,10 @@ export default function NutritionScreen() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoAnim = useRef(new Animated.Value(0)).current;
 
+  const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [savePresetName, setSavePresetName] = useState("");
+
   const [filterHintVisible, setFilterHintVisible] = useState(false);
   const filterHintShownRef = useRef(false);
   const filterHintDismissedRef = useRef(false);
@@ -609,6 +620,63 @@ export default function NutritionScreen() {
       ).catch(() => {});
     }
   }, [activeFilters]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (Array.isArray(parsed)) {
+          const valid = (parsed as unknown[]).filter(
+            (p): p is CustomFilterPreset =>
+              p !== null &&
+              typeof p === "object" &&
+              typeof (p as CustomFilterPreset).id === "string" &&
+              typeof (p as CustomFilterPreset).name === "string" &&
+              Array.isArray((p as CustomFilterPreset).filterKeys)
+          );
+          setCustomPresets(valid);
+        }
+      } catch {}
+    });
+  }, []);
+
+  function saveCustomPreset() {
+    const name = savePresetName.trim();
+    if (!name || activeFilters.size === 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const preset: CustomFilterPreset = {
+      id: Date.now().toString(),
+      name,
+      filterKeys: Array.from(activeFilters),
+    };
+    const next = [...customPresets, preset];
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    setShowSavePresetModal(false);
+    setSavePresetName("");
+  }
+
+  function deleteCustomPreset(id: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const next = customPresets.filter((p) => p.id !== id);
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+  }
+
+  function applyPreset(preset: CustomFilterPreset) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+    const keys = preset.filterKeys.filter((k) => validKeys.has(k));
+    setActiveFilters(new Set(keys));
+  }
+
+  function openSavePresetModal() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    dismissFilterHint();
+    setSavePresetName("");
+    setShowSavePresetModal(true);
+  }
 
   const nutritionFilters = React.useMemo(() => buildFilters(filterThresholds), [filterThresholds]);
 
@@ -1010,122 +1078,185 @@ export default function NutritionScreen() {
 
             {/* Filter chips — shown while searching on Today tab */}
             {activeTab === "today" && isSearching && (
-              <View style={styles.filterRow}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filterScroll}
-                >
-                  {nutritionFilters.map((filter) => {
-                    const active = activeFilters.has(filter.key);
-                    const countForFilter = filterResultCounts[filter.key];
-                    const isZeroCount = !active && countForFilter !== undefined && countForFilter === 0;
-                    return (
-                      <TouchableOpacity
-                        key={filter.key}
-                        onPress={() => !isZeroCount && toggleFilter(filter.key)}
-                        onLongPress={() => openThresholdEdit(filter.key)}
-                        delayLongPress={400}
-                        activeOpacity={isZeroCount ? 1 : 0.75}
+              <View style={{ gap: 8 }}>
+                {/* Custom preset chips row */}
+                {customPresets.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.filterScroll, { paddingVertical: 2 }]}
+                  >
+                    {customPresets.map((preset) => (
+                      <View
+                        key={preset.id}
                         style={[
-                          styles.filterChip,
-                          {
-                            backgroundColor: active
-                              ? colors.primary
-                              : colors.muted,
-                            borderColor: active
-                              ? colors.primary
-                              : isZeroCount
-                              ? colors.border + "60"
-                              : colors.border,
-                            opacity: isZeroCount ? 0.5 : 1,
-                          },
+                          styles.presetChip,
+                          { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
                         ]}
                       >
-                        <Ionicons
-                          name={filter.icon}
-                          size={13}
-                          color={active ? colors.primaryForeground : colors.mutedForeground}
-                        />
-                        <Text
+                        <TouchableOpacity
+                          onPress={() => applyPreset(preset)}
+                          activeOpacity={0.75}
+                          style={styles.presetChipInner}
+                        >
+                          <Ionicons name="bookmark" size={12} color={colors.secondary} />
+                          <Text
+                            style={[styles.presetChipText, { color: colors.secondary }]}
+                            numberOfLines={1}
+                          >
+                            {preset.name}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => deleteCustomPreset(preset.id)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          style={styles.presetDeleteBtn}
+                        >
+                          <Ionicons name="close" size={13} color={colors.secondary + "cc"} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+
+                <View style={styles.filterRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterScroll}
+                  >
+                    {nutritionFilters.map((filter) => {
+                      const active = activeFilters.has(filter.key);
+                      const countForFilter = filterResultCounts[filter.key];
+                      const isZeroCount = !active && countForFilter !== undefined && countForFilter === 0;
+                      return (
+                        <TouchableOpacity
+                          key={filter.key}
+                          onPress={() => !isZeroCount && toggleFilter(filter.key)}
+                          onLongPress={() => {
+                            if (active && activeFilters.size >= 1) {
+                              openSavePresetModal();
+                            } else {
+                              openThresholdEdit(filter.key);
+                            }
+                          }}
+                          delayLongPress={400}
+                          activeOpacity={isZeroCount ? 1 : 0.75}
                           style={[
-                            styles.filterChipText,
+                            styles.filterChip,
                             {
-                              color: active
-                                ? colors.primaryForeground
-                                : colors.mutedForeground,
-                              fontFamily: active
-                                ? "Inter_600SemiBold"
-                                : "Inter_400Regular",
+                              backgroundColor: active
+                                ? colors.primary
+                                : colors.muted,
+                              borderColor: active
+                                ? colors.primary
+                                : isZeroCount
+                                ? colors.border + "60"
+                                : colors.border,
+                              opacity: isZeroCount ? 0.5 : 1,
                             },
                           ]}
                         >
-                          {filter.chipLabel}
-                        </Text>
-                        {!active && countForFilter !== undefined && (
-                          <View
+                          <Ionicons
+                            name={filter.icon}
+                            size={13}
+                            color={active ? colors.primaryForeground : colors.mutedForeground}
+                          />
+                          <Text
                             style={[
-                              styles.filterCountBadge,
-                              isZeroCount
-                                ? { backgroundColor: colors.warning + "22", borderColor: colors.warning + "55" }
-                                : { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
+                              styles.filterChipText,
+                              {
+                                color: active
+                                  ? colors.primaryForeground
+                                  : colors.mutedForeground,
+                                fontFamily: active
+                                  ? "Inter_600SemiBold"
+                                  : "Inter_400Regular",
+                              },
                             ]}
                           >
-                            <Text style={[styles.filterCountText, { color: isZeroCount ? colors.warning : colors.primary }]}>
-                              {isZeroCount ? "–" : countForFilter}
-                            </Text>
-                          </View>
-                        )}
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            openThresholdEdit(filter.key);
-                          }}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Ionicons
-                            name="settings-outline"
-                            size={11}
-                            color={active ? colors.primaryForeground + "99" : colors.mutedForeground + "80"}
-                            style={{ marginLeft: 1 }}
-                          />
+                            {filter.chipLabel}
+                          </Text>
+                          {!active && countForFilter !== undefined && (
+                            <View
+                              style={[
+                                styles.filterCountBadge,
+                                isZeroCount
+                                  ? { backgroundColor: colors.warning + "22", borderColor: colors.warning + "55" }
+                                  : { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
+                              ]}
+                            >
+                              <Text style={[styles.filterCountText, { color: isZeroCount ? colors.warning : colors.primary }]}>
+                                {isZeroCount ? "–" : countForFilter}
+                              </Text>
+                            </View>
+                          )}
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              openThresholdEdit(filter.key);
+                            }}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Ionicons
+                              name="settings-outline"
+                              size={11}
+                              color={active ? colors.primaryForeground + "99" : colors.mutedForeground + "80"}
+                              style={{ marginLeft: 1 }}
+                            />
+                          </TouchableOpacity>
                         </TouchableOpacity>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                      );
+                    })}
+                  </ScrollView>
 
-                <View style={styles.filterActions}>
-                  {hasCustomThresholds && (
-                    <TouchableOpacity
-                      onPress={resetAllThresholds}
-                      style={[
-                        styles.filterClearBtn,
-                        { borderColor: colors.primary + "66", backgroundColor: colors.primary + "12" },
-                      ]}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons name="refresh-outline" size={13} color={colors.primary} />
-                      <Text style={[styles.filterClearText, { color: colors.primary, fontFamily: "Inter_600SemiBold" }]}>
-                        Reset all
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  {activeFilters.size > 0 && (
-                    <TouchableOpacity
-                      onPress={clearFilters}
-                      style={[
-                        styles.filterClearBtn,
-                        { borderColor: colors.border },
-                      ]}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons name="close" size={13} color={colors.mutedForeground} />
-                      <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
-                        Clear
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={styles.filterActions}>
+                    {activeFilters.size >= 1 && (
+                      <TouchableOpacity
+                        onPress={openSavePresetModal}
+                        style={[
+                          styles.filterClearBtn,
+                          { borderColor: colors.secondary + "66", backgroundColor: colors.secondary + "12" },
+                        ]}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="bookmark-outline" size={13} color={colors.secondary} />
+                        <Text style={[styles.filterClearText, { color: colors.secondary, fontFamily: "Inter_600SemiBold" }]}>
+                          Save
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {hasCustomThresholds && (
+                      <TouchableOpacity
+                        onPress={resetAllThresholds}
+                        style={[
+                          styles.filterClearBtn,
+                          { borderColor: colors.primary + "66", backgroundColor: colors.primary + "12" },
+                        ]}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="refresh-outline" size={13} color={colors.primary} />
+                        <Text style={[styles.filterClearText, { color: colors.primary, fontFamily: "Inter_600SemiBold" }]}>
+                          Reset all
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {activeFilters.size > 0 && (
+                      <TouchableOpacity
+                        onPress={clearFilters}
+                        style={[
+                          styles.filterClearBtn,
+                          { borderColor: colors.border },
+                        ]}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="close" size={13} color={colors.mutedForeground} />
+                        <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
+                          Clear
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             )}
@@ -1150,7 +1281,7 @@ export default function NutritionScreen() {
             {/* Long-press hint — shown once below filter chips */}
             {activeTab === "today" && isSearching && filterHintVisible && (
               <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
-                Long-press a chip to adjust its threshold
+                Long-press an active chip to save as preset · long-press an inactive chip to adjust its threshold
               </Text>
             )}
 
@@ -2144,6 +2275,87 @@ export default function NutritionScreen() {
                   ]}
                 >
                   Add Food
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* Save Custom Preset Modal */}
+      <Modal
+        visible={showSavePresetModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSavePresetModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            <View style={styles.thresholdModalHeader}>
+              <Ionicons name="bookmark-outline" size={20} color={colors.secondary} />
+              <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                Save Filter Preset
+              </Text>
+            </View>
+            <Text style={[styles.thresholdModalDesc, { color: colors.mutedForeground }]}>
+              {activeFilters.size > 0
+                ? `Saving: ${nutritionFilters
+                    .filter((f) => activeFilters.has(f.key))
+                    .map((f) => f.label)
+                    .join(" + ")}`
+                : "No active filters to save."}
+            </Text>
+            <TextInput
+              placeholder="Preset name (e.g. High Protein Low Cal)"
+              placeholderTextColor={colors.mutedForeground}
+              value={savePresetName}
+              onChangeText={setSavePresetName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={saveCustomPreset}
+              maxLength={40}
+              style={[
+                styles.textInput,
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.secondary + "88" },
+              ]}
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setShowSavePresetModal(false)}
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveCustomPreset}
+                disabled={!savePresetName.trim() || activeFilters.size === 0}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor:
+                      savePresetName.trim() && activeFilters.size > 0
+                        ? colors.secondary
+                        : colors.muted,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modalConfirmText,
+                    {
+                      color:
+                        savePresetName.trim() && activeFilters.size > 0
+                          ? colors.primaryForeground
+                          : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Save Preset
                 </Text>
               </TouchableOpacity>
             </View>
@@ -3312,5 +3524,33 @@ const styles = StyleSheet.create({
   undoBtnText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  presetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+    maxWidth: 180,
+  },
+  presetChipInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingLeft: 10,
+    paddingRight: 6,
+    paddingVertical: 7,
+    flex: 1,
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    flexShrink: 1,
+  },
+  presetDeleteBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
