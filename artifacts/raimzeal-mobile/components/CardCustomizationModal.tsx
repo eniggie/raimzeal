@@ -20,6 +20,7 @@ import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
   runOnJS,
   SharedValue,
 } from "react-native-reanimated";
@@ -525,6 +526,89 @@ function ZoomableCard({
   );
 }
 
+interface ThemeSwatchItemProps {
+  theme: typeof CARD_THEMES[0];
+  isSelected: boolean;
+  visibleStats: CardVisibleStats;
+  customMessage: string;
+  cardPreviewData: CardPreviewData;
+  estimatedHeight: number;
+  colors: ReturnType<typeof useColors>;
+  onSelect: (themeId: CardThemeId) => void;
+}
+
+function ThemeSwatchItem({
+  theme,
+  isSelected,
+  visibleStats,
+  customMessage,
+  cardPreviewData,
+  estimatedHeight,
+  colors,
+  onSelect,
+}: ThemeSwatchItemProps) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  function handlePress() {
+    scale.value = withSequence(
+      withSpring(0.88, { damping: 18, stiffness: 500 }),
+      withSpring(1.07, { damping: 12, stiffness: 300 }),
+      withSpring(1, { damping: 16, stiffness: 320 })
+    );
+    onSelect(theme.id);
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.85}
+      style={styles.themeThumbnailItem}
+    >
+      <Reanimated.View style={animatedStyle}>
+        <View
+          style={[
+            styles.themeThumbnailFrame,
+            {
+              height: estimatedHeight,
+              borderColor: isSelected ? theme.accent : colors.border,
+              borderWidth: isSelected ? 2.5 : 1.5,
+            },
+          ]}
+        >
+          <View style={styles.themeThumbnailScaler} pointerEvents="none">
+            <ShareProgressCard
+              {...cardPreviewData}
+              visibleStats={visibleStats}
+              customMessage={customMessage}
+              themeId={theme.id}
+            />
+          </View>
+          {isSelected && (
+            <View style={[styles.themeThumbnailCheck, { backgroundColor: theme.accent }]}>
+              <Ionicons name="checkmark" size={10} color="#fff" />
+            </View>
+          )}
+        </View>
+        <Text
+          style={[
+            styles.themeThumbnailLabel,
+            {
+              color: isSelected ? colors.foreground : colors.mutedForeground,
+              fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
+            },
+          ]}
+        >
+          {theme.label}
+        </Text>
+      </Reanimated.View>
+    </TouchableOpacity>
+  );
+}
+
 export default function CardCustomizationModal({
   visible,
   onClose,
@@ -540,6 +624,9 @@ export default function CardCustomizationModal({
   });
   const [customMessage, setCustomMessage] = useState("");
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const previewOpacity = useRef(new Animated.Value(1)).current;
+  const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
@@ -623,6 +710,7 @@ export default function CardCustomizationModal({
         setVisibleStats(effectiveStats);
         setCustomMessage(effectiveMessage);
         setSelectedThemeId(effectiveTheme);
+        setDisplayedThemeId(effectiveTheme);
         setRestoredFromStorage(hadSavedData);
         setBadgeDismissed(dismissedFlag === "1");
         const validActions: CardAction[] = ["share", "save", "both"];
@@ -633,6 +721,7 @@ export default function CardCustomizationModal({
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
         setSelectedThemeId(DEFAULT_THEME_ID);
+        setDisplayedThemeId(DEFAULT_THEME_ID);
         setRestoredFromStorage(false);
         setBadgeDismissed(false);
         setDefaultAction(null);
@@ -649,6 +738,19 @@ export default function CardCustomizationModal({
   function handleThemeChange(themeId: CardThemeId) {
     setSelectedThemeId(themeId);
     setActivePresetId(null);
+    if (themeTransitionTimer.current !== null) {
+      clearTimeout(themeTransitionTimer.current);
+      themeTransitionTimer.current = null;
+    }
+    previewOpacity.stopAnimation();
+    Animated.sequence([
+      Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+      Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+    ]).start();
+    themeTransitionTimer.current = setTimeout(() => {
+      themeTransitionTimer.current = null;
+      setDisplayedThemeId(themeId);
+    }, 90);
   }
 
   function handleMessageChange(text: string) {
@@ -701,6 +803,7 @@ export default function CardCustomizationModal({
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
     setSelectedThemeId(DEFAULT_THEME_ID);
+    setDisplayedThemeId(DEFAULT_THEME_ID);
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
@@ -720,6 +823,7 @@ export default function CardCustomizationModal({
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS, ...preset.visibleStats });
     setCustomMessage(preset.customMessage);
     setSelectedThemeId(preset.themeId);
+    setDisplayedThemeId(preset.themeId);
     setActivePresetId(preset.id);
     setRestoredFromStorage(false);
   }
@@ -1076,23 +1180,25 @@ export default function CardCustomizationModal({
                 },
               ]}
             >
-              <View
-                style={[
-                  styles.previewScaler,
-                  {
-                    width: CARD_WIDTH,
-                    transform: [{ scale: cardScale }],
-                  },
-                ]}
-                onLayout={(e) => setCardNativeHeight(e.nativeEvent.layout.height)}
-              >
-                <ShareProgressCard
-                  {...cardPreviewData}
-                  visibleStats={visibleStats}
-                  customMessage={customMessage.trim()}
-                  themeId={selectedThemeId}
-                />
-              </View>
+              <Animated.View style={{ opacity: previewOpacity }}>
+                <View
+                  style={[
+                    styles.previewScaler,
+                    {
+                      width: CARD_WIDTH,
+                      transform: [{ scale: cardScale }],
+                    },
+                  ]}
+                  onLayout={(e) => setCardNativeHeight(e.nativeEvent.layout.height)}
+                >
+                  <ShareProgressCard
+                    {...cardPreviewData}
+                    visibleStats={visibleStats}
+                    customMessage={customMessage.trim()}
+                    themeId={displayedThemeId}
+                  />
+                </View>
+              </Animated.View>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={openZoom}
@@ -1131,53 +1237,19 @@ export default function CardCustomizationModal({
                 }}
                 scrollEventThrottle={16}
               >
-                {CARD_THEMES.map((theme) => {
-                  const isSelected = selectedThemeId === theme.id;
-                  return (
-                    <TouchableOpacity
-                      key={theme.id}
-                      onPress={() => handleThemeChange(theme.id)}
-                      activeOpacity={0.75}
-                      style={styles.themeThumbnailItem}
-                    >
-                      <View
-                        style={[
-                          styles.themeThumbnailFrame,
-                          {
-                            height: estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0),
-                            borderColor: isSelected ? theme.accent : colors.border,
-                            borderWidth: isSelected ? 2.5 : 1.5,
-                          },
-                        ]}
-                      >
-                        <View style={styles.themeThumbnailScaler} pointerEvents="none">
-                          <ShareProgressCard
-                            {...cardPreviewData}
-                            visibleStats={visibleStats}
-                            customMessage={customMessage.trim()}
-                            themeId={theme.id}
-                          />
-                        </View>
-                        {isSelected && (
-                          <View style={[styles.themeThumbnailCheck, { backgroundColor: theme.accent }]}>
-                            <Ionicons name="checkmark" size={10} color="#fff" />
-                          </View>
-                        )}
-                      </View>
-                      <Text
-                        style={[
-                          styles.themeThumbnailLabel,
-                          {
-                            color: isSelected ? colors.foreground : colors.mutedForeground,
-                            fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
-                          },
-                        ]}
-                      >
-                        {theme.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {CARD_THEMES.map((theme) => (
+                  <ThemeSwatchItem
+                    key={theme.id}
+                    theme={theme}
+                    isSelected={selectedThemeId === theme.id}
+                    visibleStats={visibleStats}
+                    customMessage={customMessage.trim()}
+                    cardPreviewData={cardPreviewData}
+                    estimatedHeight={estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0)}
+                    colors={colors}
+                    onSelect={handleThemeChange}
+                  />
+                ))}
               </ScrollView>
               {themeHasOverflow && !themeScrollAtEnd && (
                 <LinearGradient
