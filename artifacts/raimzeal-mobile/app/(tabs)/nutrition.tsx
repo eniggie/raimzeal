@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Platform,
@@ -1359,9 +1360,23 @@ function NutritionRow({ log }: { log: MealLog }) {
   const swipeableRef = useRef<Swipeable>(null);
 
   function handleDelete() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
-    removeMealLog(log.id);
+    Alert.alert(
+      "Delete meal?",
+      `Remove "${log.name}" from today's log?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            removeMealLog(log.id);
+          },
+        },
+      ]
+    );
   }
 
   function renderRightActions() {
