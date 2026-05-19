@@ -17,6 +17,8 @@ import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  runOnJS,
+  SharedValue,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -133,6 +135,276 @@ async function savePresets(presets: CardPreset[]): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+const PRESET_ITEM_H = 56;
+
+interface SortablePresetItemProps {
+  preset: CardPreset;
+  itemIndex: number;
+  totalItems: number;
+  draggingIdx: SharedValue<number>;
+  dragTranslateY: SharedValue<number>;
+  hoveredIdx: SharedValue<number>;
+  isActive: boolean;
+  onLoadPreset: (p: CardPreset) => void;
+  onDeletePreset: (id: string) => void;
+  onPanEnd: (fromIdx: number, toIdx: number) => void;
+  colors: ReturnType<typeof useColors>;
+}
+
+function SortablePresetItem({
+  preset,
+  itemIndex,
+  totalItems,
+  draggingIdx,
+  dragTranslateY,
+  hoveredIdx,
+  isActive,
+  onLoadPreset,
+  onDeletePreset,
+  onPanEnd,
+  colors,
+}: SortablePresetItemProps) {
+  const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
+
+  const animatedStyle = useAnimatedStyle(() => {
+    "worklet";
+    const dIdx = draggingIdx.value;
+    const hIdx = hoveredIdx.value;
+
+    if (dIdx === -1) {
+      return { top: itemIndex * PRESET_ITEM_H, zIndex: 1, elevation: 1, shadowOpacity: 0 };
+    }
+
+    if (itemIndex === dIdx) {
+      return {
+        top: dIdx * PRESET_ITEM_H,
+        transform: [{ translateY: dragTranslateY.value }],
+        zIndex: 999,
+        elevation: 8,
+        shadowOpacity: 0.22,
+      };
+    }
+
+    let targetSlot = itemIndex;
+    if (hIdx > dIdx && itemIndex > dIdx && itemIndex <= hIdx) {
+      targetSlot = itemIndex - 1;
+    } else if (hIdx < dIdx && itemIndex < dIdx && itemIndex >= hIdx) {
+      targetSlot = itemIndex + 1;
+    }
+
+    return {
+      top: withSpring(targetSlot * PRESET_ITEM_H, { damping: 22, stiffness: 320 }),
+      zIndex: 1,
+      elevation: 1,
+      shadowOpacity: 0,
+    };
+  });
+
+  const pan = Gesture.Pan()
+    .onStart(() => {
+      "worklet";
+      draggingIdx.value = itemIndex;
+      hoveredIdx.value = itemIndex;
+      dragTranslateY.value = 0;
+    })
+    .onUpdate((e) => {
+      "worklet";
+      dragTranslateY.value = e.translationY;
+      const newH = Math.max(
+        0,
+        Math.min(
+          totalItems - 1,
+          Math.round((itemIndex * PRESET_ITEM_H + e.translationY) / PRESET_ITEM_H)
+        )
+      );
+      hoveredIdx.value = newH;
+    })
+    .onEnd(() => {
+      "worklet";
+      const finalSlot = hoveredIdx.value;
+      const fromSlot = draggingIdx.value;
+      draggingIdx.value = -1;
+      hoveredIdx.value = -1;
+      dragTranslateY.value = 0;
+      runOnJS(onPanEnd)(fromSlot, finalSlot);
+    });
+
+  return (
+    <Reanimated.View
+      style={[
+        {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          height: PRESET_ITEM_H - 4,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 3 },
+          shadowRadius: 6,
+        },
+        animatedStyle,
+      ]}
+    >
+      <View
+        style={{
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingRight: 12,
+          borderRadius: 12,
+          borderWidth: 1.5,
+          backgroundColor: isActive ? colors.primary + "18" : colors.card,
+          borderColor: isActive ? colors.primary : colors.border,
+          overflow: "hidden",
+        }}
+      >
+        <GestureDetector gesture={pan}>
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons name="reorder-three-outline" size={22} color={colors.mutedForeground} />
+          </View>
+        </GestureDetector>
+        <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 13,
+            fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+            color: isActive ? colors.primary : colors.foreground,
+            marginLeft: 6,
+          }}
+          numberOfLines={1}
+        >
+          {preset.name}
+        </Text>
+        <TouchableOpacity
+          onPress={() => onLoadPreset(preset)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ marginRight: 10 }}
+        >
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={20}
+            color={isActive ? colors.primary : colors.mutedForeground}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => onDeletePreset(preset.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name="close-circle"
+            size={20}
+            color={isActive ? colors.primary : colors.mutedForeground}
+          />
+        </TouchableOpacity>
+      </View>
+    </Reanimated.View>
+  );
+}
+
+interface SortablePresetListProps {
+  presets: CardPreset[];
+  onReorder: (newPresets: CardPreset[]) => void;
+  onDone: () => void;
+  activePresetId: string | null;
+  onLoadPreset: (p: CardPreset) => void;
+  onDeletePreset: (id: string) => void;
+  colors: ReturnType<typeof useColors>;
+}
+
+function SortablePresetList({
+  presets,
+  onReorder,
+  onDone,
+  activePresetId,
+  onLoadPreset,
+  onDeletePreset,
+  colors,
+}: SortablePresetListProps) {
+  const [items, setItems] = useState<CardPreset[]>(presets);
+
+  useEffect(() => {
+    setItems(presets);
+  }, [presets]);
+
+  const draggingIdx = useSharedValue(-1);
+  const dragTranslateY = useSharedValue(0);
+  const hoveredIdx = useSharedValue(-1);
+
+  function handlePanEnd(fromIdx: number, toIdx: number) {
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+    setItems((prev) => {
+      if (fromIdx >= prev.length || toIdx >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      onReorder(next);
+      return next;
+    });
+  }
+
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View
+        style={{
+          height: items.length * PRESET_ITEM_H,
+          position: "relative",
+          marginBottom: 10,
+        }}
+      >
+        {items.map((preset, index) => (
+          <SortablePresetItem
+            key={preset.id}
+            preset={preset}
+            itemIndex={index}
+            totalItems={items.length}
+            draggingIdx={draggingIdx}
+            dragTranslateY={dragTranslateY}
+            hoveredIdx={hoveredIdx}
+            isActive={preset.id === activePresetId}
+            onLoadPreset={(p) => { onLoadPreset(p); onDone(); }}
+            onDeletePreset={onDeletePreset}
+            onPanEnd={handlePanEnd}
+            colors={colors}
+          />
+        ))}
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          Drag{" "}
+          <Ionicons name="reorder-three-outline" size={12} color={colors.mutedForeground} />
+          {" "}to reorder
+        </Text>
+        <TouchableOpacity
+          onPress={onDone}
+          style={{
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 20,
+            backgroundColor: colors.primary + "18",
+            borderWidth: 1,
+            borderColor: colors.primary + "40",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Ionicons name="checkmark-outline" size={13} color={colors.primary} />
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.primary }}>
+            Done
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 function ZoomableCard({
@@ -256,6 +528,7 @@ export default function CardCustomizationModal({
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
 
   // Badge fade-in animation
@@ -309,6 +582,7 @@ export default function CardCustomizationModal({
         ]);
 
         setPresets(loadedPresets);
+        setReorderMode(false);
 
         let effectiveStats = { ...DEFAULT_VISIBLE_STATS };
         if (savedStats) {
@@ -473,6 +747,11 @@ export default function CardCustomizationModal({
     setShowSavePresetModal(false);
   }
 
+  async function handleReorderPresets(newOrder: CardPreset[]) {
+    setPresets(newOrder);
+    await savePresets(newOrder);
+  }
+
   async function handleDeletePreset(presetId: string) {
     const preset = presets.find((p) => p.id === presetId);
     if (!preset) return;
@@ -601,6 +880,7 @@ export default function CardCustomizationModal({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            scrollEnabled={!reorderMode}
           >
             {/* ── Presets section ── */}
             <View style={styles.presetsHeader}>
@@ -625,63 +905,85 @@ export default function CardCustomizationModal({
                   No presets yet — set up a card and tap "Save Preset"
                 </Text>
               </View>
+            ) : reorderMode ? (
+              <SortablePresetList
+                presets={presets}
+                onReorder={handleReorderPresets}
+                onDone={() => setReorderMode(false)}
+                activePresetId={activePresetId}
+                onLoadPreset={loadPreset}
+                onDeletePreset={(id) => {
+                  handleDeletePreset(id);
+                  if (presets.length <= 1) setReorderMode(false);
+                }}
+                colors={colors}
+              />
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.presetsScroll}
-              >
-                {presets.map((preset) => {
-                  const isActive = preset.id === activePresetId;
-                  const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
-                  return (
-                    <TouchableOpacity
-                      key={preset.id}
-                      onPress={() => loadPreset(preset)}
-                      activeOpacity={0.75}
-                      style={[
-                        styles.presetChip,
-                        {
-                          backgroundColor: isActive ? colors.primary + "18" : colors.card,
-                          borderColor: isActive ? colors.primary : colors.border,
-                        },
-                      ]}
-                    >
-                      <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
-                      <Text
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetsScroll}
+                >
+                  {presets.map((preset) => {
+                    const isActive = preset.id === activePresetId;
+                    const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
+                    return (
+                      <TouchableOpacity
+                        key={preset.id}
+                        onPress={() => loadPreset(preset)}
+                        onLongPress={() => setReorderMode(true)}
+                        delayLongPress={350}
+                        activeOpacity={0.75}
                         style={[
-                          styles.presetChipText,
+                          styles.presetChip,
                           {
-                            color: isActive ? colors.primary : colors.foreground,
-                            fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+                            backgroundColor: isActive ? colors.primary + "18" : colors.card,
+                            borderColor: isActive ? colors.primary : colors.border,
                           },
                         ]}
-                        numberOfLines={1}
                       >
-                        {preset.name}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleDeletePreset(preset.id)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons
-                          name="close-circle"
-                          size={15}
-                          color={isActive ? colors.primary : colors.mutedForeground}
-                        />
+                        <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+                        <Text
+                          style={[
+                            styles.presetChipText,
+                            {
+                              color: isActive ? colors.primary : colors.foreground,
+                              fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {preset.name}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleDeletePreset(preset.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={15}
+                            color={isActive ? colors.primary : colors.mutedForeground}
+                          />
+                        </TouchableOpacity>
                       </TouchableOpacity>
-                    </TouchableOpacity>
-                  );
-                })}
-                {presets.length < MAX_PRESETS && (
-                  <Text style={[styles.presetsSlotHint, { color: colors.mutedForeground }]}>
-                    {MAX_PRESETS - presets.length} slot{MAX_PRESETS - presets.length !== 1 ? "s" : ""} left
+                    );
+                  })}
+                  {presets.length < MAX_PRESETS && (
+                    <Text style={[styles.presetsSlotHint, { color: colors.mutedForeground }]}>
+                      {MAX_PRESETS - presets.length} slot{MAX_PRESETS - presets.length !== 1 ? "s" : ""} left
+                    </Text>
+                  )}
+                </ScrollView>
+                {presets.length > 1 && (
+                  <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
+                    Long-press any preset to reorder
                   </Text>
                 )}
-              </ScrollView>
+              </>
             )}
 
-            {activePreset && (
+            {activePreset && !reorderMode && (
               <View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
                 <Ionicons name="bookmark" size={12} color={colors.primary} />
                 <Text style={[styles.activePresetBannerText, { color: colors.primary }]}>
@@ -1293,6 +1595,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     paddingHorizontal: 4,
+  },
+  reorderHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: -6,
+    marginBottom: 10,
   },
   activePresetBanner: {
     flexDirection: "row",
