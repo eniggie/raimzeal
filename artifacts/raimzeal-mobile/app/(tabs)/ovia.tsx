@@ -116,6 +116,11 @@ export default function OviaScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
+  // Tab bar height: ~49px icon area + bottom safe area inset, floats above content
+  const TAB_BAR_HEIGHT = Platform.OS === "web" ? 84 : 49;
+  // Header height used so KAV knows how far from the top the keyboard-avoiding
+  // region starts (prevents the input from shooting too high on iOS).
+  const headerHeight = topPad + 16 + 44 + 12; // paddingTop + titleFontApprox + paddingBottom
 
   // Weekly Ovia digest — fires once per 7 days on mount
   useEffect(() => {
@@ -275,12 +280,13 @@ export default function OviaScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight + TAB_BAR_HEIGHT + bottomPad : 0}
       >
         <FlatList
           ref={flatListRef}
           data={oviaMessages}
           keyExtractor={(item) => item.id}
+          style={{ flex: 1 }}
           contentContainerStyle={[styles.chatContent, { paddingBottom: isTyping ? 60 : 16 }]}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           showsVerticalScrollIndicator={false}
@@ -342,7 +348,7 @@ export default function OviaScreen() {
             {
               backgroundColor: colors.background,
               borderTopColor: colors.border,
-              paddingBottom: bottomPad + (Platform.OS === "web" ? 84 : 0),
+              paddingBottom: bottomPad + TAB_BAR_HEIGHT,
             },
           ]}
         >
