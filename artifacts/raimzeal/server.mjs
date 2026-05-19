@@ -31,14 +31,25 @@ const MIME = {
 };
 
 function handleRequest(req, res) {
-  // Canonical redirect: www → non-www (301 permanent)
   const host = (req.headers['host'] || '').toLowerCase();
-  if (host.startsWith('www.')) {
-    const bare = host.slice(4);
-    res.writeHead(301, { Location: `https://${bare}${req.url}` });
-    res.end();
-    return;
-  }
+
+  // Canonical redirect: www → non-www (301 permanent)
+  // NOTE: Only redirect if the apex domain A record is confirmed live.
+  // When the apex domain has no DNS A record this redirect causes a hard
+  // outage for all users (www resolves → redirects → apex DNS failure).
+  // Re-enable this block once an A record for raimzeal.com (@ → 34.111.179.208)
+  // is confirmed in the DNS panel.
+  //
+  // if (host.startsWith('www.')) {
+  //   const bare = host.slice(4);
+  //   res.writeHead(301, { Location: `https://${bare}${req.url}` });
+  //   res.end();
+  //   return;
+  // }
+
+  // Normalise: strip www prefix for robots/canonical header logic without redirecting
+  const canonicalHost = host.startsWith('www.') ? host.slice(4) : host;
+  void canonicalHost;
 
   // Override any platform-level noindex header
   res.setHeader('X-Robots-Tag', 'index, follow');
