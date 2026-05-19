@@ -57,6 +57,7 @@ export default function SignupScreen() {
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [responsibilityAccepted, setResponsibilityAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const parsedAge = parseInt(age, 10);
@@ -89,6 +90,13 @@ export default function SignupScreen() {
     }
     if (password.length < 6) {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+    if (!responsibilityAccepted) {
+      Alert.alert(
+        "Responsibility Required",
+        "You must accept full personal responsibility for your health and fitness decisions before creating an account."
+      );
       return;
     }
     if (!termsAccepted) {
@@ -261,6 +269,41 @@ export default function SignupScreen() {
             colors={colors}
           />
 
+          {/* Personal Responsibility Checkbox */}
+          <View
+            style={[
+              styles.termsBox,
+              {
+                backgroundColor: responsibilityAccepted ? "#ef4444" + "10" : colors.muted,
+                borderColor: responsibilityAccepted ? "#ef4444" + "50" : colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setResponsibilityAccepted((v) => !v)}
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: responsibilityAccepted ? "#ef4444" : "transparent",
+                  borderColor: responsibilityAccepted ? "#ef4444" : colors.border,
+                },
+              ]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {responsibilityAccepted && (
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              )}
+            </TouchableOpacity>
+            <View style={styles.termsTextBlock}>
+              <Text style={[styles.termsLabel, { color: "#ef4444" }]}>
+                Personal Responsibility Waiver *
+              </Text>
+              <Text style={[styles.termsText, { color: colors.foreground }]}>
+                I accept FULL PERSONAL RESPONSIBILITY for all health and fitness decisions I make using RAIMZEAL. I understand RAIMZEAL is NOT a medical service and accepts NO LIABILITY for any injury, illness, or outcome resulting from my use of this app. I will consult a qualified professional before making significant health changes.
+              </Text>
+            </View>
+          </View>
+
           {/* Terms & Conditions Checkbox */}
           <View
             style={[
@@ -287,27 +330,23 @@ export default function SignupScreen() {
               )}
             </TouchableOpacity>
             <View style={styles.termsTextBlock}>
+              <Text style={[styles.termsLabel, { color: colors.primary }]}>
+                Terms & Conditions *
+              </Text>
               <Text style={[styles.termsText, { color: colors.foreground }]}>
                 I have read and accept the{" "}
                 <Text
                   style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}
                   onPress={() => router.push("/terms")}
                 >
-                  Terms & Conditions
+                  Terms, Conditions & Full Disclaimer
                 </Text>
-                {" "}and{" "}
-                <Text
-                  style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}
-                  onPress={() => router.push("/terms")}
-                >
-                  Health Disclaimer
-                </Text>
-                . I confirm I am 18 years of age or older and that this app is not a substitute for medical advice.
+                . I confirm I am 18+ years old. I understand RAIMZEAL is not a substitute for medical advice.
               </Text>
             </View>
           </View>
 
-          {!termsAccepted && (
+          {(!termsAccepted || !responsibilityAccepted) && (
             <View
               style={[
                 styles.termsWarning,
@@ -316,7 +355,9 @@ export default function SignupScreen() {
             >
               <Ionicons name="alert-circle-outline" size={14} color={colors.destructive} />
               <Text style={[styles.termsWarningText, { color: colors.mutedForeground }]}>
-                You must accept the Terms & Conditions to create an account.
+                {!responsibilityAccepted
+                  ? "You must accept the Personal Responsibility waiver."
+                  : "You must accept the Terms & Conditions."}
               </Text>
             </View>
           )}
@@ -327,13 +368,13 @@ export default function SignupScreen() {
               styles.submitBtn,
               {
                 backgroundColor:
-                  loading || !termsAccepted || ageBlocked
+                  loading || !termsAccepted || !responsibilityAccepted || ageBlocked
                     ? colors.primary + "60"
                     : colors.primary,
               },
             ]}
             onPress={handleSignup}
-            disabled={loading || !termsAccepted || ageBlocked}
+            disabled={loading || !termsAccepted || !responsibilityAccepted || ageBlocked}
           >
             {loading ? (
               <ActivityIndicator color={colors.primaryForeground} />
@@ -473,6 +514,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   termsTextBlock: { flex: 1 },
+  termsLabel: { fontSize: 12, fontFamily: "Inter_700Bold", marginBottom: 4 },
   termsText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
   termsWarning: {
     flexDirection: "row",

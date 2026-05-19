@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   Alert,
+  Dimensions,
   FlatList,
   Image,
   Platform,
@@ -351,7 +352,8 @@ export default function ProgressPhotosScreen() {
   );
 }
 
-const PHOTO_SIZE = (340) / 2 - 6;
+const { width: SCREEN_W } = Dimensions.get("window");
+const PHOTO_SIZE = (SCREEN_W - 12 * 2 - 8) / 2; // 12px padding each side, 8px gap between columns
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -381,28 +383,30 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
+    alignSelf: "center",
   },
   filterChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   grid: { padding: 12, gap: 8 },
   row: { gap: 8 },
   photoCard: {
-    flex: 1,
+    width: PHOTO_SIZE,
     borderRadius: 14,
     borderWidth: 1,
     overflow: "hidden",
   },
   photoImage: {
-    width: "100%",
-    height: PHOTO_SIZE,
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE * 1.25,
   },
   photoCategoryBadge: {
     position: "absolute",
