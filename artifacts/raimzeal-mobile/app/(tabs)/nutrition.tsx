@@ -690,6 +690,17 @@ export default function NutritionScreen() {
     setActiveFilters(new Set());
   }
 
+  const hasCustomThresholds = React.useMemo(() => {
+    return FILTER_DEFS.some((def) => filterThresholds[def.key] !== def.defaultThreshold);
+  }, [filterThresholds]);
+
+  function resetAllThresholds() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const defaults = getDefaultThresholds();
+    setFilterThresholds(defaults);
+    AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
+  }
+
   function enterReorderMode() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const items = [...favoriteFoods];
@@ -1001,21 +1012,38 @@ export default function NutritionScreen() {
                   })}
                 </ScrollView>
 
-                {activeFilters.size > 0 && (
-                  <TouchableOpacity
-                    onPress={clearFilters}
-                    style={[
-                      styles.filterClearBtn,
-                      { borderColor: colors.border },
-                    ]}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Ionicons name="close" size={13} color={colors.mutedForeground} />
-                    <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
-                      Clear
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <View style={styles.filterActions}>
+                  {hasCustomThresholds && (
+                    <TouchableOpacity
+                      onPress={resetAllThresholds}
+                      style={[
+                        styles.filterClearBtn,
+                        { borderColor: colors.primary + "66", backgroundColor: colors.primary + "12" },
+                      ]}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="refresh-outline" size={13} color={colors.primary} />
+                      <Text style={[styles.filterClearText, { color: colors.primary, fontFamily: "Inter_600SemiBold" }]}>
+                        Reset all
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {activeFilters.size > 0 && (
+                    <TouchableOpacity
+                      onPress={clearFilters}
+                      style={[
+                        styles.filterClearBtn,
+                        { borderColor: colors.border },
+                      ]}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="close" size={13} color={colors.mutedForeground} />
+                      <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
+                        Clear
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             )}
 
@@ -2837,6 +2865,12 @@ const styles = StyleSheet.create({
   filterClearText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  filterActions: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 6,
+    flexShrink: 0,
   },
   resultsHeader: {
     flexDirection: "row",
