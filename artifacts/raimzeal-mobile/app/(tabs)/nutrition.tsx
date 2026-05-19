@@ -134,6 +134,8 @@ const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
+const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
+const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 
 interface CustomFilterPreset {
   id: string;
@@ -731,6 +733,35 @@ export default function NutritionScreen() {
   }, []);
 
   const filtersHydratedRef = useRef(false);
+  const historyFiltersHydratedRef = useRef(false);
+
+  useEffect(() => {
+    const VALID_DATE_RANGES = new Set(["all", "7d", "30d"]);
+    const VALID_MEAL_FILTERS = new Set<string>(["all", ...MEALS]);
+    Promise.all([
+      AsyncStorage.getItem(HISTORY_DATE_RANGE_KEY),
+      AsyncStorage.getItem(HISTORY_MEAL_FILTER_KEY),
+    ]).then(([dateRaw, mealRaw]) => {
+      if (dateRaw && VALID_DATE_RANGES.has(dateRaw)) {
+        setHistoryDateRange(dateRaw as HistoryDateRange);
+      }
+      if (mealRaw && VALID_MEAL_FILTERS.has(mealRaw)) {
+        setHistoryMealFilter(mealRaw as HistoryMealFilter);
+      }
+    }).catch(() => {}).finally(() => {
+      historyFiltersHydratedRef.current = true;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!historyFiltersHydratedRef.current) return;
+    AsyncStorage.setItem(HISTORY_DATE_RANGE_KEY, historyDateRange).catch(() => {});
+  }, [historyDateRange]);
+
+  useEffect(() => {
+    if (!historyFiltersHydratedRef.current) return;
+    AsyncStorage.setItem(HISTORY_MEAL_FILTER_KEY, historyMealFilter).catch(() => {});
+  }, [historyMealFilter]);
 
   useEffect(() => {
     AsyncStorage.getItem(ACTIVE_FILTERS_STORAGE_KEY).then((raw) => {
