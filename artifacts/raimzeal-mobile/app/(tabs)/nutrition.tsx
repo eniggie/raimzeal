@@ -1914,6 +1914,20 @@ export default function NutritionScreen() {
                   </View>
                 )}
 
+                {(historyDateRange !== "all" || historyMealFilter !== "all") && (
+                  <Text style={[styles.historyResultCount, { color: colors.mutedForeground }]}>
+                    {[
+                      `${filteredHistoryDays.length} day${filteredHistoryDays.length !== 1 ? "s" : ""} found`,
+                      historyDateRange !== "all" ? (historyDateRange === "7d" ? "Last 7 days" : "Last 30 days") : null,
+                      historyMealFilter !== "all"
+                        ? `${historyMealFilter.charAt(0).toUpperCase() + historyMealFilter.slice(1)} only`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                )}
+
                 {filteredHistoryDays.length === 0 ? (
                   <View style={styles.historyEmpty}>
                     <Ionicons name="calendar-outline" size={44} color={colors.mutedForeground} />
@@ -3730,6 +3744,12 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: "rgba(128,128,128,0.25)",
     marginHorizontal: 2,
+  },
+  historyResultCount: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 6,
+    paddingHorizontal: 2,
   },
   historyEmpty: {
     alignItems: "center",
