@@ -1881,7 +1881,8 @@ function MacroBar({
 
 function NutritionRow({ log }: { log: MealLog }) {
   const colors = useColors();
-  const { removeMealLog, updateMealLog } = useFitness();
+  const { removeMealLog, updateMealLog, toggleFavoriteFood, favoriteFoods } = useFitness();
+  const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
@@ -1963,26 +1964,42 @@ function NutritionRow({ log }: { log: MealLog }) {
         rightThreshold={60}
         overshootRight={false}
       >
-        <TouchableOpacity
-          onPress={openEditSheet}
-          activeOpacity={0.7}
-          style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
-        >
-          <View style={styles.nutritionRowInfo}>
-            <Text style={[styles.nutritionName, { color: colors.foreground }]}>
-              {log.name}
-            </Text>
-            <Text style={[styles.nutritionMacroSub, { color: colors.mutedForeground }]}>
-              {log.protein}g P · {log.carbs}g C · {log.fat}g F
-            </Text>
-          </View>
-          <View style={styles.nutritionRowRight}>
-            <Text style={[styles.nutritionCal, { color: colors.primary }]}>
-              {log.calories} kcal
-            </Text>
-            <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} style={{ marginTop: 1 }} />
-          </View>
-        </TouchableOpacity>
+        <View style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+          <TouchableOpacity
+            onPress={openEditSheet}
+            activeOpacity={0.7}
+            style={styles.nutritionRowMain}
+          >
+            <View style={styles.nutritionRowInfo}>
+              <Text style={[styles.nutritionName, { color: colors.foreground }]}>
+                {log.name}
+              </Text>
+              <Text style={[styles.nutritionMacroSub, { color: colors.mutedForeground }]}>
+                {log.protein}g P · {log.carbs}g C · {log.fat}g F
+              </Text>
+            </View>
+            <View style={styles.nutritionRowRight}>
+              <Text style={[styles.nutritionCal, { color: colors.primary }]}>
+                {log.calories} kcal
+              </Text>
+              <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              toggleFavoriteFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType });
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.nutritionStarBtn}
+          >
+            <Ionicons
+              name={starred ? "star" : "star-outline"}
+              size={17}
+              color={starred ? "#f59f0a" : colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        </View>
       </Swipeable>
 
       <Modal
@@ -2239,18 +2256,30 @@ const styles = StyleSheet.create({
   mealCal: { fontSize: 13, fontFamily: "Inter_400Regular" },
   nutritionRow: {
     flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingLeft: 16,
+    paddingRight: 4,
+  },
+  nutritionRowMain: {
+    flex: 1,
+    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingLeft: 16,
-    paddingRight: 12,
+    paddingRight: 8,
   },
   nutritionRowInfo: { flex: 1, gap: 2 },
   nutritionRowRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+  nutritionStarBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 9,
+    alignItems: "center",
+    justifyContent: "center",
   },
   nutritionName: { fontSize: 14, fontFamily: "Inter_400Regular" },
   nutritionMacroSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
