@@ -18,7 +18,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.econteur.raimzeal",
       "buildNumber": "1",
-      "associatedDomains": ["applinks:raimzeal.com"],
+      "associatedDomains": [
+        "applinks:raimzeal.com"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow RAIMZEAL to access your photo library to save and view progress photos.",
         "NSPhotoLibraryAddUsageDescription": "Allow RAIMZEAL to save progress photos to your photo library.",
@@ -34,8 +36,17 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "raimzeal.com", "pathPrefix": "/" }],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "data": [
+            {
+              "scheme": "https",
+              "host": "raimzeal.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -96,7 +107,7 @@
       "privacyPolicyUrl": "https://www.raimzeal.com/privacy",
       "termsOfServiceUrl": "https://www.raimzeal.com/terms",
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "352f4ec9-8d51-4d18-8c68-97a1b3be0387"
       }
     }
   }
