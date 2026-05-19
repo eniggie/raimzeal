@@ -1,5 +1,5 @@
-import React from "react";
-import { Dimensions, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 interface ChartDay {
@@ -35,6 +35,13 @@ const TOP_PADDING = 24;
 const SIDE_PADDING = 4;
 const MIN_BAR_H = 3;
 
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatPillDate(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+}
+
 export function CalorieTrendChart({
   days,
   goal,
@@ -56,6 +63,36 @@ export function CalorieTrendChart({
   const barAreaH = CHART_HEIGHT - TOP_PADDING - LABEL_HEIGHT;
 
   const goalY = TOP_PADDING + barAreaH * (1 - goal / maxVal);
+
+  const pillOpacity = useRef(new Animated.Value(0)).current;
+  const pillVisible = useRef(false);
+
+  useEffect(() => {
+    if (highlightedDate) {
+      pillVisible.current = true;
+      Animated.timing(pillOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(pillOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        pillVisible.current = false;
+      });
+    }
+  }, [highlightedDate]);
+
+  const highlightedDay = highlightedDate
+    ? days.find((d) => d.date === highlightedDate)
+    : null;
+
+  const pillLabel = highlightedDay && highlightedDate
+    ? `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`
+    : "";
 
   return (
     <View>
@@ -145,6 +182,48 @@ export function CalorieTrendChart({
           );
         })}
       </Svg>
+
+      {/* Summary pill — fades in when a date is highlighted */}
+      <Animated.View
+        pointerEvents={highlightedDate ? "auto" : "none"}
+        style={{ opacity: pillOpacity, alignItems: "center", marginTop: 8, marginBottom: 2 }}
+      >
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => highlightedDate && onBarPress(highlightedDate)}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 20,
+            backgroundColor: colors.warning + "1A",
+            borderWidth: 1,
+            borderColor: colors.warning + "55",
+          }}
+        >
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 4,
+              backgroundColor: colors.warning,
+            }}
+          />
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: colors.warning,
+              letterSpacing: 0.1,
+            }}
+          >
+            {pillLabel}
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.warning + "BB" }}>✕</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Legend row */}
       <View
