@@ -348,7 +348,7 @@ function DraggableFavItem({
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods } = useFitness();
 
   const isFavorite = useCallback(
     (name: string) => favoriteFoods.some((f) => f.name === name),
@@ -488,6 +488,48 @@ export default function NutritionScreen() {
   const [hoverReorderIdx, setHoverReorderIdx] = useState(-1);
   const indexRefsRef = useRef<React.MutableRefObject<number>[]>([]);
   const itemHeightRef = useRef(DRAG_ITEM_HEIGHT);
+
+  const [undoMeal, setUndoMeal] = useState<MealLog | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
+  function showUndoToast(meal: MealLog) {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoMeal(meal);
+    Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    undoTimerRef.current = setTimeout(() => {
+      dismissUndoToast();
+    }, 3000);
+  }
+
+  function dismissUndoToast() {
+    Animated.timing(undoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      setUndoMeal(null);
+    });
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  }
+
+  function handleUndoDelete() {
+    if (!undoMeal) return;
+    dismissUndoToast();
+    addMealLog(undoMeal);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function handleMealDelete(meal: MealLog) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    removeMealLog(meal.id);
+    showUndoToast(meal);
+  }
 
   useEffect(() => {
     AsyncStorage.getItem(THRESHOLDS_STORAGE_KEY).then((raw) => {
@@ -1059,7 +1101,7 @@ export default function NutritionScreen() {
                         </Text>
                       </View>
                       {mealLogs.map((log) => (
-                        <NutritionRow key={log.id} log={log} />
+                        <NutritionRow key={log.id} log={log} onDelete={handleMealDelete} />
                       ))}
                     </View>
                   );
@@ -1989,6 +2031,39 @@ export default function NutritionScreen() {
           </GlassCard>
         </View>
       </Modal>
+
+      {undoMeal !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: undoAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: undoAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+            "{undoMeal.name}" deleted
+          </Text>
+          <TouchableOpacity
+            onPress={handleUndoDelete}
+            activeOpacity={0.75}
+            style={[styles.undoBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -2058,9 +2133,9 @@ function MacroBar({
   );
 }
 
-function NutritionRow({ log }: { log: MealLog }) {
+function NutritionRow({ log, onDelete }: { log: MealLog; onDelete: (meal: MealLog) => void }) {
   const colors = useColors();
-  const { removeMealLog, updateMealLog, toggleFavoriteFood, favoriteFoods } = useFitness();
+  const { updateMealLog, toggleFavoriteFood, favoriteFoods } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -2113,10 +2188,7 @@ function NutritionRow({ log }: { log: MealLog }) {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            removeMealLog(log.id);
-          },
+          onPress: () => onDelete(log),
         },
       ]
     );
@@ -2996,5 +3068,37 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginBottom: 18,
+  },
+  undoToast: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingLeft: 16,
+    paddingRight: 8,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    gap: 8,
+  },
+  undoToastText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  undoBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  undoBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
 });
