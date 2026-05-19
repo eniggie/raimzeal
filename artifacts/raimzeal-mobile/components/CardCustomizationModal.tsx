@@ -1433,17 +1433,19 @@ export default function CardCustomizationModal({
                           {label}
                         </Text>
                       </View>
-                      {anyStatEnabled && (
-                        <Text
-                          style={[
-                            styles.actionBtnSubtitle,
-                            { color: colors.primaryForeground + "BB" },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {subtitle}
-                        </Text>
-                      )}
+                      <Text
+                        style={[
+                          styles.actionBtnSubtitle,
+                          {
+                            color: anyStatEnabled
+                              ? colors.primaryForeground + "BB"
+                              : colors.mutedForeground + "99",
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {subtitle}
+                      </Text>
                       {isPreferred && (
                         <Text style={styles.preferredLabel}>★ Last used</Text>
                       )}
