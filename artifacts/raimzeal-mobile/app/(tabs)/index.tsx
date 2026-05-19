@@ -17,6 +17,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { StatCard } from "@/components/StatCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
+import { AnimatedPressable } from "@/components/AnimatedPressable";
 
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
@@ -160,9 +161,8 @@ export default function HomeScreen() {
       </View>
 
       {/* Water Quick Add */}
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={handleAddWater}
-        activeOpacity={0.8}
         style={[
           styles.waterBtn,
           {
@@ -170,24 +170,25 @@ export default function HomeScreen() {
             borderColor: colors.accent + "40",
           },
         ]}
+        scale={0.96}
       >
         <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
         <Text style={[styles.waterBtnText, { color: colors.accent }]}>
           Add glass of water
         </Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Activity Banner */}
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           router.push("/activity-tracker");
         }}
-        activeOpacity={0.8}
         style={[
           styles.activityBanner,
           { backgroundColor: colors.secondary + "15", borderColor: colors.secondary + "35" },
         ]}
+        scale={0.97}
       >
         <View style={[styles.activityIcon, { backgroundColor: colors.secondary + "25" }]}>
           <Ionicons name="pulse-outline" size={22} color={colors.secondary} />
@@ -201,7 +202,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -252,16 +253,16 @@ export default function HomeScreen() {
 
       {/* Body Stats Banner */}
       {latestWeight && (
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push("/body-measurements");
           }}
-          activeOpacity={0.8}
           style={[
             styles.bodyBanner,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
+          scale={0.97}
         >
           <View style={styles.bodyBannerRow}>
             <View>
@@ -283,7 +284,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
 
       {/* Recent Workouts */}
@@ -297,18 +298,19 @@ export default function HomeScreen() {
           ))}
         </View>
       ) : (
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.navigate("/(tabs)/workouts");
           }}
           style={[styles.noWorkouts, { backgroundColor: colors.card, borderColor: colors.border }]}
+          scale={0.97}
         >
           <Ionicons name="barbell-outline" size={28} color={colors.mutedForeground} />
           <Text style={[styles.noWorkoutsText, { color: colors.mutedForeground }]}>
             No workouts yet. Tap to start your first one.
           </Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
     </ScrollView>
   );
@@ -346,14 +348,14 @@ function QuickAction({
 }) {
   const colors = useColors();
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
-      activeOpacity={0.75}
       style={[styles.actionBtn, { backgroundColor: bg, borderColor: color + "30" }]}
+      scale={0.93}
     >
       <Ionicons name={icon} size={24} color={color} />
       <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

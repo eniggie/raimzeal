@@ -159,9 +159,10 @@ You are not just a fitness coach. You are ${firstName}'s complete wellness partn
 
 oviaRouter.post("/ovia/chat", async (req, res) => {
   try {
-    const { messages, userContext } = req.body as {
+    const { messages, userContext, weeklyDigest } = req.body as {
       messages: Array<{ role: string; content: string }>;
       userContext?: Record<string, unknown>;
+      weeklyDigest?: boolean;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -169,7 +170,20 @@ oviaRouter.post("/ovia/chat", async (req, res) => {
       return;
     }
 
-    const systemPrompt = buildSystemPrompt(userContext ?? {});
+    let systemPrompt = buildSystemPrompt(userContext ?? {});
+
+    if (weeklyDigest) {
+      const wkName = ((userContext?.name as string) ?? "Champion").split(" ")[0];
+      systemPrompt += `\n\nSPECIAL WEEKLY CHECK-IN — SKIP ALL INTAKE PROTOCOL:
+This is your automated Weekly Wellness Brief for ${wkName}. Do NOT ask intake questions. Write the following structured weekly check-in message in natural flowing prose:
+
+1. Opening (2 sentences): A warm, heartfelt motivating greeting to ${wkName} referencing their ${userContext?.streak ?? 0}-day streak and their specific goals.
+2. Week in Review (2-3 sentences): Analyse their actual workout and nutrition data shown above. Reference their real numbers — workouts completed, calories consumed, water intake. Be specific and encouraging.
+3. Three Tips for Next Week: Three numbered, science-backed, actionable health and fitness tips tailored precisely to ${wkName}'s goals, fitness level, and current data. Each tip should be 1-2 clear, concrete sentences.
+4. Closing (1 sentence): One powerful, personal motivating line.
+
+CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up question — this is a proactive weekly brief, not a conversation opener. Write it as their trusted personal coach delivering a Sunday morning wellness update.`;
+    }
 
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },

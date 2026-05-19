@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -159,6 +159,93 @@ export default function ProfileScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const primaryGoal = user?.goals?.[0] ?? "improve_fitness";
+
+  // ── Weekly Ovia digest: auto-send once per 7 days ──────────────
+  useEffect(() => {
+    if (activeTab !== "ovia" || isTyping) return;
+
+    let cancelled = false;
+
+    async function checkAndSendWeeklyDigest() {
+      try {
+        const AsyncStorage = (
+          await import("@react-native-async-storage/async-storage")
+        ).default;
+
+        const WEEKLY_KEY = "ovia_weekly_msg_date";
+        const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+        const lastStr = await AsyncStorage.getItem(WEEKLY_KEY);
+        const now = Date.now();
+        const shouldSend = !lastStr || now - parseInt(lastStr, 10) >= WEEK_MS;
+
+        if (!shouldSend || cancelled) return;
+
+        await AsyncStorage.setItem(WEEKLY_KEY, now.toString());
+        if (cancelled) return;
+
+        setIsTyping(true);
+
+        const userCtx = buildOviaContext(
+          user, streak, workoutLogs, mealLogs, bodyMeasurements, waterIntake, personalRecords
+        );
+
+        const response = await fetch(`${getApiBase()}/ovia/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const json = JSON.parse(line.slice(6)) as {
+                content?: string;
+                done?: boolean;
+                error?: string;
+              };
+              if (json.content) fullContent += json.content;
+              if (json.done || json.error) break;
+            } catch {
+              // skip malformed
+            }
+          }
+        }
+
+        if (cancelled) return;
+
+        addOviaMessage({
+          role: "assistant",
+          content:
+            fullContent ||
+            `Welcome back, ${user?.name?.split(" ")[0] ?? "Champion"}! Here is your weekly Ovia AI check-in. Keep pushing — you are building something extraordinary. Head to the Workouts tab when you are ready to train today.`,
+        });
+      } catch {
+        // Silent fail — weekly digest is best-effort, never disrupts the user
+      } finally {
+        if (!cancelled) setIsTyping(false);
+      }
+    }
+
+    // Small delay so tab animation settles before triggering the network call
+    const timer = setTimeout(checkAndSendWeeklyDigest, 900);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSend() {
     if (!chatInput.trim() || isTyping) return;
