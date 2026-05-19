@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "RAIMZEAL",
-    "slug": "raimzeal-mobile",
+    "slug": "raimzeal",
+    "owner": "econteur",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "raimzeal-mobile",
+    "scheme": "raimzeal",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.raimzeal.mobile",
+      "bundleIdentifier": "com.econteur.raimzeal",
       "buildNumber": "1",
       "associatedDomains": ["applinks:raimzeal.com"],
       "infoPlist": {
@@ -27,7 +28,7 @@
       }
     },
     "android": {
-      "package": "com.raimzeal.mobile",
+      "package": "com.econteur.raimzeal",
       "versionCode": 1,
       "intentFilters": [
         {
@@ -93,7 +94,10 @@
     },
     "extra": {
       "privacyPolicyUrl": "https://www.raimzeal.com/privacy",
-      "termsOfServiceUrl": "https://www.raimzeal.com/terms"
+      "termsOfServiceUrl": "https://www.raimzeal.com/terms",
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
     }
   }
 }
