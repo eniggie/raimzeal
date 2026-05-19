@@ -57,7 +57,7 @@ function AuthGate() {
   const router = useRouter();
   const notificationsInitialised = useRef(false);
   const rationaleShown = useRef(false);
-  const { cameraRollStatus, requestCameraRollPermission } = usePermissions();
+  const { cameraRollStatus, permissionsBootstrapped, hasSeenRationale, markRationaleDismissed, requestCameraRollPermission } = usePermissions();
   const [showRationale, setShowRationale] = useState(false);
 
   useEffect(() => {
@@ -78,13 +78,24 @@ function AuthGate() {
     }
 
     // Show the in-app rationale sheet once per session when permission is
-    // undetermined. The sheet lets the user understand why we need access
-    // before the OS prompt appears.
-    if (session && !rationaleShown.current && cameraRollStatus === "undetermined") {
+    // undetermined AND the user hasn't already dismissed it in a prior session.
+    // We wait for `permissionsBootstrapped` so that both the OS status and the
+    // AsyncStorage dismissal flag are fully loaded before deciding — this
+    // prevents a transient flash of the modal before the persisted flag arrives.
+    // If they previously tapped "Not Now", skip the sheet entirely so they are
+    // never asked twice — the save flow will go straight to the OS prompt on
+    // the next explicit save attempt.
+    if (
+      session &&
+      permissionsBootstrapped &&
+      !rationaleShown.current &&
+      cameraRollStatus === "undetermined" &&
+      !hasSeenRationale
+    ) {
       rationaleShown.current = true;
       setShowRationale(true);
     }
-  }, [session, loading, segments, cameraRollStatus]);
+  }, [session, loading, segments, cameraRollStatus, permissionsBootstrapped, hasSeenRationale]);
 
   const handleAllow = useCallback(() => {
     setShowRationale(false);
@@ -95,7 +106,11 @@ function AuthGate() {
 
   const handleNotNow = useCallback(() => {
     setShowRationale(false);
-  }, []);
+    // Persist the dismissal so the pre-prompt is never shown again while the
+    // OS permission remains undetermined. The flag is cleared automatically
+    // once the OS reaches a definitive granted/denied state.
+    markRationaleDismissed().catch(() => {});
+  }, [markRationaleDismissed]);
 
   return (
     <>
