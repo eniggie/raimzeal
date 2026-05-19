@@ -123,6 +123,7 @@ const FILTER_DEFS: NutritionFilterDef[] = [
 ];
 
 const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
+const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 
 type FilterThresholds = Record<string, number>;
@@ -572,6 +573,42 @@ export default function NutritionScreen() {
       }
     });
   }, []);
+
+  const filtersHydratedRef = useRef(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_FILTERS_STORAGE_KEY).then((raw) => {
+      try {
+        if (raw) {
+          const parsed = JSON.parse(raw) as unknown;
+          if (Array.isArray(parsed)) {
+            const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+            const restored = (parsed as unknown[]).filter(
+              (k): k is string => typeof k === "string" && validKeys.has(k)
+            );
+            if (restored.length > 0) {
+              setActiveFilters(new Set(restored));
+            }
+          }
+        }
+      } catch {
+      } finally {
+        filtersHydratedRef.current = true;
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydratedRef.current) return;
+    if (activeFilters.size === 0) {
+      AsyncStorage.removeItem(ACTIVE_FILTERS_STORAGE_KEY).catch(() => {});
+    } else {
+      AsyncStorage.setItem(
+        ACTIVE_FILTERS_STORAGE_KEY,
+        JSON.stringify(Array.from(activeFilters))
+      ).catch(() => {});
+    }
+  }, [activeFilters]);
 
   const nutritionFilters = React.useMemo(() => buildFilters(filterThresholds), [filterThresholds]);
 
