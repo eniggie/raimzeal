@@ -14,13 +14,14 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
@@ -55,8 +56,9 @@ function AuthGate() {
   const segments = useSegments();
   const router = useRouter();
   const notificationsInitialised = useRef(false);
-  const cameraRollRequested = useRef(false);
+  const rationaleShown = useRef(false);
   const { cameraRollStatus, requestCameraRollPermission } = usePermissions();
+  const [showRationale, setShowRationale] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -75,17 +77,36 @@ function AuthGate() {
       initNotifications();
     }
 
-    // Proactively request camera roll permission once per session so the
-    // first save is instant and the prompt doesn't interrupt the flow.
-    if (session && !cameraRollRequested.current && cameraRollStatus === "undetermined") {
-      cameraRollRequested.current = true;
-      requestCameraRollPermission().catch(() => {
-        // Non-fatal — the save flow will fall back to requesting on demand
-      });
+    // Show the in-app rationale sheet once per session when permission is
+    // undetermined. The sheet lets the user understand why we need access
+    // before the OS prompt appears.
+    if (session && !rationaleShown.current && cameraRollStatus === "undetermined") {
+      rationaleShown.current = true;
+      setShowRationale(true);
     }
-  }, [session, loading, segments, cameraRollStatus, requestCameraRollPermission]);
+  }, [session, loading, segments, cameraRollStatus]);
 
-  return <Slot />;
+  const handleAllow = useCallback(() => {
+    setShowRationale(false);
+    requestCameraRollPermission().catch(() => {
+      // Non-fatal — the save flow will fall back to requesting on demand
+    });
+  }, [requestCameraRollPermission]);
+
+  const handleNotNow = useCallback(() => {
+    setShowRationale(false);
+  }, []);
+
+  return (
+    <>
+      <Slot />
+      <CameraRollRationaleModal
+        visible={showRationale}
+        onAllow={handleAllow}
+        onNotNow={handleNotNow}
+      />
+    </>
+  );
 }
 
 export default function RootLayout() {
