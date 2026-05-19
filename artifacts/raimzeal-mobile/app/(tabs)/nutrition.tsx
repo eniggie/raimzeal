@@ -32,16 +32,13 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
+import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
 import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 
-const CALORIE_GOAL = 2200;
-const PROTEIN_GOAL = 150;
-const CARBS_GOAL = 250;
-const FAT_GOAL = 70;
 const DEBOUNCE_MS = 500;
 const PAGE_SIZE = 20;
 
@@ -401,6 +398,11 @@ export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods } = useFitness();
+  const { goals: macroGoals } = useMacroGoals();
+  const CALORIE_GOAL = macroGoals.calories;
+  const PROTEIN_GOAL = macroGoals.protein;
+  const CARBS_GOAL = macroGoals.carbs;
+  const FAT_GOAL = macroGoals.fat;
 
   const isFavorite = useCallback(
     (name: string) => favoriteFoods.some((f) => f.name === name),

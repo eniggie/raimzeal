@@ -402,6 +402,13 @@ export default function ProfileScreen() {
           {/* Settings */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Settings</Text>
           <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="nutrition-outline"
+              label="Daily Macro Goals"
+              sublabel="Calories, protein, carbs & fat"
+              color={colors.secondary}
+              onPress={() => router.push("/macro-goals")}
+            />
             <SettingPickerRow
               icon="layers-outline"
               label="Default card action"

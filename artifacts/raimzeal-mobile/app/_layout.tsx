@@ -24,6 +24,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
+import { MacroGoalsProvider } from "@/contexts/MacroGoalsContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
@@ -156,9 +157,11 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AuthProvider>
                 <FitnessProvider>
-                  <PermissionsProvider>
-                    <AuthGate />
-                  </PermissionsProvider>
+                  <MacroGoalsProvider>
+                    <PermissionsProvider>
+                      <AuthGate />
+                    </PermissionsProvider>
+                  </MacroGoalsProvider>
                 </FitnessProvider>
               </AuthProvider>
             </KeyboardProvider>
