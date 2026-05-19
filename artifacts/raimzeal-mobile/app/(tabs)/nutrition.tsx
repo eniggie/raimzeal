@@ -632,7 +632,6 @@ export default function NutritionScreen() {
                     setSearchQuery("");
                     setSearchResults([]);
                     setSearchDone(false);
-                    setActiveFilters(new Set());
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
