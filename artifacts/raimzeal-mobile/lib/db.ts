@@ -259,8 +259,8 @@ export async function fetchCommunityPosts(
       userName: r.user_name,
       content: r.content,
       postType: r.post_type as "post" | "question",
-      likesCount: raw.community_likes?.[0]?.count ?? r.likes_count ?? 0,
-      commentsCount: raw.community_comments?.[0]?.count ?? r.comments_count ?? 0,
+      likesCount: raw.community_likes?.[0]?.count ?? 0,
+      commentsCount: raw.community_comments?.[0]?.count ?? 0,
       createdAt: r.created_at,
     };
   });
@@ -347,9 +347,17 @@ export async function toggleLike(
     .maybeSingle();
 
   if (existing) {
-    await supabase.from("community_likes").delete().eq("post_id", postId).eq("user_id", userId);
+    const { error } = await supabase
+      .from("community_likes")
+      .delete()
+      .eq("post_id", postId)
+      .eq("user_id", userId);
+    if (error) return { liked: true, newCount: -1 };
   } else {
-    await supabase.from("community_likes").insert({ post_id: postId, user_id: userId });
+    const { error } = await supabase
+      .from("community_likes")
+      .insert({ post_id: postId, user_id: userId });
+    if (error) return { liked: false, newCount: -1 };
   }
 
   // Read the authoritative count directly from community_likes — never from

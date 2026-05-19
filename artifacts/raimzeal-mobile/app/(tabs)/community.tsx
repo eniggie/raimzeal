@@ -226,6 +226,7 @@ export default function CommunityScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const result = await toggleLike(postId, userId);
+      if (result.newCount < 0) throw new Error("like write failed");
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId ? { ...p, liked: result.liked, likesCount: result.newCount } : p
