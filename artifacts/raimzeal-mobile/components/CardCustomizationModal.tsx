@@ -1386,9 +1386,6 @@ export default function CardCustomizationModal({
                       },
                     ]}
                   >
-                    {isPreferred && (
-                      <View style={styles.preferredDot} />
-                    )}
                     <View style={styles.actionBtnInner}>
                       <View style={styles.actionBtnTop}>
                         <Ionicons
@@ -1416,16 +1413,14 @@ export default function CardCustomizationModal({
                           {subtitle}
                         </Text>
                       )}
+                      {isPreferred && (
+                        <Text style={styles.preferredLabel}>★ Last used</Text>
+                      )}
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
-          )}
-          {anyStatEnabled && defaultAction && (
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              {`${defaultAction.charAt(0).toUpperCase() + defaultAction.slice(1)} is your saved preference`}
-            </Text>
           )}
           {!anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
@@ -2053,14 +2048,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
-  preferredDot: {
-    position: "absolute",
-    top: 5,
-    right: 7,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.9)",
+  preferredLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    color: "rgba(255,255,255,0.92)",
+    marginTop: 4,
+    letterSpacing: 0.3,
   },
   hintText: {
     fontSize: 12,
