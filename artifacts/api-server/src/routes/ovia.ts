@@ -222,7 +222,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     ];
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: "gpt-4.1",
       max_completion_tokens: 2048,
       messages: chatMessages,
       stream: true,
@@ -263,7 +263,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const searchResults = await performWebSearch(searchQuery);
 
         const continuation = await openai.chat.completions.create({
-          model: "gpt-5.1",
+          model: "gpt-4.1",
           max_completion_tokens: 2048,
           messages: [
             ...chatMessages,

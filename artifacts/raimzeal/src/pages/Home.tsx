@@ -18,6 +18,19 @@ interface HomeProps {
   onUpdateWater: (glasses: number) => void;
 }
 
+function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; proteinGoal: number } {
+  if (!user || !user.weight || !user.height) return { caloriesGoal: 2200, proteinGoal: 150 };
+  const weightKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
+  const heightCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
+  const age = user.age || 30;
+  // Mifflin-St Jeor (gender-neutral average)
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  const activityFactor = user.fitnessLevel === 'advanced' ? 1.725 : user.fitnessLevel === 'intermediate' ? 1.55 : 1.375;
+  const tdee = Math.round((bmr * activityFactor) / 50) * 50;
+  const protein = Math.round((weightKg * 1.8) / 5) * 5;
+  return { caloriesGoal: Math.max(1500, tdee), proteinGoal: Math.max(80, protein) };
+}
+
 export function Home({ state, onUpdateWater }: HomeProps) {
   const today = new Date().toISOString().split('T')[0];
   const todayWater = state.waterIntake.find(w => w.date === today)?.glasses || 0;
@@ -30,8 +43,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
     ? workouts.find(w => w.id === scheduledToday.workoutId) 
     : null;
 
-  const caloriesGoal = 2200;
-  const proteinGoal = 150;
+  const { caloriesGoal, proteinGoal } = calcDailyGoals(state.user);
   const waterGoal = 8;
 
   const quickActions = [
