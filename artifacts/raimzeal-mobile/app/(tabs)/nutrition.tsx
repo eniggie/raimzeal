@@ -519,17 +519,22 @@ export default function NutritionScreen() {
 
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const MAX_DAYS = 14;
     const recent = historyDays.slice(0, MAX_DAYS).reverse();
+    const useShortDate = recent.length <= 7;
     return recent.map(({ date, totals }) => {
       const d = new Date(date + "T12:00:00");
+      const label = useShortDate
+        ? `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`
+        : DAY_LABELS[d.getDay()];
       return {
         date,
         calories: Math.round(totals.calories),
         protein: Math.round(totals.protein),
         carbs: Math.round(totals.carbs),
         fat: Math.round(totals.fat),
-        label: DAY_LABELS[d.getDay()],
+        label,
       };
     });
   }, [historyDays]);
