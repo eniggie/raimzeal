@@ -273,9 +273,9 @@ export async function scheduleReminders(
           sound: true,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: config.hour,
           minute: config.minute,
-          repeats: true,
         } as Notifications.DailyTriggerInput,
       });
       count++;
@@ -295,6 +295,7 @@ export async function sendTestNotification(): Promise<void> {
       sound: true,
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 3,
       repeats: false,
     } as Notifications.TimeIntervalTriggerInput,
