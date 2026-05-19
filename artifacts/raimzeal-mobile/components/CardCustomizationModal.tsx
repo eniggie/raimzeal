@@ -12,7 +12,10 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -569,6 +572,10 @@ export default function CardCustomizationModal({
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
+    setThemeScrollAtEnd(false);
+    setThemeHasOverflow(false);
+    themeContainerWidth.current = 0;
+    themeContentWidth.current = 0;
 
     async function loadSaved() {
       try {
@@ -780,6 +787,10 @@ export default function CardCustomizationModal({
 
   const [cardNativeHeight, setCardNativeHeight] = useState(500);
   const [zoomVisible, setZoomVisible] = useState(false);
+  const [themeScrollAtEnd, setThemeScrollAtEnd] = useState(false);
+  const [themeHasOverflow, setThemeHasOverflow] = useState(false);
+  const themeContainerWidth = useRef(0);
+  const themeContentWidth = useRef(0);
   const zoomAnim = useRef(new Animated.Value(0)).current;
 
   function openZoom() {
@@ -1048,58 +1059,86 @@ export default function CardCustomizationModal({
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               COLOR THEME
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.themeThumbnailsScroll}
+            <View
+              style={styles.themeThumbnailsWrapper}
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                themeContainerWidth.current = w;
+                setThemeHasOverflow(themeContentWidth.current > w + 4);
+              }}
             >
-              {CARD_THEMES.map((theme) => {
-                const isSelected = selectedThemeId === theme.id;
-                return (
-                  <TouchableOpacity
-                    key={theme.id}
-                    onPress={() => handleThemeChange(theme.id)}
-                    activeOpacity={0.75}
-                    style={styles.themeThumbnailItem}
-                  >
-                    <View
-                      style={[
-                        styles.themeThumbnailFrame,
-                        {
-                          borderColor: isSelected ? theme.accent : colors.border,
-                          borderWidth: isSelected ? 2.5 : 1.5,
-                        },
-                      ]}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.themeThumbnailsScroll}
+                onContentSizeChange={(w) => {
+                  themeContentWidth.current = w;
+                  setThemeHasOverflow(w > themeContainerWidth.current + 4);
+                }}
+                onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+                  const distanceFromEnd = contentSize.width - layoutMeasurement.width - contentOffset.x;
+                  setThemeScrollAtEnd(distanceFromEnd < 16);
+                }}
+                scrollEventThrottle={16}
+              >
+                {CARD_THEMES.map((theme) => {
+                  const isSelected = selectedThemeId === theme.id;
+                  return (
+                    <TouchableOpacity
+                      key={theme.id}
+                      onPress={() => handleThemeChange(theme.id)}
+                      activeOpacity={0.75}
+                      style={styles.themeThumbnailItem}
                     >
-                      <View style={styles.themeThumbnailScaler} pointerEvents="none">
-                        <ShareProgressCard
-                          {...cardPreviewData}
-                          visibleStats={visibleStats}
-                          customMessage={customMessage.trim()}
-                          themeId={theme.id}
-                        />
-                      </View>
-                      {isSelected && (
-                        <View style={[styles.themeThumbnailCheck, { backgroundColor: theme.accent }]}>
-                          <Ionicons name="checkmark" size={10} color="#fff" />
+                      <View
+                        style={[
+                          styles.themeThumbnailFrame,
+                          {
+                            borderColor: isSelected ? theme.accent : colors.border,
+                            borderWidth: isSelected ? 2.5 : 1.5,
+                          },
+                        ]}
+                      >
+                        <View style={styles.themeThumbnailScaler} pointerEvents="none">
+                          <ShareProgressCard
+                            {...cardPreviewData}
+                            visibleStats={visibleStats}
+                            customMessage={customMessage.trim()}
+                            themeId={theme.id}
+                          />
                         </View>
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.themeThumbnailLabel,
-                        {
-                          color: isSelected ? colors.foreground : colors.mutedForeground,
-                          fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
-                        },
-                      ]}
-                    >
-                      {theme.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                        {isSelected && (
+                          <View style={[styles.themeThumbnailCheck, { backgroundColor: theme.accent }]}>
+                            <Ionicons name="checkmark" size={10} color="#fff" />
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.themeThumbnailLabel,
+                          {
+                            color: isSelected ? colors.foreground : colors.mutedForeground,
+                            fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
+                          },
+                        ]}
+                      >
+                        {theme.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {themeHasOverflow && !themeScrollAtEnd && (
+                <LinearGradient
+                  colors={["transparent", colors.background]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.themeFadeRight}
+                  pointerEvents="none"
+                />
+              )}
+            </View>
 
             {/* Stat toggles */}
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
@@ -1668,10 +1707,21 @@ const styles = StyleSheet.create({
     transformOrigin: "top left",
   },
   // Theme thumbnail picker
+  themeThumbnailsWrapper: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  themeFadeRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 56,
+    pointerEvents: "none",
+  },
   themeThumbnailsScroll: {
     gap: 10,
     paddingBottom: 4,
-    marginBottom: 16,
     alignItems: "flex-start",
   },
   themeThumbnailItem: {
