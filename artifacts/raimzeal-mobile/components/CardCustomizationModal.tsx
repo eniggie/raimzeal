@@ -41,6 +41,25 @@ import ShareProgressCard, {
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
+
+const THUMB_SCALE = 72 / CARD_WIDTH;
+
+function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): number {
+  const BASE_H = 244;
+  const STREAK_H = 76;
+  const GRID_H = 101;
+  const BOTTOM_H = 76;
+  const MSG_H = 56;
+
+  let h = BASE_H;
+  if (vs.streak) h += STREAK_H;
+  if (vs.workouts || vs.calories || vs.time) h += GRID_H;
+  if (vs.weightChange || vs.topPR) h += BOTTOM_H;
+  if (hasMessage) h += MSG_H;
+
+  return Math.max(52, Math.min(104, Math.round(h * THUMB_SCALE)));
+}
+
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
@@ -1095,6 +1114,7 @@ export default function CardCustomizationModal({
                         style={[
                           styles.themeThumbnailFrame,
                           {
+                            height: estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0),
                             borderColor: isSelected ? theme.accent : colors.border,
                             borderWidth: isSelected ? 2.5 : 1.5,
                           },
@@ -1730,14 +1750,13 @@ const styles = StyleSheet.create({
   },
   themeThumbnailFrame: {
     width: 72,
-    height: 88,
     borderRadius: 10,
     overflow: "hidden",
     position: "relative",
   },
   themeThumbnailScaler: {
     width: CARD_WIDTH,
-    transform: [{ scale: 72 / CARD_WIDTH }],
+    transform: [{ scale: THUMB_SCALE }],
     transformOrigin: "top left",
   },
   themeThumbnailCheck: {
