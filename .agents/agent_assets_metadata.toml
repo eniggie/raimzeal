@@ -17,3 +17,9 @@ id = "4EDzSGRPUOiXUWCJ06oX2"
 uri = "file://RAIMZEAL_User_Guide.pdf"
 type = "pdf"
 title = "RAIMZEAL Complete User Guide"
+
+[[outputs]]
+id = "e9rtH3laM1R1AkqFKs0NN"
+uri = "file://AUDIT_REPORT.md"
+type = "text"
+title = "RAIMZEAL Pre-Submission Audit Report"
