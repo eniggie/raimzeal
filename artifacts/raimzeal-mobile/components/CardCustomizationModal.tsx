@@ -30,6 +30,7 @@ const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
+const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 
 const MAX_PRESETS = 5;
 
@@ -155,6 +156,7 @@ export default function CardCustomizationModal({
   const [customMessage, setCustomMessage] = useState("");
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
+  const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
 
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
@@ -171,11 +173,12 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           loadPresets(),
+          AsyncStorage.getItem(STORAGE_KEY_ACTION),
         ]);
 
         setPresets(loadedPresets);
@@ -195,11 +198,16 @@ export default function CardCustomizationModal({
         setCustomMessage(effectiveMessage);
         setSelectedThemeId(effectiveTheme);
         setRestoredFromStorage(differsFromDefaults);
+        const validActions: CardAction[] = ["share", "save", "both"];
+        setDefaultAction(
+          validActions.includes(savedAction as CardAction) ? (savedAction as CardAction) : null
+        );
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
         setSelectedThemeId(DEFAULT_THEME_ID);
         setRestoredFromStorage(false);
+        setDefaultAction(null);
       }
     }
     loadSaved();
@@ -234,6 +242,10 @@ export default function CardCustomizationModal({
 
   async function handleGenerate(action: CardAction) {
     await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId);
+    AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
+      // best-effort — never block the primary action
+    });
+    setDefaultAction(action);
     onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action });
   }
 
@@ -692,91 +704,56 @@ export default function CardCustomizationModal({
             </View>
           ) : (
             <View style={styles.actionRow}>
-              <TouchableOpacity
-                onPress={() => handleGenerate("share")}
-                disabled={!anyStatEnabled}
-                activeOpacity={0.85}
-                style={[
-                  styles.actionBtn,
-                  {
-                    backgroundColor: anyStatEnabled ? colors.primary : colors.muted,
-                    flex: 1,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="share-social"
-                  size={17}
-                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.actionBtnText,
-                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  Share
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleGenerate("save")}
-                disabled={!anyStatEnabled}
-                activeOpacity={0.85}
-                style={[
-                  styles.actionBtn,
-                  {
-                    backgroundColor: anyStatEnabled ? colors.secondary : colors.muted,
-                    flex: 1,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="image-outline"
-                  size={17}
-                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.actionBtnText,
-                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  Save
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handleGenerate("both")}
-                disabled={!anyStatEnabled}
-                activeOpacity={0.85}
-                style={[
-                  styles.actionBtn,
-                  {
-                    backgroundColor: anyStatEnabled ? colors.accent : colors.muted,
-                    flex: 1,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="layers-outline"
-                  size={17}
-                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.actionBtnText,
-                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  Both
-                </Text>
-              </TouchableOpacity>
+              {(
+                [
+                  { action: "share" as CardAction, icon: "share-social", label: "Share", bg: colors.primary },
+                  { action: "save" as CardAction, icon: "image-outline", label: "Save", bg: colors.secondary },
+                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", bg: colors.accent },
+                ] as const
+              ).map(({ action, icon, label, bg }) => {
+                const isPreferred = anyStatEnabled && defaultAction === action;
+                return (
+                  <TouchableOpacity
+                    key={action}
+                    onPress={() => handleGenerate(action)}
+                    disabled={!anyStatEnabled}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.actionBtn,
+                      {
+                        backgroundColor: anyStatEnabled ? bg : colors.muted,
+                        flex: 1,
+                        borderWidth: isPreferred ? 2.5 : 0,
+                        borderColor: isPreferred ? colors.primaryForeground : "transparent",
+                      },
+                    ]}
+                  >
+                    {isPreferred && (
+                      <View style={styles.preferredDot} />
+                    )}
+                    <Ionicons
+                      name={icon}
+                      size={17}
+                      color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.actionBtnText,
+                        { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
           {anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Both saves to your camera roll and opens the share sheet
+              {defaultAction
+                ? `${defaultAction.charAt(0).toUpperCase() + defaultAction.slice(1)} is your saved preference`
+                : "Both saves to your camera roll and opens the share sheet"}
             </Text>
           )}
           {!anyStatEnabled && (
@@ -1238,6 +1215,15 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  preferredDot: {
+    position: "absolute",
+    top: 5,
+    right: 7,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.9)",
   },
   hintText: {
     fontSize: 12,
