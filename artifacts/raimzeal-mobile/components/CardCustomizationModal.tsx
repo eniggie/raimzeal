@@ -177,11 +177,15 @@ export default function CardCustomizationModal({
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
 
   const [cardNativeHeight, setCardNativeHeight] = useState(500);
+  const [zoomVisible, setZoomVisible] = useState(false);
 
   const screenWidth = Dimensions.get("window").width;
   const previewContainerWidth = screenWidth - 40;
   const cardScale = previewContainerWidth / CARD_WIDTH;
   const scaledCardHeight = cardNativeHeight * cardScale;
+
+  const zoomScale = Math.min((screenWidth - 48) / CARD_WIDTH, 1);
+  const zoomCardHeight = cardNativeHeight * zoomScale;
 
   return (
     <Modal
@@ -241,7 +245,9 @@ export default function CardCustomizationModal({
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               CARD PREVIEW
             </Text>
-            <View
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setZoomVisible(true)}
               style={[
                 styles.previewContainer,
                 { width: previewContainerWidth, height: scaledCardHeight },
@@ -264,7 +270,11 @@ export default function CardCustomizationModal({
                   themeId={selectedThemeId}
                 />
               </View>
-            </View>
+              <View style={styles.zoomHint}>
+                <Ionicons name="expand-outline" size={13} color="#fff" />
+                <Text style={styles.zoomHintText}>Tap to zoom</Text>
+              </View>
+            </TouchableOpacity>
 
             {/* Color theme picker */}
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
@@ -502,6 +512,57 @@ export default function CardCustomizationModal({
           )}
         </View>
       </View>
+
+      {/* Full-screen zoom modal */}
+      <Modal
+        visible={zoomVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setZoomVisible(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={styles.zoomOverlay}
+          activeOpacity={1}
+          onPress={() => setZoomVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.zoomCardWrap,
+              { width: CARD_WIDTH * zoomScale, height: zoomCardHeight },
+            ]}
+          >
+            <View
+              style={[
+                styles.previewScaler,
+                {
+                  width: CARD_WIDTH,
+                  transform: [{ scale: zoomScale }],
+                },
+              ]}
+            >
+              <ShareProgressCard
+                {...cardPreviewData}
+                visibleStats={visibleStats}
+                customMessage={customMessage.trim()}
+                themeId={selectedThemeId}
+              />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.zoomCloseBtn, { top: insets.top + 16 }]}
+            onPress={() => setZoomVisible(false)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
+          </TouchableOpacity>
+
+          <Text style={styles.zoomDismissHint}>Tap anywhere to close</Text>
+        </TouchableOpacity>
+      </Modal>
     </Modal>
   );
 }
@@ -728,5 +789,43 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 8,
+  },
+  zoomHint: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  zoomHintText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
+  },
+  zoomOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomCardWrap: {
+    overflow: "hidden",
+    borderRadius: 20,
+  },
+  zoomCloseBtn: {
+    position: "absolute",
+    right: 20,
+  },
+  zoomDismissHint: {
+    position: "absolute",
+    bottom: 40,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.5)",
   },
 });
