@@ -2129,6 +2129,7 @@ export default function NutritionScreen() {
                                   key={log.id}
                                   log={log}
                                   onAddFood={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
+                                  onDelete={handleMealDelete}
                                 />
                               ))}
                             </View>
@@ -2993,29 +2994,13 @@ function MacroBar({
   );
 }
 
-function HistoryFoodRow({ log, onAddFood }: { log: MealLog; onAddFood: () => void }) {
+function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void }) {
   const colors = useColors();
-  const { removeMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
 
   function handleDelete() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
-    Alert.alert(
-      "Delete meal?",
-      `Remove "${log.name}" from this day's log?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            removeMealLog(log.id);
-          },
-        },
-      ]
-    );
+    onDelete(log);
   }
 
   function renderRightActions() {
