@@ -25,14 +25,16 @@ export default function SignupScreen() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSignup() {
     if (!name.trim() || !email.trim() || !password || !confirm) {
-      Alert.alert("Missing fields", "Please fill in all fields.");
+      Alert.alert("Missing fields", "Please fill in all required fields.");
       return;
     }
     if (password !== confirm) {
@@ -41,6 +43,13 @@ export default function SignupScreen() {
     }
     if (password.length < 6) {
       Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+    if (!termsAccepted) {
+      Alert.alert(
+        "Terms Required",
+        "You must read and accept the Terms & Conditions and Health Disclaimer before creating an account."
+      );
       return;
     }
     setLoading(true);
@@ -91,6 +100,46 @@ export default function SignupScreen() {
             autoCapitalize="none"
             colors={colors}
           />
+
+          {/* Phone number (optional) */}
+          <View style={styles.field}>
+            <View style={styles.labelRow}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                Phone number
+              </Text>
+              <View style={[styles.optionalBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.optionalText, { color: colors.mutedForeground }]}>
+                  Optional
+                </Text>
+              </View>
+            </View>
+            <View
+              style={[
+                styles.inputWrap,
+                { backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="phone-portrait-outline"
+                size={16}
+                color={colors.mutedForeground}
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={[styles.input, { color: colors.foreground, flex: 1 }]}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+44 7911 123456"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+              />
+            </View>
+            <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+              Used for optional motivational SMS reminders. We never share your number.
+            </Text>
+          </View>
+
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Password</Text>
             <View
@@ -119,6 +168,7 @@ export default function SignupScreen() {
               </View>
             </View>
           </View>
+
           <InputField
             label="Confirm password"
             value={confirm}
@@ -129,27 +179,88 @@ export default function SignupScreen() {
             colors={colors}
           />
 
+          {/* Terms & Conditions Checkbox */}
+          <View
+            style={[
+              styles.termsBox,
+              {
+                backgroundColor: termsAccepted ? colors.primary + "10" : colors.muted,
+                borderColor: termsAccepted ? colors.primary + "50" : colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => setTermsAccepted((v) => !v)}
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: termsAccepted ? colors.primary : "transparent",
+                  borderColor: termsAccepted ? colors.primary : colors.border,
+                },
+              ]}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {termsAccepted && (
+                <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />
+              )}
+            </TouchableOpacity>
+            <View style={styles.termsTextBlock}>
+              <Text style={[styles.termsText, { color: colors.foreground }]}>
+                I have read and accept the{" "}
+                <Text
+                  style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}
+                  onPress={() => router.push("/terms")}
+                >
+                  Terms & Conditions
+                </Text>
+                {" "}and{" "}
+                <Text
+                  style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}
+                  onPress={() => router.push("/terms")}
+                >
+                  Health Disclaimer
+                </Text>
+                . I understand this app is not a substitute for medical advice.
+              </Text>
+            </View>
+          </View>
+
+          {!termsAccepted && (
+            <View
+              style={[
+                styles.termsWarning,
+                { backgroundColor: colors.destructive + "12", borderColor: colors.destructive + "30" },
+              ]}
+            >
+              <Ionicons name="alert-circle-outline" size={14} color={colors.destructive} />
+              <Text style={[styles.termsWarningText, { color: colors.mutedForeground }]}>
+                You must accept the Terms & Conditions to create an account.
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity
             activeOpacity={0.85}
             style={[
               styles.submitBtn,
-              { backgroundColor: loading ? colors.primary + "80" : colors.primary },
+              {
+                backgroundColor:
+                  loading || !termsAccepted
+                    ? colors.primary + "60"
+                    : colors.primary,
+              },
             ]}
             onPress={handleSignup}
-            disabled={loading}
+            disabled={loading || !termsAccepted}
           >
             {loading ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>
-                Create Account
+                I Agree &amp; Create Account
               </Text>
             )}
           </TouchableOpacity>
-
-          <Text style={[styles.terms, { color: colors.mutedForeground }]}>
-            By creating an account you agree to our Terms of Service and Privacy Policy.
-          </Text>
         </View>
 
         <View style={styles.footer}>
@@ -216,17 +327,57 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", marginBottom: 32 },
   form: { gap: 14 },
   field: { gap: 6 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  optionalBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  optionalText: { fontSize: 10, fontFamily: "Inter_400Regular" },
   inputWrap: {
     borderRadius: 12,
     borderWidth: 1,
     height: 52,
     paddingHorizontal: 14,
     justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
   },
   input: { fontSize: 15, fontFamily: "Inter_400Regular" },
-  pwRow: { flexDirection: "row", alignItems: "center" },
+  fieldHint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
+  pwRow: { flexDirection: "row", alignItems: "center", flex: 1 },
   eyeBtn: { padding: 4 },
+  termsBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  termsTextBlock: { flex: 1 },
+  termsText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  termsWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  termsWarningText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
   submitBtn: {
     height: 54,
     borderRadius: 14,
@@ -235,7 +386,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  terms: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 16 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

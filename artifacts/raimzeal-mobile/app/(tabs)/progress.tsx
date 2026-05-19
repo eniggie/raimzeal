@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -25,6 +26,7 @@ type Period = "1M" | "3M" | "6M";
 export default function ProgressScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const {
     bodyMeasurements,
     workoutLogs,
@@ -97,6 +99,18 @@ export default function ProgressScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           Progress
         </Text>
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            router.push("/body-measurements?add=1");
+          }}
+          style={[styles.addMeasureBtn, { backgroundColor: colors.primary }]}
+        >
+          <Ionicons name="add" size={16} color={colors.primaryForeground} />
+          <Text style={[styles.addMeasureBtnText, { color: colors.primaryForeground }]}>
+            Measure
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stats Row */}
@@ -349,8 +363,22 @@ function AchievementBadge({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, gap: 16 },
-  header: { marginBottom: 4 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
   headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  addMeasureBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addMeasureBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   statsRow: { flexDirection: "row", gap: 8 },
   statBadge: {
     flex: 1,

@@ -18,7 +18,6 @@ import { StatCard } from "@/components/StatCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
 
-const CALORIE_GOAL = 2200;
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
 
@@ -30,15 +29,31 @@ export default function HomeScreen() {
     user,
     streak,
     workoutLogs,
+    bodyMeasurements,
     getTodayMacros,
     getTodayWaterGlasses,
     updateWaterIntake,
+    settings,
   } = useFitness();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const recentWorkouts = workoutLogs.slice(0, 3);
   const { calories: totalCaloriesToday } = getTodayMacros();
   const waterGlasses = getTodayWaterGlasses();
+  const unit = settings.weightUnit;
+
+  const calorieGoal = (() => {
+    if (!user?.weight || !user?.height || !user?.age) return 2200;
+    const bmr =
+      user.units === "imperial"
+        ? 10 * user.weight * 0.453592 + 6.25 * user.height * 2.54 - 5 * user.age + 5
+        : 10 * user.weight + 6.25 * user.height - 5 * user.age + 5;
+    return Math.round(bmr * 1.55);
+  })();
+
+  const latestWeight = bodyMeasurements.length > 0
+    ? bodyMeasurements[bodyMeasurements.length - 1].weight
+    : user?.weight;
 
   const greetingHour = new Date().getHours();
   const greeting =
@@ -95,7 +110,7 @@ export default function HomeScreen() {
       <GlassCard style={styles.ringCard}>
         <View style={styles.ringRow}>
           <ProgressRing
-            progress={totalCaloriesToday / CALORIE_GOAL}
+            progress={totalCaloriesToday / calorieGoal}
             size={110}
             strokeWidth={9}
             color={colors.primary}
@@ -103,35 +118,36 @@ export default function HomeScreen() {
             sublabel="kcal"
           />
           <View style={styles.ringStats}>
-            <RingStat
-              color={colors.primary}
-              label="Consumed"
-              value={totalCaloriesToday}
-            />
+            <RingStat color={colors.primary} label="Consumed" value={totalCaloriesToday} />
             <RingStat
               color={colors.secondary}
               label="Remaining"
-              value={Math.max(0, CALORIE_GOAL - totalCaloriesToday)}
+              value={Math.max(0, calorieGoal - totalCaloriesToday)}
             />
-            <RingStat
-              color={colors.muted}
-              label="Goal"
-              value={CALORIE_GOAL}
-            />
+            <RingStat color={colors.muted} label="Goal" value={calorieGoal} />
           </View>
         </View>
       </GlassCard>
 
       {/* Stats Grid */}
       <View style={styles.grid}>
-        <StatCard
-          icon="footsteps-outline"
-          label="Steps"
-          value="8,420"
-          color={colors.secondary}
-          progress={8420 / STEPS_GOAL}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/activity-tracker");
+          }}
           style={styles.gridItem}
-        />
+        >
+          <StatCard
+            icon="footsteps-outline"
+            label="Steps"
+            value="—"
+            unit={`/ ${STEPS_GOAL.toLocaleString()}`}
+            color={colors.secondary}
+            progress={0}
+          />
+        </TouchableOpacity>
         <StatCard
           icon="water-outline"
           label="Water"
@@ -159,6 +175,32 @@ export default function HomeScreen() {
         <Text style={[styles.waterBtnText, { color: colors.accent }]}>
           Add glass of water
         </Text>
+      </TouchableOpacity>
+
+      {/* Activity Banner */}
+      <TouchableOpacity
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push("/activity-tracker");
+        }}
+        activeOpacity={0.8}
+        style={[
+          styles.activityBanner,
+          { backgroundColor: colors.secondary + "15", borderColor: colors.secondary + "35" },
+        ]}
+      >
+        <View style={[styles.activityIcon, { backgroundColor: colors.secondary + "25" }]}>
+          <Ionicons name="pulse-outline" size={22} color={colors.secondary} />
+        </View>
+        <View style={styles.activityInfo}>
+          <Text style={[styles.activityTitle, { color: colors.foreground }]}>
+            Activity Tracker
+          </Text>
+          <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
+            Steps, active minutes & weekly progress
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
       </TouchableOpacity>
 
       {/* Quick Actions */}
@@ -197,53 +239,91 @@ export default function HomeScreen() {
           }}
         />
         <QuickAction
-          icon="trending-up-outline"
-          label="Log Weight"
+          icon="body-outline"
+          label="Log Body"
           color={colors.warning}
           bg={colors.warning + "20"}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.navigate("/(tabs)/progress");
+            router.push("/body-measurements");
           }}
         />
       </View>
+
+      {/* Body Stats Banner */}
+      {latestWeight && (
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/body-measurements");
+          }}
+          activeOpacity={0.8}
+          style={[
+            styles.bodyBanner,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.bodyBannerRow}>
+            <View>
+              <Text style={[styles.bodyBannerTitle, { color: colors.foreground }]}>
+                Latest Weight
+              </Text>
+              <Text style={[styles.bodyBannerValue, { color: colors.primary }]}>
+                {latestWeight.toFixed(1)} {unit}
+              </Text>
+            </View>
+            <View style={styles.bodyBannerRight}>
+              <Text style={[styles.bodyBannerSub, { color: colors.mutedForeground }]}>
+                {bodyMeasurements.length} entries
+              </Text>
+              <View style={[styles.bodyBannerBtn, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.bodyBannerBtnText, { color: colors.primaryForeground }]}>
+                  + Add
+                </Text>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Recent Workouts */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
         Recent Workouts
       </Text>
-      <View style={styles.workoutList}>
-        {recentWorkouts.map((w) => (
-          <WorkoutCard key={w.id} workout={w} />
-        ))}
-      </View>
+      {recentWorkouts.length > 0 ? (
+        <View style={styles.workoutList}>
+          {recentWorkouts.map((w) => (
+            <WorkoutCard key={w.id} workout={w} />
+          ))}
+        </View>
+      ) : (
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.navigate("/(tabs)/workouts");
+          }}
+          style={[styles.noWorkouts, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
+          <Ionicons name="barbell-outline" size={28} color={colors.mutedForeground} />
+          <Text style={[styles.noWorkoutsText, { color: colors.mutedForeground }]}>
+            No workouts yet. Tap to start your first one.
+          </Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
 
-function RingStat({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: number;
-}) {
+function RingStat({ color, label, value }: { color: string; label: string; value: number }) {
   const colors = useColors();
   return (
     <View style={ringStatStyles.row}>
       <View style={[ringStatStyles.dot, { backgroundColor: color }]} />
-      <Text style={[ringStatStyles.label, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
-      <Text style={[ringStatStyles.val, { color: colors.foreground }]}>
-        {value}
-      </Text>
+      <Text style={[ringStatStyles.label, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[ringStatStyles.val, { color: colors.foreground }]}>{value}</Text>
     </View>
   );
 }
-
 const ringStatStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
@@ -272,9 +352,7 @@ function QuickAction({
       style={[styles.actionBtn, { backgroundColor: bg, borderColor: color + "30" }]}
     >
       <Ionicons name={icon} size={24} color={color} />
-      <Text style={[styles.actionLabel, { color: colors.foreground }]}>
-        {label}
-      </Text>
+      <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -316,11 +394,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   waterBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: "SpaceGrotesk_700Bold",
-    marginTop: 4,
+  activityBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
+  activityIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activityInfo: { flex: 1 },
+  activityTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  activitySub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 4 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   actionBtn: {
     width: "47%",
@@ -331,5 +423,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" },
+  bodyBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
+  bodyBannerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bodyBannerTitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  bodyBannerValue: { fontSize: 22, fontFamily: "Inter_700Bold", marginTop: 2 },
+  bodyBannerRight: { alignItems: "flex-end", gap: 6 },
+  bodyBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  bodyBannerBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  bodyBannerBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   workoutList: { gap: 10 },
+  noWorkouts: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  noWorkoutsText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
