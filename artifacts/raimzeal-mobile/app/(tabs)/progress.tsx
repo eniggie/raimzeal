@@ -271,6 +271,46 @@ export default function ProgressScreen() {
         </View>
       </GlassCard>
 
+      {/* Quick Actions */}
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+        Track Your Transformation
+      </Text>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/progress-photos");
+        }}
+        style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: "#8B31C7" + "20" }]}>
+          <Ionicons name="camera-outline" size={24} color="#8B31C7" />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Progress Photos</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Track your visual transformation</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/body-measurements");
+        }}
+        style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: colors.secondary + "20" }]}>
+          <Ionicons name="resize-outline" size={24} color={colors.secondary} />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Body Measurements</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Chest, waist, arms, and more</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
       {/* Achievements */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
         Achievements
@@ -429,6 +469,24 @@ const styles = StyleSheet.create({
   barFill: {},
   barLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
   sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 4 },
+  navCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 14,
+  },
+  navCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navCardText: { flex: 1, gap: 3 },
+  navCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  navCardSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
   achievements: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   achievement: {
     width: "47%",
