@@ -401,6 +401,46 @@ export default function NutritionScreen() {
       });
   }, [mealLogs]);
 
+  type HistoryDateRange = "7d" | "30d" | "all";
+  type HistoryMealFilter = MealType | "all";
+
+  const [historyDateRange, setHistoryDateRange] = useState<HistoryDateRange>("all");
+  const [historyMealFilter, setHistoryMealFilter] = useState<HistoryMealFilter>("all");
+
+  const filteredHistoryDays = React.useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const cutoff =
+      historyDateRange === "7d"
+        ? todayStart.getTime() - 6 * 86400000
+        : historyDateRange === "30d"
+        ? todayStart.getTime() - 29 * 86400000
+        : null;
+
+    return historyDays
+      .filter(({ date }) => {
+        if (!cutoff) return true;
+        return new Date(date + "T12:00:00").getTime() >= cutoff;
+      })
+      .map(({ date, logs, totals }) => {
+        const filteredLogs =
+          historyMealFilter === "all"
+            ? logs
+            : logs.filter((m) => m.mealType === historyMealFilter);
+        const filteredTotals = filteredLogs.reduce(
+          (acc, m) => ({
+            calories: acc.calories + m.calories,
+            protein: acc.protein + m.protein,
+            carbs: acc.carbs + m.carbs,
+            fat: acc.fat + m.fat,
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+        return { date, logs: filteredLogs, totals: filteredTotals };
+      })
+      .filter(({ logs }) => logs.length > 0);
+  }, [historyDays, historyDateRange, historyMealFilter]);
+
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -1148,18 +1188,95 @@ export default function NutritionScreen() {
             {/* History view — shown when History tab is active */}
             {activeTab === "history" && (
               <>
-                {historyDays.length === 0 ? (
+                {/* Filter bar */}
+                <View style={styles.historyFilterBar}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.historyFilterRow}
+                  >
+                    {(["all", "7d", "30d"] as const).map((range) => {
+                      const label = range === "all" ? "All time" : range === "7d" ? "Last 7 days" : "Last 30 days";
+                      const active = historyDateRange === range;
+                      return (
+                        <TouchableOpacity
+                          key={range}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setHistoryDateRange(range);
+                          }}
+                          style={[
+                            styles.historyFilterChip,
+                            active
+                              ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                              : { backgroundColor: colors.card, borderColor: colors.border },
+                          ]}
+                          activeOpacity={0.75}
+                        >
+                          <Text
+                            style={[
+                              styles.historyFilterChipText,
+                              { color: active ? colors.primaryForeground : colors.mutedForeground },
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <View style={styles.historyFilterDivider} />
+
+                    {(["all", ...MEALS] as const).map((meal) => {
+                      const label = meal === "all" ? "All meals" : meal.charAt(0).toUpperCase() + meal.slice(1);
+                      const active = historyMealFilter === meal;
+                      const dotColor = meal !== "all" ? MEAL_COLORS[meal as MealType] : colors.primary;
+                      return (
+                        <TouchableOpacity
+                          key={`meal-${meal}`}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setHistoryMealFilter(meal as HistoryMealFilter);
+                          }}
+                          style={[
+                            styles.historyFilterChip,
+                            active
+                              ? { backgroundColor: dotColor + "22", borderColor: dotColor }
+                              : { backgroundColor: colors.card, borderColor: colors.border },
+                          ]}
+                          activeOpacity={0.75}
+                        >
+                          {meal !== "all" && (
+                            <View style={[styles.historyFilterDot, { backgroundColor: dotColor }]} />
+                          )}
+                          <Text
+                            style={[
+                              styles.historyFilterChipText,
+                              { color: active ? dotColor : colors.mutedForeground },
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {filteredHistoryDays.length === 0 ? (
                   <View style={styles.historyEmpty}>
                     <Ionicons name="calendar-outline" size={44} color={colors.mutedForeground} />
                     <Text style={[styles.historyEmptyTitle, { color: colors.foreground }]}>
-                      No past logs yet
+                      {historyDays.length === 0 ? "No past logs yet" : "No entries match your filters"}
                     </Text>
                     <Text style={[styles.historyEmptyText, { color: colors.mutedForeground }]}>
-                      Meals you log will appear here day by day
+                      {historyDays.length === 0
+                        ? "Meals you log will appear here day by day"
+                        : "Try adjusting the date range or meal type filter"}
                     </Text>
                   </View>
                 ) : (
-                  historyDays.map(({ date, logs, totals }) => {
+                  filteredHistoryDays.map(({ date, logs, totals }) => {
                     const d = new Date(date + "T12:00:00");
                     const today = new Date();
                     const yesterday = new Date(Date.now() - 86400000);
@@ -2575,6 +2692,40 @@ const styles = StyleSheet.create({
   },
   tabBtnText: {
     fontSize: 13,
+  },
+  historyFilterBar: {
+    marginBottom: 12,
+  },
+  historyFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  historyFilterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  historyFilterChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  historyFilterDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  historyFilterDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "rgba(128,128,128,0.25)",
+    marginHorizontal: 2,
   },
   historyEmpty: {
     alignItems: "center",
