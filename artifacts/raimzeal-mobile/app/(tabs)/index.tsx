@@ -209,46 +209,50 @@ export default function HomeScreen() {
         Quick Actions
       </Text>
       <View style={styles.actions}>
-        <QuickAction
-          icon="play-circle"
-          label="Start Workout"
-          color={colors.primary}
-          bg={colors.primary + "20"}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.navigate("/(tabs)/workouts");
-          }}
-        />
-        <QuickAction
-          icon="restaurant-outline"
-          label="Log Meal"
-          color={colors.secondary}
-          bg={colors.secondary + "20"}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.navigate("/(tabs)/nutrition");
-          }}
-        />
-        <QuickAction
-          icon="chatbubble-ellipses-outline"
-          label="Ask Ovia"
-          color={colors.accent}
-          bg={colors.accent + "20"}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.navigate("/(tabs)/profile");
-          }}
-        />
-        <QuickAction
-          icon="body-outline"
-          label="Log Body"
-          color={colors.warning}
-          bg={colors.warning + "20"}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push("/body-measurements");
-          }}
-        />
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="play-circle"
+            label="Start Workout"
+            color={colors.primary}
+            bg={colors.primary + "20"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/workouts");
+            }}
+          />
+          <QuickAction
+            icon="restaurant-outline"
+            label="Log Meal"
+            color={colors.secondary}
+            bg={colors.secondary + "20"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/nutrition");
+            }}
+          />
+        </View>
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="chatbubble-ellipses-outline"
+            label="Ask Ovia"
+            color={colors.accent}
+            bg={colors.accent + "20"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/profile");
+            }}
+          />
+          <QuickAction
+            icon="body-outline"
+            label="Log Body"
+            color={colors.warning}
+            bg={colors.warning + "20"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/body-measurements");
+            }}
+          />
+        </View>
       </View>
 
       {/* Body Stats Banner */}
@@ -415,9 +419,10 @@ const styles = StyleSheet.create({
   activityTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   activitySub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 4 },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  actions: { gap: 10 },
+  actionsRow: { flexDirection: "row", gap: 10 },
   actionBtn: {
-    width: "47%",
+    flex: 1,
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
