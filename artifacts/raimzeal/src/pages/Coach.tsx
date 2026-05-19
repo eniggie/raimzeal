@@ -208,7 +208,7 @@ export function Coach({ state }: CoachProps) {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Globe className="w-3 h-3" />
-            <span>Web search enabled</span>
+            <span>AI-powered research</span>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { Router } from "express";
 import nodemailer from "nodemailer";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit } from "../lib/rateLimiter";
+import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
 
 const emailRouter = Router();
 
@@ -522,7 +522,16 @@ emailRouter.post("/email/digest/unsubscribe", async (req, res) => {
   }
 });
 
-emailRouter.post("/email/digest/send-now", async (req, res) => {
+emailRouter.post("/email/digest/send-now", digestSendNowRateLimit, async (req, res) => {
+  // This endpoint triggers a mass email to all subscribers — require an internal
+  // secret so it cannot be called by anyone outside of automated server processes.
+  const providedSecret = req.headers["x-internal-secret"];
+  const expectedSecret = process.env["INTERNAL_API_SECRET"];
+  if (!expectedSecret || providedSecret !== expectedSecret) {
+    res.status(401).json({ error: "Unauthorized: valid x-internal-secret header required." });
+    return;
+  }
+
   try {
     const subscribers = await db.select().from(digestSubscribers).where(eq(digestSubscribers.active, true));
     if (subscribers.length === 0) { res.json({ success: true, sent: 0, message: "No active subscribers." }); return; }

@@ -472,11 +472,15 @@ export default function ProfileScreen() {
             />
             <ActionRow
               icon="shield-checkmark-outline"
-              label="Privacy & Security"
+              label="Privacy Policy"
               color={colors.warning}
-              onPress={() =>
-                Alert.alert("Privacy", "Your data is stored securely and never shared.")
-              }
+              onPress={() => router.push("/privacy")}
+            />
+            <ActionRow
+              icon="document-text-outline"
+              label="Terms of Service"
+              color={colors.mutedForeground}
+              onPress={() => router.push("/terms")}
             />
             <ActionRow
               icon="help-circle-outline"

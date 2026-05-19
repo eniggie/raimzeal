@@ -9,6 +9,17 @@ export const oviaRateLimit = rateLimit({
   skipFailedRequests: false,
 });
 
+// Strict daily limit per IP for Ovia — prevents free-tier paywall bypass
+// when proper per-user auth is not available.
+export const oviaDailyRateLimit = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 100,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Daily Ovia AI limit reached. Upgrade to Athlete or Elite for unlimited coaching." },
+  skipFailedRequests: false,
+});
+
 export const emailSendRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -31,4 +42,14 @@ export const emailSubscribeRateLimit = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many subscription requests." },
+});
+
+// Protect the admin digest blast endpoint — 3 sends per hour max,
+// and always requires the INTERNAL_API_SECRET header.
+export const digestSendNowRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Digest send rate limit reached. Try again in an hour." },
 });

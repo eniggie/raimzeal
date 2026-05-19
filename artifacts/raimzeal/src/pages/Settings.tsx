@@ -347,6 +347,15 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
           transition={{ delay: 0.4 }}
           className="text-center text-xs text-muted-foreground pt-4"
         >
+          <div className="flex items-center justify-center gap-4 mb-3">
+            <Link href="/privacy" className="text-primary hover:underline font-medium">
+              Privacy Policy
+            </Link>
+            <span>·</span>
+            <Link href="/terms" className="text-primary hover:underline font-medium">
+              Terms of Service
+            </Link>
+          </div>
           <p>RAIMZEAL v1.2.0</p>
           <p className="mt-1">Made with 💪 for fitness enthusiasts</p>
         </motion.div>

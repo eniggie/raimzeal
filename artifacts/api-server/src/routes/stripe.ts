@@ -19,7 +19,7 @@ export const PLANS = [
       "10 workouts from library",
       "Basic calorie & macro tracking",
       "Community (read-only)",
-      "5 Ovia AI messages/day",
+      "Daily Ovia AI coaching limit",
       "Basic progress charts",
       "Weight tracking",
     ],

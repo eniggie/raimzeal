@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -29,6 +30,44 @@ app.post(
   }
 );
 
+// ── Security headers ─────────────────────────────────────────────────────────
+// helmet() automatically disables X-Powered-By and sets HSTS, X-Frame-Options,
+// X-Content-Type-Options, Referrer-Policy, and more.
+// contentSecurityPolicy is disabled because this is a pure JSON API — CSP is
+// handled by the web frontend (Vite) separately.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// In production: only allow raimzeal.com and the Replit preview domains.
+// In development: allow any origin for ease of local testing.
+const PRODUCTION_ORIGINS = [
+  "https://raimzeal.com",
+  "https://www.raimzeal.com",
+];
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true; // server-to-server / mobile requests have no Origin
+  if (process.env.NODE_ENV !== "production") return true;
+  if (PRODUCTION_ORIGINS.includes(origin)) return true;
+  // Allow Replit preview domains (*.replit.app, *.repl.co, *.replit.dev)
+  if (/\.(replit\.app|repl\.co|replit\.dev)$/.test(origin)) return true;
+  return false;
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn({ origin }, "CORS blocked request from unauthorized origin");
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 // ── Standard middleware (after webhook route) ────────────────────────────────
 app.use(
   pinoHttp({
@@ -43,7 +82,6 @@ app.use(
     },
   }),
 );
-app.use(cors());
 app.use(express.json({ limit: "64kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 

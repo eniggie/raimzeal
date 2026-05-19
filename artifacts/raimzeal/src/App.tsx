@@ -22,6 +22,8 @@ import { Coach } from '@/pages/Coach';
 import { Community } from '@/pages/Community';
 import { Settings } from '@/pages/Settings';
 import { Membership } from '@/pages/Membership';
+import { Privacy } from '@/pages/Privacy';
+import { TermsOfService } from '@/pages/TermsOfService';
 import NotFound from '@/pages/not-found';
 
 function AppContent() {
@@ -138,7 +140,11 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <Toaster />
-          <AppContent />
+          <Switch>
+            <Route path="/privacy"><Privacy /></Route>
+            <Route path="/terms"><TermsOfService /></Route>
+            <Route><AppContent /></Route>
+          </Switch>
         </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>
