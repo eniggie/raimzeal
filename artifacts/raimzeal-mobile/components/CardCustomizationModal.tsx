@@ -75,10 +75,13 @@ const STAT_TOGGLES: StatToggleConfig[] = [
   },
 ];
 
+export type CardAction = "share" | "save" | "both";
+
 export interface CardCustomizationResult {
   visibleStats: CardVisibleStats;
   customMessage: string;
   themeId: CardThemeId;
+  action: CardAction;
 }
 
 export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
@@ -150,9 +153,9 @@ export default function CardCustomizationModal({
     }
   }
 
-  async function handleGenerate() {
+  async function handleGenerate(action: CardAction) {
     await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId);
-    onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId });
+    onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action });
   }
 
   async function handleResetDefaults() {
@@ -395,39 +398,98 @@ export default function CardCustomizationModal({
             </Text>
           </ScrollView>
 
-          {/* Generate button */}
-          <TouchableOpacity
-            onPress={handleGenerate}
-            disabled={generating || !anyStatEnabled}
-            activeOpacity={0.85}
-            style={[
-              styles.generateBtn,
-              {
-                backgroundColor:
-                  generating || !anyStatEnabled ? colors.muted : colors.primary,
-              },
-            ]}
-          >
-            {generating ? (
+          {/* Action buttons */}
+          {generating ? (
+            <View style={[styles.generateBtn, { backgroundColor: colors.muted }]}>
               <ActivityIndicator size="small" color={colors.mutedForeground} />
-            ) : (
-              <>
+              <Text style={[styles.generateBtnText, { color: colors.mutedForeground }]}>
+                Working…
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={() => handleGenerate("share")}
+                disabled={!anyStatEnabled}
+                activeOpacity={0.85}
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: anyStatEnabled ? colors.primary : colors.muted,
+                    flex: 1,
+                  },
+                ]}
+              >
                 <Ionicons
                   name="share-social"
-                  size={18}
-                  color={!anyStatEnabled ? colors.mutedForeground : colors.primaryForeground}
+                  size={17}
+                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
                 />
                 <Text
                   style={[
-                    styles.generateBtnText,
-                    { color: !anyStatEnabled ? colors.mutedForeground : colors.primaryForeground },
+                    styles.actionBtnText,
+                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
                   ]}
                 >
-                  Generate & Share
+                  Share
                 </Text>
-              </>
-            )}
-          </TouchableOpacity>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleGenerate("save")}
+                disabled={!anyStatEnabled}
+                activeOpacity={0.85}
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: anyStatEnabled ? colors.secondary : colors.muted,
+                    flex: 1,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={17}
+                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.actionBtnText,
+                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
+                  ]}
+                >
+                  Save
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleGenerate("both")}
+                disabled={!anyStatEnabled}
+                activeOpacity={0.85}
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: anyStatEnabled ? colors.accent : colors.muted,
+                    flex: 1,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="layers-outline"
+                  size={17}
+                  color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.actionBtnText,
+                    { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
+                  ]}
+                >
+                  Both
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {!anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
               Enable at least one stat to generate your card
@@ -637,6 +699,23 @@ const styles = StyleSheet.create({
   },
   generateBtnText: {
     fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  actionBtnText: {
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
   hintText: {
