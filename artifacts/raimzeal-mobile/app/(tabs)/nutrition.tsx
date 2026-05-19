@@ -30,6 +30,7 @@ import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
+import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 
 const CALORIE_GOAL = 2200;
 const PROTEIN_GOAL = 150;
@@ -441,6 +442,22 @@ export default function NutritionScreen() {
       .filter(({ logs }) => logs.length > 0);
   }, [historyDays, historyDateRange, historyMealFilter]);
 
+  const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
+
+  const trendChartDays = React.useMemo(() => {
+    const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MAX_DAYS = 14;
+    const recent = historyDays.slice(0, MAX_DAYS).reverse();
+    return recent.map(({ date, totals }) => {
+      const d = new Date(date + "T12:00:00");
+      return {
+        date,
+        calories: Math.round(totals.calories),
+        label: DAY_LABELS[d.getDay()],
+      };
+    });
+  }, [historyDays]);
+
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -736,9 +753,17 @@ export default function NutritionScreen() {
     setShowManualEntry(false);
   }
 
+  const flatListRef = useRef<FlatList<FoodListItem>>(null);
+
+  function handleChartBarPress(date: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setHighlightedDate((prev) => (prev === date ? null : date));
+  }
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <FlatList
+        ref={flatListRef}
         data={activeTab === "today" ? listData : []}
         keyExtractor={(item, i) => `${item._kind}-${item.name}-${i}`}
         showsVerticalScrollIndicator={false}
@@ -1263,6 +1288,33 @@ export default function NutritionScreen() {
                   </ScrollView>
                 </View>
 
+                {/* Calorie trend chart */}
+                {trendChartDays.length > 0 && (
+                  <View
+                    style={[
+                      styles.trendChartCard,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <View style={styles.trendChartHeader}>
+                      <Text style={[styles.trendChartTitle, { color: colors.foreground }]}>
+                        Calorie Trend
+                      </Text>
+                      <Text style={[styles.trendChartSubtitle, { color: colors.mutedForeground }]}>
+                        Last {trendChartDays.length} day{trendChartDays.length !== 1 ? "s" : ""}
+                        {highlightedDate ? " · tap again to clear" : " · tap a bar to highlight"}
+                      </Text>
+                    </View>
+                    <CalorieTrendChart
+                      days={trendChartDays}
+                      goalCalories={CALORIE_GOAL}
+                      highlightedDate={highlightedDate}
+                      onBarPress={handleChartBarPress}
+                      colors={colors}
+                    />
+                  </View>
+                )}
+
                 {filteredHistoryDays.length === 0 ? (
                   <View style={styles.historyEmpty}>
                     <Ionicons name="calendar-outline" size={44} color={colors.mutedForeground} />
@@ -1278,14 +1330,24 @@ export default function NutritionScreen() {
                 ) : (
                   filteredHistoryDays.map(({ date, logs, totals }) => {
                     const d = new Date(date + "T12:00:00");
-                    const today = new Date();
                     const yesterday = new Date(Date.now() - 86400000);
                     const isYesterday = d.toDateString() === yesterday.toDateString();
+                    const isHighlighted = date === highlightedDate;
                     const label = isYesterday
                       ? "Yesterday"
                       : d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
                     return (
-                      <View key={date} style={styles.historyDay}>
+                      <View
+                        key={date}
+                        style={[
+                          styles.historyDay,
+                          isHighlighted && {
+                            borderColor: colors.warning,
+                            borderWidth: 1.5,
+                            borderRadius: 12,
+                          },
+                        ]}
+                      >
                         <View style={[styles.historyDayHeader, { borderBottomColor: colors.border }]}>
                           <View style={styles.historyDayHeaderLeft}>
                             <Text style={[styles.historyDayLabel, { color: colors.foreground }]}>
@@ -2741,6 +2803,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     maxWidth: 240,
+  },
+  trendChartCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 10,
+  },
+  trendChartHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  trendChartTitle: {
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  trendChartSubtitle: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   historyDay: {
     gap: 0,
