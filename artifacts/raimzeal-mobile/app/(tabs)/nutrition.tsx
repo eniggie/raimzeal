@@ -981,13 +981,15 @@ export default function NutritionScreen() {
                 >
                   {nutritionFilters.map((filter) => {
                     const active = activeFilters.has(filter.key);
+                    const countForFilter = filterResultCounts[filter.key];
+                    const isZeroCount = !active && countForFilter !== undefined && countForFilter === 0;
                     return (
                       <TouchableOpacity
                         key={filter.key}
-                        onPress={() => toggleFilter(filter.key)}
+                        onPress={() => !isZeroCount && toggleFilter(filter.key)}
                         onLongPress={() => openThresholdEdit(filter.key)}
                         delayLongPress={400}
-                        activeOpacity={0.75}
+                        activeOpacity={isZeroCount ? 1 : 0.75}
                         style={[
                           styles.filterChip,
                           {
@@ -996,7 +998,10 @@ export default function NutritionScreen() {
                               : colors.muted,
                             borderColor: active
                               ? colors.primary
+                              : isZeroCount
+                              ? colors.border + "60"
                               : colors.border,
+                            opacity: isZeroCount ? 0.5 : 1,
                           },
                         ]}
                       >
@@ -1020,15 +1025,17 @@ export default function NutritionScreen() {
                         >
                           {filter.chipLabel}
                         </Text>
-                        {!active && filterResultCounts[filter.key] !== undefined && (
+                        {!active && countForFilter !== undefined && (
                           <View
                             style={[
                               styles.filterCountBadge,
-                              { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
+                              isZeroCount
+                                ? { backgroundColor: colors.warning + "22", borderColor: colors.warning + "55" }
+                                : { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
                             ]}
                           >
-                            <Text style={[styles.filterCountText, { color: colors.primary }]}>
-                              {filterResultCounts[filter.key]}
+                            <Text style={[styles.filterCountText, { color: isZeroCount ? colors.warning : colors.primary }]}>
+                              {isZeroCount ? "–" : countForFilter}
                             </Text>
                           </View>
                         )}
