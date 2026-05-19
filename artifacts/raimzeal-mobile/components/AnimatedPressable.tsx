@@ -2,10 +2,13 @@ import React, { useRef } from "react";
 import {
   Animated,
   GestureResponderEvent,
+  Platform,
   StyleProp,
   TouchableOpacity,
   ViewStyle,
 } from "react-native";
+
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 interface AnimatedPressableProps {
   onPress?: (e: GestureResponderEvent) => void;
@@ -33,7 +36,7 @@ export function AnimatedPressable({
   function handlePressIn() {
     Animated.spring(scaleAnim, {
       toValue: disabled ? 1 : scale,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 60,
       bounciness: 0,
     }).start();
@@ -42,7 +45,7 @@ export function AnimatedPressable({
   function handlePressOut() {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 30,
       bounciness: 4,
     }).start();

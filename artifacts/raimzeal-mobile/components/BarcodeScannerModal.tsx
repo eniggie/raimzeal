@@ -271,7 +271,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
             />
 
             {/* Overlay */}
-            <View style={styles.overlay} pointerEvents="box-none">
+            <View style={[styles.overlay, { pointerEvents: "box-none" }]}>
               {/* Top bar */}
               <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
                 <TouchableOpacity onPress={handleClose} style={styles.closeIcon}>
@@ -282,7 +282,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
               </View>
 
               {/* Scan frame */}
-              <View style={styles.scanFrameWrapper} pointerEvents="none">
+              <View style={[styles.scanFrameWrapper, { pointerEvents: "none" }]}>
                 <View style={styles.scanFrame}>
                   <View style={[styles.corner, styles.cornerTL]} />
                   <View style={[styles.corner, styles.cornerTR]} />

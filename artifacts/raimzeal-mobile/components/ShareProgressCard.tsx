@@ -186,8 +186,8 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
     return (
       <View ref={ref} style={styles.card} collapsable={false}>
         {/* Background gradient tint */}
-        <View style={[styles.glowTL, { backgroundColor: theme.glowTL }]} pointerEvents="none" />
-        <View style={[styles.glowBR, { backgroundColor: theme.glowBR }]} pointerEvents="none" />
+        <View style={[styles.glowTL, { backgroundColor: theme.glowTL, pointerEvents: "none" }]} />
+        <View style={[styles.glowBR, { backgroundColor: theme.glowBR, pointerEvents: "none" }]} />
 
         {/* ── Header ── */}
         <View style={styles.header}>

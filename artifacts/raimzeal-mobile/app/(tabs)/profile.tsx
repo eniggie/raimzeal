@@ -441,7 +441,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Off-screen progress card for ViewShot capture */}
-      <View style={styles.offScreen} pointerEvents="none">
+      <View style={[styles.offScreen, { pointerEvents: "none" }]}>
         <ShareProgressCard
           ref={cardRef}
           {...cardProps}
