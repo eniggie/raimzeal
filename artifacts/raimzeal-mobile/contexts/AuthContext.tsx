@@ -8,6 +8,29 @@ import React, {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
+function getApiBase(): string {
+  const base = process.env["EXPO_PUBLIC_API_BASE"] ?? "";
+  return base || "/api";
+}
+
+async function triggerWelcomeEmail(email: string, name: string): Promise<void> {
+  try {
+    const base = getApiBase();
+    await fetch(`${base}/email/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: email, userName: name, type: "welcome" }),
+    });
+    await fetch(`${base}/email/digest/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, userName: name }),
+    });
+  } catch {
+    // Non-fatal — welcome email failure should never block signup
+  }
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -55,6 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: { data: { name } },
     });
+    if (!error) {
+      // Fire welcome email + digest subscription (non-blocking, non-fatal)
+      triggerWelcomeEmail(email, name);
+    }
     return { error: error?.message ?? null };
   }, []);
 
