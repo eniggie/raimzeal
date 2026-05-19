@@ -406,8 +406,24 @@ export default function NutritionScreen() {
   );
 
   function handleToggleFavorite(food: FavoriteFood) {
+    const willStar = !isFavorite(food.name);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleFavoriteFood(food);
+    if (willStar) {
+      setHighlightedFavorite(food.name);
+      highlightAnim.setValue(1);
+      if (starScrollTimerRef.current) clearTimeout(starScrollTimerRef.current);
+      starScrollTimerRef.current = setTimeout(() => {
+        starScrollTimerRef.current = null;
+        flatListRef.current?.scrollToOffset({ offset: favoritesYRef.current, animated: true });
+      }, 80);
+      Animated.timing(highlightAnim, {
+        toValue: 0,
+        duration: 1400,
+        delay: 400,
+        useNativeDriver: false,
+      }).start(() => setHighlightedFavorite(null));
+    }
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -561,6 +577,12 @@ export default function NutritionScreen() {
   const reorderHintDismissedRef = useRef(false);
   const reorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const favoritesYRef = useRef<number>(0);
+  const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
+  const highlightAnim = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList<FoodListItem>>(null);
+  const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function dismissFilterHint() {
     if (filterHintTimerRef.current) {
       clearTimeout(filterHintTimerRef.current);
@@ -623,6 +645,12 @@ export default function NutritionScreen() {
   useEffect(() => {
     return () => {
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (starScrollTimerRef.current) clearTimeout(starScrollTimerRef.current);
     };
   }, []);
 
@@ -1087,8 +1115,6 @@ export default function NutritionScreen() {
     setShowManualEntry(false);
   }
 
-  const flatListRef = useRef<FlatList<FoodListItem>>(null);
-
   function handleChartBarPress(date: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setHighlightedDate((prev) => (prev === date ? null : date));
@@ -1517,7 +1543,14 @@ export default function NutritionScreen() {
                         </Text>
                       </View>
                       {mealLogs.map((log) => (
-                        <NutritionRow key={log.id} log={log} onDelete={handleMealDelete} />
+                        <NutritionRow
+                          key={log.id}
+                          log={log}
+                          onDelete={handleMealDelete}
+                          onToggleStar={() =>
+                            handleToggleFavorite({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })
+                          }
+                        />
                       ))}
                     </View>
                   );
@@ -1525,7 +1558,10 @@ export default function NutritionScreen() {
 
                 {favoriteFoods.length > 0 && (
                   <>
-                    <View style={styles.sectionHeaderRow}>
+                    <View
+                      style={styles.sectionHeaderRow}
+                      onLayout={(e) => { favoritesYRef.current = e.nativeEvent.layout.y; }}
+                    >
                       <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
                         Favorites
                       </Text>
@@ -1592,46 +1628,62 @@ export default function NutritionScreen() {
                         />
                       ))
                     ) : (
-                      favoriteFoods.map((food, idx) => (
-                        <TouchableOpacity
-                          key={`fav-${food.name}-${idx}`}
-                          activeOpacity={0.8}
-                          onPress={() => handleAddFood(food)}
-                          onLongPress={favoriteFoods.length > 1 ? enterReorderMode : undefined}
-                          delayLongPress={500}
-                          style={[
-                            styles.foodCard,
-                            { backgroundColor: colors.card, borderColor: "#f59f0a40" },
-                          ]}
-                        >
-                          <View style={[styles.foodIcon, { backgroundColor: "#f59f0a20" }]}>
-                            <Ionicons name="star" size={18} color="#f59f0a" />
-                          </View>
-                          <View style={styles.foodInfo}>
-                            <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
-                              {food.name}
-                            </Text>
-                            <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                              P {food.protein}g · C {food.carbs}g · F {food.fat}g
-                            </Text>
-                            <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
-                              <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                                per serving
-                              </Text>
-                            </View>
-                          </View>
-                          <Text style={[styles.foodCal, { color: colors.primary }]}>
-                            {food.calories}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => handleToggleFavorite(food)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={styles.starBtn}
+                      favoriteFoods.map((food, idx) => {
+                        const isHighlighted = highlightedFavorite === food.name;
+                        const highlightBg = isHighlighted
+                          ? highlightAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ["transparent", "#f59f0a30"],
+                            })
+                          : "transparent";
+                        return (
+                          <Animated.View
+                            key={`fav-${food.name}-${idx}`}
+                            style={[
+                              styles.favHighlightWrapper,
+                              { backgroundColor: highlightBg, borderRadius: 14 },
+                            ]}
                           >
-                            <Ionicons name="star" size={18} color="#f59f0a" />
-                          </TouchableOpacity>
-                        </TouchableOpacity>
-                      ))
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => handleAddFood(food)}
+                              onLongPress={favoriteFoods.length > 1 ? enterReorderMode : undefined}
+                              delayLongPress={500}
+                              style={[
+                                styles.foodCard,
+                                { backgroundColor: colors.card, borderColor: "#f59f0a40" },
+                              ]}
+                            >
+                              <View style={[styles.foodIcon, { backgroundColor: "#f59f0a20" }]}>
+                                <Ionicons name="star" size={18} color="#f59f0a" />
+                              </View>
+                              <View style={styles.foodInfo}>
+                                <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                                  {food.name}
+                                </Text>
+                                <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                                  P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                                </Text>
+                                <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                                  <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                                    per serving
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={[styles.foodCal, { color: colors.primary }]}>
+                                {food.calories}
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => handleToggleFavorite(food)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                style={styles.starBtn}
+                              >
+                                <Ionicons name="star" size={18} color="#f59f0a" />
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          </Animated.View>
+                        );
+                      })
                     )}
                   </>
                 )}
@@ -2792,9 +2844,9 @@ function HistoryFoodRow({ log, onAddFood }: { log: MealLog; onAddFood: () => voi
   );
 }
 
-function NutritionRow({ log, onDelete }: { log: MealLog; onDelete: (meal: MealLog) => void }) {
+function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void }) {
   const colors = useColors();
-  const { updateMealLog, toggleFavoriteFood, favoriteFoods } = useFitness();
+  const { updateMealLog, favoriteFoods } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -2904,8 +2956,9 @@ function NutritionRow({ log, onDelete }: { log: MealLog; onDelete: (meal: MealLo
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              toggleFavoriteFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType });
+              if (onToggleStar) {
+                onToggleStar();
+              }
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.nutritionStarBtn}
@@ -3503,6 +3556,10 @@ const styles = StyleSheet.create({
   },
   starBtn: {
     padding: 2,
+  },
+  favHighlightWrapper: {
+    borderRadius: 14,
+    marginBottom: 0,
   },
   dragHandle: {
     padding: 4,
