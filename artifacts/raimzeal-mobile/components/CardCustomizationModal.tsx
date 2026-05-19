@@ -627,6 +627,7 @@ export default function CardCustomizationModal({
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionLongPressedRef = useRef(false);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
@@ -802,6 +803,14 @@ export default function CardCustomizationModal({
       const errMsg = err instanceof Error && err.message ? err.message : fallback;
       showConfirmation(errMsg, "error");
     }
+  }
+
+  async function handleSetDefault(action: CardAction) {
+    actionLongPressedRef.current = true;
+    setDefaultAction(action);
+    AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+    const label = action === "share" ? "Share" : action === "save" ? "Save" : "Both";
+    showConfirmation(`${label} set as default`, "success");
   }
 
   async function handleDismissBadge() {
@@ -1387,7 +1396,15 @@ export default function CardCustomizationModal({
                 return (
                   <TouchableOpacity
                     key={action}
-                    onPress={() => handleGenerate(action)}
+                    onPress={() => {
+                      if (actionLongPressedRef.current) {
+                        actionLongPressedRef.current = false;
+                        return;
+                      }
+                      handleGenerate(action);
+                    }}
+                    onLongPress={() => handleSetDefault(action)}
+                    delayLongPress={500}
                     disabled={!anyStatEnabled}
                     activeOpacity={0.85}
                     style={[
