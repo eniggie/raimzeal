@@ -138,7 +138,7 @@ export default function CommunityScreen() {
         const filter = tab === "questions" ? "question" : undefined;
         let fetched: CommunityPost[] = await fetchCommunityPosts(filter);
 
-        if (!isSupabaseConfigured || fetched.length === 0) {
+        if (!isSupabaseConfigured) {
           fetched = tab === "questions"
             ? DEMO_POSTS.filter((p) => p.postType === "question")
             : DEMO_POSTS;

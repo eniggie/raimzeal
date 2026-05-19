@@ -327,7 +327,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
           transition={{ delay: 0.4 }}
           className="text-center text-xs text-muted-foreground pt-4"
         >
-          <p>RAIMZEAL v1.0.0</p>
+          <p>RAIMZEAL v1.2.0</p>
           <p className="mt-1">Made with 💪 for fitness enthusiasts</p>
         </motion.div>
       </div>

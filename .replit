@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-3.11"]
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -44,9 +44,16 @@ externalPort = 3000
 localPort = 24798
 externalPort = 3001
 
+[[ports]]
+localPort = 24799
+externalPort = 4200
+
 [userenv]
 
 [userenv.shared]
 SMTP_HOST = "smtp.gmail.com"
 SMTP_USER = "eniggie@gmail.com"
 SMTP_FROM = "eniggie@gmail.com"
+
+[nix]
+channel = "stable-25_05"
