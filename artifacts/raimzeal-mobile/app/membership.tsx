@@ -8,11 +8,27 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
+
+function getApiBase(): string {
+  if (Platform.OS === "web") return "/api";
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  if (domain) return `https://${domain}/api`;
+  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
+  if (explicit) return explicit;
+  return "http://localhost:80/api";
+}
+
+function getAppUrl(): string {
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  if (domain) return `https://${domain}`;
+  return "https://raimzeal.replit.app";
+}
 
 interface Plan {
   id: string;
@@ -113,7 +129,7 @@ export default function MembershipScreen() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/stripe/plans")
+    fetch(`${getApiBase()}/stripe/plans`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { plans?: Plan[] } | null) => {
         if (data?.plans) setPlans(data.plans);
@@ -125,9 +141,8 @@ export default function MembershipScreen() {
     if (plan.id === "free" || !plan.priceId) return;
     setCheckoutLoading(plan.id);
     try {
-      const baseUrl = process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
-      const appUrl = baseUrl ? new URL(baseUrl).origin : "https://raimzeal.replit.app";
-      const res = await fetch("/api/stripe/checkout", {
+      const appUrl = getAppUrl();
+      const res = await fetch(`${getApiBase()}/stripe/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

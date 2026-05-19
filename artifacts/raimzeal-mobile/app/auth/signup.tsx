@@ -19,8 +19,10 @@ import { useAuth } from "@/contexts/AuthContext";
 
 function getApiBase(): string {
   if (Platform.OS === "web") return "/api";
-  const pub = process.env["EXPO_PUBLIC_API_BASE"];
-  if (pub) return pub;
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  if (domain) return `https://${domain}/api`;
+  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
+  if (explicit) return explicit;
   return "http://localhost:80/api";
 }
 

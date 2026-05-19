@@ -30,7 +30,7 @@ export const PLANS = [
     id: "athlete",
     name: "Athlete",
     tagline: "For the dedicated",
-    price: 999,
+    price: 9.99,
     priceLabel: "$9.99 / month",
     features: [
       "Full workout library & programs",
@@ -50,7 +50,7 @@ export const PLANS = [
     id: "elite",
     name: "Elite",
     tagline: "Maximum performance",
-    price: 1999,
+    price: 19.99,
     priceLabel: "$19.99 / month",
     features: [
       "Everything in Athlete",
