@@ -211,3 +211,203 @@ export async function fetchWaterIntake(
     .limit(30);
   return data ?? [];
 }
+
+// ─── Community Types ────────────────────────────────────────────────────────
+
+export interface CommunityPost {
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  postType: "post" | "question";
+  likesCount: number;
+  commentsCount: number;
+  createdAt: string;
+}
+
+export interface CommunityComment {
+  id: string;
+  postId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+// ─── Community CRUD ─────────────────────────────────────────────────────────
+
+export async function fetchCommunityPosts(
+  postType?: "post" | "question",
+  limit = 30
+): Promise<CommunityPost[]> {
+  if (!isSupabaseConfigured) return [];
+  let query = supabase
+    .from("community_posts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (postType) query = (query as typeof query).eq("post_type", postType);
+  const { data } = await query;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    userId: r.user_id,
+    userName: r.user_name,
+    content: r.content,
+    postType: r.post_type as "post" | "question",
+    likesCount: r.likes_count ?? 0,
+    commentsCount: r.comments_count ?? 0,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function createCommunityPost(
+  userId: string,
+  userName: string,
+  content: string,
+  postType: "post" | "question"
+): Promise<CommunityPost | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase
+    .from("community_posts")
+    .insert({ user_id: userId, user_name: userName, content, post_type: postType })
+    .select()
+    .single();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    userId: data.user_id,
+    userName: data.user_name,
+    content: data.content,
+    postType: data.post_type as "post" | "question",
+    likesCount: 0,
+    commentsCount: 0,
+    createdAt: data.created_at,
+  };
+}
+
+export async function fetchComments(postId: string): Promise<CommunityComment[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data } = await supabase
+    .from("community_comments")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    postId: r.post_id,
+    userId: r.user_id,
+    userName: r.user_name,
+    content: r.content,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function createComment(
+  postId: string,
+  userId: string,
+  userName: string,
+  content: string
+): Promise<CommunityComment | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data, error } = await supabase
+    .from("community_comments")
+    .insert({ post_id: postId, user_id: userId, user_name: userName, content })
+    .select()
+    .single();
+  if (error || !data) return null;
+  const { data: post } = await supabase
+    .from("community_posts")
+    .select("comments_count")
+    .eq("id", postId)
+    .single();
+  const newCount = (post?.comments_count ?? 0) + 1;
+  await supabase.from("community_posts").update({ comments_count: newCount }).eq("id", postId);
+  return {
+    id: data.id,
+    postId: data.post_id,
+    userId: data.user_id,
+    userName: data.user_name,
+    content: data.content,
+    createdAt: data.created_at,
+  };
+}
+
+export async function toggleLike(
+  postId: string,
+  userId: string
+): Promise<{ liked: boolean; newCount: number }> {
+  if (!isSupabaseConfigured) return { liked: false, newCount: 0 };
+  const { data: existing } = await supabase
+    .from("community_likes")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const { data: post } = await supabase
+    .from("community_posts")
+    .select("likes_count")
+    .eq("id", postId)
+    .single();
+  if (existing) {
+    await supabase.from("community_likes").delete().eq("post_id", postId).eq("user_id", userId);
+    const newCount = Math.max(0, (post?.likes_count ?? 1) - 1);
+    await supabase.from("community_posts").update({ likes_count: newCount }).eq("id", postId);
+    return { liked: false, newCount };
+  } else {
+    await supabase.from("community_likes").insert({ post_id: postId, user_id: userId });
+    const newCount = (post?.likes_count ?? 0) + 1;
+    await supabase.from("community_posts").update({ likes_count: newCount }).eq("id", postId);
+    return { liked: true, newCount };
+  }
+}
+
+export async function checkUserLikes(
+  postIds: string[],
+  userId: string
+): Promise<Set<string>> {
+  if (!isSupabaseConfigured || postIds.length === 0) return new Set();
+  const { data } = await supabase
+    .from("community_likes")
+    .select("post_id")
+    .eq("user_id", userId)
+    .in("post_id", postIds);
+  return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
+}
+
+// ─── Programs ───────────────────────────────────────────────────────────────
+
+export interface ProgramWeek {
+  week: string;
+  phase: string;
+  focus: string;
+}
+
+export interface ProgramItem {
+  id: string;
+  title: string;
+  description: string;
+  level: "beginner" | "intermediate" | "advanced";
+  durationWeeks: number;
+  goals: string[];
+  schedule: ProgramWeek[] | null;
+  isActive: boolean;
+}
+
+export async function fetchPrograms(): Promise<ProgramItem[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data } = await supabase
+    .from("programs")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    level: r.level as ProgramItem["level"],
+    durationWeeks: r.duration_weeks,
+    goals: r.goals ?? [],
+    schedule: r.schedule as ProgramItem["schedule"],
+    isActive: r.is_active,
+  }));
+}
