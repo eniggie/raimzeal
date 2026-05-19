@@ -172,6 +172,90 @@ function buildWeeklyDigestHtml(firstName: string, motivation: string, tip: strin
   return buildHtmlEmail(`Your Weekly RAIMZEAL Digest — ${dateStr}`, bodyHtml);
 }
 
+export async function sendWelcomeEmail(to: string, userName: string): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) throw new Error("SMTP not configured");
+
+  const firstName = userName.split(" ")[0];
+  const motivation = pickRandom(MOTIVATION_MESSAGES).replace(/{name}/g, firstName);
+  const tip = pickRandom(FITNESS_TIPS);
+
+  const subject = `Welcome to RAIMZEAL, ${firstName}! Your journey starts now 🚀`;
+
+  const bodyHtml = `
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Welcome, ${firstName}! 🎉</p>
+
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#e8e8ec;">
+      Your RAIMZEAL account is almost ready. Please <strong style="color:#2E8B57;">click the verification link</strong> in the confirmation email from Supabase to activate your account. Once verified, you're all set to begin your transformation.
+    </p>
+
+    <div style="background:#0d1f15;border-radius:10px;padding:20px 24px;margin-bottom:20px;">
+      <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Getting Started Checklist</p>
+      <table cellpadding="0" cellspacing="0" width="100%">
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Verify your email address</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Log your first workout in the Workouts tab</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Track a meal using the Nutrition tab or barcode scanner</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Record your body measurements for progress tracking</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Chat with Ovia AI — your personal fitness coach</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Set up reminders so you never miss a session</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Share your progress card with the community</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:16px;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">A message from Ovia AI</p>
+      <p style="margin:0;font-size:15px;line-height:1.65;color:#e8e8ec;">${motivation}</p>
+    </div>
+
+    <div style="background:#1a1710;border-left:3px solid #C9A84C;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Your First Fitness Tip</p>
+      <p style="margin:0;font-size:15px;line-height:1.65;color:#e8e8ec;">${tip}</p>
+    </div>
+
+    <p style="margin:0 0 24px;font-size:13px;color:#9ca3af;line-height:1.6;">
+      You're now subscribed to our <strong style="color:#ffffff;">Saturday morning digest</strong> — every week Ovia AI will send you fresh motivation, fitness tips and health insights straight to your inbox.
+    </p>
+  `;
+
+  const plainText = [
+    `Welcome to RAIMZEAL, ${firstName}!`,
+    "",
+    "Please verify your email address by clicking the link in the confirmation email.",
+    "",
+    "GETTING STARTED CHECKLIST:",
+    "✅ Verify your email address",
+    "✅ Log your first workout",
+    "✅ Track a meal (use the barcode scanner!)",
+    "✅ Record body measurements",
+    "✅ Chat with Ovia AI",
+    "✅ Set up reminders",
+    "✅ Share your progress card",
+    "",
+    "OVIA AI SAYS:",
+    motivation,
+    "",
+    "FITNESS TIP:",
+    tip,
+    "",
+    "You're subscribed to our Saturday morning weekly digest — motivation, tips & insights every week.",
+    "",
+    "Visit RAIMZEAL: https://www.raimzeal.com",
+    "Music & books by Dr. Ephraim Oviawe: https://linktr.ee/Raimzy",
+    "",
+    "— Your Ovia AI Coach via RAIMZEAL",
+  ].join("\n");
+
+  const fromAddress = process.env["SMTP_FROM"] ?? process.env["SMTP_USER"];
+
+  await transporter.sendMail({
+    from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`,
+    to,
+    subject,
+    text: plainText,
+    html: buildHtmlEmail(subject, bodyHtml),
+  });
+}
+
 export async function sendWeeklyDigest(to: string, userName: string): Promise<void> {
   const transporter = createTransporter();
   if (!transporter) {
@@ -221,7 +305,7 @@ emailRouter.post("/email/send", async (req, res) => {
   const { to, userName, type, message } = req.body as {
     to: string;
     userName: string;
-    type: "motivation" | "tip" | "custom" | "weekly";
+    type: "motivation" | "tip" | "custom" | "weekly" | "welcome";
     message?: string;
   };
 
@@ -243,6 +327,19 @@ emailRouter.post("/email/send", async (req, res) => {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error";
       req.log.warn({ error: errMsg }, "Weekly digest send failed");
+      res.status(503).json({ error: errMsg });
+    }
+    return;
+  }
+
+  if (type === "welcome") {
+    try {
+      await sendWelcomeEmail(to, userName);
+      req.log.info({ to }, "Welcome email sent");
+      res.json({ success: true, message: "Welcome email sent successfully." });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      req.log.warn({ error: errMsg }, "Welcome email send failed");
       res.status(503).json({ error: errMsg });
     }
     return;

@@ -17,6 +17,29 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 
+function getApiBase(): string {
+  if (Platform.OS === "web") return "/api";
+  const pub = process.env["EXPO_PUBLIC_API_BASE"];
+  if (pub) return pub;
+  return "http://localhost:80/api";
+}
+
+async function postSignupEmails(email: string, name: string): Promise<void> {
+  const base = getApiBase();
+  await Promise.allSettled([
+    fetch(`${base}/email/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: email, userName: name, type: "welcome" }),
+    }),
+    fetch(`${base}/email/digest/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, userName: name }),
+    }),
+  ]);
+}
+
 export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -52,12 +75,17 @@ export default function SignupScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(email.trim().toLowerCase(), password, name.trim());
-    setLoading(false);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+    const { error } = await signUp(cleanEmail, password, cleanName);
     if (error) {
+      setLoading(false);
       Alert.alert("Sign up failed", error);
     } else {
-      router.push({ pathname: "/auth/verify-email", params: { email: email.trim() } });
+      // Fire welcome email + digest subscription in background — don't block navigation
+      postSignupEmails(cleanEmail, cleanName).catch(() => {});
+      setLoading(false);
+      router.push({ pathname: "/auth/verify-email", params: { email: cleanEmail } });
     }
   }
 
