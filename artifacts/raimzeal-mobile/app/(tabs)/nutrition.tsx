@@ -123,6 +123,7 @@ const FILTER_DEFS: NutritionFilterDef[] = [
 ];
 
 const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
+const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 
 type FilterThresholds = Record<string, number>;
 
@@ -493,6 +494,27 @@ export default function NutritionScreen() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoAnim = useRef(new Animated.Value(0)).current;
 
+  const [filterHintVisible, setFilterHintVisible] = useState(false);
+  const filterHintShownRef = useRef(false);
+  const filterHintDismissedRef = useRef(false);
+  const filterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function dismissFilterHint() {
+    if (filterHintTimerRef.current) {
+      clearTimeout(filterHintTimerRef.current);
+      filterHintTimerRef.current = null;
+    }
+    filterHintDismissedRef.current = true;
+    setFilterHintVisible(false);
+    AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+  }
+
+  useEffect(() => {
+    return () => {
+      if (filterHintTimerRef.current) clearTimeout(filterHintTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     return () => {
       if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
@@ -555,6 +577,7 @@ export default function NutritionScreen() {
 
   function openThresholdEdit(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    dismissFilterHint();
     const def = FILTER_DEFS.find((d) => d.key === key);
     const current = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
     setThresholdEditKey(key);
@@ -671,6 +694,22 @@ export default function NutritionScreen() {
   }, [isSearching, searchLoading, searchResults, nutritionFilters, activeFilters]);
 
   const listData: FoodListItem[] = isSearching ? filteredSearchResults : QUICK_LIST;
+
+  useEffect(() => {
+    if (activeTab !== "today" || !isSearching) return;
+    if (filterHintShownRef.current) return;
+    filterHintShownRef.current = true;
+    AsyncStorage.getItem(FILTER_HINT_STORAGE_KEY).then((val) => {
+      if (val) return;
+      if (filterHintDismissedRef.current) return;
+      setFilterHintVisible(true);
+      filterHintTimerRef.current = setTimeout(() => {
+        filterHintTimerRef.current = null;
+        setFilterHintVisible(false);
+        AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+      }, 4000);
+    }).catch(() => {});
+  }, [activeTab, isSearching]);
 
   function toggleFilter(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1045,6 +1084,13 @@ export default function NutritionScreen() {
                   )}
                 </View>
               </View>
+            )}
+
+            {/* Long-press hint — shown once below filter chips */}
+            {activeTab === "today" && isSearching && filterHintVisible && (
+              <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
+                Long-press a chip to adjust its threshold
+              </Text>
             )}
 
             {/* Search empty state */}
@@ -2871,6 +2917,15 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 6,
     flexShrink: 0,
+  },
+  filterHintText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 4,
+    opacity: 0.75,
   },
   resultsHeader: {
     flexDirection: "row",
