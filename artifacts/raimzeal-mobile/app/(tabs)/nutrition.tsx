@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness, MealLog } from "@/contexts/FitnessContext";
+import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
@@ -169,24 +169,35 @@ const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs, favoriteFoods, toggleFavoriteFood } = useFitness();
+
+  const isFavorite = useCallback(
+    (name: string) => favoriteFoods.some((f) => f.name === name),
+    [favoriteFoods]
+  );
+
+  function handleToggleFavorite(food: FavoriteFood) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleFavoriteFood(food);
+  }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const todayMeals = getTodayMeals();
   const { calories, protein, carbs, fat } = getTodayMacros();
 
   const recentFoods = React.useMemo(() => {
+    const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
     const seen = new Set<string>();
     const result: Omit<MealLog, "id" | "date">[] = [];
     for (const log of mealLogs) {
-      if (!seen.has(log.name)) {
+      if (!seen.has(log.name) && !favoriteNames.has(log.name)) {
         seen.add(log.name);
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType });
       }
       if (result.length >= 5) break;
     }
     return result;
-  }, [mealLogs]);
+  }, [mealLogs, favoriteFoods]);
 
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -596,6 +607,56 @@ export default function NutritionScreen() {
                   );
                 })}
 
+                {favoriteFoods.length > 0 && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                      Favorites
+                    </Text>
+                    {favoriteFoods.map((food, idx) => (
+                      <TouchableOpacity
+                        key={`fav-${food.name}-${idx}`}
+                        activeOpacity={0.8}
+                        onPress={() => handleAddFood(food)}
+                        style={[
+                          styles.foodCard,
+                          { backgroundColor: colors.card, borderColor: "#f59f0a40" },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.foodIcon,
+                            { backgroundColor: "#f59f0a20" },
+                          ]}
+                        >
+                          <Ionicons
+                            name="star"
+                            size={18}
+                            color="#f59f0a"
+                          />
+                        </View>
+                        <View style={styles.foodInfo}>
+                          <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                            {food.name}
+                          </Text>
+                          <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                            P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                          </Text>
+                        </View>
+                        <Text style={[styles.foodCal, { color: colors.primary }]}>
+                          {food.calories}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleToggleFavorite(food)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.starBtn}
+                        >
+                          <Ionicons name="star" size={18} color="#f59f0a" />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+
                 {recentFoods.length > 0 && (
                   <>
                     <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -634,7 +695,17 @@ export default function NutritionScreen() {
                         <Text style={[styles.foodCal, { color: colors.primary }]}>
                           {food.calories}
                         </Text>
-                        <Ionicons name="add" size={20} color={colors.mutedForeground} />
+                        <TouchableOpacity
+                          onPress={() => handleToggleFavorite(food)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.starBtn}
+                        >
+                          <Ionicons
+                            name={isFavorite(food.name) ? "star" : "star-outline"}
+                            size={18}
+                            color={isFavorite(food.name) ? "#f59f0a" : colors.mutedForeground}
+                          />
+                        </TouchableOpacity>
                       </TouchableOpacity>
                     ))}
                   </>
@@ -668,6 +739,8 @@ export default function NutritionScreen() {
         ]}
         renderItem={({ item }) => {
           if (item._kind === "search") {
+            const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack" };
+            const starred = isFavorite(item.name);
             return (
               <TouchableOpacity
                 activeOpacity={0.8}
@@ -700,11 +773,23 @@ export default function NutritionScreen() {
                 <Text style={[styles.foodCal, { color: colors.primary }]}>
                   {item.calories}
                 </Text>
-                <Ionicons name="add" size={20} color={colors.mutedForeground} />
+                <TouchableOpacity
+                  onPress={() => handleToggleFavorite(favFood)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.starBtn}
+                >
+                  <Ionicons
+                    name={starred ? "star" : "star-outline"}
+                    size={18}
+                    color={starred ? "#f59f0a" : colors.mutedForeground}
+                  />
+                </TouchableOpacity>
               </TouchableOpacity>
             );
           }
 
+          const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: item.mealType };
+          const starred = isFavorite(item.name);
           return (
             <TouchableOpacity
               activeOpacity={0.8}
@@ -737,7 +822,17 @@ export default function NutritionScreen() {
               <Text style={[styles.foodCal, { color: colors.primary }]}>
                 {item.calories}
               </Text>
-              <Ionicons name="add" size={20} color={colors.mutedForeground} />
+              <TouchableOpacity
+                onPress={() => handleToggleFavorite(favFood)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.starBtn}
+              >
+                <Ionicons
+                  name={starred ? "star" : "star-outline"}
+                  size={18}
+                  color={starred ? "#f59f0a" : colors.mutedForeground}
+                />
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         }}
@@ -1454,5 +1549,8 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  starBtn: {
+    padding: 2,
   },
 });

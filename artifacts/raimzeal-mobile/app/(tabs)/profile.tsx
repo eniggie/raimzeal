@@ -137,6 +137,7 @@ export default function ProfileScreen() {
     waterIntake,
     personalRecords,
     settings,
+    favoriteFoods,
   } = useFitness();
   const { signOut } = useAuth();
   const { cameraRollStatus, updateCameraRollStatus } = usePermissions();
@@ -329,6 +330,7 @@ export default function ProfileScreen() {
         personalRecords,
         settings,
         oviaMessages,
+        favoriteFoods,
       });
     } catch (e) {
       Alert.alert("Export failed", "Could not generate PDF. Please try again.");

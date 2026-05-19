@@ -86,6 +86,9 @@ export interface OviaMessage {
   timestamp: string;
 }
 
+/** A pinned food item; structurally identical to a MealLog entry without id/date */
+export type FavoriteFood = Omit<MealLog, "id" | "date">;
+
 /** Matches web app store.ts AppState (subset relevant to mobile) */
 export interface AppState {
   isOnboarded: boolean;
@@ -104,6 +107,8 @@ export interface AppState {
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
+  /** Mobile-only extension: pinned favorite foods */
+  favoriteFoods: FavoriteFood[];
 }
 
 interface FitnessContextType extends AppState {
@@ -114,6 +119,7 @@ interface FitnessContextType extends AppState {
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  toggleFavoriteFood: (food: FavoriteFood) => void;
   getTodayWorkouts: () => WorkoutLog[];
   getTodayMeals: () => MealLog[];
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
@@ -248,6 +254,7 @@ const defaultState: AppState = {
     weightUnit: "kg",
   },
   oviaMessages: INITIAL_OVIA_MESSAGES,
+  favoriteFoods: [],
 };
 
 const FitnessContext = createContext<FitnessContextType | null>(null);
@@ -271,6 +278,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         ...parsed,
         settings: { ...defaultState.settings, ...(parsed.settings ?? {}) },
         oviaMessages: parsed.oviaMessages ?? defaultState.oviaMessages,
+        favoriteFoods: parsed.favoriteFoods ?? [],
       };
       setState(hydrated);
 
@@ -399,6 +407,21 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const toggleFavoriteFood = useCallback(
+    (food: FavoriteFood) => {
+      setState((prev) => {
+        const exists = prev.favoriteFoods.some((f) => f.name === food.name);
+        const favoriteFoods = exists
+          ? prev.favoriteFoods.filter((f) => f.name !== food.name)
+          : [food, ...prev.favoriteFoods];
+        const next = { ...prev, favoriteFoods };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       setState((prev) => {
@@ -469,6 +492,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         addOviaMessage,
         updateWaterIntake,
         updateProfile,
+        toggleFavoriteFood,
         getTodayWorkouts,
         getTodayMeals,
         getTodayMacros,
