@@ -25,7 +25,6 @@ export default function SignupScreen() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -100,45 +99,6 @@ export default function SignupScreen() {
             autoCapitalize="none"
             colors={colors}
           />
-
-          {/* Phone number (optional) */}
-          <View style={styles.field}>
-            <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Phone number
-              </Text>
-              <View style={[styles.optionalBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[styles.optionalText, { color: colors.mutedForeground }]}>
-                  Optional
-                </Text>
-              </View>
-            </View>
-            <View
-              style={[
-                styles.inputWrap,
-                { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
-            >
-              <Ionicons
-                name="phone-portrait-outline"
-                size={16}
-                color={colors.mutedForeground}
-                style={{ marginRight: 8 }}
-              />
-              <TextInput
-                style={[styles.input, { color: colors.foreground, flex: 1 }]}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+44 7911 123456"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-              />
-            </View>
-            <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-              Used for optional motivational SMS reminders. We never share your number.
-            </Text>
-          </View>
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Password</Text>

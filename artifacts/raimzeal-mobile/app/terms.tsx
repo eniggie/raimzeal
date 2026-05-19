@@ -72,13 +72,13 @@ export default function TermsScreen() {
       ],
     },
     {
-      heading: "6. SMS & Push Notifications",
-      icon: "phone-portrait-outline",
+      heading: "6. Email & Push Notifications",
+      icon: "mail-outline",
       color: "#2E8B57",
       paragraphs: [
-        "If you provide a phone number and consent to SMS communications, RAIMZEAL may send you motivational messages, fitness tips, and reminders via text message. Standard carrier messaging rates may apply depending on your mobile plan.",
-        "You may opt out of SMS communications at any time by replying STOP to any RAIMZEAL message or by disabling SMS reminders in your app settings. You may opt out of push notifications at any time through your device settings.",
-        "RAIMZEAL will never share your phone number with third parties for marketing purposes.",
+        "RAIMZEAL may send you motivational messages, fitness tips, and reminders to the email address you registered with. These messages are sent by Ovia AI, your personal fitness coach, and are entirely optional.",
+        "You may opt out of email reminders at any time by disabling them in the app under Profile → Reminders, or by contacting us. You may opt out of push notifications at any time through your device settings.",
+        "RAIMZEAL will never share your email address with third parties for marketing purposes.",
       ],
     },
     {
