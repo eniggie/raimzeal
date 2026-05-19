@@ -539,7 +539,11 @@ export default function CardCustomizationModal({
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               COLOR THEME
             </Text>
-            <View style={styles.themeRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.themeThumbnailsScroll}
+            >
               {CARD_THEMES.map((theme) => {
                 const isSelected = selectedThemeId === theme.id;
                 return (
@@ -547,23 +551,34 @@ export default function CardCustomizationModal({
                     key={theme.id}
                     onPress={() => handleThemeChange(theme.id)}
                     activeOpacity={0.75}
-                    style={styles.themeItem}
+                    style={styles.themeThumbnailItem}
                   >
                     <View
                       style={[
-                        styles.themeSwatch,
-                        { backgroundColor: theme.accent },
-                        isSelected && styles.themeSwatchSelected,
-                        isSelected && { borderColor: theme.accent },
+                        styles.themeThumbnailFrame,
+                        {
+                          borderColor: isSelected ? theme.accent : colors.border,
+                          borderWidth: isSelected ? 2.5 : 1.5,
+                        },
                       ]}
                     >
+                      <View style={styles.themeThumbnailScaler} pointerEvents="none">
+                        <ShareProgressCard
+                          {...cardPreviewData}
+                          visibleStats={visibleStats}
+                          customMessage={customMessage.trim()}
+                          themeId={theme.id}
+                        />
+                      </View>
                       {isSelected && (
-                        <Ionicons name="checkmark" size={14} color="#fff" />
+                        <View style={[styles.themeThumbnailCheck, { backgroundColor: theme.accent }]}>
+                          <Ionicons name="checkmark" size={10} color="#fff" />
+                        </View>
                       )}
                     </View>
                     <Text
                       style={[
-                        styles.themeLabel,
+                        styles.themeThumbnailLabel,
                         {
                           color: isSelected ? colors.foreground : colors.mutedForeground,
                           fontFamily: isSelected ? "Inter_600SemiBold" : "Inter_400Regular",
@@ -575,7 +590,7 @@ export default function CardCustomizationModal({
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
 
             {/* Stat toggles */}
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
@@ -1085,31 +1100,40 @@ const styles = StyleSheet.create({
   previewScaler: {
     transformOrigin: "top left",
   },
-  // Theme picker
-  themeRow: {
-    flexDirection: "row",
+  // Theme thumbnail picker
+  themeThumbnailsScroll: {
     gap: 10,
+    paddingBottom: 4,
     marginBottom: 16,
-    flexWrap: "wrap",
+    alignItems: "flex-start",
   },
-  themeItem: {
+  themeThumbnailItem: {
     alignItems: "center",
     gap: 6,
-    minWidth: 52,
   },
-  themeSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  themeThumbnailFrame: {
+    width: 72,
+    height: 88,
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+  themeThumbnailScaler: {
+    width: CARD_WIDTH,
+    transform: [{ scale: 72 / CARD_WIDTH }],
+    transformOrigin: "top left",
+  },
+  themeThumbnailCheck: {
+    position: "absolute",
+    bottom: 5,
+    right: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "transparent",
   },
-  themeSwatchSelected: {
-    borderWidth: 3,
-  },
-  themeLabel: {
+  themeThumbnailLabel: {
     fontSize: 11,
     textAlign: "center",
   },
