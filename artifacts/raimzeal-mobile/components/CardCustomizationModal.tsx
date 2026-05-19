@@ -935,15 +935,42 @@ export default function CardCustomizationModal({
                         onLongPress={() => setReorderMode(true)}
                         delayLongPress={350}
                         activeOpacity={0.75}
-                        style={[
-                          styles.presetChip,
-                          {
-                            backgroundColor: isActive ? colors.primary + "18" : colors.card,
-                            borderColor: isActive ? colors.primary : colors.border,
-                          },
-                        ]}
+                        style={styles.presetChip}
                       >
-                        <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+                        <View
+                          style={[
+                            styles.presetThumbnailFrame,
+                            {
+                              borderColor: isActive ? colors.primary : colors.border,
+                              borderWidth: isActive ? 2 : 1.5,
+                            },
+                          ]}
+                        >
+                          <View style={styles.presetThumbnailScaler} pointerEvents="none">
+                            <ShareProgressCard
+                              {...cardPreviewData}
+                              visibleStats={preset.visibleStats}
+                              customMessage={preset.customMessage}
+                              themeId={preset.themeId}
+                            />
+                          </View>
+                          {isActive && (
+                            <View style={[styles.presetThumbnailCheck, { backgroundColor: theme.accent }]}>
+                              <Ionicons name="checkmark" size={8} color="#fff" />
+                            </View>
+                          )}
+                          <TouchableOpacity
+                            onPress={() => handleDeletePreset(preset.id)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            style={styles.presetThumbnailDelete}
+                          >
+                            <Ionicons
+                              name="close-circle"
+                              size={16}
+                              color={isActive ? colors.primary : colors.mutedForeground}
+                            />
+                          </TouchableOpacity>
+                        </View>
                         <Text
                           style={[
                             styles.presetChipText,
@@ -956,16 +983,6 @@ export default function CardCustomizationModal({
                         >
                           {preset.name}
                         </Text>
-                        <TouchableOpacity
-                          onPress={() => handleDeletePreset(preset.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons
-                            name="close-circle"
-                            size={15}
-                            color={isActive ? colors.primary : colors.mutedForeground}
-                          />
-                        </TouchableOpacity>
                       </TouchableOpacity>
                     );
                   })}
@@ -1567,20 +1584,42 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   presetsScroll: {
-    gap: 8,
+    gap: 10,
     paddingBottom: 4,
     marginBottom: 12,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   presetChip: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    maxWidth: 180,
+    gap: 5,
+    width: 60,
+  },
+  presetThumbnailFrame: {
+    width: 44,
+    height: 66,
+    borderRadius: 8,
+    overflow: "hidden",
+    position: "relative",
+  },
+  presetThumbnailScaler: {
+    width: CARD_WIDTH,
+    transform: [{ scale: 44 / CARD_WIDTH }],
+    transformOrigin: "top left",
+  },
+  presetThumbnailCheck: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  presetThumbnailDelete: {
+    position: "absolute",
+    top: 3,
+    right: 3,
   },
   presetDot: {
     width: 10,
@@ -1588,13 +1627,14 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   presetChipText: {
-    fontSize: 13,
-    flexShrink: 1,
+    fontSize: 11,
+    textAlign: "center",
   },
   presetsSlotHint: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     paddingHorizontal: 4,
+    paddingTop: 20,
   },
   reorderHint: {
     fontSize: 11,
