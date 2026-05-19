@@ -427,6 +427,19 @@ export default function NutritionScreen() {
         )
       : searchResults;
 
+  const filterResultCounts = React.useMemo<Record<string, number>>(() => {
+    if (!isSearching || searchLoading) return {};
+    const counts: Record<string, number> = {};
+    const activeFilterFns = nutritionFilters.filter((f) => activeFilters.has(f.key));
+    for (const filter of nutritionFilters) {
+      if (activeFilters.has(filter.key)) continue;
+      counts[filter.key] = searchResults.filter((item) =>
+        activeFilterFns.every((f) => f.test(item)) && filter.test(item)
+      ).length;
+    }
+    return counts;
+  }, [isSearching, searchLoading, searchResults, nutritionFilters, activeFilters]);
+
   const listData: FoodListItem[] = isSearching ? filteredSearchResults : QUICK_LIST;
 
   function toggleFilter(key: string) {
@@ -677,6 +690,18 @@ export default function NutritionScreen() {
                         >
                           {filter.chipLabel}
                         </Text>
+                        {!active && filterResultCounts[filter.key] !== undefined && (
+                          <View
+                            style={[
+                              styles.filterCountBadge,
+                              { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
+                            ]}
+                          >
+                            <Text style={[styles.filterCountText, { color: colors.primary }]}>
+                              {filterResultCounts[filter.key]}
+                            </Text>
+                          </View>
+                        )}
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
@@ -2146,6 +2171,19 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: 12,
+  },
+  filterCountBadge: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterCountText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
   },
   filterClearBtn: {
     flexDirection: "row",
