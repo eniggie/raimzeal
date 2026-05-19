@@ -4,6 +4,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -48,6 +49,42 @@ const QUICK_FOODS: Omit<MealLog, "id" | "date">[] = [
 ];
 
 const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+interface NutritionFilter {
+  key: string;
+  label: string;
+  icon: IoniconsName;
+  test: (item: ScannedFood) => boolean;
+}
+
+const NUTRITION_FILTERS: NutritionFilter[] = [
+  {
+    key: "high_protein",
+    label: "High Protein",
+    icon: "barbell-outline",
+    test: (item) => item.protein >= 15,
+  },
+  {
+    key: "low_calorie",
+    label: "Low Calorie",
+    icon: "flame-outline",
+    test: (item) => item.calories <= 150,
+  },
+  {
+    key: "low_fat",
+    label: "Low Fat",
+    icon: "water-outline",
+    test: (item) => item.fat <= 5,
+  },
+  {
+    key: "low_carb",
+    label: "Low Carb",
+    icon: "leaf-outline",
+    test: (item) => item.carbs <= 10,
+  },
+];
 
 interface ManualForm {
   name: string;
@@ -128,6 +165,7 @@ export default function NutritionScreen() {
   const [searchResults, setSearchResults] = useState<FoodListItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -198,7 +236,35 @@ export default function NutritionScreen() {
   }, []);
 
   const isSearching = searchQuery.trim().length > 0;
-  const listData: FoodListItem[] = isSearching ? searchResults : QUICK_LIST;
+
+  const filteredSearchResults: FoodListItem[] =
+    isSearching && activeFilters.size > 0
+      ? searchResults.filter((item) =>
+          NUTRITION_FILTERS.filter((f) => activeFilters.has(f.key)).every((f) =>
+            f.test(item)
+          )
+        )
+      : searchResults;
+
+  const listData: FoodListItem[] = isSearching ? filteredSearchResults : QUICK_LIST;
+
+  function toggleFilter(key: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveFilters(new Set());
+  }
 
   function handleAddFood(food: Omit<MealLog, "id" | "date">) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -319,6 +385,7 @@ export default function NutritionScreen() {
                     setSearchQuery("");
                     setSearchResults([]);
                     setSearchDone(false);
+                    setActiveFilters(new Set());
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
@@ -327,13 +394,100 @@ export default function NutritionScreen() {
               )}
             </View>
 
+            {/* Filter chips — shown while searching */}
+            {isSearching && (
+              <View style={styles.filterRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterScroll}
+                >
+                  {NUTRITION_FILTERS.map((filter) => {
+                    const active = activeFilters.has(filter.key);
+                    return (
+                      <TouchableOpacity
+                        key={filter.key}
+                        onPress={() => toggleFilter(filter.key)}
+                        activeOpacity={0.75}
+                        style={[
+                          styles.filterChip,
+                          {
+                            backgroundColor: active
+                              ? colors.primary
+                              : colors.muted,
+                            borderColor: active
+                              ? colors.primary
+                              : colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={filter.icon}
+                          size={13}
+                          color={active ? colors.primaryForeground : colors.mutedForeground}
+                        />
+                        <Text
+                          style={[
+                            styles.filterChipText,
+                            {
+                              color: active
+                                ? colors.primaryForeground
+                                : colors.mutedForeground,
+                              fontFamily: active
+                                ? "Inter_600SemiBold"
+                                : "Inter_400Regular",
+                            },
+                          ]}
+                        >
+                          {filter.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {activeFilters.size > 0 && (
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={[
+                      styles.filterClearBtn,
+                      { borderColor: colors.border },
+                    ]}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Ionicons name="close" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
+                      Clear
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             {/* Search empty state */}
-            {isSearching && searchDone && searchResults.length === 0 && !searchLoading && (
+            {isSearching && searchDone && !searchLoading && filteredSearchResults.length === 0 && (
               <View style={styles.searchEmpty}>
-                <Ionicons name="search-outline" size={36} color={colors.mutedForeground} />
+                <Ionicons
+                  name={activeFilters.size > 0 ? "options-outline" : "search-outline"}
+                  size={36}
+                  color={colors.mutedForeground}
+                />
                 <Text style={[styles.searchEmptyText, { color: colors.mutedForeground }]}>
-                  No results for "{searchQuery.trim()}"
+                  {activeFilters.size > 0 && searchResults.length > 0
+                    ? `No results match your filters`
+                    : `No results for "${searchQuery.trim()}"`}
                 </Text>
+                {activeFilters.size > 0 && searchResults.length > 0 && (
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={[styles.filterClearBtn, { borderColor: colors.primary, marginTop: 4 }]}
+                  >
+                    <Ionicons name="close" size={13} color={colors.primary} />
+                    <Text style={[styles.filterClearText, { color: colors.primary }]}>
+                      Clear filters
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -449,10 +603,18 @@ export default function NutritionScreen() {
             )}
 
             {/* Search results header */}
-            {isSearching && searchResults.length > 0 && (
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Results
-              </Text>
+            {isSearching && filteredSearchResults.length > 0 && (
+              <View style={styles.resultsHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Results
+                </Text>
+                <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
+                  {filteredSearchResults.length}
+                  {activeFilters.size > 0 && searchResults.length !== filteredSearchResults.length
+                    ? ` of ${searchResults.length}`
+                    : ""}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -1112,4 +1274,49 @@ const styles = StyleSheet.create({
   macroInputItem: { flex: 1, gap: 6 },
   macroInputLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
   macroInputField: { height: 40 },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  filterScroll: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 4,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 12,
+  },
+  filterClearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  filterClearText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  resultsHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+  },
+  resultsCount: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
 });
