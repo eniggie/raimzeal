@@ -349,6 +349,11 @@ function DraggableFavItem({
         <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
           P {food.protein}g · C {food.carbs}g · F {food.fat}g
         </Text>
+        <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+          <Text style={[styles.servingPillText, { color: colors.primary }]}>
+            per serving
+          </Text>
+        </View>
       </View>
       <Text style={[styles.foodCal, { color: colors.primary }]}>{food.calories}</Text>
     </Animated.View>
@@ -1471,6 +1476,11 @@ export default function NutritionScreen() {
                             <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                               P {food.protein}g · C {food.carbs}g · F {food.fat}g
                             </Text>
+                            <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                              <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                                per serving
+                              </Text>
+                            </View>
                           </View>
                           <Text style={[styles.foodCal, { color: colors.primary }]}>
                             {food.calories}
@@ -1522,6 +1532,11 @@ export default function NutritionScreen() {
                           <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                             P {food.protein}g · C {food.carbs}g · F {food.fat}g
                           </Text>
+                          <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                            <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                              per serving
+                            </Text>
+                          </View>
                         </View>
                         <Text style={[styles.foodCal, { color: colors.primary }]}>
                           {food.calories}
