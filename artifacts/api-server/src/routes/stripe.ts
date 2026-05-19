@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { users } from "@workspace/db";
 import { getUncachableStripeClient } from "../stripeClient";
 import { logger } from "../lib/logger";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 
 const stripeRouter = Router();
 
@@ -54,7 +54,7 @@ export const PLANS = [
     priceLabel: "$19.99 / month",
     features: [
       "Everything in Athlete",
-      "Priority Ovia AI (GPT-4.1 Turbo)",
+      "Priority Ovia AI (GPT-4o)",
       "AI-generated meal plans",
       "Weekly Ovia coaching digest",
       "Custom workout builder",
@@ -92,10 +92,10 @@ stripeRouter.get("/stripe/plans", async (_req, res) => {
 });
 
 // GET /api/stripe/subscription — returns current user's subscription tier
-stripeRouter.get("/stripe/subscription", async (req, res) => {
+// Requires a valid Supabase JWT in Authorization header
+stripeRouter.get("/stripe/subscription", requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).userId as string | undefined;
-    if (!userId) return res.json({ tier: "free", subscription: null });
+    const userId = (req as any).userId as string;
 
     const result = await db.execute(
       sql`SELECT stripe_subscription_id, stripe_customer_id, membership_tier FROM users WHERE id = ${userId}`
@@ -115,17 +115,20 @@ stripeRouter.get("/stripe/subscription", async (req, res) => {
 });
 
 // POST /api/stripe/checkout — create a Stripe Checkout Session
-stripeRouter.post("/stripe/checkout", async (req, res) => {
+// optionalAuth: uses verified userId from JWT when present; falls back to anonymous session
+stripeRouter.post("/stripe/checkout", optionalAuth, async (req, res) => {
   try {
-    const { priceId, userId, email, successUrl, cancelUrl } = req.body as {
+    const { priceId, email, successUrl, cancelUrl } = req.body as {
       priceId: string;
-      userId?: string;
       email?: string;
       successUrl: string;
       cancelUrl: string;
     };
 
     if (!priceId) return res.status(400).json({ error: "priceId required" });
+
+    // userId comes ONLY from verified JWT middleware — never from request body
+    const userId = (req as any).userId as string | undefined;
 
     const stripe = await getUncachableStripeClient();
 
@@ -139,8 +142,12 @@ stripeRouter.post("/stripe/checkout", async (req, res) => {
       customerId = row?.stripe_customer_id ?? undefined;
     }
 
-    if (!customerId && email) {
-      const customer = await stripe.customers.create({ email, metadata: userId ? { userId } : {} });
+    const resolvedEmail = email ?? ((req as any).userEmail as string | undefined);
+    if (!customerId && resolvedEmail) {
+      const customer = await stripe.customers.create({
+        email: resolvedEmail,
+        metadata: userId ? { userId } : {},
+      });
       customerId = customer.id;
       if (userId) {
         await db.execute(
@@ -151,7 +158,7 @@ stripeRouter.post("/stripe/checkout", async (req, res) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : email,
+      customer_email: customerId ? undefined : resolvedEmail,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
@@ -168,13 +175,28 @@ stripeRouter.post("/stripe/checkout", async (req, res) => {
 });
 
 // POST /api/stripe/portal — create a Billing Portal session
-stripeRouter.post("/stripe/portal", async (req, res) => {
+// requireAuth: customerId is looked up from DB using verified userId — never trusted from body
+stripeRouter.post("/stripe/portal", requireAuth, async (req, res) => {
   try {
-    const { customerId, returnUrl } = req.body as { customerId: string; returnUrl: string };
-    if (!customerId) return res.status(400).json({ error: "customerId required" });
+    const { returnUrl } = req.body as { returnUrl: string };
+    const userId = (req as any).userId as string;
+
+    // Look up customer ID from database using verified userId
+    const result = await db.execute(
+      sql`SELECT stripe_customer_id FROM users WHERE id = ${userId}`
+    );
+    const row = result.rows[0] as { stripe_customer_id?: string } | undefined;
+    const customerId = row?.stripe_customer_id;
+
+    if (!customerId) {
+      return res.status(404).json({ error: "No billing account found for this user" });
+    }
 
     const stripe = await getUncachableStripeClient();
-    const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
     return res.json({ url: session.url });
   } catch (err) {
     logger.error({ err }, "Portal error");

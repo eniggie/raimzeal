@@ -24,6 +24,7 @@ import { Settings } from '@/pages/Settings';
 import { Membership } from '@/pages/Membership';
 import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
+import { Support } from '@/pages/Support';
 import NotFound from '@/pages/not-found';
 
 function AppContent() {
@@ -143,6 +144,7 @@ function App() {
           <Switch>
             <Route path="/privacy"><Privacy /></Route>
             <Route path="/terms"><TermsOfService /></Route>
+            <Route path="/support"><Support /></Route>
             <Route><AppContent /></Route>
           </Switch>
         </WouterRouter>

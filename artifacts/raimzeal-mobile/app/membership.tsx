@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
+import { useAuth } from "@/contexts/AuthContext";
 
 function getApiBase(): string {
   if (Platform.OS === "web") return "/api";
@@ -125,6 +126,7 @@ const PLAN_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
 export default function MembershipScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { session } = useAuth();
   const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
@@ -144,7 +146,10 @@ export default function MembershipScreen() {
       const appUrl = getAppUrl();
       const res = await fetch(`${getApiBase()}/stripe/checkout`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           priceId: plan.priceId,
           successUrl: `${appUrl}/membership?success=1`,

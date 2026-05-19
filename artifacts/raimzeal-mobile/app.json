@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.raimzeal.mobile",
       "buildNumber": "1",
+      "associatedDomains": ["applinks:raimzeal.com"],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow RAIMZEAL to access your photo library to save and view progress photos.",
         "NSPhotoLibraryAddUsageDescription": "Allow RAIMZEAL to save progress photos to your photo library.",
@@ -28,6 +29,14 @@
     "android": {
       "package": "com.raimzeal.mobile",
       "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "raimzeal.com", "pathPrefix": "/" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#09090b"

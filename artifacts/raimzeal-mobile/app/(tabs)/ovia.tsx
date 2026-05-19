@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const SUGGESTIONS = [
   "Design my workout plan for this week",
@@ -68,7 +69,6 @@ function buildOviaContext(
   );
   return {
     name: user?.name ?? "",
-    email: user?.email ?? "",
     goals: user?.goals ?? [],
     weight: user?.weight ?? null,
     height: user?.height ?? null,
@@ -101,6 +101,7 @@ function buildOviaContext(
 export default function OviaScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const {
     user,
     oviaMessages,
@@ -150,7 +151,10 @@ export default function OviaScreen() {
         );
         const response = await fetch(`${getApiBase()}/ovia/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -219,7 +223,10 @@ export default function OviaScreen() {
     try {
       const response = await fetch(`${getApiBase()}/ovia/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ messages: allMessages, userContext }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
+import { optionalAuth } from "../middleware/auth";
 
 const oviaRouter = Router();
 
@@ -161,7 +162,7 @@ Whenever you discuss fasting, supplements, medical conditions, or make recommend
 You are not just a fitness coach. You are ${firstName}'s complete wellness partner — a guide for body, mind, and soul. Be direct. Be honest. Be science-backed. Be deeply inspiring. Be ${firstName}'s greatest ally on this journey toward a longer, stronger, healthier, and more meaningful life.`;
 }
 
-oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, async (req, res) => {
+oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, optionalAuth, async (req, res) => {
   try {
     const { messages, userContext, weeklyDigest } = req.body as {
       messages: Array<{ role: string; content: string }>;
@@ -214,7 +215,6 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
 
     const tools: Parameters<typeof openai.chat.completions.create>[0]["tools"] = [
       {
@@ -238,7 +238,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     ];
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4o",
       max_completion_tokens: 2048,
       messages: chatMessages,
       stream: true,
@@ -279,7 +279,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const searchResults = await performWebSearch(searchQuery);
 
         const continuation = await openai.chat.completions.create({
-          model: "gpt-4.1",
+          model: "gpt-4o",
           max_completion_tokens: 2048,
           messages: [
             ...chatMessages,

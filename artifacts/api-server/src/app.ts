@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
@@ -86,5 +86,17 @@ app.use(express.json({ limit: "64kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
 app.use("/api", router);
+
+// ── Global error handler ──────────────────────────────────────────────────────
+// Catches body-parser SyntaxError (malformed JSON) and other Express errors.
+// Prevents raw HTML stack traces from leaking server internals to clients.
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof SyntaxError && "status" in err && (err as any).status === 400) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  logger.error({ err }, "Unhandled Express error");
+  res.status(500).json({ error: "Internal server error" });
+});
 
 export default app;

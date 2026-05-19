@@ -180,7 +180,7 @@ function buildHtmlEmail(subject: string, bodyHtml: string): string {
               <div style="background:#0d0d10;border-radius:10px;padding:16px 20px;margin-bottom:20px;text-align:center;">
                 <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Music &amp; Books by Our CEO/MD</p>
                 <p style="margin:0 0 8px;font-size:14px;color:#e8e8ec;font-weight:600;">Dr. Ephraim Oviawe</p>
-                <a href="https://linktr.ee/Raimzy" style="display:inline-block;background:#8B31C7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 20px;border-radius:6px;">linktr.ee/Raimzy</a>
+                <a href="https://www.raimzeal.com" style="display:inline-block;background:#8B31C7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 20px;border-radius:6px;">raimzeal.com</a>
               </div>
               <hr style="border:none;border-top:1px solid #1e1e22;margin:20px 0;" />
               <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.5;text-align:center;">
@@ -337,7 +337,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     "RECOMMENDED RESOURCE:", `${resource.name} — ${resource.url}`,
     "",
     "Open the app: https://www.raimzeal.com",
-    "Music & books by Dr. Ephraim Oviawe: https://linktr.ee/Raimzy",
+    "Visit us: https://www.raimzeal.com",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -369,7 +369,7 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
     "HEALTH INSIGHT:", insightObj.insight, `Learn more: ${insightObj.link}`, "",
     "RESOURCE OF THE WEEK:", `${resource.name}`, resource.desc, resource.url, "",
     "Open the app: https://www.raimzeal.com",
-    "Music & books by Dr. Ephraim Oviawe: https://linktr.ee/Raimzy",
+    "Visit us: https://www.raimzeal.com",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -398,7 +398,7 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
     "🥗 Plan your next meal with intention",
     "",
     "Open the app: https://www.raimzeal.com",
-    "Music & books by Dr. Ephraim Oviawe: https://linktr.ee/Raimzy",
+    "Visit us: https://www.raimzeal.com",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -460,7 +460,7 @@ emailRouter.post("/email/send", emailSendRateLimit, async (req, res) => {
   try {
     await transporter.sendMail({
       from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`, to, subject,
-      text: `${bodyText}\n\nOpen the app: https://www.raimzeal.com\nMusic & books by Dr. Ephraim Oviawe: https://linktr.ee/Raimzy\n\n— Your Ovia AI Coach · RAIMZEAL`,
+      text: `${bodyText}\n\nOpen the app: https://www.raimzeal.com\nVisit us: https://www.raimzeal.com\n\n— Your Ovia AI Coach · RAIMZEAL`,
       html: buildSimpleHtmlEmail(subject, bodyText.replace(/\n/g, "<br />")),
     });
     req.log.info({ to, type }, "Email sent"); res.json({ success: true, message: "Email sent." });
