@@ -434,20 +434,25 @@ function ZoomableCard({
   children,
   cardWidth,
   cardHeight,
+  scale,
+  savedScale,
+  translateX,
+  translateY,
+  savedTranslateX,
+  savedTranslateY,
 }: {
   children: React.ReactNode;
   cardWidth: number;
   cardHeight: number;
+  scale: SharedValue<number>;
+  savedScale: SharedValue<number>;
+  translateX: SharedValue<number>;
+  translateY: SharedValue<number>;
+  savedTranslateX: SharedValue<number>;
+  savedTranslateY: SharedValue<number>;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
-
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((e) => {
@@ -737,11 +742,13 @@ export default function CardCustomizationModal({
   function toggleStat(key: keyof CardVisibleStats) {
     setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
     setActivePresetId(null);
+    resetZoomPosition();
   }
 
   function handleThemeChange(themeId: CardThemeId) {
     setSelectedThemeId(themeId);
     setActivePresetId(null);
+    resetZoomPosition();
     if (themeTransitionTimer.current !== null) {
       clearTimeout(themeTransitionTimer.current);
       themeTransitionTimer.current = null;
@@ -760,6 +767,7 @@ export default function CardCustomizationModal({
   function handleMessageChange(text: string) {
     setCustomMessage(text);
     setActivePresetId(null);
+    resetZoomPosition();
   }
 
   async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId) {
@@ -830,6 +838,7 @@ export default function CardCustomizationModal({
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
+    resetZoomPosition();
     try {
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
@@ -849,6 +858,7 @@ export default function CardCustomizationModal({
     setDisplayedThemeId(preset.themeId);
     setActivePresetId(preset.id);
     setRestoredFromStorage(false);
+    resetZoomPosition();
   }
 
   function openSavePresetModal() {
@@ -930,6 +940,23 @@ export default function CardCustomizationModal({
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
+
+  // Zoom shared values — lifted here so position survives open/close cycles
+  const pinchScale = useSharedValue(1);
+  const pinchSavedScale = useSharedValue(1);
+  const pinchTranslateX = useSharedValue(0);
+  const pinchTranslateY = useSharedValue(0);
+  const pinchSavedTranslateX = useSharedValue(0);
+  const pinchSavedTranslateY = useSharedValue(0);
+
+  function resetZoomPosition() {
+    pinchScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    pinchSavedScale.value = 1;
+    pinchTranslateX.value = withSpring(0, { damping: 15, stiffness: 200 });
+    pinchTranslateY.value = withSpring(0, { damping: 15, stiffness: 200 });
+    pinchSavedTranslateX.value = 0;
+    pinchSavedTranslateY.value = 0;
+  }
 
   const [cardNativeHeight, setCardNativeHeight] = useState(500);
   const [zoomVisible, setZoomVisible] = useState(false);
@@ -1524,9 +1551,14 @@ export default function CardCustomizationModal({
             }}
           >
             <ZoomableCard
-              key={zoomVisible ? "zoom-open" : "zoom-closed"}
               cardWidth={CARD_WIDTH * zoomScale}
               cardHeight={zoomCardHeight}
+              scale={pinchScale}
+              savedScale={pinchSavedScale}
+              translateX={pinchTranslateX}
+              translateY={pinchTranslateY}
+              savedTranslateX={pinchSavedTranslateX}
+              savedTranslateY={pinchSavedTranslateY}
             >
               {zoomIsOneToOne ? (
                 // True 1:1 render — no scaling transform applied.
