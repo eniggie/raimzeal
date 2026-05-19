@@ -116,19 +116,6 @@ interface Props {
 }
 
 
-function isDefaultCustomization(
-  stats: CardVisibleStats,
-  message: string,
-  themeId: CardThemeId,
-): boolean {
-  if (themeId !== DEFAULT_THEME_ID) return false;
-  if (message !== "") return false;
-  for (const key of Object.keys(DEFAULT_VISIBLE_STATS) as (keyof CardVisibleStats)[]) {
-    if (stats[key] !== DEFAULT_VISIBLE_STATS[key]) return false;
-  }
-  return true;
-}
-
 async function loadPresets(): Promise<CardPreset[]> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY_PRESETS);
@@ -311,13 +298,12 @@ export default function CardCustomizationModal({
         const effectiveMessage = savedMessage ?? "";
         const effectiveTheme = (savedTheme as CardThemeId) ?? DEFAULT_THEME_ID;
 
-        const differsFromDefaults =
-          isDefaultCustomization(effectiveStats, effectiveMessage, effectiveTheme) === false;
+        const hadSavedData = !!(savedStats || savedMessage || savedTheme);
 
         setVisibleStats(effectiveStats);
         setCustomMessage(effectiveMessage);
         setSelectedThemeId(effectiveTheme);
-        setRestoredFromStorage(differsFromDefaults);
+        setRestoredFromStorage(hadSavedData);
         const validActions: CardAction[] = ["share", "save", "both"];
         setDefaultAction(
           validActions.includes(savedAction as CardAction) ? (savedAction as CardAction) : null
