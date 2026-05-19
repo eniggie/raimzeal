@@ -1084,6 +1084,11 @@ export default function NutritionScreen() {
                   <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                     P {item.protein}g · C {item.carbs}g · F {item.fat}g
                   </Text>
+                  <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                    <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                      per {item.servingLabel ?? "100g"}
+                    </Text>
+                  </View>
                 </View>
                 <Text style={[styles.foodCal, { color: colors.primary }]}>
                   {item.calories}
@@ -1133,6 +1138,11 @@ export default function NutritionScreen() {
                 <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                   P {item.protein}g · C {item.carbs}g · F {item.fat}g
                 </Text>
+                <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                  <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                    per serving
+                  </Text>
+                </View>
               </View>
               <Text style={[styles.foodCal, { color: colors.primary }]}>
                 {item.calories}
@@ -2075,6 +2085,14 @@ const styles = StyleSheet.create({
   foodInfo: { flex: 1, gap: 2 },
   foodName: { fontSize: 14, fontFamily: "Inter_500Medium" },
   foodMacros: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  servingPill: {
+    alignSelf: "flex-start",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginTop: 2,
+  },
+  servingPillText: { fontSize: 10, fontFamily: "Inter_500Medium" },
   foodCal: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   modalOverlay: {
     flex: 1,
