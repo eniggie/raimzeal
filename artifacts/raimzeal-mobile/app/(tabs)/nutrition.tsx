@@ -2,16 +2,24 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
+  LayoutAnimation,
   Modal,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
+
+if (Platform.OS === "android") {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
@@ -222,10 +230,124 @@ type FoodListItem = QuickItem | SearchItem;
 
 const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
 
+const DRAG_ITEM_HEIGHT = 68;
+
+interface DraggableFavItemProps {
+  food: FavoriteFood;
+  indexRef: React.MutableRefObject<number>;
+  listRef: React.MutableRefObject<FavoriteFood[]>;
+  itemHeightRef: React.MutableRefObject<number>;
+  isActive: boolean;
+  isHover: boolean;
+  onDragStart: (index: number) => void;
+  onHover: (index: number) => void;
+  onDrop: (from: number, to: number) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function DraggableFavItem({
+  food,
+  indexRef,
+  listRef,
+  itemHeightRef,
+  isActive,
+  isHover,
+  onDragStart,
+  onHover,
+  onDrop,
+  colors,
+}: DraggableFavItemProps) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const currentDy = useRef(0);
+
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
+  const onDropRef = useRef(onDrop);
+  onDropRef.current = onDrop;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        translateY.setValue(0);
+        currentDy.current = 0;
+        onDragStartRef.current(indexRef.current);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      },
+      onPanResponderMove: (_, { dy }) => {
+        translateY.setValue(dy);
+        currentDy.current = dy;
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(dy / slotHeight)));
+        onHoverRef.current(to);
+      },
+      onPanResponderRelease: () => {
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDy.current / slotHeight)));
+        translateY.setValue(0);
+        onDropRef.current(from, to);
+      },
+      onPanResponderTerminate: () => {
+        translateY.setValue(0);
+        onHoverRef.current(-1);
+      },
+    })
+  ).current;
+
+  return (
+    <Animated.View
+      onLayout={(e) => {
+        const h = e.nativeEvent.layout.height;
+        if (h > 0 && itemHeightRef.current !== h) {
+          itemHeightRef.current = h;
+        }
+      }}
+      style={[
+        styles.foodCard,
+        {
+          backgroundColor: colors.card,
+          borderColor: isActive ? "#f59f0a99" : isHover ? "#f59f0a55" : "#f59f0a40",
+          transform: [{ translateY }],
+          zIndex: isActive ? 100 : 1,
+          elevation: isActive ? 8 : 0,
+          shadowColor: "#000",
+          shadowOpacity: isActive ? 0.18 : 0,
+          shadowRadius: isActive ? 8 : 0,
+          shadowOffset: { width: 0, height: 4 },
+          opacity: isActive ? 0.92 : 1,
+        },
+      ]}
+    >
+      <View {...panResponder.panHandlers} style={styles.dragHandle}>
+        <Ionicons name="reorder-three-outline" size={24} color={colors.mutedForeground} />
+      </View>
+      <View style={[styles.foodIcon, { backgroundColor: "#f59f0a20" }]}>
+        <Ionicons name="star" size={18} color="#f59f0a" />
+      </View>
+      <View style={styles.foodInfo}>
+        <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+          {food.name}
+        </Text>
+        <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+          P {food.protein}g · C {food.carbs}g · F {food.fat}g
+        </Text>
+      </View>
+      <Text style={[styles.foodCal, { color: colors.primary }]}>{food.calories}</Text>
+    </Animated.View>
+  );
+}
+
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs, favoriteFoods, toggleFavoriteFood } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods } = useFitness();
 
   const isFavorite = useCallback(
     (name: string) => favoriteFoods.some((f) => f.name === name),
@@ -301,6 +423,14 @@ export default function NutritionScreen() {
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
   const [thresholdEditValue, setThresholdEditValue] = useState<string>("");
+
+  const [isReordering, setIsReordering] = useState(false);
+  const [reorderItems, setReorderItems] = useState<FavoriteFood[]>([]);
+  const reorderItemsRef = useRef<FavoriteFood[]>([]);
+  const [activeReorderIdx, setActiveReorderIdx] = useState(-1);
+  const [hoverReorderIdx, setHoverReorderIdx] = useState(-1);
+  const indexRefsRef = useRef<React.MutableRefObject<number>[]>([]);
+  const itemHeightRef = useRef(DRAG_ITEM_HEIGHT);
 
   useEffect(() => {
     AsyncStorage.getItem(THRESHOLDS_STORAGE_KEY).then((raw) => {
@@ -459,6 +589,46 @@ export default function NutritionScreen() {
   function clearFilters() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveFilters(new Set());
+  }
+
+  function enterReorderMode() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const items = [...favoriteFoods];
+    reorderItemsRef.current = items;
+    while (indexRefsRef.current.length < items.length) {
+      indexRefsRef.current.push({ current: indexRefsRef.current.length });
+    }
+    items.forEach((_, i) => {
+      indexRefsRef.current[i].current = i;
+    });
+    setReorderItems(items);
+    setActiveReorderIdx(-1);
+    setHoverReorderIdx(-1);
+    setIsReordering(true);
+  }
+
+  function exitReorderMode() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsReordering(false);
+    setActiveReorderIdx(-1);
+    setHoverReorderIdx(-1);
+  }
+
+  function handleReorderDrop(from: number, to: number) {
+    setActiveReorderIdx(-1);
+    setHoverReorderIdx(-1);
+    if (from === to) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const next = [...reorderItemsRef.current];
+    const [removed] = next.splice(from, 1);
+    next.splice(to, 0, removed);
+    next.forEach((_, i) => {
+      if (indexRefsRef.current[i]) indexRefsRef.current[i].current = i;
+    });
+    reorderItemsRef.current = next;
+    setReorderItems(next);
+    reorderFavoriteFoods(next);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
   function handleAddFood(food: Omit<MealLog, "id" | "date">) {
@@ -832,51 +1002,85 @@ export default function NutritionScreen() {
 
                 {favoriteFoods.length > 0 && (
                   <>
-                    <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                      Favorites
-                    </Text>
-                    {favoriteFoods.map((food, idx) => (
-                      <TouchableOpacity
-                        key={`fav-${food.name}-${idx}`}
-                        activeOpacity={0.8}
-                        onPress={() => handleAddFood(food)}
-                        style={[
-                          styles.foodCard,
-                          { backgroundColor: colors.card, borderColor: "#f59f0a40" },
-                        ]}
-                      >
-                        <View
+                    <View style={styles.sectionHeaderRow}>
+                      <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                        Favorites
+                      </Text>
+                      {isReordering ? (
+                        <TouchableOpacity
+                          onPress={exitReorderMode}
+                          style={[styles.reorderDoneBtn, { backgroundColor: colors.primary }]}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={[styles.reorderDoneText, { color: colors.primaryForeground }]}>
+                            Done
+                          </Text>
+                        </TouchableOpacity>
+                      ) : favoriteFoods.length > 1 ? (
+                        <TouchableOpacity
+                          onPress={enterReorderMode}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
+                            Reorder
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                    {isReordering ? (
+                      reorderItems.map((food, idx) => (
+                        <DraggableFavItem
+                          key={`drag-${food.name}-${idx}`}
+                          food={food}
+                          indexRef={indexRefsRef.current[idx] ?? { current: idx }}
+                          listRef={reorderItemsRef}
+                          itemHeightRef={itemHeightRef}
+                          isActive={idx === activeReorderIdx}
+                          isHover={idx === hoverReorderIdx && idx !== activeReorderIdx}
+                          onDragStart={(i) => { setActiveReorderIdx(i); setHoverReorderIdx(i); }}
+                          onHover={setHoverReorderIdx}
+                          onDrop={handleReorderDrop}
+                          colors={colors}
+                        />
+                      ))
+                    ) : (
+                      favoriteFoods.map((food, idx) => (
+                        <TouchableOpacity
+                          key={`fav-${food.name}-${idx}`}
+                          activeOpacity={0.8}
+                          onPress={() => handleAddFood(food)}
+                          onLongPress={favoriteFoods.length > 1 ? enterReorderMode : undefined}
+                          delayLongPress={500}
                           style={[
-                            styles.foodIcon,
-                            { backgroundColor: "#f59f0a20" },
+                            styles.foodCard,
+                            { backgroundColor: colors.card, borderColor: "#f59f0a40" },
                           ]}
                         >
-                          <Ionicons
-                            name="star"
-                            size={18}
-                            color="#f59f0a"
-                          />
-                        </View>
-                        <View style={styles.foodInfo}>
-                          <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
-                            {food.name}
+                          <View style={[styles.foodIcon, { backgroundColor: "#f59f0a20" }]}>
+                            <Ionicons name="star" size={18} color="#f59f0a" />
+                          </View>
+                          <View style={styles.foodInfo}>
+                            <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                              {food.name}
+                            </Text>
+                            <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                              P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                            </Text>
+                          </View>
+                          <Text style={[styles.foodCal, { color: colors.primary }]}>
+                            {food.calories}
                           </Text>
-                          <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                            P {food.protein}g · C {food.carbs}g · F {food.fat}g
-                          </Text>
-                        </View>
-                        <Text style={[styles.foodCal, { color: colors.primary }]}>
-                          {food.calories}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => handleToggleFavorite(food)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={styles.starBtn}
-                        >
-                          <Ionicons name="star" size={18} color="#f59f0a" />
+                          <TouchableOpacity
+                            onPress={() => handleToggleFavorite(food)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.starBtn}
+                          >
+                            <Ionicons name="star" size={18} color="#f59f0a" />
+                          </TouchableOpacity>
                         </TouchableOpacity>
-                      </TouchableOpacity>
-                    ))}
+                      ))
+                    )}
                   </>
                 )}
 
@@ -919,9 +1123,10 @@ export default function NutritionScreen() {
                           {food.calories}
                         </Text>
                         <TouchableOpacity
-                          onPress={() => handleToggleFavorite(food)}
+                          onPress={isReordering ? undefined : () => handleToggleFavorite(food)}
+                          disabled={isReordering}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={styles.starBtn}
+                          style={[styles.starBtn, isReordering && { opacity: 0.35 }]}
                         >
                           <Ionicons
                             name={isFavorite(food.name) ? "star" : "star-outline"}
@@ -2303,6 +2508,30 @@ const styles = StyleSheet.create({
   },
   starBtn: {
     padding: 2,
+  },
+  dragHandle: {
+    padding: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  reorderDoneBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  reorderDoneText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  reorderHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
   tabSwitcher: {
     flexDirection: "row",

@@ -121,6 +121,7 @@ interface FitnessContextType extends AppState {
   updateWaterIntake: (glasses: number) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   toggleFavoriteFood: (food: FavoriteFood) => void;
+  reorderFavoriteFoods: (foods: FavoriteFood[]) => void;
   getTodayWorkouts: () => WorkoutLog[];
   getTodayMeals: () => MealLog[];
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
@@ -437,6 +438,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const reorderFavoriteFoods = useCallback(
+    (foods: FavoriteFood[]) => {
+      setState((prev) => {
+        const next = { ...prev, favoriteFoods: foods };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       setState((prev) => {
@@ -509,6 +521,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         updateWaterIntake,
         updateProfile,
         toggleFavoriteFood,
+        reorderFavoriteFoods,
         getTodayWorkouts,
         getTodayMeals,
         getTodayMacros,
