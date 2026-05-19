@@ -95,6 +95,19 @@ interface Props {
 }
 
 
+function isDefaultCustomization(
+  stats: CardVisibleStats,
+  message: string,
+  themeId: CardThemeId,
+): boolean {
+  if (themeId !== DEFAULT_THEME_ID) return false;
+  if (message !== "") return false;
+  for (const key of Object.keys(DEFAULT_VISIBLE_STATS) as (keyof CardVisibleStats)[]) {
+    if (stats[key] !== DEFAULT_VISIBLE_STATS[key]) return false;
+  }
+  return true;
+}
+
 export default function CardCustomizationModal({
   visible,
   onClose,
@@ -110,9 +123,11 @@ export default function CardCustomizationModal({
   });
   const [customMessage, setCustomMessage] = useState("");
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const [restoredFromStorage, setRestoredFromStorage] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
+    setRestoredFromStorage(false);
     async function loadSaved() {
       try {
         const [savedStats, savedMessage, savedTheme] = await Promise.all([
@@ -120,18 +135,27 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
         ]);
+
+        let effectiveStats = { ...DEFAULT_VISIBLE_STATS };
         if (savedStats) {
           const parsed = JSON.parse(savedStats) as Partial<CardVisibleStats>;
-          setVisibleStats({ ...DEFAULT_VISIBLE_STATS, ...parsed });
-        } else {
-          setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+          effectiveStats = { ...DEFAULT_VISIBLE_STATS, ...parsed };
         }
-        setCustomMessage(savedMessage ?? "");
-        setSelectedThemeId((savedTheme as CardThemeId) ?? DEFAULT_THEME_ID);
+        const effectiveMessage = savedMessage ?? "";
+        const effectiveTheme = (savedTheme as CardThemeId) ?? DEFAULT_THEME_ID;
+
+        const differsFromDefaults =
+          isDefaultCustomization(effectiveStats, effectiveMessage, effectiveTheme) === false;
+
+        setVisibleStats(effectiveStats);
+        setCustomMessage(effectiveMessage);
+        setSelectedThemeId(effectiveTheme);
+        setRestoredFromStorage(differsFromDefaults);
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
         setSelectedThemeId(DEFAULT_THEME_ID);
+        setRestoredFromStorage(false);
       }
     }
     loadSaved();
@@ -162,6 +186,7 @@ export default function CardCustomizationModal({
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
     setSelectedThemeId(DEFAULT_THEME_ID);
+    setRestoredFromStorage(false);
     try {
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
@@ -219,6 +244,14 @@ export default function CardCustomizationModal({
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
                 Choose what to show on your progress card
               </Text>
+              {restoredFromStorage && (
+                <View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                  <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
+                  <Text style={[styles.restoredBadgeText, { color: colors.primary }]}>
+                    Restored from last time
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.titleActions}>
               <TouchableOpacity
@@ -626,6 +659,21 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  restoredBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  restoredBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
   closeBtn: {
     width: 32,
