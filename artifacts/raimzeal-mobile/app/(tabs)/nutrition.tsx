@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -53,39 +54,93 @@ const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
+type NumericFoodKey = "calories" | "protein" | "carbs" | "fat";
+
+interface NutritionFilterDef {
+  key: string;
+  label: string;
+  icon: IoniconsName;
+  defaultThreshold: number;
+  unit: string;
+  direction: "gte" | "lte";
+  nutrient: NumericFoodKey;
+}
+
 interface NutritionFilter {
   key: string;
   label: string;
+  chipLabel: string;
   icon: IoniconsName;
   test: (item: ScannedFood) => boolean;
 }
 
-const NUTRITION_FILTERS: NutritionFilter[] = [
+const FILTER_DEFS: NutritionFilterDef[] = [
   {
     key: "high_protein",
     label: "High Protein",
     icon: "barbell-outline",
-    test: (item) => item.protein >= 15,
+    defaultThreshold: 15,
+    unit: "g",
+    direction: "gte",
+    nutrient: "protein",
   },
   {
     key: "low_calorie",
     label: "Low Calorie",
     icon: "flame-outline",
-    test: (item) => item.calories <= 150,
+    defaultThreshold: 150,
+    unit: "kcal",
+    direction: "lte",
+    nutrient: "calories",
   },
   {
     key: "low_fat",
     label: "Low Fat",
     icon: "water-outline",
-    test: (item) => item.fat <= 5,
+    defaultThreshold: 5,
+    unit: "g",
+    direction: "lte",
+    nutrient: "fat",
   },
   {
     key: "low_carb",
     label: "Low Carb",
     icon: "leaf-outline",
-    test: (item) => item.carbs <= 10,
+    defaultThreshold: 10,
+    unit: "g",
+    direction: "lte",
+    nutrient: "carbs",
   },
 ];
+
+const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
+
+type FilterThresholds = Record<string, number>;
+
+function getDefaultThresholds(): FilterThresholds {
+  const defaults: FilterThresholds = {};
+  for (const def of FILTER_DEFS) {
+    defaults[def.key] = def.defaultThreshold;
+  }
+  return defaults;
+}
+
+function buildFilters(thresholds: FilterThresholds): NutritionFilter[] {
+  return FILTER_DEFS.map((def) => {
+    const threshold = thresholds[def.key] ?? def.defaultThreshold;
+    const symbol = def.direction === "gte" ? "≥" : "≤";
+    return {
+      key: def.key,
+      label: def.label,
+      chipLabel: `${def.label} ${symbol}${threshold}${def.unit}`,
+      icon: def.icon,
+      test: (item: ScannedFood) => {
+        const val: number = item[def.nutrient];
+        return def.direction === "gte" ? val >= threshold : val <= threshold;
+      },
+    };
+  });
+}
 
 interface ManualForm {
   name: string;
@@ -242,6 +297,57 @@ export default function NutritionScreen() {
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
 
+  const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
+  const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
+  const [thresholdEditValue, setThresholdEditValue] = useState<string>("");
+
+  useEffect(() => {
+    AsyncStorage.getItem(THRESHOLDS_STORAGE_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const validated: FilterThresholds = {};
+          for (const def of FILTER_DEFS) {
+            const v = (parsed as Record<string, unknown>)[def.key];
+            if (typeof v === "number" && isFinite(v) && v >= 0) {
+              validated[def.key] = Math.round(v);
+            }
+          }
+          setFilterThresholds((prev) => ({ ...prev, ...validated }));
+        }
+      } catch {
+      }
+    });
+  }, []);
+
+  const nutritionFilters = React.useMemo(() => buildFilters(filterThresholds), [filterThresholds]);
+
+  function openThresholdEdit(key: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const def = FILTER_DEFS.find((d) => d.key === key);
+    const current = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
+    setThresholdEditKey(key);
+    setThresholdEditValue(String(current));
+  }
+
+  function saveThreshold() {
+    if (!thresholdEditKey) return;
+    const parsed = parseInt(thresholdEditValue, 10);
+    if (isNaN(parsed) || parsed < 0) return;
+    const next = { ...filterThresholds, [thresholdEditKey]: parsed };
+    setFilterThresholds(next);
+    AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setThresholdEditKey(null);
+  }
+
+  function adjustThreshold(delta: number) {
+    const parsed = parseInt(thresholdEditValue, 10) || 0;
+    const next = Math.max(0, parsed + delta);
+    setThresholdEditValue(String(next));
+  }
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -315,7 +421,7 @@ export default function NutritionScreen() {
   const filteredSearchResults: FoodListItem[] =
     isSearching && activeFilters.size > 0
       ? searchResults.filter((item) =>
-          NUTRITION_FILTERS.filter((f) => activeFilters.has(f.key)).every((f) =>
+          nutritionFilters.filter((f) => activeFilters.has(f.key)).every((f) =>
             f.test(item)
           )
         )
@@ -530,12 +636,14 @@ export default function NutritionScreen() {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.filterScroll}
                 >
-                  {NUTRITION_FILTERS.map((filter) => {
+                  {nutritionFilters.map((filter) => {
                     const active = activeFilters.has(filter.key);
                     return (
                       <TouchableOpacity
                         key={filter.key}
                         onPress={() => toggleFilter(filter.key)}
+                        onLongPress={() => openThresholdEdit(filter.key)}
+                        delayLongPress={400}
                         activeOpacity={0.75}
                         style={[
                           styles.filterChip,
@@ -567,8 +675,22 @@ export default function NutritionScreen() {
                             },
                           ]}
                         >
-                          {filter.label}
+                          {filter.chipLabel}
                         </Text>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            openThresholdEdit(filter.key);
+                          }}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons
+                            name="settings-outline"
+                            size={11}
+                            color={active ? colors.primaryForeground + "99" : colors.mutedForeground + "80"}
+                            style={{ marginLeft: 1 }}
+                          />
+                        </TouchableOpacity>
                       </TouchableOpacity>
                     );
                   })}
@@ -1144,6 +1266,113 @@ export default function NutritionScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* Filter Threshold Edit Modal */}
+      <Modal
+        visible={thresholdEditKey !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setThresholdEditKey(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            {(() => {
+              const def = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
+              if (!def) return null;
+              const symbol = def.direction === "gte" ? "≥" : "≤";
+              const step = def.unit === "kcal" ? 10 : 1;
+              const bigStep = def.unit === "kcal" ? 50 : 5;
+              return (
+                <>
+                  <View style={styles.thresholdModalHeader}>
+                    <Ionicons name={def.icon} size={20} color={colors.primary} />
+                    <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                      {def.label}
+                    </Text>
+                  </View>
+                  <Text style={[styles.thresholdModalDesc, { color: colors.mutedForeground }]}>
+                    Show foods where {def.nutrient} is {symbol} the value below.
+                  </Text>
+
+                  <View style={styles.thresholdRow}>
+                    <TouchableOpacity
+                      onPress={() => adjustThreshold(-bigStep)}
+                      style={[styles.thresholdStepBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={[styles.thresholdStepBtnText, { color: colors.foreground }]}>−{bigStep}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => adjustThreshold(-step)}
+                      style={[styles.thresholdStepBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={[styles.thresholdStepBtnText, { color: colors.foreground }]}>−{step}</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.thresholdValueContainer}>
+                      <TextInput
+                        value={thresholdEditValue}
+                        onChangeText={(v) => setThresholdEditValue(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="number-pad"
+                        style={[styles.thresholdValueInput, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.primary }]}
+                        selectTextOnFocus
+                      />
+                      <Text style={[styles.thresholdUnit, { color: colors.mutedForeground }]}>{def.unit}</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => adjustThreshold(step)}
+                      style={[styles.thresholdStepBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={[styles.thresholdStepBtnText, { color: colors.foreground }]}>+{step}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => adjustThreshold(bigStep)}
+                      style={[styles.thresholdStepBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={[styles.thresholdStepBtnText, { color: colors.foreground }]}>+{bigStep}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={[styles.thresholdPreview, { color: colors.mutedForeground }]}>
+                    Filter: {def.label} {symbol}{thresholdEditValue || "0"}{def.unit}
+                  </Text>
+
+                  <View style={styles.modalBtns}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const def2 = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
+                        if (def2) {
+                          setThresholdEditValue(String(def2.defaultThreshold));
+                        }
+                      }}
+                      style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                    >
+                      <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                        Reset
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={saveThreshold}
+                      style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
+                    >
+                      <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
+                        Save
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
           </GlassCard>
         </View>
       </Modal>
@@ -2071,5 +2300,60 @@ const styles = StyleSheet.create({
   historyFoodCal: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  thresholdModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  thresholdModalDesc: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 20,
+  },
+  thresholdRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 14,
+  },
+  thresholdStepBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    minWidth: 36,
+    alignItems: "center",
+  },
+  thresholdStepBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  thresholdValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  thresholdValueInput: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    width: 72,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  thresholdUnit: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  thresholdPreview: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginBottom: 18,
   },
 });
