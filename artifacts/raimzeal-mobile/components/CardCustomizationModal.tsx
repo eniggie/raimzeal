@@ -837,7 +837,12 @@ export default function CardCustomizationModal({
   const cardScale = previewContainerWidth / CARD_WIDTH;
   const scaledCardHeight = cardNativeHeight * cardScale;
 
-  const zoomScale = Math.min((screenWidth - 48) / CARD_WIDTH, 1);
+  // Show the zoom view at true 1:1 (CARD_WIDTH px) when the screen is wide enough.
+  // This matches the captureRef output exactly: same dimensions, same component, no additional
+  // wrapper scaling. On very narrow screens (<360 + 24px padding) we scale down to fit, but
+  // still as close to 1:1 as possible. CARD_WIDTH = 360, so most modern phones (≥384pt) get 1:1.
+  const zoomScale = Math.min(1, (screenWidth - 24) / CARD_WIDTH);
+  const zoomIsOneToOne = zoomScale >= 1;
   const zoomCardHeight = cardNativeHeight * zoomScale;
 
   const activePreset = presets.find((p) => p.id === activePresetId);
@@ -1040,15 +1045,35 @@ export default function CardCustomizationModal({
             )}
 
             {/* Live card preview */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              CARD PREVIEW
+            <View style={styles.previewSectionHeader}>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                LIVE PREVIEW
+              </Text>
+              <View style={[styles.exactMatchBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "35" }]}>
+                <Ionicons name={zoomIsOneToOne ? "expand-outline" : "eye-outline"} size={11} color={colors.primary} />
+                <Text style={[styles.exactMatchBadgeText, { color: colors.primary }]}>
+                  {zoomIsOneToOne ? "Tap for 1:1 preview" : "Scaled to fit"}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.previewSubtitle, { color: colors.mutedForeground }]}>
+              Same card, same content — tap to see{zoomIsOneToOne ? " the 1:1 pixel-accurate view" : " a larger preview"}
             </Text>
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={openZoom}
               style={[
                 styles.previewContainer,
-                { width: previewContainerWidth, height: scaledCardHeight },
+                {
+                  width: previewContainerWidth,
+                  height: scaledCardHeight,
+                  // Match the card's own corner radius at the rendered scale so the
+                  // clip boundary is identical to what the card itself draws.
+                  borderRadius: 20 * cardScale,
+                  // Match the card's background (#0a0a0b) so no modal background
+                  // bleeds through corner gaps between clip and card border radius.
+                  backgroundColor: "#0a0a0b",
+                },
               ]}
             >
               <View
@@ -1068,10 +1093,15 @@ export default function CardCustomizationModal({
                   themeId={selectedThemeId}
                 />
               </View>
-              <View style={styles.zoomHint}>
-                <Ionicons name="expand-outline" size={13} color="#fff" />
-                <Text style={styles.zoomHintText}>Tap to zoom</Text>
-              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openZoom}
+              activeOpacity={0.75}
+              style={[styles.zoomHintRow, { borderColor: colors.border, backgroundColor: colors.muted }]}
+            >
+              <Ionicons name="expand-outline" size={13} color={colors.mutedForeground} />
+              <Text style={[styles.zoomHintRowText, { color: colors.mutedForeground }]}>Tap to see full-size preview</Text>
+              <Ionicons name="chevron-forward" size={13} color={colors.mutedForeground} />
             </TouchableOpacity>
 
             {/* Color theme picker */}
@@ -1380,22 +1410,35 @@ export default function CardCustomizationModal({
               cardWidth={CARD_WIDTH * zoomScale}
               cardHeight={zoomCardHeight}
             >
-              <View
-                style={[
-                  styles.previewScaler,
-                  {
-                    width: CARD_WIDTH,
-                    transform: [{ scale: zoomScale }],
-                  },
-                ]}
-              >
+              {zoomIsOneToOne ? (
+                // True 1:1 render — no scaling transform applied.
+                // This matches the captureRef output exactly: same pixel dimensions,
+                // same component instance, same layout — just shown on-screen.
                 <ShareProgressCard
                   {...cardPreviewData}
                   visibleStats={visibleStats}
                   customMessage={customMessage.trim()}
                   themeId={selectedThemeId}
                 />
-              </View>
+              ) : (
+                // Narrow screen: scale down to fit, same approach as the modal preview.
+                <View
+                  style={[
+                    styles.previewScaler,
+                    {
+                      width: CARD_WIDTH,
+                      transform: [{ scale: zoomScale }],
+                    },
+                  ]}
+                >
+                  <ShareProgressCard
+                    {...cardPreviewData}
+                    visibleStats={visibleStats}
+                    customMessage={customMessage.trim()}
+                    themeId={selectedThemeId}
+                  />
+                </View>
+              )}
             </ZoomableCard>
           </Animated.View>
 
@@ -1426,7 +1469,15 @@ export default function CardCustomizationModal({
             </TouchableOpacity>
           </Animated.View>
 
-          <Text style={styles.zoomDismissHint}>Pinch to zoom · double-tap to reset</Text>
+          <View style={styles.zoomFooter}>
+            <View style={styles.zoomExactBadge}>
+              <Ionicons name="checkmark-circle" size={12} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.zoomExactBadgeText}>
+                {zoomIsOneToOne ? "1:1 scale · Closest view to the final image" : "Scaled to fit · pinch to zoom in"}
+              </Text>
+            </View>
+            <Text style={styles.zoomDismissHint}>Pinch to zoom · double-tap to reset</Text>
+          </View>
         </Animated.View>
       </Modal>
 
@@ -1717,14 +1768,56 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Card preview
+  previewSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  exactMatchBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  exactMatchBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  previewSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 10,
+  },
   previewContainer: {
     alignSelf: "center",
     overflow: "hidden",
     borderRadius: 20,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   previewScaler: {
     transformOrigin: "top left",
+  },
+  zoomHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 16,
+    alignSelf: "center",
+  },
+  zoomHintRowText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+    textAlign: "center",
   },
   // Theme thumbnail picker
   themeThumbnailsWrapper: {
@@ -1903,23 +1996,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
   },
-  zoomHint: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  zoomHintText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "#fff",
-  },
   zoomOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.88)",
@@ -1931,12 +2007,30 @@ const styles = StyleSheet.create({
     right: 20,
   },
   zoomCloseBtn: {},
-  zoomDismissHint: {
+  zoomFooter: {
     position: "absolute",
-    bottom: 40,
-    fontSize: 13,
+    bottom: 36,
+    alignItems: "center",
+    gap: 8,
+  },
+  zoomExactBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  zoomExactBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.7)",
+  },
+  zoomDismissHint: {
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.4)",
   },
   // Save preset modal
   presetModalOverlay: {
