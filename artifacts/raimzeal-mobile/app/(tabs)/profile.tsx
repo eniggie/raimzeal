@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   InteractionManager,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -152,6 +154,10 @@ export default function ProfileScreen() {
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+
+  const flashOpacity = useRef(new Animated.Value(0)).current;
+  const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
+  const [showFlashOverlay, setShowFlashOverlay] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -374,6 +380,16 @@ export default function ProfileScreen() {
       setShareLoading(true);
     }
 
+    // Brief glow flash in the selected theme color as a visual confirmation
+    const chosenTheme = CARD_THEMES.find((t) => t.id === themeId) ?? CARD_THEMES[0];
+    setFlashColor(chosenTheme.accent);
+    setShowFlashOverlay(true);
+    flashOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(flashOpacity, { toValue: 0.28, duration: 130, useNativeDriver: true }),
+      Animated.timing(flashOpacity, { toValue: 0, duration: 480, useNativeDriver: true }),
+    ]).start(() => setShowFlashOverlay(false));
+
     // Wait for all pending interactions and layout to finish before capturing
     // so the offscreen card has fully re-rendered with the new props.
     InteractionManager.runAfterInteractions(async () => {
@@ -479,6 +495,22 @@ export default function ProfileScreen() {
         generating={shareLoading || saveLoading}
         cardPreviewData={cardProps}
       />
+
+      {/* Theme color flash confirmation — appears above everything when generating */}
+      <Modal
+        transparent
+        animationType="none"
+        visible={showFlashOverlay}
+        statusBarTranslucent
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: flashColor, opacity: flashOpacity },
+          ]}
+        />
+      </Modal>
 
       {/* Header */}
       <View
