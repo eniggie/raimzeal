@@ -4,13 +4,15 @@ import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 interface ChartDay {
   date: string;
-  calories: number;
+  value: number;
   label: string;
 }
 
 interface CalorieTrendChartProps {
   days: ChartDay[];
-  goalCalories: number;
+  goal: number;
+  unit: string;
+  accentColor: string;
   highlightedDate: string | null;
   onBarPress: (date: string) => void;
   colors: {
@@ -35,7 +37,9 @@ const MIN_BAR_H = 3;
 
 export function CalorieTrendChart({
   days,
-  goalCalories,
+  goal,
+  unit,
+  accentColor,
   highlightedDate,
   onBarPress,
   colors,
@@ -44,14 +48,14 @@ export function CalorieTrendChart({
   const containerWidth = screenWidth - 32;
   const drawWidth = containerWidth - SIDE_PADDING * 2;
 
-  const maxCal = Math.max(...days.map((d) => d.calories), goalCalories * 1.15);
+  const maxVal = Math.max(...days.map((d) => d.value), goal * 1.15);
 
   const barCount = days.length;
   const barGap = barCount > 10 ? 3 : 5;
   const barW = Math.floor((drawWidth - barGap * (barCount - 1)) / Math.max(barCount, 1));
   const barAreaH = CHART_HEIGHT - TOP_PADDING - LABEL_HEIGHT;
 
-  const goalY = TOP_PADDING + barAreaH * (1 - goalCalories / maxCal);
+  const goalY = TOP_PADDING + barAreaH * (1 - goal / maxVal);
 
   return (
     <View>
@@ -81,17 +85,17 @@ export function CalorieTrendChart({
         </SvgText>
 
         {days.map((day, idx) => {
-          const barH = Math.max(MIN_BAR_H, barAreaH * (day.calories / maxCal));
+          const barH = Math.max(MIN_BAR_H, barAreaH * (day.value / maxVal));
           const x = SIDE_PADDING + idx * (barW + barGap);
           const y = TOP_PADDING + barAreaH - barH;
           const isHighlighted = day.date === highlightedDate;
-          const isAboveGoal = day.calories >= goalCalories;
+          const isAboveGoal = day.value >= goal;
           const barColor = isHighlighted
             ? colors.warning
             : isAboveGoal
-            ? colors.primary
+            ? accentColor
             : colors.mutedForeground;
-          const barOpacity = isHighlighted ? 1 : day.calories === 0 ? 0.2 : 0.75;
+          const barOpacity = isHighlighted ? 1 : day.value === 0 ? 0.2 : 0.75;
 
           return (
             <React.Fragment key={day.date}>
@@ -124,8 +128,8 @@ export function CalorieTrendChart({
               >
                 {day.label}
               </SvgText>
-              {/* Calorie label on top of bar when highlighted */}
-              {isHighlighted && day.calories > 0 && (
+              {/* Value label on top of bar when highlighted */}
+              {isHighlighted && day.value > 0 && (
                 <SvgText
                   x={x + barW / 2}
                   y={y - 4}
@@ -134,7 +138,7 @@ export function CalorieTrendChart({
                   textAnchor="middle"
                   fontWeight="bold"
                 >
-                  {day.calories}
+                  {day.value}
                 </SvgText>
               )}
             </React.Fragment>
@@ -157,7 +161,7 @@ export function CalorieTrendChart({
               width: 10,
               height: 10,
               borderRadius: 2,
-              backgroundColor: colors.primary,
+              backgroundColor: accentColor,
               opacity: 0.8,
             }}
           />
@@ -185,7 +189,7 @@ export function CalorieTrendChart({
             }}
           />
           <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
-            Goal ({goalCalories} kcal)
+            Goal ({goal} {unit})
           </Text>
         </View>
       </View>

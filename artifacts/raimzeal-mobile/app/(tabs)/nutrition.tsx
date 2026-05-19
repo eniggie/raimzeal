@@ -513,6 +513,10 @@ export default function NutritionScreen() {
 
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
 
+  type TrendMetric = "calories" | "protein" | "carbs" | "fat";
+
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>("calories");
+
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MAX_DAYS = 14;
@@ -522,10 +526,23 @@ export default function NutritionScreen() {
       return {
         date,
         calories: Math.round(totals.calories),
+        protein: Math.round(totals.protein),
+        carbs: Math.round(totals.carbs),
+        fat: Math.round(totals.fat),
         label: DAY_LABELS[d.getDay()],
       };
     });
   }, [historyDays]);
+
+  const chartDisplayDays = React.useMemo(
+    () =>
+      trendChartDays.map((day) => ({
+        date: day.date,
+        value: day[trendMetric],
+        label: day.label,
+      })),
+    [trendChartDays, trendMetric]
+  );
 
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -1887,7 +1904,7 @@ export default function NutritionScreen() {
                   </ScrollView>
                 </View>
 
-                {/* Calorie trend chart */}
+                {/* Calorie / macro trend chart */}
                 {trendChartDays.length > 0 && (
                   <View
                     style={[
@@ -1897,16 +1914,75 @@ export default function NutritionScreen() {
                   >
                     <View style={styles.trendChartHeader}>
                       <Text style={[styles.trendChartTitle, { color: colors.foreground }]}>
-                        Calorie Trend
+                        {trendMetric === "calories"
+                          ? "Calorie Trend"
+                          : trendMetric === "protein"
+                          ? "Protein Trend"
+                          : trendMetric === "carbs"
+                          ? "Carbs Trend"
+                          : "Fat Trend"}
                       </Text>
                       <Text style={[styles.trendChartSubtitle, { color: colors.mutedForeground }]}>
                         Last {trendChartDays.length} day{trendChartDays.length !== 1 ? "s" : ""}
                         {highlightedDate ? " · tap again to clear" : " · tap a bar to highlight"}
                       </Text>
                     </View>
+                    {/* Segmented metric selector */}
+                    <View style={styles.trendMetricRow}>
+                      {(
+                        [
+                          { key: "calories" as const, label: "Calories", color: colors.primary },
+                          { key: "protein" as const, label: "Protein", color: "#3b82f6" },
+                          { key: "carbs" as const, label: "Carbs", color: "#f97316" },
+                          { key: "fat" as const, label: "Fat", color: "#ec4899" },
+                        ] as const
+                      ).map(({ key, label, color }) => {
+                        const isActive = trendMetric === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            onPress={() => setTrendMetric(key)}
+                            style={[
+                              styles.trendMetricPill,
+                              {
+                                backgroundColor: isActive ? color + "22" : "transparent",
+                                borderColor: isActive ? color : colors.border,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.trendMetricPillText,
+                                { color: isActive ? color : colors.mutedForeground },
+                              ]}
+                            >
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                     <CalorieTrendChart
-                      days={trendChartDays}
-                      goalCalories={CALORIE_GOAL}
+                      days={chartDisplayDays}
+                      goal={
+                        trendMetric === "calories"
+                          ? CALORIE_GOAL
+                          : trendMetric === "protein"
+                          ? PROTEIN_GOAL
+                          : trendMetric === "carbs"
+                          ? CARBS_GOAL
+                          : FAT_GOAL
+                      }
+                      unit={trendMetric === "calories" ? "kcal" : "g"}
+                      accentColor={
+                        trendMetric === "calories"
+                          ? colors.primary
+                          : trendMetric === "protein"
+                          ? "#3b82f6"
+                          : trendMetric === "carbs"
+                          ? "#f97316"
+                          : "#ec4899"
+                      }
                       highlightedDate={highlightedDate}
                       onBarPress={handleChartBarPress}
                       colors={colors}
@@ -3786,6 +3862,21 @@ const styles = StyleSheet.create({
   trendChartSubtitle: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  trendMetricRow: {
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  trendMetricPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  trendMetricPillText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   historyDay: {
     gap: 0,
