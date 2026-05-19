@@ -258,6 +258,22 @@ export default function CardCustomizationModal({
   const [savingPreset, setSavingPreset] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
 
+  // Badge fade-in animation
+  const badgeFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (restoredFromStorage && !badgeDismissed) {
+      badgeFadeAnim.setValue(0);
+      Animated.timing(badgeFadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      badgeFadeAnim.setValue(0);
+    }
+  }, [restoredFromStorage, badgeDismissed]);
+
   // Confirmation toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
@@ -550,7 +566,7 @@ export default function CardCustomizationModal({
                 Choose what to show on your progress card
               </Text>
               {restoredFromStorage && !badgeDismissed && (
-                <View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}>
+                <Animated.View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40", opacity: badgeFadeAnim }]}>
                   <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
                   <Text style={[styles.restoredBadgeText, { color: colors.primary }]}>
                     Restored from last time
@@ -562,7 +578,7 @@ export default function CardCustomizationModal({
                   >
                     <Ionicons name="close" size={11} color={colors.primary} />
                   </TouchableOpacity>
-                </View>
+                </Animated.View>
               )}
             </View>
             <View style={styles.titleActions}>
