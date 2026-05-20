@@ -74,6 +74,14 @@ export const emailSubscribeRateLimit = rateLimit({
   message: { error: "Too many subscription requests." },
 });
 
+export const emailUnsubscribeRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many unsubscribe requests." },
+});
+
 // Protect the admin digest blast endpoint — 3 sends per hour max
 export const digestSendNowRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,

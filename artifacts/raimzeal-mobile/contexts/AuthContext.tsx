@@ -13,17 +13,21 @@ function getApiBase(): string {
   return base || "/api";
 }
 
-async function triggerWelcomeEmail(email: string, name: string): Promise<void> {
+async function triggerWelcomeEmail(email: string, name: string, accessToken: string): Promise<void> {
   try {
     const base = getApiBase();
+    const authHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`,
+    };
     await fetch(`${base}/email/send`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify({ to: email, userName: name, type: "welcome" }),
     });
     await fetch(`${base}/email/digest/subscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify({ email, userName: name }),
     });
   } catch {
@@ -73,14 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
-    if (!error) {
-      // Fire welcome email + digest subscription (non-blocking, non-fatal)
-      triggerWelcomeEmail(email, name);
+    if (!error && data.session?.access_token) {
+      // Fire welcome email + digest subscription (non-blocking, non-fatal).
+      // Only runs when a session token is immediately available (i.e. email
+      // confirmation is disabled). When confirmation is required, the session
+      // is null here and the welcome email is skipped — it can be triggered
+      // after the user confirms and logs in.
+      triggerWelcomeEmail(email, name, data.session.access_token);
     }
     return { error: error?.message ?? null };
   }, []);

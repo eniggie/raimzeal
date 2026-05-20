@@ -2,10 +2,22 @@ import { Router } from "express";
 import nodemailer from "nodemailer";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
+import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, emailUnsubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
 
 const emailRouter = Router();
+
+// ─── HTML escaping ─────────────────────────────────────────────────────────────
+// Must be applied to any user-supplied value before it is interpolated into HTML.
+
+function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 // ─── Content pools — deterministic weekly rotation ────────────────────────────
 // We pick by ISO week index so every subscriber gets the same tip that week.
@@ -207,10 +219,11 @@ function buildSimpleHtmlEmail(subject: string, bodyText: string): string {
 function buildWeeklyDigestHtml(firstName: string, motivation: string, tipObj: { tip: string; link: string }, insightObj: { insight: string; link: string }, resource: { name: string; url: string; desc: string }): string {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const safeName = escapeHtml(firstName);
 
   const bodyHtml = `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">${dateStr}</p>
-    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Good morning, ${firstName}! 🌅</p>
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Good morning, ${safeName}! 🌅</p>
 
     <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Ovia AI — Weekly Motivation</p>
@@ -245,8 +258,9 @@ function buildWeeklyDigestHtml(firstName: string, motivation: string, tipObj: { 
 }
 
 function buildMidWeekHtml(firstName: string, motivation: string): string {
+  const safeName = escapeHtml(firstName);
   const bodyHtml = `
-    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Mid-week check-in, ${firstName}! 💪</p>
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Mid-week check-in, ${safeName}! 💪</p>
 
     <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#9ca3af;">
       You're halfway through the week. Now is the perfect time to push hard and finish strong.
@@ -274,6 +288,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
   if (!transporter) throw new Error("SMTP not configured");
 
   const firstName = userName.split(" ")[0];
+  const safeFirstName = escapeHtml(firstName);
   const motivation = pickRandom(MOTIVATION_MESSAGES).replace(/{name}/g, firstName);
   const tipObj = weeklyPick(FITNESS_TIPS);
   const resource = weeklyPick(WEEKLY_RESOURCES);
@@ -281,7 +296,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
   const subject = `Welcome to RAIMZEAL, ${firstName}! Your journey starts now 🚀`;
 
   const bodyHtml = `
-    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Welcome, ${firstName}! 🎉</p>
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Welcome, ${safeFirstName}! 🎉</p>
 
     <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#e8e8ec;">
       Your RAIMZEAL account is almost ready. Please <strong style="color:#2E8B57;">verify your email address</strong> via the confirmation email to unlock all features.
@@ -482,12 +497,13 @@ emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req,
   const subject = "Your RAIMZEAL verification code";
   const fromAddress = process.env["SMTP_FROM"] ?? process.env["SMTP_USER"];
   const firstName = userName.split(" ")[0];
+  const safeFirstName = escapeHtml(firstName);
 
   try {
     await transporter.sendMail({
       from: `"RAIMZEAL Security" <${fromAddress}>`, to, subject,
       text: `Your RAIMZEAL verification code is: ${otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.\n\n— RAIMZEAL Security`,
-      html: buildSimpleHtmlEmail(subject, `Hi ${firstName},<br /><br />Your RAIMZEAL verification code is:<br /><br /><span style="font-size:32px;font-weight:700;letter-spacing:6px;color:#2E8B57;">${otp}</span><br /><br />This code expires in 10 minutes. Do not share it with anyone.`),
+      html: buildSimpleHtmlEmail(subject, `Hi ${safeFirstName},<br /><br />Your RAIMZEAL verification code is:<br /><br /><span style="font-size:32px;font-weight:700;letter-spacing:6px;color:#2E8B57;">${otp}</span><br /><br />This code expires in 10 minutes. Do not share it with anyone.`),
     });
     req.log.info({ to }, "Verification OTP sent");
     res.json({ success: true, message: "Verification code sent." });
@@ -496,7 +512,7 @@ emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req,
   }
 });
 
-emailRouter.post("/email/digest/subscribe", emailSubscribeRateLimit, async (req, res) => {
+emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit, async (req, res) => {
   const { email, userName } = req.body as { email: string; userName: string };
   if (!email || !userName) { res.status(400).json({ error: "email and userName are required." }); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "Invalid email address." }); return; }
@@ -511,7 +527,7 @@ emailRouter.post("/email/digest/subscribe", emailSubscribeRateLimit, async (req,
   }
 });
 
-emailRouter.post("/email/digest/unsubscribe", async (req, res) => {
+emailRouter.post("/email/digest/unsubscribe", requireAuth, emailUnsubscribeRateLimit, async (req, res) => {
   const { email } = req.body as { email: string };
   if (!email) { res.status(400).json({ error: "email is required." }); return; }
   try {

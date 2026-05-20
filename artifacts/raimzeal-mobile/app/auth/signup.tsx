@@ -17,31 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 
-function getApiBase(): string {
-  if (Platform.OS === "web") return "/api";
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  if (domain) return `https://${domain}/api`;
-  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
-  if (explicit) return explicit;
-  return "http://localhost:80/api";
-}
-
-async function postSignupEmails(email: string, name: string): Promise<void> {
-  const base = getApiBase();
-  await Promise.allSettled([
-    fetch(`${base}/email/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: email, userName: name, type: "welcome" }),
-    }),
-    fetch(`${base}/email/digest/subscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, userName: name }),
-    }),
-  ]);
-}
-
 const MIN_AGE = 18;
 
 export default function SignupScreen() {
@@ -116,7 +91,6 @@ export default function SignupScreen() {
       setLoading(false);
       Alert.alert("Sign up failed", error);
     } else {
-      postSignupEmails(cleanEmail, cleanName).catch(() => {});
       setLoading(false);
       router.push({ pathname: "/auth/verify-email", params: { email: cleanEmail } });
     }
