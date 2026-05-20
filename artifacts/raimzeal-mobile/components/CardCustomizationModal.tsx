@@ -677,6 +677,14 @@ export default function CardCustomizationModal({
   const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("m");
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const knobAnims = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(
+      STAT_TOGGLES.map((t) => [
+        t.key,
+        new Animated.Value(DEFAULT_VISIBLE_STATS[t.key as keyof typeof DEFAULT_VISIBLE_STATS] ? 20 : 0),
+      ])
+    )
+  ).current;
   const actionLongPressedRef = useRef(false);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
@@ -854,6 +862,7 @@ export default function CardCustomizationModal({
             : "m";
 
         setVisibleStats(effectiveStats);
+        syncKnobsImmediate(effectiveStats);
         setCustomMessage(effectiveMessage);
         setBackgroundPhotoUri(savedBgPhoto ?? null);
         setSelectedThemeId(effectiveTheme);
@@ -867,6 +876,7 @@ export default function CardCustomizationModal({
         );
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+        syncKnobsImmediate({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
         setBackgroundPhotoUri(null);
         setSelectedThemeId(DEFAULT_THEME_ID);
@@ -880,11 +890,39 @@ export default function CardCustomizationModal({
     loadSaved();
   }, [visible]);
 
+  function syncKnobsImmediate(stats: CardVisibleStats) {
+    STAT_TOGGLES.forEach(({ key }) => {
+      knobAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 20 : 0);
+    });
+  }
+
   function toggleStat(key: keyof CardVisibleStats) {
-    setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
+    setVisibleStats((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      const toValue = next[key] ? 20 : 0;
+      if (reduceMotionRef.current) {
+        knobAnims[key].setValue(toValue);
+      } else {
+        Animated.spring(knobAnims[key], {
+          toValue,
+          damping: 20,
+          stiffness: 300,
+          mass: 0.8,
+          useNativeDriver: true,
+        }).start();
+      }
+      return next;
+    });
     setActivePresetId(null);
     setRestoredFromStorage(false);
     resetZoomPosition();
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   function handleThemeChange(themeId: CardThemeId) {
@@ -1008,6 +1046,7 @@ export default function CardCustomizationModal({
 
   async function handleResetDefaults() {
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
+    syncKnobsImmediate({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
     setBackgroundPhotoUri(null);
     setSelectedThemeId(DEFAULT_THEME_ID);
@@ -1073,7 +1112,9 @@ export default function CardCustomizationModal({
   }
 
   function loadPreset(preset: CardPreset) {
-    setVisibleStats({ ...DEFAULT_VISIBLE_STATS, ...preset.visibleStats });
+    const stats = { ...DEFAULT_VISIBLE_STATS, ...preset.visibleStats };
+    setVisibleStats(stats);
+    syncKnobsImmediate(stats);
     setCustomMessage(preset.customMessage);
     setSelectedThemeId(preset.themeId);
     setDisplayedThemeId(preset.themeId);
@@ -1840,12 +1881,12 @@ export default function CardCustomizationModal({
                         },
                       ]}
                     >
-                      <View
+                      <Animated.View
                         style={[
                           styles.pillKnob,
                           {
                             backgroundColor: isOn ? colors.primaryForeground : colors.mutedForeground,
-                            alignSelf: isOn ? "flex-end" : "flex-start",
+                            transform: [{ translateX: knobAnims[item.key] }],
                           },
                         ]}
                       />
