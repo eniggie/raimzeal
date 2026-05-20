@@ -23,7 +23,17 @@ export function ForgotPassword() {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
-        setError('Something went wrong. Please try again.');
+        console.error('[RAIMZEAL] resetPasswordForEmail error:', error.status, error.message);
+        const msg = error.message ?? '';
+        if (error.status === 429 || msg.toLowerCase().includes('rate limit')) {
+          setError('Too many requests — please wait a few minutes and try again.');
+        } else if (msg.toLowerCase().includes('email') && msg.toLowerCase().includes('send')) {
+          setError('Email delivery is temporarily unavailable. Please try again shortly.');
+        } else if (msg.toLowerCase().includes('redirect')) {
+          setError('Configuration error. Please contact support.');
+        } else {
+          setError(msg || 'Something went wrong. Please try again.');
+        }
       } else {
         setSent(true);
       }

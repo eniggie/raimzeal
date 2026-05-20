@@ -25,13 +25,43 @@ export function ResetPassword() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Supabase puts the recovery token in the URL hash.
-    // onAuthStateChange fires with event=PASSWORD_RECOVERY when the token is processed.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    // Subscribe first so we never miss the event (Supabase replays the current
+    // auth state to new listeners, so this catches both:
+    //   • implicit flow: token arrives in the URL hash on page load
+    //   • PKCE flow:     code was exchanged before this component mounted)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSessionReady(true);
       }
+      // PKCE: if the session is already set when this listener subscribes the
+      // initial event is INITIAL_SESSION. Accept it when the URL still contains
+      // a Supabase recovery type indicator, or fall back to any active session.
+      if (event === 'INITIAL_SESSION' && session) {
+        const hash = window.location.hash;
+        const search = window.location.search;
+        const isRecovery =
+          hash.includes('type=recovery') ||
+          search.includes('type=recovery') ||
+          hash.includes('access_token') ||
+          search.includes('code=');
+        if (isRecovery) setSessionReady(true);
+      }
     });
+
+    // Fallback: if detectSessionInUrl already exchanged the code (PKCE) before
+    // this effect ran, getSession() returns the established recovery session.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      const hash = window.location.hash;
+      const search = window.location.search;
+      const isRecovery =
+        hash.includes('type=recovery') ||
+        search.includes('type=recovery') ||
+        hash.includes('access_token') ||
+        search.includes('code=');
+      if (isRecovery) setSessionReady(true);
+    }).catch(() => {/* ignore */});
+
     return () => subscription.unsubscribe();
   }, []);
 
