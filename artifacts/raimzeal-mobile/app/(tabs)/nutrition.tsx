@@ -397,6 +397,132 @@ function DraggableFavItem({
   );
 }
 
+interface DraggablePresetItemProps {
+  preset: CustomFilterPreset;
+  indexRef: React.MutableRefObject<number>;
+  listRef: React.MutableRefObject<CustomFilterPreset[]>;
+  itemHeightRef: React.MutableRefObject<number>;
+  isActive: boolean;
+  isHover: boolean;
+  displacement: number;
+  onDragStart: (index: number) => void;
+  onHover: (index: number) => void;
+  onDrop: (from: number, to: number) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function DraggablePresetItem({
+  preset,
+  indexRef,
+  listRef,
+  itemHeightRef,
+  isActive,
+  isHover,
+  displacement,
+  onDragStart,
+  onHover,
+  onDrop,
+  colors,
+}: DraggablePresetItemProps) {
+  const dragY = useSharedValue(0);
+  const dispY = useSharedValue(0);
+  const currentDy = useRef(0);
+
+  useEffect(() => {
+    dispY.value = withSpring(displacement, SPRING_CONFIG);
+  }, [displacement]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dragY.value + dispY.value }],
+  }));
+
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
+  const onDropRef = useRef(onDrop);
+  onDropRef.current = onDrop;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragY.value = 0;
+        currentDy.current = 0;
+        onDragStartRef.current(indexRef.current);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      },
+      onPanResponderMove: (_, { dy }) => {
+        dragY.value = dy;
+        currentDy.current = dy;
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(dy / slotHeight)));
+        onHoverRef.current(to);
+      },
+      onPanResponderRelease: () => {
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDy.current / slotHeight)));
+        dragY.value = withSpring(0, SPRING_CONFIG);
+        onDropRef.current(from, to);
+      },
+      onPanResponderTerminate: () => {
+        dragY.value = withSpring(0, SPRING_CONFIG);
+        onHoverRef.current(-1);
+      },
+    })
+  ).current;
+
+  return (
+    <Reanimated.View
+      onLayout={(e) => {
+        const h = e.nativeEvent.layout.height;
+        if (h > 0 && itemHeightRef.current !== h) {
+          itemHeightRef.current = h;
+        }
+      }}
+      style={[
+        styles.presetDragItem,
+        {
+          backgroundColor: colors.card,
+          borderColor: isActive
+            ? colors.secondary + "99"
+            : isHover
+            ? colors.secondary + "55"
+            : colors.secondary + "30",
+          zIndex: isActive ? 100 : 1,
+          elevation: isActive ? 8 : 0,
+          shadowColor: "#000",
+          shadowOpacity: isActive ? 0.18 : 0,
+          shadowRadius: isActive ? 8 : 0,
+          shadowOffset: { width: 0, height: 4 },
+          opacity: isActive ? 0.92 : 1,
+        },
+        animatedStyle,
+      ]}
+    >
+      <View {...panResponder.panHandlers} style={styles.dragHandle}>
+        <Ionicons name="reorder-three-outline" size={24} color={colors.mutedForeground} />
+      </View>
+      <View style={[styles.foodIcon, { backgroundColor: colors.secondary + "20" }]}>
+        <Ionicons name="bookmark" size={16} color={colors.secondary} />
+      </View>
+      <View style={styles.foodInfo}>
+        <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+          {preset.name}
+        </Text>
+        <Text style={[styles.foodMacros, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {preset.filterKeys.join(" · ")}
+        </Text>
+      </View>
+    </Reanimated.View>
+  );
+}
+
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -620,6 +746,17 @@ export default function NutritionScreen() {
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
+
+  const [editingPreset, setEditingPreset] = useState<CustomFilterPreset | null>(null);
+  const [editPresetName, setEditPresetName] = useState("");
+
+  const [isReorderingPresets, setIsReorderingPresets] = useState(false);
+  const [reorderPresetsItems, setReorderPresetsItems] = useState<CustomFilterPreset[]>([]);
+  const reorderPresetsRef = useRef<CustomFilterPreset[]>([]);
+  const [activeReorderPresetIdx, setActiveReorderPresetIdx] = useState(-1);
+  const [hoverReorderPresetIdx, setHoverReorderPresetIdx] = useState(-1);
+  const indexRefsPresetRef = useRef<React.MutableRefObject<number>[]>([]);
+  const presetItemHeightRef = useRef(DRAG_ITEM_HEIGHT);
 
   const [filterSummaryVisible, setFilterSummaryVisible] = useState(false);
   const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1015,6 +1152,77 @@ export default function NutritionScreen() {
     dismissFilterHint();
     setSavePresetName("");
     setShowSavePresetModal(true);
+  }
+
+  function openEditPresetModal(preset: CustomFilterPreset) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setEditPresetName(preset.name);
+    setEditingPreset(preset);
+  }
+
+  function confirmRenamePreset() {
+    if (!editingPreset) return;
+    const name = editPresetName.trim();
+    if (!name) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const next = customPresets.map((p) =>
+      p.id === editingPreset.id ? { ...p, name } : p
+    );
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    setEditingPreset(null);
+  }
+
+  function computePresetDisplacement(idx: number, active: number, hover: number): number {
+    if (active === -1 || hover === -1 || idx === active) return 0;
+    const slotHeight = presetItemHeightRef.current > 0 ? presetItemHeightRef.current : DRAG_ITEM_HEIGHT;
+    if (active < hover) {
+      if (idx > active && idx <= hover) return -slotHeight;
+    } else if (active > hover) {
+      if (idx >= hover && idx < active) return slotHeight;
+    }
+    return 0;
+  }
+
+  function enterPresetReorderMode() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const items = [...customPresets];
+    reorderPresetsRef.current = items;
+    while (indexRefsPresetRef.current.length < items.length) {
+      indexRefsPresetRef.current.push({ current: indexRefsPresetRef.current.length });
+    }
+    items.forEach((_, i) => {
+      indexRefsPresetRef.current[i].current = i;
+    });
+    setReorderPresetsItems(items);
+    setActiveReorderPresetIdx(-1);
+    setHoverReorderPresetIdx(-1);
+    setIsReorderingPresets(true);
+  }
+
+  function exitPresetReorderMode() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCustomPresets(reorderPresetsRef.current);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(reorderPresetsRef.current)).catch(() => {});
+    setIsReorderingPresets(false);
+    setActiveReorderPresetIdx(-1);
+    setHoverReorderPresetIdx(-1);
+  }
+
+  function handlePresetReorderDrop(from: number, to: number) {
+    setActiveReorderPresetIdx(-1);
+    setHoverReorderPresetIdx(-1);
+    if (from === to) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    const next = [...reorderPresetsRef.current];
+    const [removed] = next.splice(from, 1);
+    next.splice(to, 0, removed);
+    next.forEach((_, i) => {
+      if (indexRefsPresetRef.current[i]) indexRefsPresetRef.current[i].current = i;
+    });
+    reorderPresetsRef.current = next;
+    setReorderPresetsItems([...next]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
   const nutritionFilters = React.useMemo(() => buildFilters(filterThresholds), [filterThresholds]);
@@ -1572,42 +1780,94 @@ export default function NutritionScreen() {
               <View style={{ gap: 8 }}>
                 {/* Custom preset chips row */}
                 {customPresets.length > 0 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={[styles.filterScroll, { paddingVertical: 2 }]}
-                  >
-                    {customPresets.map((preset) => (
-                      <View
-                        key={preset.id}
-                        style={[
-                          styles.presetChip,
-                          { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
-                        ]}
-                      >
+                  <View style={{ gap: 4 }}>
+                    <View style={styles.presetChipsHeader}>
+                      <Text style={[styles.presetChipsLabel, { color: colors.mutedForeground }]}>
+                        Saved Presets
+                      </Text>
+                      {isReorderingPresets ? (
                         <TouchableOpacity
-                          onPress={() => applyPreset(preset)}
-                          activeOpacity={0.75}
-                          style={styles.presetChipInner}
+                          onPress={exitPresetReorderMode}
+                          style={[styles.reorderDoneBtn, { backgroundColor: colors.secondary }]}
+                          activeOpacity={0.85}
                         >
-                          <Ionicons name="bookmark" size={12} color={colors.secondary} />
-                          <Text
-                            style={[styles.presetChipText, { color: colors.secondary }]}
-                            numberOfLines={1}
-                          >
-                            {preset.name}
+                          <Text style={[styles.reorderDoneText, { color: colors.primaryForeground }]}>
+                            Done
                           </Text>
                         </TouchableOpacity>
+                      ) : customPresets.length >= 2 ? (
                         <TouchableOpacity
-                          onPress={() => deleteCustomPreset(preset.id)}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                          style={styles.presetDeleteBtn}
+                          onPress={enterPresetReorderMode}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons name="close" size={13} color={colors.secondary + "cc"} />
+                          <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
+                            Reorder
+                          </Text>
                         </TouchableOpacity>
+                      ) : null}
+                    </View>
+
+                    {isReorderingPresets ? (
+                      <View style={{ gap: 0 }}>
+                        {reorderPresetsItems.map((preset, idx) => (
+                          <DraggablePresetItem
+                            key={`preset-drag-${preset.id}`}
+                            preset={preset}
+                            indexRef={indexRefsPresetRef.current[idx] ?? { current: idx }}
+                            listRef={reorderPresetsRef}
+                            itemHeightRef={presetItemHeightRef}
+                            isActive={idx === activeReorderPresetIdx}
+                            isHover={idx === hoverReorderPresetIdx && idx !== activeReorderPresetIdx}
+                            displacement={computePresetDisplacement(idx, activeReorderPresetIdx, hoverReorderPresetIdx)}
+                            onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
+                            onHover={setHoverReorderPresetIdx}
+                            onDrop={handlePresetReorderDrop}
+                            colors={colors}
+                          />
+                        ))}
                       </View>
-                    ))}
-                  </ScrollView>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={[styles.filterScroll, { paddingVertical: 2 }]}
+                      >
+                        {customPresets.map((preset) => (
+                          <View
+                            key={preset.id}
+                            style={[
+                              styles.presetChip,
+                              { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
+                            ]}
+                          >
+                            <TouchableOpacity
+                              onPress={() => applyPreset(preset)}
+                              onLongPress={() => openEditPresetModal(preset)}
+                              delayLongPress={500}
+                              activeOpacity={0.75}
+                              style={styles.presetChipInner}
+                            >
+                              <Ionicons name="bookmark" size={12} color={colors.secondary} />
+                              <Text
+                                style={[styles.presetChipText, { color: colors.secondary }]}
+                                numberOfLines={1}
+                              >
+                                {preset.name}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => deleteCustomPreset(preset.id)}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                              style={styles.presetDeleteBtn}
+                            >
+                              <Ionicons name="close" size={13} color={colors.secondary + "cc"} />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
                 )}
 
                 <View style={styles.filterRow}>
@@ -3141,6 +3401,80 @@ export default function NutritionScreen() {
         </View>
       </Modal>
 
+      {/* Rename Preset Modal */}
+      <Modal
+        visible={editingPreset !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingPreset(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            <View style={styles.thresholdModalHeader}>
+              <Ionicons name="create-outline" size={20} color={colors.secondary} />
+              <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                Rename Preset
+              </Text>
+            </View>
+            <Text style={[styles.thresholdModalDesc, { color: colors.mutedForeground }]}>
+              {editingPreset
+                ? `Filters: ${editingPreset.filterKeys.join(", ")}`
+                : ""}
+            </Text>
+            <TextInput
+              placeholder="Preset name"
+              placeholderTextColor={colors.mutedForeground}
+              value={editPresetName}
+              onChangeText={setEditPresetName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={confirmRenamePreset}
+              maxLength={40}
+              style={[
+                styles.textInput,
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.secondary + "88" },
+              ]}
+            />
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setEditingPreset(null)}
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmRenamePreset}
+                disabled={!editPresetName.trim()}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor: editPresetName.trim() ? colors.secondary : colors.muted,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modalConfirmText,
+                    {
+                      color: editPresetName.trim()
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Rename
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
       {undoMeal !== null && (
         <Animated.View
           style={[
@@ -4490,5 +4824,26 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     alignItems: "center",
     justifyContent: "center",
+  },
+  presetChipsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+  },
+  presetChipsLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  presetDragItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingRight: 12,
+    marginBottom: 6,
   },
 });
