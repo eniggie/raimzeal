@@ -4,6 +4,29 @@ import { getUncachableStripeClient } from "../stripeClient";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "./logger";
 
+// ─── Idempotency ─────────────────────────────────────────────────────────────
+// Every incoming Stripe event is recorded in stripe_webhook_events by its
+// event.id (e.g. "evt_1Abc..."). If the same event arrives twice (Stripe
+// retries on non-2xx or network timeout), we short-circuit and return 200
+// immediately rather than re-applying the DB update.
+
+async function isDuplicate(eventId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from("stripe_webhook_events")
+    .select("id")
+    .eq("id", eventId)
+    .maybeSingle();
+  return !!data;
+}
+
+async function markProcessed(eventId: string): Promise<void> {
+  await supabaseAdmin
+    .from("stripe_webhook_events")
+    .insert({ id: eventId });
+}
+
+// ─── Event handlers ───────────────────────────────────────────────────────────
+
 export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
@@ -96,6 +119,18 @@ export async function handleBillingWebhook(req: Request, res: Response): Promise
     logger.error({ err }, "Stripe billing webhook signature verification failed");
     res.status(400).json({ error: "Webhook signature verification failed." });
     return;
+  }
+
+  // ── Idempotency check ──────────────────────────────────────────────────────
+  try {
+    if (await isDuplicate(event.id)) {
+      logger.info({ eventId: event.id, type: event.type }, "Stripe billing event already processed — skipping");
+      res.json({ received: true });
+      return;
+    }
+    await markProcessed(event.id);
+  } catch (err) {
+    logger.error({ err, eventId: event.id }, "Idempotency check failed — processing anyway");
   }
 
   try {

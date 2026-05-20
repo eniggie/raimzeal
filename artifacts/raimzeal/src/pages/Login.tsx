@@ -209,6 +209,7 @@ export function Login({ onBack }: LoginProps) {
             className="w-full glow-sm"
             disabled={isLoading || !email || !password || !!socialLoading}
             data-testid="button-login"
+            aria-busy={isLoading}
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

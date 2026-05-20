@@ -1,5 +1,36 @@
 import rateLimit from "express-rate-limit";
 
+// ── Auth: signup + login ──────────────────────────────────────────────────────
+// 10 requests per minute per IP (generous enough for real users, blocks floods)
+export const authSignupLoginRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many attempts — please wait a minute before trying again." },
+});
+
+// ── Auth: send-*-code ─────────────────────────────────────────────────────────
+// 5 requests per minute per IP for OTP sending (prevents SMS/email spam)
+export const authSendCodeRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many code requests — please wait a minute before trying again." },
+});
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+// 30 requests per minute per IP on checkout / portal session creation
+export const billingRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many billing requests. Please slow down." },
+});
+
+// ── Ovia AI ───────────────────────────────────────────────────────────────────
 export const oviaRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
@@ -10,7 +41,6 @@ export const oviaRateLimit = rateLimit({
 });
 
 // Strict daily limit per IP for Ovia — prevents free-tier paywall bypass
-// when proper per-user auth is not available.
 export const oviaDailyRateLimit = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
   max: 100,
@@ -44,8 +74,7 @@ export const emailSubscribeRateLimit = rateLimit({
   message: { error: "Too many subscription requests." },
 });
 
-// Protect the admin digest blast endpoint — 3 sends per hour max,
-// and always requires the INTERNAL_API_SECRET header.
+// Protect the admin digest blast endpoint — 3 sends per hour max
 export const digestSendNowRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,

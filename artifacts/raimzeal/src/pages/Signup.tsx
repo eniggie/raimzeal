@@ -372,9 +372,9 @@ export default function Signup({ onLogin }: Props) {
               </div>
               <span className="text-sm text-muted-foreground leading-tight">
                 I agree to the{' '}
-                <a href="#" className="text-foreground underline">Terms of Service</a>
+                <a href={`${BASE}/terms`} className="text-foreground underline" target="_blank" rel="noopener noreferrer">Terms of Service</a>
                 {' '}and{' '}
-                <a href="#" className="text-foreground underline">Privacy Policy</a>
+                <a href={`${BASE}/privacy`} className="text-foreground underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
               </span>
             </label>
             {fieldErrors.terms && <p className="text-xs text-destructive pl-8">{fieldErrors.terms}</p>}
@@ -387,7 +387,13 @@ export default function Signup({ onLogin }: Props) {
             </div>
           )}
 
-          <Button type="submit" size="lg" className="w-full h-12" disabled={loading || socialLoading}>
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full h-12"
+            disabled={loading || socialLoading}
+            aria-busy={loading}
+          >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create account'}
           </Button>
         </form>

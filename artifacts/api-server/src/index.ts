@@ -3,6 +3,9 @@ import { logger } from "./lib/logger";
 import { startScheduler } from "./scheduler";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
+import { validateEnv } from "./lib/validateEnv";
+
+validateEnv();
 
 const rawPort = process.env["PORT"];
 

@@ -9,19 +9,33 @@ const MAX_MESSAGES = 40;
 const MAX_CONTENT_LENGTH = 4000;
 
 /**
- * Strip markdown characters that must never appear in chat bubbles.
- * Applied to every streamed chunk before it is sent to the client.
- * The prompt already forbids these, but this is a hard server-side backstop.
+ * Strip all markdown from a streamed AI chunk before it reaches the client.
+ * Applied to every streamed chunk; the system prompt also forbids markdown.
+ *
+ * Patterns removed:
+ *   ^#{1,6}\s*          leading hash heading markers (any line)
+ *   **bold** / ***bi*** bold and bold-italic stars
+ *   *italic*            single-star italic
+ *   __bold__            double-underscore bold
+ *   _italic_            single-underscore italic
+ *   ^--+                double/triple dash bullet lines
+ *   ^- space            single-dash bullet lines
+ *   ^* space            star bullet lines
+ *   backtick runs       inline code and triple-backtick fences
+ *   ~~text~~            strikethrough
  */
 function cleanChunk(text: string): string {
   return text
-    .replace(/#{1,6} /g, "")            // # headings
-    .replace(/\*{2,3}([^*]*)\*{2,3}/g, "$1") // **bold** / ***bold***
-    .replace(/\*(?=[^\s*])([^*]*)\*/g, "$1")  // *italic*
-    .replace(/_{2}([^_]*)_{2}/g, "$1")         // __bold__
-    .replace(/^(\s*)--+\s*/gm, "$1")           // -- or --- bullet lines
-    .replace(/^(\s*)\*\s+/gm, "$1")            // * bullet lines
-    .replace(/`{1,3}/g, "");                   // `code` backticks
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/\*{2,3}([^*]*)\*{2,3}/g, "$1")
+    .replace(/\*(?=[^\s*])([^*]*)\*/g, "$1")
+    .replace(/_{2}([^_]*)_{2}/g, "$1")
+    .replace(/_([^_\n]+)_/g, "$1")
+    .replace(/^(\s*)--+\s*/gm, "$1")
+    .replace(/^(\s*)-\s+/gm, "$1")
+    .replace(/^(\s*)\*\s+/gm, "$1")
+    .replace(/`{1,3}[^`]*`{1,3}/g, "")
+    .replace(/~~([^~]*)~~/g, "$1");
 }
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
