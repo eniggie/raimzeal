@@ -1,0 +1,20 @@
+Go harder now. Stop producing audit-only summaries unless a hard blocker exists. Fix every safely fixable RAIMZEAL critical issue in code/config/migrations, in this priority order, and checkpoint after each meaningful group:
+
+P0 SECURITY/PAYMENT FIXES
+1. Stripe auth/body trust: fix GET /api/stripe/subscription so it uses authenticated user identity, not an unset req.userId. Fix POST /api/stripe/checkout so userId cannot be supplied/trusted from the request body. Fix POST /api/stripe/portal so customerId cannot be supplied/trusted from the request body. Resolve customer/user from verified auth/session/server-side data only. Keep webhook signature logic intact.
+2. Express API auth: add reusable Supabase JWT auth middleware for protected API routes. Require auth for /api/ovia/chat and sensitive /api/email/send / verify/admin-style email endpoints. Keep truly public subscribe/unsubscribe only if safe and rate-limited.
+3. Ovia privacy + tiers: stop sending user name/email/PII to OpenAI unless essential and explicitly disclosed. Enforce plan-based rate limits using authenticated user + membership/subscription tier, not only IP. Verify free/paid behavior.
+4. Production source maps: prevent source maps from shipping publicly in production API/web builds, or ensure they are not exposed via static serving.
+5. Database deletion/privacy: add migration/function/trigger or documented code path so deleting a Supabase auth user removes related health data rows.
+
+P1 RELIABILITY
+6. Keep the community RLS/grant fix already applied. If a migration file is missing for that DB change, add one so the fix is reproducible.
+7. Fix any remaining Failed to fetch root cause in signup/account/auth flows. Do not mask it with generic messaging only.
+8. Re-run Replit Security Center scans or npm audit/typechecks/builds after fixes.
+
+VERIFICATION REQUIRED
+- Run API typecheck, web typecheck, mobile typecheck, npm audit, relevant build/deploy checks.
+- Live-test: subscription endpoint without auth returns 401, checkout/portal cannot be spoofed by body params, Ovia chat without auth returns 401, authenticated Ovia still works, signup/login/reset password still work.
+- End with a short table: Fixed now, Verified clean, Blocked by external/manual access, Still remaining.
+
+If a fix needs an owner secret, paid Stripe/Supabase dashboard step, or cannot be safely changed by code, say the exact blocker and the exact setting/action needed. Otherwise implement it now. Do not stop at Phase 1.
