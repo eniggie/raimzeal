@@ -8,6 +8,48 @@ const oviaRouter = Router();
 const MAX_MESSAGES = 40;
 const MAX_CONTENT_LENGTH = 4000;
 
+// ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
+// Free-tier users are capped at 50 messages/day regardless of IP address.
+// Each entry auto-expires after 24 h; the Map stays small because it only grows
+// by one entry per active user per day.
+const USER_DAILY_LIMIT = 50;
+const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
+
+function consumeUserDailyQuota(userId: string): boolean {
+  const now = Date.now();
+  const entry = userDailyCounters.get(userId);
+  if (!entry || now > entry.resetAt) {
+    userDailyCounters.set(userId, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
+    return true; // allowed
+  }
+  if (entry.count >= USER_DAILY_LIMIT) return false; // quota exhausted
+  entry.count++;
+  return true;
+}
+
+// ── Prompt-injection guard ────────────────────────────────────────────────────
+// Detect common attempts to override the system prompt or impersonate a new AI
+// persona. These patterns cover the most prevalent jailbreak families without
+// blocking legitimate fitness-related text.
+const INJECTION_PATTERNS: RegExp[] = [
+  /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|context|directives?)/i,
+  /you\s+are\s+now\s+(a|an|the)\s+/i,
+  /pretend\s+(you\s+are|to\s+be)\s+/i,
+  /act\s+as\s+(a|an|the)\s+/i,
+  /forget\s+(everything|all|your|previous)/i,
+  /disregard\s+(all\s+)?(previous|prior|your)\s+/i,
+  /from\s+now\s+on\s+you\s+(are|will|must|should)/i,
+  /your\s+(new\s+)?(role|instructions?|purpose|goal)\s+(is|are)/i,
+  /\bjailbreak\b/i,
+  /\bD\.?A\.?N\.?\b/,
+  /system\s*prompt/i,
+  /override\s+(your\s+)?(instructions?|guidelines?|rules?)/i,
+];
+
+function hasPromptInjection(text: string): boolean {
+  return INJECTION_PATTERNS.some((p) => p.test(text));
+}
+
 /**
  * Strip all markdown from a streamed AI chunk before it reaches the client.
  * Applied to every streamed chunk; the system prompt also forbids markdown.
@@ -214,6 +256,21 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     for (const m of messages) {
       if (typeof m.content === "string" && m.content.length > MAX_CONTENT_LENGTH) {
         res.status(400).json({ error: "Message content too long." });
+        return;
+      }
+    }
+
+    // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
+    const userId = (req as any).userId as string;
+    if (!consumeUserDailyQuota(userId)) {
+      res.status(429).json({ error: "Daily Ovia AI limit reached. Upgrade to Athlete or Elite for unlimited coaching." });
+      return;
+    }
+
+    // Prompt-injection guard — reject messages that try to override the system persona
+    for (const m of messages) {
+      if (m.role === "user" && typeof m.content === "string" && hasPromptInjection(m.content)) {
+        res.status(400).json({ error: "Message not allowed." });
         return;
       }
     }

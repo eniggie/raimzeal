@@ -283,7 +283,11 @@ authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res)
     if (listError) { res.status(500).json({ error: "Failed to look up user." }); return; }
 
     const user = listData.users.find((u) => u.email === email);
-    if (!user) { res.status(404).json({ error: "No account found with that email." }); return; }
+
+    // Always return success regardless of whether the email is registered.
+    // Returning 404 for unknown emails would let attackers enumerate which
+    // addresses are in the system by probing this endpoint.
+    if (!user) { res.json({ success: true }); return; }
 
     const rl = await checkRateLimit(user.id, "email");
     if (rl.limited) { res.status(429).json({ error: rl.message }); return; }
