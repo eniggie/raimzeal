@@ -1,0 +1,103 @@
+STOP. Do not make small patches. Read this fully before touching code.
+
+The authentication in this app is FAKE. Users can log in with any username and any password. There is no real verification. This means you previously built a UI mockup of auth without connecting it to a real auth backend. I am not paying for more patches. You will replace the entire fake auth system with real Supabase Authentication in one complete pass.
+
+Do NOT start coding until you have completed STEP 1 and shown me the findings.
+
+═══════════════════════════════════════════
+STEP 1: DIAGNOSE THE FAKE AUTH (no code changes yet)
+═══════════════════════════════════════════
+
+Find and report exactly how the current "auth" works. Answer these in a file called AUTH_DIAGNOSIS.md:
+
+1. Where is the login form? What happens when the button is clicked?
+2. Is there ANY call to Supabase auth (signInWithPassword, signUp)? Or is it fake state like setLoggedIn(true)?
+3. Where is the password checked? (If nowhere — say so plainly.)
+4. Is there a real users table, or is auth bypassed entirely?
+5. Is Supabase Auth even enabled in this project? Are the Supabase URL and anon key set in environment variables?
+6. List every place in the code that fakes a logged-in state.
+
+Show me AUTH_DIAGNOSIS.md before proceeding. Do not skip this.
+
+═══════════════════════════════════════════
+STEP 2: RIP OUT THE FAKE AUTH AND BUILD REAL SUPABASE AUTH
+═══════════════════════════════════════════
+
+Once I approve the diagnosis, replace ALL fake auth with real Supabase Auth. Requirements:
+
+SIGN UP:
+- Use supabase.auth.signUp() with real email + password
+- Enforce password rules: minimum 8 characters, at least one number, one uppercase
+- Reject weak passwords with a clear error message
+- Reject duplicate emails with a clear error message
+- Trigger email verification — user CANNOT access the app until email is confirmed
+- On signup, create a matching row in the user profiles table
+
+SIGN IN:
+- Use supabase.auth.signInWithPassword()
+- WRONG password MUST fail with "Incorrect email or password"
+- Non-existent email MUST fail with the same message (do not reveal which is wrong)
+- Unverified email MUST be blocked with "Please verify your email first"
+- Only correct credentials grant access
+
+EMAIL VERIFICATION:
+- Configure Supabase to send verification emails
+- Build the email confirmation handler/redirect page
+- Block app access until verified
+
+PASSWORD RESET:
+- Build "forgot password" using supabase.auth.resetPasswordForEmail()
+- Build the reset-password page that handles the token
+- Reset tokens must expire
+
+SESSION HANDLING:
+- Real Supabase session with JWT
+- Session persists on refresh
+- Logout actually clears the session (supabase.auth.signOut())
+- Protected pages redirect to login if there is no valid session
+- Do NOT use fake flags like localStorage.setItem('loggedIn','true')
+
+═══════════════════════════════════════════
+STEP 3: SECURE THE DATABASE (this is half the problem)
+═══════════════════════════════════════════
+
+Fake auth usually means RLS is off too. Fix it:
+
+- Enable Row Level Security on EVERY table with user data
+- Add policy: users can only SELECT/INSERT/UPDATE/DELETE their own rows (auth.uid() = user_id)
+- Confirm the anon key is used on the client, and the service_role key is NEVER in client code
+- Search the entire codebase for the service_role key in any client/frontend file — if found, remove it and report it
+
+═══════════════════════════════════════════
+STEP 4: PROVE IT WORKS (mandatory tests — show me results)
+═══════════════════════════════════════════
+
+Run and report each result. I want PASS/FAIL for every line:
+
+□ Sign up with valid email + strong password → account created, verification email sent
+□ Try to log in BEFORE verifying email → BLOCKED
+□ Sign up with weak password "123" → REJECTED with clear error
+□ Sign up with an already-used email → REJECTED
+□ Log in with CORRECT password → SUCCESS
+□ Log in with WRONG password → FAILS with "Incorrect email or password"
+□ Log in with email that does not exist → FAILS (same message)
+□ Refresh the page while logged in → still logged in
+□ Click logout → session cleared, redirected to login
+□ Visit a protected page while logged out → redirected to login
+□ Create user A and user B. As A, try to read B's data → BLOCKED by RLS
+□ Search client code for service_role key → NOT FOUND
+
+Put results in AUTH_TEST_RESULTS.md.
+
+═══════════════════════════════════════════
+RULES TO STOP WASTING MY CREDITS
+═══════════════════════════════════════════
+
+1. Do NOT make one-line patches and re-test in loops. Do the full replacement once.
+2. Do NOT claim auth is "fixed" without showing me AUTH_TEST_RESULTS.md with real PASS/FAIL.
+3. Do NOT build any new feature, page, or styling. Auth and security ONLY.
+4. If Supabase Auth is not enabled or env vars are missing, STOP and tell me exactly what you need from me (keys, dashboard settings) instead of guessing and burning credits.
+5. Make a backup/commit before changing the database.
+6. If you are unsure, ASK ME. Do not improvise destructive changes.
+
+Begin STEP 1 only. Show me AUTH_DIAGNOSIS.md and wait for my approval before writing any auth code.
