@@ -27,6 +27,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -594,6 +595,7 @@ function ThemeSwatchItem({
   }));
 
   function handlePress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!reduceMotion) {
       scale.value = withSequence(
         withSpring(0.88, { damping: 18, stiffness: 500 }),
@@ -897,6 +899,7 @@ export default function CardCustomizationModal({
   }
 
   function toggleStat(key: keyof CardVisibleStats) {
+    Haptics.selectionAsync();
     setVisibleStats((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       const toValue = next[key] ? 20 : 0;
