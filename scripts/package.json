@@ -6,10 +6,16 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-products": "tsx ./src/seed-products.ts",
+    "secure-community": "tsx ./src/secure-community.ts",
+    "verify-community-security": "tsx ./src/verify-community-security.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.20.0",
     "tsx": "catalog:"
   }
 }

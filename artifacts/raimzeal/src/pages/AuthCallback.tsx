@@ -11,7 +11,7 @@ export function AuthCallback() {
     // Wait for the session to be established then redirect.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
-        const target = event === 'PASSWORD_RECOVERY' ? '/auth/reset-password' : '/';
+        const target = event === 'PASSWORD_RECOVERY' ? '/reset-password' : '/';
         setLocation(target);
       }
     });

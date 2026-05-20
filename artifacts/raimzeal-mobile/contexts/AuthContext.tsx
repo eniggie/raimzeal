@@ -116,8 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
+    const siteUrl = process.env.EXPO_PUBLIC_SITE_URL ?? "https://raimzeal.com";
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: undefined,
+      redirectTo: `${siteUrl}/reset-password`,
     });
     return { error: error?.message ?? null };
   }, []);

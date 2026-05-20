@@ -273,6 +273,7 @@ function App() {
               <Route path="/support"><Support /></Route>
               {/* Auth flow */}
               <Route path="/forgot-password"><ForgotPassword /></Route>
+              <Route path="/reset-password"><ResetPassword /></Route>
               <Route path="/auth/reset-password"><ResetPassword /></Route>
               <Route path="/auth/callback"><AuthCallback /></Route>
               {/* All other routes — handled by AppContent based on auth state */}

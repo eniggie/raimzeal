@@ -65,8 +65,8 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold" data-testid="text-name">{user?.name || 'User'}</h2>
-                  <p className="text-muted-foreground" data-testid="text-email">{user?.email}</p>
+                  <h2 className="text-xl font-bold truncate max-w-[200px]" data-testid="text-name">{user?.name || 'User'}</h2>
+                  <p className="text-muted-foreground text-sm truncate max-w-[200px]" data-testid="text-email">{user?.email}</p>
                   <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                     {user?.age && <span>{user.age} yrs</span>}
                     {user?.fitnessLevel && <><span>·</span><span className="capitalize">{user.fitnessLevel}</span></>}

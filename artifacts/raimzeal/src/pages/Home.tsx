@@ -20,15 +20,22 @@ interface HomeProps {
 
 function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; proteinGoal: number } {
   if (!user || !user.weight || !user.height) return { caloriesGoal: 2200, proteinGoal: 150 };
-  const weightKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
-  const heightCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
-  const age = user.age || 30;
+  // Clamp to physiologically plausible ranges before computing
+  const rawKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
+  const rawCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
+  const weightKg = Math.min(Math.max(rawKg, 30), 250);
+  const heightCm = Math.min(Math.max(rawCm, 120), 230);
+  const age = Math.min(Math.max(user.age || 30, 13), 100);
   // Mifflin-St Jeor (gender-neutral average)
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
   const activityFactor = user.fitnessLevel === 'advanced' ? 1.725 : user.fitnessLevel === 'intermediate' ? 1.55 : 1.375;
   const tdee = Math.round((bmr * activityFactor) / 50) * 50;
   const protein = Math.round((weightKg * 1.8) / 5) * 5;
-  return { caloriesGoal: Math.max(1500, tdee), proteinGoal: Math.max(80, protein) };
+  // Cap output so display never looks absurd
+  return {
+    caloriesGoal: Math.min(Math.max(tdee, 1500), 5000),
+    proteinGoal: Math.min(Math.max(protein, 80), 300),
+  };
 }
 
 export function Home({ state, onUpdateWater }: HomeProps) {
@@ -64,7 +71,9 @@ export function Home({ state, onUpdateWater }: HomeProps) {
         >
           <div>
             <p className="text-muted-foreground text-sm">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'},</p>
-            <h1 className="text-2xl font-bold font-display" data-testid="text-username">{state.user?.name?.split(' ')[0] || 'Athlete'}</h1>
+            <h1 className="text-2xl font-bold font-display truncate max-w-[180px]" data-testid="text-username">
+              {(state.user?.name?.split(' ')[0] || 'Athlete').slice(0, 20)}
+            </h1>
           </div>
           <motion.div
             className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"

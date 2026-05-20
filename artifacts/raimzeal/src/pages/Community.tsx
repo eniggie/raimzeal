@@ -1,224 +1,231 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, Heart, MessageCircle, Send, MoreHorizontal } from 'lucide-react';
+import {
+  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
-import { communityPosts, type CommunityPost } from '@/lib/store';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface LivePost {
+  id: string;
+  user_name: string;
+  content: string;
+  post_type: string;
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  _localLiked?: boolean;
+  _localLikes?: number;
+}
+
+function formatTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (mins > 0) return `${mins}m ago`;
+  return 'Just now';
+}
 
 export function Community() {
-  const [posts, setPosts] = useState<CommunityPost[]>(communityPosts);
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<LivePost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [newPost, setNewPost] = useState('');
-  const [expandedPost, setExpandedPost] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  const loadPosts = useCallback(async () => {
+    if (!supabaseConfigured) { setLoading(false); return; }
+    setLoading(true);
+    setFetchError('');
+    try {
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select('id, user_name, content, post_type, likes_count, comments_count, created_at')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      setPosts((data ?? []).map(p => ({ ...p, _localLiked: false, _localLikes: p.likes_count })));
+    } catch {
+      setFetchError("Couldn't load posts. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPosts(); }, [loadPosts]);
 
   const handleLike = (postId: string) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          liked: !post.liked,
-          likes: post.liked ? post.likes - 1 : post.likes + 1,
-        };
-      }
-      return post;
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p;
+      const wasLiked = p._localLiked ?? false;
+      return { ...p, _localLiked: !wasLiked, _localLikes: (p._localLikes ?? p.likes_count) + (wasLiked ? -1 : 1) };
     }));
   };
 
-  const handlePost = () => {
-    if (!newPost.trim()) return;
-
-    const post: CommunityPost = {
-      id: crypto.randomUUID(),
-      userId: 'self',
-      userName: 'You',
-      content: newPost,
-      likes: 0,
-      liked: false,
-      comments: [],
-      createdAt: new Date().toISOString(),
-    };
-    setPosts([post, ...posts]);
+  const handlePost = async () => {
+    if (!newPost.trim() || !user) return;
+    const content = newPost.trim();
     setNewPost('');
-  };
-
-  const handleComment = (postId: string) => {
-    if (!newComment.trim()) return;
-
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: [
-            ...post.comments,
-            {
-              id: crypto.randomUUID(),
-              userName: 'You',
-              content: newComment,
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        };
+    setPosting(true);
+    try {
+      const displayName = (user.user_metadata?.name as string | undefined)?.split(' ')[0]
+        || user.email?.split('@')[0]
+        || 'Member';
+      const { data, error } = await supabase
+        .from('community_posts')
+        .insert({ content, post_type: 'post', user_id: user.id, user_name: displayName })
+        .select('id, user_name, content, post_type, likes_count, comments_count, created_at')
+        .single();
+      if (!error && data) {
+        setPosts(prev => [{ ...data, _localLiked: false, _localLikes: 0 }, ...prev]);
       }
-      return post;
-    }));
-    setNewComment('');
-  };
-
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    return 'Just now';
+    } catch { }
+    setPosting(false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="px-4 py-4 border-b border-border">
+    <div className="min-h-screen bg-background flex flex-col pb-24">
+      <div className="px-4 py-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur z-10">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <Link href="/">
             <Button variant="ghost" size="icon" data-testid="button-back">
               <ChevronLeft className="w-6 h-6" />
             </Button>
           </Link>
-          <h1 className="text-xl font-bold font-display">Community</h1>
+          <h1 className="text-xl font-bold font-display flex-1">Community</h1>
+          {!loading && supabaseConfigured && (
+            <Button variant="ghost" size="icon" onClick={loadPosts} title="Refresh">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="px-4 py-4 border-b border-border">
-        <div className="max-w-lg mx-auto">
-          <div className="flex gap-3">
+      {user && supabaseConfigured && (
+        <div className="px-4 py-4 border-b border-border">
+          <div className="max-w-lg mx-auto flex gap-3">
             <Avatar>
-              <AvatarFallback>Y</AvatarFallback>
+              <AvatarFallback>
+                {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div className="flex-1 flex gap-2">
               <Input
-                placeholder="Share your progress..."
+                placeholder="Share your progress…"
                 value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePost()}
+                onChange={e => setNewPost(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
                 data-testid="input-new-post"
               />
-              <Button onClick={handlePost} disabled={!newPost.trim()} data-testid="button-post">
-                <Send className="w-4 h-4" />
+              <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
+                {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-4 space-y-4 max-w-lg mx-auto">
-          {posts.map((post, i) => (
+
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground text-sm">Loading community posts…</p>
+            </div>
+          )}
+
+          {!loading && !supabaseConfigured && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-6">
+              <WifiOff className="w-12 h-12 text-muted-foreground" />
+              <h3 className="font-semibold">Community offline</h3>
+              <p className="text-muted-foreground text-sm">
+                The live community feed is unavailable. Open the RAIMZEAL mobile app for full community access.
+              </p>
+            </div>
+          )}
+
+          {!loading && supabaseConfigured && fetchError && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+              <WifiOff className="w-12 h-12 text-destructive/60" />
+              <h3 className="font-semibold">Couldn't load posts</h3>
+              <p className="text-muted-foreground text-sm max-w-xs">{fetchError}</p>
+              <Button variant="outline" size="sm" onClick={loadPosts}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try again
+              </Button>
+            </div>
+          )}
+
+          {!loading && supabaseConfigured && !fetchError && posts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+              <Users className="w-12 h-12 text-muted-foreground" />
+              <h3 className="font-semibold">No posts yet</h3>
+              <p className="text-muted-foreground text-sm">Be the first to share your fitness journey!</p>
+            </div>
+          )}
+
+          {!loading && !fetchError && posts.map((post, i) => (
             <motion.div
               key={post.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              transition={{ delay: Math.min(i * 0.04, 0.4) }}
             >
               <Card className="p-4" data-testid={`post-${post.id}`}>
                 <div className="flex items-start gap-3">
                   <Avatar>
                     <AvatarFallback>
-                      {post.userName.split(' ').map(n => n[0]).join('')}
+                      {post.user_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{post.userName}</span>
-                        <span className="text-xs text-muted-foreground">{formatTime(post.createdAt)}</span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-semibold text-sm truncate max-w-[140px]">{post.user_name}</span>
+                      {post.post_type?.toLowerCase() === 'question' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary/20 text-secondary font-medium shrink-0">
+                          Q&amp;A
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                        {formatTime(post.created_at)}
+                      </span>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap mb-3">{post.content}</p>
-                    
+                    <p className="text-sm whitespace-pre-wrap mb-3 leading-relaxed">{post.content}</p>
                     <div className="flex items-center gap-4">
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2"
+                        variant="ghost" size="sm" className="h-8 px-2"
                         onClick={() => handleLike(post.id)}
                         data-testid={`like-${post.id}`}
                       >
-                        <Heart className={cn(
-                          'w-4 h-4 mr-1',
-                          post.liked && 'fill-destructive text-destructive'
-                        )} />
-                        <span className="text-xs">{post.likes}</span>
+                        <Heart className={cn('w-4 h-4 mr-1', post._localLiked && 'fill-destructive text-destructive')} />
+                        <span className="text-xs">{post._localLikes ?? post.likes_count}</span>
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2"
-                        onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}
-                        data-testid={`comment-toggle-${post.id}`}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-1" />
-                        <span className="text-xs">{post.comments.length}</span>
-                      </Button>
+                      <div className="flex items-center gap-1 text-muted-foreground px-2">
+                        <MessageCircle className="w-4 h-4" />
+                        <span className="text-xs">{post.comments_count}</span>
+                      </div>
                     </div>
-
-                    {expandedPost === post.id && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-4 pt-4 border-t border-border space-y-3"
-                      >
-                        {post.comments.map((comment) => (
-                          <div key={comment.id} className="flex items-start gap-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="text-xs">
-                                {comment.userName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 bg-muted rounded-lg p-2">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <span className="text-xs font-medium">{comment.userName}</span>
-                                <span className="text-xs text-muted-foreground">{formatTime(comment.createdAt)}</span>
-                              </div>
-                              <p className="text-xs">{comment.content}</p>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Write a comment..."
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
-                            className="h-8 text-sm"
-                            data-testid={`input-comment-${post.id}`}
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleComment(post.id)}
-                            disabled={!newComment.trim()}
-                            data-testid={`send-comment-${post.id}`}
-                          >
-                            <Send className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
                 </div>
               </Card>
             </motion.div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
+
+      <BottomNav />
     </div>
   );
 }
