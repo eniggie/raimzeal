@@ -133,6 +133,7 @@ const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
+const HISTORY_FILTER_HINT_STORAGE_KEY = "@nutrition_history_filter_hint_dismissed";
 
 interface CustomFilterPreset {
   id: string;
@@ -630,6 +631,12 @@ export default function NutritionScreen() {
   const reorderHintDismissedRef = useRef(false);
   const reorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [historyFilterHintVisible, setHistoryFilterHintVisible] = useState(false);
+  const historyFilterHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyFilterHintShownRef = useRef(false);
+  const historyFilterHintDismissedRef = useRef(false);
+  const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const favoritesYRef = useRef<number>(0);
   const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
   const highlightAnim = useRef(new Animated.Value(0)).current;
@@ -662,6 +669,20 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setReorderHintVisible(false));
     AsyncStorage.setItem(REORDER_HINT_STORAGE_KEY, "1").catch(() => {});
+  }
+
+  function dismissHistoryFilterHint() {
+    if (historyFilterHintTimerRef.current) {
+      clearTimeout(historyFilterHintTimerRef.current);
+      historyFilterHintTimerRef.current = null;
+    }
+    historyFilterHintDismissedRef.current = true;
+    Animated.timing(historyFilterHintFadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setHistoryFilterHintVisible(false));
+    AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
   }
 
   useEffect(() => {
@@ -698,6 +719,40 @@ export default function NutritionScreen() {
       if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (historyFilterHintTimerRef.current) clearTimeout(historyFilterHintTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    if (historyFilterHintShownRef.current) return;
+    historyFilterHintShownRef.current = true;
+    AsyncStorage.getItem(HISTORY_FILTER_HINT_STORAGE_KEY).then((val) => {
+      if (val) return;
+      if (historyFilterHintDismissedRef.current) return;
+      historyFilterHintFadeAnim.setValue(0);
+      setHistoryFilterHintVisible(true);
+      Animated.timing(historyFilterHintFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      historyFilterHintTimerRef.current = setTimeout(() => {
+        historyFilterHintTimerRef.current = null;
+        Animated.timing(historyFilterHintFadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setHistoryFilterHintVisible(false);
+          AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+        });
+      }, 4000);
+    }).catch(() => {});
+  }, [activeTab]);
 
   useEffect(() => {
     return () => {
@@ -1975,6 +2030,18 @@ export default function NutritionScreen() {
                     })}
                   </ScrollView>
                 </View>
+
+                {/* Long-press hint — shown once below history filter chips */}
+                {historyFilterHintVisible && (
+                  <Animated.View style={{ opacity: historyFilterHintFadeAnim }}>
+                    <Text
+                      style={[styles.filterHintText, { color: colors.mutedForeground }]}
+                      onPress={dismissHistoryFilterHint}
+                    >
+                      Tap a chip to filter by date range or meal type
+                    </Text>
+                  </Animated.View>
+                )}
 
                 {/* Calorie / macro trend chart */}
                 {trendChartDays.length > 0 && (
