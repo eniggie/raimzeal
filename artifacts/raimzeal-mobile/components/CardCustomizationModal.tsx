@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Animated,
+  AppState,
   Dimensions,
   Image,
   Modal,
@@ -890,6 +891,21 @@ export default function CardCustomizationModal({
       }
     }
     loadSaved();
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        AsyncStorage.getItem(STORAGE_KEY_ACTION).then((saved) => {
+          const validActions: CardAction[] = ["share", "save", "both", "copy"];
+          setDefaultAction(
+            validActions.includes(saved as CardAction) ? (saved as CardAction) : null
+          );
+        }).catch(() => {});
+      }
+    });
+    return () => subscription.remove();
   }, [visible]);
 
   function syncKnobsImmediate(stats: CardVisibleStats) {
@@ -2054,7 +2070,7 @@ export default function CardCustomizationModal({
                         {subtitle}
                       </Text>
                       {isPreferred && (
-                        <Text style={styles.preferredLabel}>★ Last used</Text>
+                        <Text style={styles.preferredLabel}>★ Default</Text>
                       )}
                     </View>
                   </TouchableOpacity>
