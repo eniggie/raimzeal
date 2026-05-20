@@ -1169,6 +1169,10 @@ export default function CardCustomizationModal({
   const [themeHasOverflow, setThemeHasOverflow] = useState(false);
   const themeContainerWidth = useRef(0);
   const themeContentWidth = useRef(0);
+  const [presetScrollAtEnd, setPresetScrollAtEnd] = useState(false);
+  const [presetHasOverflow, setPresetHasOverflow] = useState(false);
+  const presetContainerWidth = useRef(0);
+  const presetContentWidth = useRef(0);
   const zoomAnim = useRef(new Animated.Value(0)).current;
 
   const [showPinchHint, setShowPinchHint] = useState(false);
@@ -1365,10 +1369,28 @@ export default function CardCustomizationModal({
               />
             ) : (
               <>
+                <View
+                  style={styles.presetsThumbnailsWrapper}
+                  onLayout={(e) => {
+                    const w = e.nativeEvent.layout.width;
+                    presetContainerWidth.current = w;
+                    setPresetHasOverflow(presetContentWidth.current > w + 4);
+                  }}
+                >
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.presetsScroll}
+                  onContentSizeChange={(w) => {
+                    presetContentWidth.current = w;
+                    setPresetHasOverflow(w > presetContainerWidth.current + 4);
+                  }}
+                  onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+                    const distanceFromEnd = contentSize.width - layoutMeasurement.width - contentOffset.x;
+                    setPresetScrollAtEnd(distanceFromEnd < 16);
+                  }}
+                  scrollEventThrottle={16}
                 >
                   {presets.map((preset) => {
                     const isActive = preset.id === activePresetId;
@@ -1438,6 +1460,16 @@ export default function CardCustomizationModal({
                     </Text>
                   )}
                 </ScrollView>
+                {presetHasOverflow && !presetScrollAtEnd && (
+                  <LinearGradient
+                    colors={["transparent", colors.background]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.presetFadeRight}
+                    pointerEvents="none"
+                  />
+                )}
+                </View>
                 {presets.length > 1 && (
                   <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
                     Long-press any preset to reorder
@@ -2426,6 +2458,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   themeFadeRight: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 56,
+    pointerEvents: "none",
+  },
+  // Preset thumbnail picker
+  presetsThumbnailsWrapper: {
+    position: "relative",
+  },
+  presetFadeRight: {
     position: "absolute",
     top: 0,
     right: 0,
