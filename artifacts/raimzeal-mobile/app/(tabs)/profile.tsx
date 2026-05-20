@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -26,7 +27,7 @@ import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
@@ -67,6 +68,7 @@ export default function ProfileScreen() {
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
+  const [showRestoreBadge, setShowRestoreBadge] = useState(false);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
@@ -79,9 +81,10 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction] = await Promise.all([
+        const [savedTheme, savedAction, badgeDismissed] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
+          AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
         ]);
         if (!cancelled) {
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
@@ -90,6 +93,7 @@ export default function ProfileScreen() {
           if (savedAction && validActions.includes(savedAction as CardAction)) {
             setDefaultCardAction(savedAction as CardAction);
           }
+          setShowRestoreBadge(badgeDismissed !== "1");
         }
       } catch {
         // ignore read errors; defaults remain
@@ -140,6 +144,22 @@ export default function ProfileScreen() {
         { text: "Cancel", style: "cancel" },
       ]
     );
+  }
+
+  async function handleToggleRestoreBadge(value: boolean) {
+    setShowRestoreBadge(value);
+    try {
+      const AsyncStorage = (
+        await import("@react-native-async-storage/async-storage")
+      ).default;
+      if (value) {
+        await AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED);
+      } else {
+        await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
+      }
+    } catch {
+      // ignore write errors
+    }
   }
 
   const cardRef = useRef<View>(null);
@@ -444,6 +464,14 @@ export default function ProfileScreen() {
               value={`${settings.undoWindowSeconds ?? 3}s`}
               color={colors.secondary}
               onPress={handlePickUndoWindow}
+            />
+            <SettingToggleRow
+              icon="refresh-circle-outline"
+              label="Show restore badge"
+              sublabel="'Restored from last time' indicator"
+              color={colors.primary}
+              value={showRestoreBadge}
+              onValueChange={handleToggleRestoreBadge}
               isLast
             />
           </GlassCard>
@@ -594,6 +622,46 @@ function SettingPickerRow({
       <Text style={[styles.settingPickerValue, { color: colors.mutedForeground }]}>{value}</Text>
       <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
     </TouchableOpacity>
+  );
+}
+
+function SettingToggleRow({
+  icon, label, sublabel, color, value, onValueChange, isLast,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  sublabel?: string;
+  color: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  isLast?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <View
+      style={[
+        styles.actionRow,
+        !isLast && { borderBottomWidth: 1, borderBottomColor: colors.border },
+      ]}
+    >
+      <View style={[styles.actionIconWrap, { backgroundColor: color + "20" }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.actionLabel, { color: colors.foreground, flex: 0 }]}>{label}</Text>
+        {sublabel ? (
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+            {sublabel}
+          </Text>
+        ) : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: colors.border, true: color + "80" }}
+        thumbColor={value ? color : colors.mutedForeground}
+      />
+    </View>
   );
 }
 
