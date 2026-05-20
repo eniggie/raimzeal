@@ -43,8 +43,8 @@ export default function VerifyPhone({ onVerified }: Props) {
   async function sendCode() {
     setSending(true);
     setError('');
-    const token = await getToken();
     try {
+      const token = await getToken();
       const res = await fetch(`${BASE}/api/auth/send-sms-code`, {
         method: 'POST',
         headers: {

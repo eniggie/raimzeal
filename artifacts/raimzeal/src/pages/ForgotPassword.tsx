@@ -20,15 +20,17 @@ export function ForgotPassword() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-
-    setIsLoading(false);
-
-    if (error) {
-      setError('Something went wrong. Please try again.');
-    } else {
-      setSent(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) {
+        setError('Something went wrong. Please try again.');
+      } else {
+        setSent(true);
+      }
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

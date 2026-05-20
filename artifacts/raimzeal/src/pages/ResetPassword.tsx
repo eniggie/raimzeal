@@ -44,14 +44,18 @@ export function ResetPassword() {
     if (password !== confirm) { setError('Passwords do not match.'); return; }
 
     setIsLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setIsLoading(false);
-
-    if (error) {
-      setError('Failed to reset password. The link may have expired — request a new one.');
-    } else {
-      setDone(true);
-      setTimeout(() => setLocation('/'), 3000);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setError('Failed to reset password. The link may have expired — request a new one.');
+      } else {
+        setDone(true);
+        setTimeout(() => setLocation('/'), 3000);
+      }
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

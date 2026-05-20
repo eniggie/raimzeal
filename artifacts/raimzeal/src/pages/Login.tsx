@@ -43,37 +43,44 @@ export function Login({ onBack }: LoginProps) {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    setIsLoading(false);
-
-    if (error) {
-      if (
-        error.message.toLowerCase().includes('email not confirmed') ||
-        error.message.toLowerCase().includes('not confirmed')
-      ) {
-        setError('Please verify your email before signing in. Check your inbox for the confirmation link.');
-      } else {
-        setError('Incorrect email or password.');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (
+          error.message.toLowerCase().includes('email not confirmed') ||
+          error.message.toLowerCase().includes('not confirmed')
+        ) {
+          setError('Please verify your email before signing in. Check your inbox for the confirmation link.');
+        } else {
+          setError('Incorrect email or password.');
+        }
       }
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSocial = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
     setError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setError(`Could not sign in with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`);
+        setSocialLoading(null);
+      }
+      // On success the browser navigates away — no need to clear loading state
+    } catch {
       setError(`Could not sign in with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`);
       setSocialLoading(null);
     }
-    // On success the browser navigates away — no need to clear loading state
   };
 
   return (

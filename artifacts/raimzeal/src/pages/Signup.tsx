@@ -145,11 +145,16 @@ export default function Signup({ onLogin }: Props) {
 
   async function handleGoogle() {
     setSocialLoading(true);
-    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}${BASE}/auth/callback` },
-    });
-    if (oauthErr) {
+    try {
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}${BASE}/auth/callback` },
+      });
+      if (oauthErr) {
+        setError('Could not sign in with Google. Please try again.');
+        setSocialLoading(false);
+      }
+    } catch {
       setError('Could not sign in with Google. Please try again.');
       setSocialLoading(false);
     }

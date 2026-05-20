@@ -17,9 +17,13 @@ export function AuthCallback() {
     });
 
     // Fallback: if already signed in, go home
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setLocation('/');
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session) setLocation('/');
+      })
+      .catch(() => {
+        // Session restore failed — stay on callback page; onAuthStateChange will handle SIGNED_IN
+      });
 
     return () => subscription.unsubscribe();
   }, [setLocation]);

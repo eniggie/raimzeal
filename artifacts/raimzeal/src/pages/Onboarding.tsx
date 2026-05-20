@@ -76,11 +76,16 @@ export function Onboarding({ onLogin }: OnboardingProps) {
   const handleSocial = async (provider: 'google' | 'apple') => {
     setSocialLoading(provider);
     setSocialError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) {
+        setSocialError(`Could not sign in with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`);
+        setSocialLoading(null);
+      }
+    } catch {
       setSocialError(`Could not sign in with ${provider === 'google' ? 'Google' : 'Apple'}. Please try again.`);
       setSocialLoading(null);
     }
@@ -112,36 +117,38 @@ export function Onboarding({ onLogin }: OnboardingProps) {
 
     const redirectTo = `${window.location.origin}/auth/callback`;
 
-    const { error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        emailRedirectTo: redirectTo,
-        data: {
-          name: formData.name,
-          age: parseInt(formData.age),
-          height: parseInt(formData.height),
-          weight: parseInt(formData.weight),
-          fitnessLevel: formData.fitnessLevel,
-          goals: formData.goals,
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: {
+            name: formData.name,
+            age: parseInt(formData.age),
+            height: parseInt(formData.height),
+            weight: parseInt(formData.weight),
+            fitnessLevel: formData.fitnessLevel,
+            goals: formData.goals,
+          },
         },
-      },
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      if (error.message.toLowerCase().includes('already registered') ||
-          error.message.toLowerCase().includes('already been registered') ||
-          error.message.toLowerCase().includes('user already exists')) {
-        setError('An account with this email already exists. Please sign in instead.');
-      } else {
-        setError(error.message);
+      });
+      if (error) {
+        if (error.message.toLowerCase().includes('already registered') ||
+            error.message.toLowerCase().includes('already been registered') ||
+            error.message.toLowerCase().includes('user already exists')) {
+          setError('An account with this email already exists. Please sign in instead.');
+        } else {
+          setError(error.message);
+        }
+        return;
       }
-      return;
+      setSignUpDone(true);
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    setSignUpDone(true);
   };
 
   const toggleGoal = (goalId: string) => {

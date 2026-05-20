@@ -16,10 +16,15 @@ export function VerifyEmail({ email, onSignOut }: VerifyEmailProps) {
   const handleResend = async () => {
     if (!email) return;
     setResending(true);
-    await supabase.auth.resend({ type: 'signup', email });
-    setResending(false);
-    setResent(true);
-    setTimeout(() => setResent(false), 5000);
+    try {
+      await supabase.auth.resend({ type: 'signup', email });
+      setResent(true);
+      setTimeout(() => setResent(false), 5000);
+    } catch {
+      // Silently fail — user can try again
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
