@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from "react-native";
+import { useReduceMotion } from "@/hooks/useReduceMotion";
 
 const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
@@ -32,8 +33,10 @@ export function AnimatedPressable({
   hitSlop,
 }: AnimatedPressableProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReduceMotion();
 
   function handlePressIn() {
+    if (reduceMotion) return;
     Animated.spring(scaleAnim, {
       toValue: disabled ? 1 : scale,
       useNativeDriver: USE_NATIVE_DRIVER,
@@ -43,6 +46,7 @@ export function AnimatedPressable({
   }
 
   function handlePressOut() {
+    if (reduceMotion) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: USE_NATIVE_DRIVER,

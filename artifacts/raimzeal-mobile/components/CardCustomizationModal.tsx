@@ -29,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useReduceMotion } from "@/hooks/useReduceMotion";
 import ShareProgressCard, {
   CARD_THEMES,
   CARD_WIDTH,
@@ -554,17 +555,20 @@ function ThemeSwatchItem({
   onSelect,
 }: ThemeSwatchItemProps) {
   const scale = useSharedValue(1);
+  const reduceMotion = useReduceMotion();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   function handlePress() {
-    scale.value = withSequence(
-      withSpring(0.88, { damping: 18, stiffness: 500 }),
-      withSpring(1.07, { damping: 12, stiffness: 300 }),
-      withSpring(1, { damping: 16, stiffness: 320 })
-    );
+    if (!reduceMotion) {
+      scale.value = withSequence(
+        withSpring(0.88, { damping: 18, stiffness: 500 }),
+        withSpring(1.07, { damping: 12, stiffness: 300 }),
+        withSpring(1, { damping: 16, stiffness: 320 })
+      );
+    }
     onSelect(theme.id);
   }
 
@@ -624,6 +628,11 @@ export default function CardCustomizationModal({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
+  const reduceMotionRef = useRef(false);
+  useEffect(() => {
+    reduceMotionRef.current = reduceMotion;
+  }, [reduceMotion]);
 
   const [visibleStats, setVisibleStats] = useState<CardVisibleStats>({
     ...DEFAULT_VISIBLE_STATS,
@@ -653,15 +662,19 @@ export default function CardCustomizationModal({
   useEffect(() => {
     if (restoredFromStorage && !badgeDismissed) {
       badgeFadeAnim.setValue(0);
-      Animated.timing(badgeFadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
+      if (reduceMotion) {
+        badgeFadeAnim.setValue(1);
+      } else {
+        Animated.timing(badgeFadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      }
     } else {
       badgeFadeAnim.setValue(0);
     }
-  }, [restoredFromStorage, badgeDismissed]);
+  }, [restoredFromStorage, badgeDismissed, reduceMotion]);
 
   // Confirmation / error toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
@@ -674,13 +687,21 @@ export default function CardCustomizationModal({
     setConfirmVariant(variant);
     confirmOpacity.setValue(0);
     const holdDuration = variant === "error" ? 2200 : 1600;
-    Animated.sequence([
-      Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(holdDuration),
-      Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished) setConfirmMessage(null);
-    });
+    if (reduceMotionRef.current) {
+      confirmOpacity.setValue(1);
+      setTimeout(() => {
+        confirmOpacity.setValue(0);
+        setConfirmMessage(null);
+      }, holdDuration);
+    } else {
+      Animated.sequence([
+        Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.delay(holdDuration),
+        Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setConfirmMessage(null);
+      });
+    }
   }
 
   useEffect(() => {
@@ -754,15 +775,19 @@ export default function CardCustomizationModal({
       clearTimeout(themeTransitionTimer.current);
       themeTransitionTimer.current = null;
     }
-    previewOpacity.stopAnimation();
-    Animated.sequence([
-      Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
-      Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
-    ]).start();
-    themeTransitionTimer.current = setTimeout(() => {
-      themeTransitionTimer.current = null;
+    if (reduceMotionRef.current) {
       setDisplayedThemeId(themeId);
-    }, 90);
+    } else {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+      themeTransitionTimer.current = setTimeout(() => {
+        themeTransitionTimer.current = null;
+        setDisplayedThemeId(themeId);
+      }, 90);
+    }
   }
 
   function handleMessageChange(text: string) {
@@ -972,29 +997,41 @@ export default function CardCustomizationModal({
 
   function triggerPinchHint() {
     setShowPinchHint(true);
-    pinchHintAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(pinchHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.delay(1800),
-      Animated.timing(pinchHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-    ]).start(({ finished }) => {
-      if (finished) {
+    if (reduceMotionRef.current) {
+      pinchHintAnim.setValue(1);
+      setTimeout(() => {
         setShowPinchHint(false);
         AsyncStorage.setItem(STORAGE_KEY_PINCH_HINT_SEEN, "1").catch(() => {});
-      }
-    });
+      }, 2000);
+    } else {
+      pinchHintAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(pinchHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.delay(1800),
+        Animated.timing(pinchHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setShowPinchHint(false);
+          AsyncStorage.setItem(STORAGE_KEY_PINCH_HINT_SEEN, "1").catch(() => {});
+        }
+      });
+    }
   }
 
   async function openZoom() {
     setZoomVisible(true);
-    zoomAnim.setValue(0);
-    Animated.spring(zoomAnim, {
-      toValue: 1,
-      damping: 18,
-      stiffness: 280,
-      mass: 0.8,
-      useNativeDriver: true,
-    }).start();
+    if (reduceMotionRef.current) {
+      zoomAnim.setValue(1);
+    } else {
+      zoomAnim.setValue(0);
+      Animated.spring(zoomAnim, {
+        toValue: 1,
+        damping: 18,
+        stiffness: 280,
+        mass: 0.8,
+        useNativeDriver: true,
+      }).start();
+    }
     try {
       const seen = await AsyncStorage.getItem(STORAGE_KEY_PINCH_HINT_SEEN);
       if (!seen) {
@@ -1006,13 +1043,18 @@ export default function CardCustomizationModal({
   }
 
   function closeZoom() {
-    Animated.timing(zoomAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setZoomVisible(false);
-    });
+    if (reduceMotionRef.current) {
+      zoomAnim.setValue(0);
+      setZoomVisible(false);
+    } else {
+      Animated.timing(zoomAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setZoomVisible(false);
+      });
+    }
   }
 
   const screenWidth = Dimensions.get("window").width;
