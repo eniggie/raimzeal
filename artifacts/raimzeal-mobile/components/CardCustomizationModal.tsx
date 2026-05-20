@@ -139,7 +139,7 @@ const STAT_TOGGLES: StatToggleConfig[] = [
   },
 ];
 
-export type CardAction = "share" | "save" | "both";
+export type CardAction = "share" | "save" | "both" | "copy";
 
 export interface CardCustomizationResult {
   visibleStats: CardVisibleStats;
@@ -854,7 +854,7 @@ export default function CardCustomizationModal({
         setThumbnailSize(effectiveThumbSize);
         setRestoredFromStorage(hadSavedData);
         setBadgeDismissed(dismissedFlag === "1");
-        const validActions: CardAction[] = ["share", "save", "both"];
+        const validActions: CardAction[] = ["share", "save", "both", "copy"];
         setDefaultAction(
           validActions.includes(savedAction as CardAction) ? (savedAction as CardAction) : null
         );
@@ -935,6 +935,8 @@ export default function CardCustomizationModal({
           ? "Saved to camera roll"
           : action === "share"
           ? "Share sheet opened"
+          : action === "copy"
+          ? "Copied to clipboard"
           : "Saved to camera roll · Share sheet opened";
       showConfirmation(msg, "success");
     } catch (err) {
@@ -947,6 +949,8 @@ export default function CardCustomizationModal({
           ? "Couldn't save — check your permissions"
           : action === "share"
           ? "Couldn't open share sheet"
+          : action === "copy"
+          ? "Couldn't copy to clipboard"
           : "Couldn't save or share the card";
       const errMsg = err instanceof Error && err.message ? err.message : fallback;
       showConfirmation(errMsg, "error");
@@ -957,7 +961,7 @@ export default function CardCustomizationModal({
     actionLongPressedRef.current = true;
     setDefaultAction(action);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
-    const label = action === "share" ? "Share" : action === "save" ? "Save" : "Both";
+    const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
     showConfirmation(`${label} set as default`, "success");
   }
 
@@ -1838,7 +1842,8 @@ export default function CardCustomizationModal({
                 [
                   { action: "share" as CardAction, icon: "share-social", label: "Share", subtitle: "Opens your share sheet", bg: colors.primary },
                   { action: "save" as CardAction, icon: "image-outline", label: "Save", subtitle: "Saves to camera roll", bg: colors.secondary },
-                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", subtitle: "Saves & opens share sheet", bg: colors.accent },
+                  { action: "copy" as CardAction, icon: "copy-outline", label: "Copy", subtitle: "Copies to clipboard", bg: colors.accent },
+                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", subtitle: "Saves & opens share sheet", bg: colors.mutedForeground },
                 ] as const
               ).map(({ action, icon, label, subtitle, bg }) => {
                 const isPreferred = anyStatEnabled && defaultAction === action;

@@ -24,7 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
-import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
+import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
@@ -89,7 +89,7 @@ export default function ProfileScreen() {
         if (!cancelled) {
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
           if (isValidTheme) setCardThemeId(savedTheme as CardThemeId);
-          const validActions: CardAction[] = ["share", "save", "both"];
+          const validActions: CardAction[] = ["share", "save", "both", "copy"];
           if (savedAction && validActions.includes(savedAction as CardAction)) {
             setDefaultCardAction(savedAction as CardAction);
           }
@@ -119,6 +119,7 @@ export default function ProfileScreen() {
     const LABELS: Record<CardAction, string> = {
       share: "Share — opens your share sheet",
       save: "Save — saves to camera roll",
+      copy: "Copy — copies to clipboard",
       both: "Both — saves & opens share sheet",
     };
     Alert.alert(
@@ -127,6 +128,7 @@ export default function ProfileScreen() {
       [
         { text: LABELS.share, onPress: () => handleSetDefaultCardAction("share") },
         { text: LABELS.save, onPress: () => handleSetDefaultCardAction("save") },
+        { text: LABELS.copy, onPress: () => handleSetDefaultCardAction("copy") },
         { text: LABELS.both, onPress: () => handleSetDefaultCardAction("both") },
         { text: "Cancel", style: "cancel" },
       ]
@@ -204,7 +206,7 @@ export default function ProfileScreen() {
     if (action === "save" || action === "both") {
       setSaveLoading(true);
     }
-    if (action === "share" || action === "both") {
+    if (action === "share" || action === "both" || action === "copy") {
       setShareLoading(true);
     }
 
@@ -245,6 +247,9 @@ export default function ProfileScreen() {
               // Permission Alert already shown inside helper — sentinel reject.
               reject(new Error("PERMISSION_DENIED"));
             }
+          } else if (action === "copy") {
+            await captureAndCopyCard(cardRef);
+            resolve();
           } else {
             await captureAndShareCard(cardRef);
             resolve();
@@ -253,6 +258,7 @@ export default function ProfileScreen() {
           const label =
             action === "save" ? "Couldn't save — check your permissions" :
             action === "both" ? "Couldn't save or share the card" :
+            action === "copy" ? "Couldn't copy to clipboard" :
             "Couldn't open share sheet";
           // Reject with a descriptive message; the modal shows it as an inline
           // error toast. No Alert here — the toast is the primary feedback.
@@ -452,6 +458,7 @@ export default function ProfileScreen() {
               value={
                 defaultCardAction === "share" ? "Share" :
                 defaultCardAction === "save" ? "Save" :
+                defaultCardAction === "copy" ? "Copy" :
                 defaultCardAction === "both" ? "Both" :
                 "Not set"
               }

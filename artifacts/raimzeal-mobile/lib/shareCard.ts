@@ -1,5 +1,6 @@
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
+import * as Clipboard from "expo-clipboard";
 import { captureRef } from "react-native-view-shot";
 import { Alert, Linking } from "react-native";
 import type { RefObject } from "react";
@@ -111,6 +112,20 @@ export async function captureAndSaveCard(
   });
 
   await MediaLibrary.saveToLibraryAsync(uri);
+  return true;
+}
+
+/**
+ * Captures a React Native view ref as a PNG and writes it to the clipboard.
+ * Returns true on success, false if the clipboard API is unavailable.
+ */
+export async function captureAndCopyCard(ref: RefObject<View | null>): Promise<boolean> {
+  const base64 = await captureRef(ref, {
+    format: "png",
+    quality: 1,
+    result: "base64",
+  });
+  await Clipboard.setImageAsync(base64);
   return true;
 }
 
