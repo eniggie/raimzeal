@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, Send, Bot, User, Globe, Sparkles } from 'lucide-react';
+import { ChevronLeft, Send, User, Globe, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CoachProps {
   state: AppState;
@@ -18,25 +19,81 @@ interface Message {
   role: 'user' | 'coach';
   content: string;
   timestamp: Date;
-  searching?: string;
+  isWeekly?: boolean;
 }
 
 function buildUserContext(state: AppState) {
+  const today = new Date().toISOString().split('T')[0];
+  const todayMeals = state.mealLogs.filter((m) => m.date === today);
+  const todayCalories = todayMeals.reduce((s, m) => s + m.calories, 0);
+  const todayProtein = todayMeals.reduce((s, m) => s + m.protein, 0);
+  const todayCarbs = todayMeals.reduce((s, m) => s + m.carbs, 0);
+  const todayFat = todayMeals.reduce((s, m) => s + m.fat, 0);
+  const todayWater = state.waterIntake.find((w) => w.date === today)?.glasses ?? 0;
+  const latestMeasurement = state.bodyMeasurements[0] ?? null;
+
+  const mealBreakdown = todayMeals.reduce<Record<string, { count: number; calories: number }>>(
+    (acc, m) => {
+      const key = m.mealType ?? 'meal';
+      if (!acc[key]) acc[key] = { count: 0, calories: 0 };
+      acc[key].count++;
+      acc[key].calories += m.calories;
+      return acc;
+    },
+    {}
+  );
+
   const recentWorkouts = state.workoutLogs.slice(0, 5).map((w) => ({
     name: w.workoutName,
     calories: w.caloriesBurned,
     date: w.date,
     duration: w.duration,
   }));
+
   return {
     name: state.user?.name ?? '',
     goals: state.user?.goals ?? [],
     weight: state.user?.weight ?? null,
+    height: state.user?.height ?? null,
     age: state.user?.age ?? null,
+    units: state.user?.units ?? 'imperial',
     fitnessLevel: state.user?.fitnessLevel ?? 'intermediate',
     streak: state.streak,
     recentWorkouts,
+    todayCalories: todayCalories || null,
+    todayProtein: todayProtein || null,
+    todayCarbs: todayCarbs || null,
+    todayFat: todayFat || null,
+    todayWaterGlasses: todayWater,
+    mealBreakdown: Object.keys(mealBreakdown).length > 0 ? mealBreakdown : null,
+    latestBodyMeasurement: latestMeasurement
+      ? {
+          date: latestMeasurement.date,
+          weight: latestMeasurement.weight,
+          waist: latestMeasurement.waist,
+          chest: latestMeasurement.chest,
+          arms: latestMeasurement.arms,
+          thighs: latestMeasurement.thighs,
+          hips: latestMeasurement.hips,
+        }
+      : null,
+    personalRecords: state.personalRecords.slice(0, 5),
   };
+}
+
+function buildWelcomeMessage(state: AppState): string {
+  const firstName = state.user?.name?.split(' ')[0] ?? 'Champion';
+  const streak = state.streak;
+  const goals = state.user?.goals ?? [];
+  const goalText = goals.length > 0
+    ? `Your goals are clear: ${goals.join(', ')}.`
+    : 'Let us start by setting some clear goals for you.';
+
+  const streakLine = streak > 0
+    ? `You are on a ${streak}-day streak and that kind of consistency is what separates people who talk about change from those who actually make it happen.`
+    : 'Every great streak starts with a single day. Let this be yours.';
+
+  return `Welcome back, ${firstName}. I am Ovia AI, your personal fitness coach, nutritionist, and mindset mentor.\n\n${streakLine}\n\n${goalText} I have full access to your training history, nutrition data, and measurements. Every answer I give you is built around your real numbers, not generic advice.\n\nWhat can I help you with today?`;
 }
 
 const SUGGESTIONS = [
@@ -48,14 +105,32 @@ const SUGGESTIONS = [
   'How do I improve my recovery?',
 ];
 
+const WEEKLY_KEY = 'raimzeal_ovia_weekly_date';
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s*/g, '')         // # headings
+    .replace(/\*{1,3}([^*]*)\*{1,3}/g, '$1') // *bold* **bold** ***bold***
+    .replace(/_{1,2}([^_]*)_{1,2}/g, '$1')    // _italic_ __bold__
+    .replace(/^[\s]*[-]{2,}[\s]*/gm, '')      // -- list items
+    .replace(/^[\s]*[*]\s+/gm, '')            // * list items
+    .replace(/^[\s]*[-]\s+/gm, '')            // - list items
+    .replace(/`{1,3}[^`]*`{1,3}/g, (m) => m.replace(/`/g, '')) // `code`
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url)
+    .replace(/\n{3,}/g, '\n\n')              // collapse excess blank lines
+    .trim();
+}
+
 export function Coach({ state }: CoachProps) {
+  const { session } = useAuth();
   const firstName = state.user?.name?.split(' ')[0] ?? 'Champion';
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'coach',
-      content: `Welcome back, ${firstName}! I am Ovia AI, your dedicated fitness coach, nutritionist, and mindset mentor. You are on a ${state.streak}-day streak and that is something to be genuinely proud of.\n\nI have full access to your profile, your training history, and your goals. I am here to give you real, science-backed guidance every single time you ask.\n\nWhat can I help you with today?`,
+      content: buildWelcomeMessage(state),
       timestamp: new Date(),
     },
   ]);
@@ -71,8 +146,86 @@ export function Coach({ state }: CoachProps) {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  // Weekly digest — fires once per 7 days on first open
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkWeeklyDigest() {
+      if (!session?.access_token) return;
+      try {
+        const lastStr = localStorage.getItem(WEEKLY_KEY);
+        const now = Date.now();
+        const shouldSend = !lastStr || now - parseInt(lastStr, 10) >= WEEK_MS;
+        if (!shouldSend || cancelled) return;
+
+        localStorage.setItem(WEEKLY_KEY, now.toString());
+        if (cancelled) return;
+        setIsTyping(true);
+
+        const userCtx = buildUserContext(state);
+        const response = await fetch('/api/ovia/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
+        });
+
+        if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const json = JSON.parse(line.slice(6)) as { content?: string; done?: boolean };
+              if (json.content) fullContent += json.content;
+              if (json.done) break;
+            } catch { /* skip */ }
+          }
+        }
+
+        if (cancelled) return;
+        const cleaned = stripMarkdown(fullContent);
+        if (cleaned) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: 'coach',
+              content: cleaned,
+              timestamp: new Date(),
+              isWeekly: true,
+            },
+          ]);
+        }
+      } catch {
+        // Weekly digest is best-effort — silent fail
+        localStorage.removeItem(WEEKLY_KEY); // allow retry next open
+      } finally {
+        if (!cancelled) setIsTyping(false);
+      }
+    }
+
+    const timer = setTimeout(checkWeeklyDigest, 1200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const trimmed = (overrideText ?? input).trim();
     if (!trimmed || isTyping) return;
 
     const userMessage: Message = {
@@ -101,9 +254,14 @@ export function Coach({ state }: CoachProps) {
         content: m.content,
       }));
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch('/api/ovia/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           messages: allMessages,
           userContext: buildUserContext(state),
@@ -111,7 +269,12 @@ export function Coach({ state }: CoachProps) {
         signal: abortRef.current.signal,
       });
 
-      if (!response.ok) throw new Error(`API error ${response.status}`);
+      if (!response.ok) {
+        const err = response.status === 401
+          ? 'Please sign in to chat with Ovia AI.'
+          : `Connection error (${response.status}). Please try again.`;
+        throw new Error(err);
+      }
       if (!response.body) throw new Error('No response stream');
 
       const reader = response.body.getReader();
@@ -137,9 +300,7 @@ export function Coach({ state }: CoachProps) {
               error?: string;
             };
 
-            if (json.searching) {
-              setSearchingFor(json.searching);
-            }
+            if (json.searching) setSearchingFor(json.searching);
 
             if (json.content) {
               setSearchingFor(null);
@@ -156,33 +317,33 @@ export function Coach({ state }: CoachProps) {
               streamDone = true;
               break;
             }
-          } catch {
-            // skip malformed chunk
-          }
+          } catch { /* skip malformed chunk */ }
         }
       }
+
+      // Strip any markdown that slipped through
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId ? { ...m, content: stripMarkdown(m.content) } : m
+        )
+      );
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
-        // Remove the empty placeholder bubble left by the aborted request
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));
         return;
       }
+      const errorMsg = err instanceof Error ? err.message
+        : `Sorry ${firstName}, I am having trouble connecting right now. Please check your connection and try again.`;
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantId
-            ? {
-                ...m,
-                content:
-                  'I am having trouble connecting right now. Please check your connection and try again.',
-              }
-            : m
+          m.id === assistantId ? { ...m, content: errorMsg } : m
         )
       );
     } finally {
       setIsTyping(false);
       setSearchingFor(null);
     }
-  };
+  }, [input, isTyping, messages, state, session, firstName]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -243,9 +404,17 @@ export function Coach({ state }: CoachProps) {
                   'p-3 max-w-[82%] shadow-none',
                   message.role === 'user'
                     ? 'bg-primary text-primary-foreground border-primary/50'
+                    : message.isWeekly
+                    ? 'glass border-secondary/30 bg-secondary/5'
                     : 'glass'
                 )}
               >
+                {message.isWeekly && (
+                  <p className="text-xs font-medium text-secondary mb-2 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Weekly Wellness Brief
+                  </p>
+                )}
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">
                   {message.content}
                   {message.role === 'coach' && message.content === '' && isTyping && (
@@ -284,14 +453,14 @@ export function Coach({ state }: CoachProps) {
           </AnimatePresence>
 
           {/* Suggestions */}
-          {messages.length === 1 && (
+          {messages.length === 1 && !isTyping && (
             <div className="flex flex-wrap gap-2 mt-2">
               {SUGGESTIONS.map((suggestion) => (
                 <Button
                   key={suggestion}
                   variant="outline"
                   size="sm"
-                  onClick={() => setInput(suggestion)}
+                  onClick={() => handleSend(suggestion)}
                   className="text-xs h-8 glass border-border/50"
                 >
                   {suggestion}
@@ -320,7 +489,7 @@ export function Coach({ state }: CoachProps) {
             style={{ height: 'auto' }}
           />
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}
             size="icon"
             className="shrink-0 h-[42px] w-[42px]"

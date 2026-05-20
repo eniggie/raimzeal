@@ -8,6 +8,22 @@ const oviaRouter = Router();
 const MAX_MESSAGES = 40;
 const MAX_CONTENT_LENGTH = 4000;
 
+/**
+ * Strip markdown characters that must never appear in chat bubbles.
+ * Applied to every streamed chunk before it is sent to the client.
+ * The prompt already forbids these, but this is a hard server-side backstop.
+ */
+function cleanChunk(text: string): string {
+  return text
+    .replace(/#{1,6} /g, "")            // # headings
+    .replace(/\*{2,3}([^*]*)\*{2,3}/g, "$1") // **bold** / ***bold***
+    .replace(/\*(?=[^\s*])([^*]*)\*/g, "$1")  // *italic*
+    .replace(/_{2}([^_]*)_{2}/g, "$1")         // __bold__
+    .replace(/^(\s*)--+\s*/gm, "$1")           // -- or --- bullet lines
+    .replace(/^(\s*)\*\s+/gm, "$1")            // * bullet lines
+    .replace(/`{1,3}/g, "");                   // `code` backticks
+}
+
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const now = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -97,13 +113,14 @@ You exist to help ${firstName} achieve peak physical health, mental resilience, 
 STRICT TOPIC BOUNDARY (CRITICAL):
 If ${firstName} asks about anything outside fitness, exercise, nutrition, sleep, recovery, mental wellness, stress management, preventive healthcare, or body composition, respond warmly but firmly redirect them. Example: "That is a great topic, ${firstName}, but Ovia AI is dedicated to your health and fitness journey. Let me focus on getting you stronger, healthier, and more energised. What fitness or wellness goal can I help you with today?" Never be cold or dismissive — always redirect with warmth and an immediate suggestion related to their goals.
 
-FORMATTING RULES — NEVER VIOLATE THESE:
-1. NEVER use dashes or hyphens as bullet points. NEVER use asterisks for any purpose whatsoever.
-2. Use numbered lists (1. 2. 3.) for step-by-step content, or plain conversational prose paragraphs.
-3. Use colons and line breaks to organise topics clearly.
-4. Write like a premium expert consultant, not a generic chatbot. Be specific.
-5. Include real numbers, percentages, durations, research references, and concrete examples in every substantive response.
-6. Always end with an encouraging statement, a personalised next-step suggestion, or a motivating call to action based on ${firstName}'s data.
+FORMATTING RULES — THESE ARE ABSOLUTE AND NON-NEGOTIABLE:
+1. ZERO markdown. No asterisks (*), no double asterisks (**), no pound signs (#), no double dashes (--), no triple dashes (---), no underscores for emphasis (_), no backtick characters, no tilde (~). These characters will break the UI. Do not use them. Ever.
+2. Do NOT use dashes or hyphens as bullet points. Do NOT start any line with "- " or "-- " or "* ".
+3. Use numbered lists (1. 2. 3.) for step-by-step content only. Otherwise write in natural prose paragraphs.
+4. Separate topics with a blank line and a descriptive label followed by a colon. Example: "Recovery Protocol:" then the content on the next line.
+5. Write like a premium expert consultant speaking directly to a client. Be specific, authoritative, and warm.
+6. Include real numbers, percentages, durations, and concrete examples in every substantive response.
+7. Always end with an encouraging statement or a clear, actionable next step based on ${firstName}'s actual data.
 
 COMMUNICATION STYLE:
 You speak with authority, warmth, and scientific precision. You cite specific numbers and research when relevant. You are honest — you never agree with fitness myths, unsafe practices, or false information. When ${firstName} states something incorrect, you correct it kindly with facts. You never over-promise. You are always honest about what the science actually shows.
@@ -263,7 +280,8 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
 
       const content = delta?.content;
       if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+        const cleaned = cleanChunk(content);
+        if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
       }
 
       if (chunk.choices[0]?.finish_reason === "tool_calls" && toolCallName === "web_search") {
@@ -306,7 +324,8 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         for await (const c of continuation) {
           const cnt = c.choices[0]?.delta?.content;
           if (cnt) {
-            res.write(`data: ${JSON.stringify({ content: cnt })}\n\n`);
+            const cleaned = cleanChunk(cnt);
+            if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
           }
         }
       }
