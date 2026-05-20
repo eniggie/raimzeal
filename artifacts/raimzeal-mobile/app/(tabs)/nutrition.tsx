@@ -1070,6 +1070,17 @@ export default function NutritionScreen() {
     AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
   }
 
+  function resetSingleThreshold() {
+    if (!thresholdEditKey) return;
+    const def = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
+    if (!def) return;
+    const next = { ...filterThresholds, [thresholdEditKey]: def.defaultThreshold };
+    setFilterThresholds(next);
+    AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setThresholdEditKey(null);
+  }
+
   function computeDisplacement(idx: number, active: number, hover: number): number {
     if (active === -1 || hover === -1 || idx === active) return 0;
     const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
@@ -2535,18 +2546,25 @@ export default function NutritionScreen() {
                     Filter: {def.label} {symbol}{thresholdEditValue || "0"}{def.unit}
                   </Text>
 
+                  {parseInt(thresholdEditValue, 10) !== def.defaultThreshold && (
+                    <TouchableOpacity
+                      onPress={resetSingleThreshold}
+                      style={[styles.thresholdRestoreBtn, { borderColor: colors.border }]}
+                    >
+                      <Ionicons name="refresh-outline" size={14} color={colors.mutedForeground} style={{ marginRight: 4 }} />
+                      <Text style={[styles.thresholdRestoreBtnText, { color: colors.mutedForeground }]}>
+                        Restore default ({def.defaultThreshold}{def.unit})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   <View style={styles.modalBtns}>
                     <TouchableOpacity
-                      onPress={() => {
-                        const def2 = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
-                        if (def2) {
-                          setThresholdEditValue(String(def2.defaultThreshold));
-                        }
-                      }}
+                      onPress={() => setThresholdEditKey(null)}
                       style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                     >
                       <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
-                        Reset
+                        Cancel
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -4120,7 +4138,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginBottom: 18,
+    marginBottom: 10,
+  },
+  thresholdRestoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  thresholdRestoreBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   undoToast: {
     position: "absolute",
