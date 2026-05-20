@@ -64,6 +64,7 @@ function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): num
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
+const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 
 const MAX_PRESETS = 5;
 
@@ -966,7 +967,25 @@ export default function CardCustomizationModal({
   const themeContentWidth = useRef(0);
   const zoomAnim = useRef(new Animated.Value(0)).current;
 
-  function openZoom() {
+  const [showPinchHint, setShowPinchHint] = useState(false);
+  const pinchHintAnim = useRef(new Animated.Value(0)).current;
+
+  function triggerPinchHint() {
+    setShowPinchHint(true);
+    pinchHintAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(pinchHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(pinchHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setShowPinchHint(false);
+        AsyncStorage.setItem(STORAGE_KEY_PINCH_HINT_SEEN, "1").catch(() => {});
+      }
+    });
+  }
+
+  async function openZoom() {
     setZoomVisible(true);
     zoomAnim.setValue(0);
     Animated.timing(zoomAnim, {
@@ -974,6 +993,14 @@ export default function CardCustomizationModal({
       duration: 250,
       useNativeDriver: true,
     }).start();
+    try {
+      const seen = await AsyncStorage.getItem(STORAGE_KEY_PINCH_HINT_SEEN);
+      if (!seen) {
+        setTimeout(triggerPinchHint, 400);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function closeZoom() {
@@ -1628,6 +1655,32 @@ export default function CardCustomizationModal({
             </View>
             <Text style={styles.zoomDismissHint}>Pinch to zoom · double-tap to reset</Text>
           </View>
+
+          {showPinchHint && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                styles.pinchHintOverlay,
+                { opacity: pinchHintAnim },
+              ]}
+            >
+              <View style={styles.pinchHintCard}>
+                <View style={styles.pinchIconRow}>
+                  <View style={styles.pinchFinger} />
+                  <View style={styles.pinchArrowLeft}>
+                    <Ionicons name="arrow-back" size={14} color="rgba(255,255,255,0.9)" />
+                  </View>
+                  <View style={styles.pinchArrowRight}>
+                    <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.9)" />
+                  </View>
+                  <View style={[styles.pinchFinger, { marginLeft: 18 }]} />
+                </View>
+                <Text style={styles.pinchHintTitle}>Pinch to zoom</Text>
+                <Text style={styles.pinchHintSub}>Double-tap to reset</Text>
+              </View>
+            </Animated.View>
+          )}
         </Animated.View>
       </Modal>
 
@@ -2180,6 +2233,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.4)",
+  },
+  pinchHintOverlay: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinchHintCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 36,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  pinchIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    height: 36,
+  },
+  pinchFinger: {
+    width: 18,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  pinchArrowLeft: {
+    marginRight: 4,
+    marginLeft: 10,
+  },
+  pinchArrowRight: {
+    marginLeft: 4,
+    marginRight: 10,
+  },
+  pinchHintTitle: {
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_700Bold",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  pinchHintSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.6)",
   },
   // Save preset modal
   presetModalOverlay: {
