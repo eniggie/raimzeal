@@ -132,6 +132,11 @@ export interface ShareProgressCardProps {
    * Use this for thumbnail previews to get pixel-crisp output.
    */
   renderScale?: number;
+  /**
+   * When provided, the image at this URI is rendered as a blurred, dimmed
+   * background behind all card content.
+   */
+  backgroundPhotoUri?: string;
 }
 
 // Cache scaled StyleSheet objects to avoid re-creation on every render.
@@ -338,6 +343,7 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
       customMessage,
       themeId,
       renderScale,
+      backgroundPhotoUri,
     },
     ref
   ) => {
@@ -381,7 +387,28 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
     const visibleGridStats = gridStats.filter((gs) => gs.show);
 
     return (
-      <View ref={ref} style={styles.card} collapsable={false}>
+      <View
+        ref={ref}
+        style={[styles.card, backgroundPhotoUri ? { backgroundColor: "transparent" } : undefined]}
+        collapsable={false}
+      >
+        {/* Background photo (blurred + dimmed) */}
+        {backgroundPhotoUri ? (
+          <>
+            <Image
+              source={{ uri: backgroundPhotoUri }}
+              style={[StyleSheet.absoluteFillObject, { borderRadius: 20 * s }]}
+              resizeMode="cover"
+              blurRadius={18}
+            />
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 20 * s },
+              ]}
+            />
+          </>
+        ) : null}
         {/* Background gradient tint */}
         <View style={[styles.glowTL, { backgroundColor: theme.glowTL, pointerEvents: "none" }]} />
         <View style={[styles.glowBR, { backgroundColor: theme.glowBR, pointerEvents: "none" }]} />

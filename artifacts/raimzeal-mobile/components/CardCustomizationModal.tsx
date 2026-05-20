@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   Modal,
   View,
   Text,
@@ -26,6 +27,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -44,6 +46,7 @@ const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 const STORAGE_KEY_THUMB_SIZE = "@raimzeal_card_thumb_size";
+const STORAGE_KEY_BG_PHOTO = "@raimzeal_card_bg_photo";
 
 const THUMB_SCALE = 72 / CARD_WIDTH;
 const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
@@ -146,6 +149,7 @@ export interface CardCustomizationResult {
   customMessage: string;
   themeId: CardThemeId;
   action: CardAction;
+  backgroundPhotoUri?: string;
 }
 
 export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
@@ -667,6 +671,7 @@ export default function CardCustomizationModal({
     ...DEFAULT_VISIBLE_STATS,
   });
   const [customMessage, setCustomMessage] = useState("");
+  const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("m");
@@ -818,7 +823,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -826,6 +831,7 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
           AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
           AsyncStorage.getItem(STORAGE_KEY_THUMB_SIZE),
+          AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
         ]);
 
         setPresets(loadedPresets);
@@ -849,6 +855,7 @@ export default function CardCustomizationModal({
 
         setVisibleStats(effectiveStats);
         setCustomMessage(effectiveMessage);
+        setBackgroundPhotoUri(savedBgPhoto ?? null);
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
         setThumbnailSize(effectiveThumbSize);
@@ -861,6 +868,7 @@ export default function CardCustomizationModal({
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
+        setBackgroundPhotoUri(null);
         setSelectedThemeId(DEFAULT_THEME_ID);
         setDisplayedThemeId(DEFAULT_THEME_ID);
         setThumbnailSize("m");
@@ -910,26 +918,32 @@ export default function CardCustomizationModal({
     resetZoomPosition();
   }
 
-  async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId) {
+  async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId, bgPhoto: string | null) {
     try {
-      await Promise.all([
+      const ops: Promise<void>[] = [
         AsyncStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)),
         AsyncStorage.setItem(STORAGE_KEY_MESSAGE, message),
         AsyncStorage.setItem(STORAGE_KEY_THEME, themeId),
-      ]);
+      ];
+      if (bgPhoto) {
+        ops.push(AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, bgPhoto));
+      } else {
+        ops.push(AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO));
+      }
+      await Promise.all(ops);
     } catch {
       // ignore storage errors
     }
   }
 
   async function handleGenerate(action: CardAction) {
-    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId);
+    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
     try {
-      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action });
+      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined });
       const msg =
         action === "save"
           ? "Saved to camera roll"
@@ -995,6 +1009,7 @@ export default function CardCustomizationModal({
   async function handleResetDefaults() {
     setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
+    setBackgroundPhotoUri(null);
     setSelectedThemeId(DEFAULT_THEME_ID);
     setDisplayedThemeId(DEFAULT_THEME_ID);
     setThumbnailSize("m");
@@ -1009,10 +1024,47 @@ export default function CardCustomizationModal({
         AsyncStorage.removeItem(STORAGE_KEY_THEME),
         AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED),
         AsyncStorage.removeItem(STORAGE_KEY_THUMB_SIZE),
+        AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO),
       ]);
     } catch {
       // ignore
     }
+  }
+
+  async function handlePickBackgroundPhoto() {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Photo access needed",
+          "Allow photo access in Settings to set a background photo.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setBackgroundPhotoUri(uri);
+        setActivePresetId(null);
+        setRestoredFromStorage(false);
+        AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, uri).catch(() => {});
+      }
+    } catch {
+      // ignore picker errors
+    }
+  }
+
+  function handleRemoveBackgroundPhoto() {
+    setBackgroundPhotoUri(null);
+    setActivePresetId(null);
+    setRestoredFromStorage(false);
+    AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
   }
 
   function handleThumbSizeChange(size: ThumbnailSize) {
@@ -1632,6 +1684,7 @@ export default function CardCustomizationModal({
                     visibleStats={visibleStats}
                     customMessage={customMessage.trim()}
                     themeId={displayedThemeId}
+                    backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                   />
                 </View>
               </Animated.View>
@@ -1826,6 +1879,62 @@ export default function CardCustomizationModal({
             <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
               {customMessage.length}/120
             </Text>
+
+            {/* Background photo */}
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              BACKGROUND PHOTO (OPTIONAL)
+            </Text>
+            {backgroundPhotoUri ? (
+              <View
+                style={[
+                  styles.bgPhotoRow,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Image
+                  source={{ uri: backgroundPhotoUri }}
+                  style={styles.bgPhotoThumb}
+                  resizeMode="cover"
+                />
+                <View style={styles.bgPhotoInfo}>
+                  <Text style={[styles.bgPhotoLabel, { color: colors.foreground }]}>
+                    Background photo set
+                  </Text>
+                  <Text style={[styles.bgPhotoSub, { color: colors.mutedForeground }]}>
+                    Blurred & dimmed behind card content
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleRemoveBackgroundPhoto}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[styles.bgPhotoRemoveBtn, { backgroundColor: colors.muted }]}
+                >
+                  <Ionicons name="close" size={15} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handlePickBackgroundPhoto}
+                activeOpacity={0.75}
+                style={[
+                  styles.bgPhotoPickerBtn,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <View style={[styles.bgPhotoPickerIcon, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="image-outline" size={20} color={colors.mutedForeground} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.bgPhotoPickerLabel, { color: colors.foreground }]}>
+                    Choose background photo
+                  </Text>
+                  <Text style={[styles.bgPhotoPickerSub, { color: colors.mutedForeground }]}>
+                    Pick a gym photo or any image from your library
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* Action buttons */}
@@ -2031,6 +2140,7 @@ export default function CardCustomizationModal({
                   visibleStats={visibleStats}
                   customMessage={customMessage.trim()}
                   themeId={selectedThemeId}
+                  backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                 />
               ) : (
                 // Narrow screen: scale down to fit, same approach as the modal preview.
@@ -2048,6 +2158,7 @@ export default function CardCustomizationModal({
                     visibleStats={visibleStats}
                     customMessage={customMessage.trim()}
                     themeId={selectedThemeId}
+                    backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                   />
                 </View>
               )}
@@ -2908,5 +3019,65 @@ const styles = StyleSheet.create({
   confirmToastText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  // Background photo section
+  bgPhotoPickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+    marginBottom: 4,
+  },
+  bgPhotoPickerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bgPhotoPickerLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 2,
+  },
+  bgPhotoPickerSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  bgPhotoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    gap: 12,
+    marginBottom: 4,
+  },
+  bgPhotoThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+  },
+  bgPhotoInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  bgPhotoLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  bgPhotoSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  bgPhotoRemoveBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

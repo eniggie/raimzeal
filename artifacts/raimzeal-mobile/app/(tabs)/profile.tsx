@@ -67,6 +67,7 @@ export default function ProfileScreen() {
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const [cardBgPhotoUri, setCardBgPhotoUri] = useState<string | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
   const [showRestoreBadge, setShowRestoreBadge] = useState(false);
 
@@ -198,10 +199,11 @@ export default function ProfileScreen() {
     setShowCustomizeModal(true);
   }
 
-  async function handleGenerateCard({ visibleStats, customMessage, themeId, action }: CardCustomizationResult): Promise<void> {
+  async function handleGenerateCard({ visibleStats, customMessage, themeId, action, backgroundPhotoUri }: CardCustomizationResult): Promise<void> {
     setCardVisibleStats(visibleStats);
     setCardCustomMessage(customMessage);
     setCardThemeId(themeId);
+    setCardBgPhotoUri(backgroundPhotoUri);
 
     if (action === "save" || action === "both") {
       setSaveLoading(true);
@@ -328,6 +330,7 @@ export default function ProfileScreen() {
           visibleStats={cardVisibleStats}
           customMessage={cardCustomMessage}
           themeId={cardThemeId}
+          backgroundPhotoUri={cardBgPhotoUri}
         />
       </View>
 
