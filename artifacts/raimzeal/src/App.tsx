@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Switch, Route, Router as WouterRouter } from 'wouter';
+import { Switch, Route, Router as WouterRouter, useLocation } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -15,6 +15,9 @@ import { ForgotPassword } from '@/pages/ForgotPassword';
 import { ResetPassword } from '@/pages/ResetPassword';
 import { VerifyEmail } from '@/pages/VerifyEmail';
 import { AuthCallback } from '@/pages/AuthCallback';
+import Signup from '@/pages/Signup';
+import VerifyEmailOTP from '@/pages/VerifyEmailOTP';
+import VerifyPhone from '@/pages/VerifyPhone';
 import { Home } from '@/pages/Home';
 import { Workouts } from '@/pages/Workouts';
 import { WorkoutDetail } from '@/pages/WorkoutDetail';
@@ -33,6 +36,24 @@ import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
 import NotFound from '@/pages/not-found';
+
+// ─── Route wrappers (rendered inside WouterRouter so hooks work) ─────────────
+
+function SignupRoute() {
+  const [, navigate] = useLocation();
+  return <Signup onLogin={() => navigate('/')} />;
+}
+
+function VerifyPhoneRoute() {
+  const base = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+  return (
+    <VerifyPhone
+      onVerified={() => { window.location.href = base || '/'; }}
+    />
+  );
+}
+
+// ─── AppContent ───────────────────────────────────────────────────────────────
 
 function AppContent() {
   const { session, user, loading, signOut } = useAuth();
@@ -66,17 +87,19 @@ function AppContent() {
     document.documentElement.classList.add(`text-size-${state.settings.textSize}`);
   }, [state.settings.textSize]);
 
-  // When a verified email/password user lands post-confirmation, auto-complete onboarding
-  // from the metadata they saved during sign-up (name, age, height, weight, goals etc.).
-  // OAuth users (Google, Apple) are handled separately in the render below via OAuthSetup.
+  // Auto-complete onboarding from metadata saved during Onboarding signup flow.
+  // Only runs when the user has full fitness data (age/height/weight/goals) stored in metadata.
+  // Users from the quick /signup form will go through OAuthSetup for fitness data collection.
   useEffect(() => {
     if (user && user.email_confirmed_at && !state.isOnboarded) {
       const provider = (user.app_metadata as Record<string, unknown>)?.provider as string | undefined;
       const isOAuth = provider && provider !== 'email';
-      if (isOAuth) return; // let the render block below handle OAuth users
+      if (isOAuth) return;
 
       const meta = user.user_metadata ?? {};
-      if (meta.name) {
+      const hasFullFitnessData =
+        meta.name && meta.age && meta.height && meta.weight && (meta.goals as string[])?.length > 0;
+      if (hasFullFitnessData) {
         const profile: UserProfile = {
           id: user.id,
           name: meta.name as string,
@@ -111,15 +134,34 @@ function AppContent() {
     return <Onboarding onLogin={() => setShowLogin(true)} />;
   }
 
-  // Authenticated but email not verified (email/password users only)
+  // Authenticated but email not verified (legacy link-based flow)
   if (!user?.email_confirmed_at) {
     return <VerifyEmail email={user?.email} onSignOut={signOut} />;
   }
 
-  // OAuth user (Google/Apple) who hasn't set up their fitness profile yet
-  const oauthProvider = (user?.app_metadata as Record<string, unknown>)?.provider as string | undefined;
-  if (oauthProvider && oauthProvider !== 'email' && !state.isOnboarded) {
-    return <OAuthSetup user={user} onComplete={completeOnboarding} />;
+  // Phone verification gate: shown when user has a phone on file but hasn't verified it
+  // (only applies to users created via the /signup OTP flow, who have phone_e164 in metadata)
+  const phoneE164 = user?.user_metadata?.phone_e164 as string | undefined;
+  const phoneVerified = user?.user_metadata?.phone_verified === true;
+  if (phoneE164 && !phoneVerified) {
+    const base = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+    return (
+      <VerifyPhone
+        onVerified={() => { window.location.href = base || '/'; }}
+      />
+    );
+  }
+
+  // Profile setup for users without fitness data:
+  // - All OAuth users (Google/Apple)
+  // - Email users created via /signup (quick form — no fitness data in metadata)
+  if (!state.isOnboarded) {
+    const meta = user?.user_metadata ?? {};
+    const hasFullFitnessData =
+      !!(meta.age && meta.height && meta.weight && (meta.goals as string[])?.length > 0);
+    if (!hasFullFitnessData) {
+      return <OAuthSetup user={user} onComplete={completeOnboarding} />;
+    }
   }
 
   // Authenticated + verified — show the app
@@ -179,6 +221,8 @@ function AppContent() {
   );
 }
 
+// ─── App ──────────────────────────────────────────────────────────────────────
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -187,12 +231,19 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <Toaster />
             <Switch>
+              {/* Public / pre-auth routes */}
+              <Route path="/signup"><SignupRoute /></Route>
+              <Route path="/verify-email"><VerifyEmailOTP /></Route>
+              <Route path="/verify-phone"><VerifyPhoneRoute /></Route>
+              {/* Static pages */}
               <Route path="/privacy"><Privacy /></Route>
               <Route path="/terms"><TermsOfService /></Route>
               <Route path="/support"><Support /></Route>
+              {/* Auth flow */}
               <Route path="/forgot-password"><ForgotPassword /></Route>
               <Route path="/auth/reset-password"><ResetPassword /></Route>
               <Route path="/auth/callback"><AuthCallback /></Route>
+              {/* All other routes — handled by AppContent based on auth state */}
               <Route><AppContent /></Route>
             </Switch>
           </WouterRouter>

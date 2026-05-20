@@ -4,10 +4,12 @@ import appRouter from "./routes";
 import oviaRouter from "./ovia";
 import emailRouter from "./email";
 import stripeRouter from "./stripe";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(oviaRouter);
 router.use(emailRouter);
 router.use(stripeRouter);

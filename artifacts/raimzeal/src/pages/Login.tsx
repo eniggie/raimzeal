@@ -217,6 +217,17 @@ export function Login({ onBack }: LoginProps) {
             )}
           </Button>
         </form>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Don't have an account?{' '}
+          <button
+            type="button"
+            className="text-primary font-medium hover:underline"
+            onClick={() => setLocation('/signup')}
+          >
+            Create one
+          </button>
+        </p>
       </motion.div>
     </div>
   );
