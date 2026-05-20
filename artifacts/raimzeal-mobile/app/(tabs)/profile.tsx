@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
 import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
@@ -58,11 +59,18 @@ export default function ProfileScreen() {
     updateSettings,
   } = useFitness();
   const { signOut } = useAuth();
-  const { cameraRollStatus, requestCameraRollPermission, updateCameraRollStatus } = usePermissions();
+  const {
+    cameraRollStatus,
+    hasSeenRationale,
+    markRationaleDismissed,
+    requestCameraRollPermission,
+    updateCameraRollStatus,
+  } = usePermissions();
 
   const [exportLoading, setExportLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [showPhotoRationaleModal, setShowPhotoRationaleModal] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
   const [cardCustomMessage, setCardCustomMessage] = useState("");
@@ -134,6 +142,36 @@ export default function ProfileScreen() {
         { text: "Cancel", style: "cancel" },
       ]
     );
+  }
+
+  function handlePhotoAccessPress() {
+    if (cameraRollStatus === "granted") {
+      Alert.alert("Photo Library Access", "Access is active. RAIMZEAL can save progress cards to your photo library.");
+    } else if (cameraRollStatus === "denied") {
+      Linking.openSettings();
+    } else {
+      setShowPhotoRationaleModal(true);
+    }
+  }
+
+  async function handlePhotoRationaleAllow() {
+    setShowPhotoRationaleModal(false);
+    const result = await requestCameraRollPermission();
+    if (result === "denied") {
+      Alert.alert(
+        "Access Denied",
+        "Photo library access was denied. You can enable it in Settings.",
+        [
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    }
+  }
+
+  async function handlePhotoRationaleNotNow() {
+    setShowPhotoRationaleModal(false);
+    await markRationaleDismissed();
   }
 
   function handlePickUndoWindow() {
@@ -334,6 +372,13 @@ export default function ProfileScreen() {
         />
       </View>
 
+      {/* Photo library rationale modal — shown from Settings row */}
+      <CameraRollRationaleModal
+        visible={showPhotoRationaleModal}
+        onAllow={handlePhotoRationaleAllow}
+        onNotNow={handlePhotoRationaleNotNow}
+      />
+
       {/* Card customization modal */}
       <CardCustomizationModal
         visible={showCustomizeModal}
@@ -474,6 +519,23 @@ export default function ProfileScreen() {
               value={`${settings.undoWindowSeconds ?? 3}s`}
               color={colors.secondary}
               onPress={handlePickUndoWindow}
+            />
+            <SettingPickerRow
+              icon="images-outline"
+              label="Photo Library Access"
+              value={
+                cameraRollStatus === "granted"
+                  ? "Active"
+                  : cameraRollStatus === "denied"
+                  ? "Open Settings"
+                  : "Not granted"
+              }
+              color={
+                cameraRollStatus === "granted"
+                  ? colors.secondary
+                  : colors.warning
+              }
+              onPress={handlePhotoAccessPress}
             />
             <SettingToggleRow
               icon="refresh-circle-outline"
