@@ -32,6 +32,8 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
@@ -845,6 +847,7 @@ export default function NutritionScreen() {
   }, []);
 
   const filtersHydratedRef = useRef(false);
+  const cloudSyncReadyRef = useRef(false);
   const historyFiltersHydratedRef = useRef(false);
 
   useEffect(() => {
@@ -928,6 +931,54 @@ export default function NutritionScreen() {
       } catch {}
     });
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      cloudSyncReadyRef.current = true;
+      return;
+    }
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session?.user) return;
+        const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+        return fetchUserPreferences(session.user.id).then((prefs) => {
+          if (!prefs) return;
+          if (prefs.activeFilters !== undefined) {
+            const restored = prefs.activeFilters.filter(
+              (k): k is string => typeof k === "string" && validKeys.has(k)
+            );
+            setActiveFilters(new Set(restored));
+          }
+          if (prefs.customPresets !== undefined) {
+            const valid = prefs.customPresets.filter(
+              (p) =>
+                p !== null &&
+                typeof p === "object" &&
+                typeof p.id === "string" &&
+                typeof p.name === "string" &&
+                Array.isArray(p.filterKeys)
+            );
+            setCustomPresets(valid);
+          }
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        cloudSyncReadyRef.current = true;
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!filtersHydratedRef.current || !cloudSyncReadyRef.current) return;
+    if (!isSupabaseConfigured) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      upsertUserPreferences(session.user.id, {
+        activeFilters: Array.from(activeFilters),
+        customPresets,
+      }).catch(() => {});
+    });
+  }, [activeFilters, customPresets]);
 
   function saveCustomPreset() {
     const name = savePresetName.trim();

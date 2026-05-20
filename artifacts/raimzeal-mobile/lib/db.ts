@@ -457,6 +457,36 @@ export async function insertOviaMessage(
   });
 }
 
+// ─── User Preferences ──────────────────────────────────────────────────────
+
+export interface UserPreferences {
+  activeFilters?: string[];
+  customPresets?: Array<{ id: string; name: string; filterKeys: string[] }>;
+}
+
+export async function fetchUserPreferences(
+  userId: string
+): Promise<UserPreferences | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("preferences")
+    .eq("id", userId)
+    .single();
+  if (!data?.preferences) return null;
+  return data.preferences as UserPreferences;
+}
+
+export async function upsertUserPreferences(
+  userId: string,
+  prefs: UserPreferences
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  await supabase
+    .from("profiles")
+    .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
+}
+
 // ─── Programs ───────────────────────────────────────────────────────────────
 
 export interface ProgramWeek {
