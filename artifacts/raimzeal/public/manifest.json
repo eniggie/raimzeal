@@ -1,24 +1,93 @@
 {
+  "id": "com.econteur.raimzeal",
   "name": "RAIMZEAL",
   "short_name": "RAIMZEAL",
-  "description": "Your premium AI-powered fitness companion",
+  "description": "Your premium AI-powered fitness companion — workouts, nutrition, coaching and more.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#0a0a0b",
   "theme_color": "#2E8B57",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["health", "fitness", "lifestyle"],
   "icons": [
     {
       "src": "/favicon.png",
-      "sizes": "192x192",
+      "sizes": "1254x1254",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/favicon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1254x1254",
+      "type": "image/jpeg",
+      "label": "RAIMZEAL — AI Fitness App"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Workouts",
+      "short_name": "Workouts",
+      "description": "Browse your workout library",
+      "url": "/workouts",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ovia AI Coach",
+      "short_name": "Ovia AI",
+      "description": "Chat with your AI coach",
+      "url": "/coach",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nutrition",
+      "short_name": "Nutrition",
+      "description": "Track your nutrition",
+      "url": "/nutrition",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.econteur.raimzeal",
+      "id": "com.econteur.raimzeal"
     }
   ]
 }

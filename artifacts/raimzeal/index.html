@@ -114,5 +114,14 @@
   <body class="dark">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(r => console.log('[SW] registered', r.scope))
+            .catch(e => console.error('[SW] registration failed', e));
+        });
+      }
+    </script>
   </body>
 </html>
