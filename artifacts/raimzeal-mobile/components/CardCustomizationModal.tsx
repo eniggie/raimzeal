@@ -656,23 +656,34 @@ export default function CardCustomizationModal({
   const [reorderMode, setReorderMode] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
 
-  // Badge fade-in animation
+  // Badge fade-in + slide-in animation
   const badgeFadeAnim = useRef(new Animated.Value(0)).current;
+  const badgeSlideAnim = useRef(new Animated.Value(5)).current;
 
   useEffect(() => {
     if (restoredFromStorage && !badgeDismissed) {
       badgeFadeAnim.setValue(0);
+      badgeSlideAnim.setValue(5);
       if (reduceMotion) {
         badgeFadeAnim.setValue(1);
+        badgeSlideAnim.setValue(0);
       } else {
-        Animated.timing(badgeFadeAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+          Animated.timing(badgeFadeAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(badgeSlideAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start();
       }
     } else {
       badgeFadeAnim.setValue(0);
+      badgeSlideAnim.setValue(5);
     }
   }, [restoredFromStorage, badgeDismissed, reduceMotion]);
 
@@ -1175,7 +1186,7 @@ export default function CardCustomizationModal({
                 Choose what to show on your progress card
               </Text>
               {restoredFromStorage && !badgeDismissed && (
-                <Animated.View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40", opacity: badgeFadeAnim }]}>
+                <Animated.View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40", opacity: badgeFadeAnim, transform: [{ translateY: badgeSlideAnim }] }]}>
                   <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
                   <Text style={[styles.restoredBadgeText, { color: colors.primary }]}>
                     Restored from last time
