@@ -676,6 +676,55 @@ export default function CardCustomizationModal({
     }
   }, [restoredFromStorage, badgeDismissed, reduceMotion]);
 
+  // Card-preview chip: fade in then auto-dismiss after ~2.5 s
+  const cardChipFadeAnim = useRef(new Animated.Value(0)).current;
+  const cardChipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (cardChipTimerRef.current !== null) {
+      clearTimeout(cardChipTimerRef.current);
+      cardChipTimerRef.current = null;
+    }
+    cardChipFadeAnim.stopAnimation();
+
+    if (!restoredFromStorage) {
+      cardChipFadeAnim.setValue(0);
+      return;
+    }
+
+    if (reduceMotion) {
+      cardChipFadeAnim.setValue(1);
+      cardChipTimerRef.current = setTimeout(() => {
+        cardChipFadeAnim.setValue(0);
+        cardChipTimerRef.current = null;
+      }, 2500);
+    } else {
+      cardChipFadeAnim.setValue(0);
+      Animated.timing(cardChipFadeAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) return;
+        cardChipTimerRef.current = setTimeout(() => {
+          cardChipTimerRef.current = null;
+          Animated.timing(cardChipFadeAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }).start();
+        }, 2500);
+      });
+    }
+
+    return () => {
+      if (cardChipTimerRef.current !== null) {
+        clearTimeout(cardChipTimerRef.current);
+        cardChipTimerRef.current = null;
+      }
+    };
+  }, [restoredFromStorage, reduceMotion]);
+
   // Confirmation / error toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
@@ -1320,6 +1369,18 @@ export default function CardCustomizationModal({
                   />
                 </View>
               </Animated.View>
+              {restoredFromStorage && (
+                <Animated.View
+                  style={[
+                    styles.cardChip,
+                    { opacity: cardChipFadeAnim },
+                  ]}
+                  pointerEvents="none"
+                >
+                  <Ionicons name="time-outline" size={11} color="#fff" />
+                  <Text style={styles.cardChipText}>Last used</Text>
+                </Animated.View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={openZoom}
@@ -1887,6 +1948,23 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     alignItems: "center",
     justifyContent: "center",
+  },
+  cardChip: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  cardChipText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
   },
   closeBtn: {
     width: 32,
