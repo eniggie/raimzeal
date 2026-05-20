@@ -1250,7 +1250,7 @@ export default function CardCustomizationModal({
               <SortablePresetList
                 presets={presets}
                 onReorder={handleReorderPresets}
-                onDone={() => setReorderMode(false)}
+                onDone={() => { setReorderMode(false); showConfirmation("Order saved"); }}
                 activePresetId={activePresetId}
                 onLoadPreset={loadPreset}
                 onDeletePreset={(id) => {
