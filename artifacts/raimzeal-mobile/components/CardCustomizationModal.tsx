@@ -43,11 +43,24 @@ import ShareProgressCard, {
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
+const STORAGE_KEY_THUMB_SIZE = "@raimzeal_card_thumb_size";
 
 const THUMB_SCALE = 72 / CARD_WIDTH;
 const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
 
-function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): number {
+export type ThumbnailSize = "s" | "m" | "l";
+
+const THUMB_SIZE_OFFSETS: Record<ThumbnailSize, number> = {
+  s: -18,
+  m: 0,
+  l: 26,
+};
+
+function estimateThumbnailHeight(
+  vs: CardVisibleStats,
+  hasMessage: boolean,
+  size: ThumbnailSize = "m"
+): number {
   const BASE_H = 244;
   const STREAK_H = 76;
   const GRID_H = 101;
@@ -60,7 +73,8 @@ function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): num
   if (vs.weightChange || vs.topPR) h += BOTTOM_H;
   if (hasMessage) h += MSG_H;
 
-  return Math.max(52, Math.min(104, Math.round(h * THUMB_SCALE)));
+  const base = Math.round(h * THUMB_SCALE);
+  return Math.max(44, Math.min(130, base + THUMB_SIZE_OFFSETS[size]));
 }
 
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
@@ -642,6 +656,7 @@ export default function CardCustomizationModal({
   const [customMessage, setCustomMessage] = useState("");
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
+  const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("m");
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionLongPressedRef = useRef(false);
@@ -790,13 +805,14 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           loadPresets(),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
           AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
+          AsyncStorage.getItem(STORAGE_KEY_THUMB_SIZE),
         ]);
 
         setPresets(loadedPresets);
@@ -812,10 +828,17 @@ export default function CardCustomizationModal({
 
         const hadSavedData = !!(savedStats || savedMessage || savedTheme);
 
+        const validSizes: ThumbnailSize[] = ["s", "m", "l"];
+        const effectiveThumbSize: ThumbnailSize =
+          validSizes.includes(savedThumbSize as ThumbnailSize)
+            ? (savedThumbSize as ThumbnailSize)
+            : "m";
+
         setVisibleStats(effectiveStats);
         setCustomMessage(effectiveMessage);
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
+        setThumbnailSize(effectiveThumbSize);
         setRestoredFromStorage(hadSavedData);
         setBadgeDismissed(dismissedFlag === "1");
         const validActions: CardAction[] = ["share", "save", "both"];
@@ -827,6 +850,7 @@ export default function CardCustomizationModal({
         setCustomMessage("");
         setSelectedThemeId(DEFAULT_THEME_ID);
         setDisplayedThemeId(DEFAULT_THEME_ID);
+        setThumbnailSize("m");
         setRestoredFromStorage(false);
         setBadgeDismissed(false);
         setDefaultAction(null);
@@ -956,6 +980,7 @@ export default function CardCustomizationModal({
     setCustomMessage("");
     setSelectedThemeId(DEFAULT_THEME_ID);
     setDisplayedThemeId(DEFAULT_THEME_ID);
+    setThumbnailSize("m");
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
@@ -966,10 +991,16 @@ export default function CardCustomizationModal({
         AsyncStorage.removeItem(STORAGE_KEY_MESSAGE),
         AsyncStorage.removeItem(STORAGE_KEY_THEME),
         AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED),
+        AsyncStorage.removeItem(STORAGE_KEY_THUMB_SIZE),
       ]);
     } catch {
       // ignore
     }
+  }
+
+  function handleThumbSizeChange(size: ThumbnailSize) {
+    setThumbnailSize(size);
+    AsyncStorage.setItem(STORAGE_KEY_THUMB_SIZE, size).catch(() => {});
   }
 
   function loadPreset(preset: CardPreset) {
@@ -1611,9 +1642,37 @@ export default function CardCustomizationModal({
             </TouchableOpacity>
 
             {/* Color theme picker */}
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              COLOR THEME
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                COLOR THEME
+              </Text>
+              <View style={[styles.thumbSizePicker, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                {(["s", "m", "l"] as ThumbnailSize[]).map((sz) => (
+                  <TouchableOpacity
+                    key={sz}
+                    onPress={() => handleThumbSizeChange(sz)}
+                    style={[
+                      styles.thumbSizeBtn,
+                      thumbnailSize === sz && {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        fontFamily: thumbnailSize === sz ? "Inter_600SemiBold" : "Inter_400Regular",
+                        color: thumbnailSize === sz ? colors.foreground : colors.mutedForeground,
+                      }}
+                    >
+                      {sz.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <View
               style={styles.themeThumbnailsWrapper}
               onLayout={(e) => {
@@ -1645,7 +1704,7 @@ export default function CardCustomizationModal({
                     visibleStats={visibleStats}
                     customMessage={customMessage.trim()}
                     cardPreviewData={cardPreviewData}
-                    estimatedHeight={estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0)}
+                    estimatedHeight={estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0, thumbnailSize)}
                     colors={colors}
                     onSelect={handleThemeChange}
                   />
@@ -2451,6 +2510,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     flex: 1,
     textAlign: "center",
+  },
+  // Thumbnail size picker (S / M / L)
+  thumbSizePicker: {
+    flexDirection: "row",
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 2,
+    gap: 2,
+  },
+  thumbSizeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   // Theme thumbnail picker
   themeThumbnailsWrapper: {
