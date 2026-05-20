@@ -4,6 +4,7 @@ import {
   AppState,
   Dimensions,
   Image,
+  Linking,
   Modal,
   View,
   Text,
@@ -34,6 +35,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import ShareProgressCard, {
   CARD_THEMES,
   CARD_WIDTH,
@@ -665,6 +667,7 @@ export default function CardCustomizationModal({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
+  const { cameraRollStatus } = usePermissions();
   const reduceMotionRef = useRef(false);
   useEffect(() => {
     reduceMotionRef.current = reduceMotion;
@@ -2108,78 +2111,102 @@ export default function CardCustomizationModal({
               </Text>
             </View>
           ) : (
-            <View style={styles.actionRow}>
-              {(
-                [
-                  { action: "share" as CardAction, icon: "share-social", label: "Share", subtitle: "Opens your share sheet", bg: colors.primary },
-                  { action: "save" as CardAction, icon: "image-outline", label: "Save", subtitle: "Saves to camera roll", bg: colors.secondary },
-                  { action: "copy" as CardAction, icon: "copy-outline", label: "Copy", subtitle: "Copies to clipboard", bg: colors.accent },
-                  { action: "both" as CardAction, icon: "layers-outline", label: "Both", subtitle: "Saves & opens share sheet", bg: colors.mutedForeground },
-                ] as const
-              ).map(({ action, icon, label, subtitle, bg }) => {
-                const isPreferred = anyStatEnabled && defaultAction === action;
-                const isAutoTarget = autoTriggerAction === action && autoTriggerCountdown !== null;
-                return (
-                  <TouchableOpacity
-                    key={action}
-                    onPress={() => {
-                      if (actionLongPressedRef.current) {
-                        actionLongPressedRef.current = false;
-                        return;
-                      }
-                      handleGenerate(action);
-                    }}
-                    onLongPress={() => handleSetDefault(action)}
-                    delayLongPress={500}
-                    disabled={!anyStatEnabled}
-                    activeOpacity={0.85}
-                    style={[
-                      styles.actionBtn,
-                      {
-                        backgroundColor: anyStatEnabled ? bg : colors.muted,
-                        flex: 1,
-                        borderWidth: isPreferred || isAutoTarget ? 2.5 : 0,
-                        borderColor: isPreferred || isAutoTarget ? colors.primaryForeground : "transparent",
-                      },
-                    ]}
-                  >
-                    <View style={styles.actionBtnInner}>
-                      <View style={styles.actionBtnTop}>
-                        <Ionicons
-                          name={icon}
-                          size={17}
-                          color={anyStatEnabled ? colors.primaryForeground : colors.mutedForeground}
-                        />
+            <>
+              {cameraRollStatus === "denied" && (
+                <TouchableOpacity
+                  onPress={() => Linking.openSettings()}
+                  activeOpacity={0.8}
+                  style={[styles.permissionBanner, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b40" }]}
+                >
+                  <Ionicons name="lock-closed" size={14} color="#f59e0b" />
+                  <Text style={[styles.permissionBannerText, { color: "#f59e0b" }]}>
+                    Photo access is off — Save & Both are unavailable.{" "}
+                    <Text style={[styles.permissionBannerLink, { color: "#f59e0b" }]}>Enable in Settings →</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <View style={styles.actionRow}>
+                {(
+                  [
+                    { action: "share" as CardAction, icon: "share-social", label: "Share", subtitle: "Opens your share sheet", bg: colors.primary },
+                    { action: "save" as CardAction, icon: "image-outline", label: "Save", subtitle: "Saves to camera roll", bg: colors.secondary },
+                    { action: "copy" as CardAction, icon: "copy-outline", label: "Copy", subtitle: "Copies to clipboard", bg: colors.accent },
+                    { action: "both" as CardAction, icon: "layers-outline", label: "Both", subtitle: "Saves & opens share sheet", bg: colors.mutedForeground },
+                  ] as const
+                ).map(({ action, icon, label, subtitle, bg }) => {
+                  const requiresPhotoAccess = action === "save" || action === "both";
+                  const isPhotoBlocked = requiresPhotoAccess && cameraRollStatus === "denied";
+                  const isPreferred = anyStatEnabled && defaultAction === action;
+                  const isAutoTarget = autoTriggerAction === action && autoTriggerCountdown !== null;
+                  const isEnabled = anyStatEnabled && !isPhotoBlocked;
+                  return (
+                    <TouchableOpacity
+                      key={action}
+                      onPress={() => {
+                        if (isPhotoBlocked) {
+                          Linking.openSettings();
+                          return;
+                        }
+                        if (actionLongPressedRef.current) {
+                          actionLongPressedRef.current = false;
+                          return;
+                        }
+                        handleGenerate(action);
+                      }}
+                      onLongPress={() => {
+                        if (!isPhotoBlocked) handleSetDefault(action);
+                      }}
+                      delayLongPress={500}
+                      disabled={!anyStatEnabled}
+                      activeOpacity={0.85}
+                      style={[
+                        styles.actionBtn,
+                        {
+                          backgroundColor: isEnabled ? bg : colors.muted,
+                          flex: 1,
+                          borderWidth: (isPreferred || isAutoTarget) && !isPhotoBlocked ? 2.5 : 0,
+                          borderColor: (isPreferred || isAutoTarget) && !isPhotoBlocked ? colors.primaryForeground : "transparent",
+                        },
+                      ]}
+                    >
+                      <View style={styles.actionBtnInner}>
+                        <View style={styles.actionBtnTop}>
+                          <Ionicons
+                            name={isPhotoBlocked ? "lock-closed-outline" : icon}
+                            size={17}
+                            color={isEnabled ? colors.primaryForeground : colors.mutedForeground}
+                          />
+                          <Text
+                            style={[
+                              styles.actionBtnText,
+                              { color: isEnabled ? colors.primaryForeground : colors.mutedForeground },
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </View>
                         <Text
                           style={[
-                            styles.actionBtnText,
-                            { color: anyStatEnabled ? colors.primaryForeground : colors.mutedForeground },
+                            styles.actionBtnSubtitle,
+                            {
+                              color: isEnabled
+                                ? colors.primaryForeground + "BB"
+                                : colors.mutedForeground + "99",
+                            },
                           ]}
+                          numberOfLines={1}
                         >
-                          {label}
+                          {isPhotoBlocked ? "Enable in Settings" : subtitle}
                         </Text>
+                        {isPreferred && !isPhotoBlocked && (
+                          <Text style={styles.preferredLabel}>★ Default</Text>
+                        )}
                       </View>
-                      <Text
-                        style={[
-                          styles.actionBtnSubtitle,
-                          {
-                            color: anyStatEnabled
-                              ? colors.primaryForeground + "BB"
-                              : colors.mutedForeground + "99",
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {subtitle}
-                      </Text>
-                      {isPreferred && (
-                        <Text style={styles.preferredLabel}>★ Default</Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
           )}
           {!anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
@@ -2977,6 +3004,25 @@ const styles = StyleSheet.create({
   },
   generateBtnText: {
     fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  permissionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  permissionBannerText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
+  permissionBannerLink: {
     fontFamily: "Inter_600SemiBold",
   },
   actionRow: {
