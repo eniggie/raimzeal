@@ -623,6 +623,7 @@ export default function NutritionScreen() {
   const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
   const filterSummarySlideAnim = useRef(new Animated.Value(-6)).current;
   const filterSummaryScaleAnim = useRef(new Animated.Value(1)).current;
+  const [previewFilterKey, setPreviewFilterKey] = useState<string | null>(null);
 
   const [filterHintVisible, setFilterHintVisible] = useState(false);
   const filterHintFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1119,7 +1120,8 @@ export default function NutritionScreen() {
   }, [activeTab, isSearching]);
 
   const shouldShowFilterSummary =
-    activeTab === "today" && isSearching && activeFilters.size >= 2 && !searchLoading && searchDone;
+    activeTab === "today" && isSearching && !searchLoading && searchDone &&
+    (activeFilters.size >= 2 || (activeFilters.size >= 1 && previewFilterKey !== null));
 
   useEffect(() => {
     if (shouldShowFilterSummary) {
@@ -1570,8 +1572,20 @@ export default function NutritionScreen() {
                       return (
                         <TouchableOpacity
                           key={filter.key}
-                          onPress={() => !isZeroCount && toggleFilter(filter.key)}
+                          onPress={() => {
+                            setPreviewFilterKey(null);
+                            if (!isZeroCount) toggleFilter(filter.key);
+                          }}
+                          onPressIn={() => {
+                            if (!active && !isZeroCount && activeFilters.size >= 1) {
+                              setPreviewFilterKey(filter.key);
+                            }
+                          }}
+                          onPressOut={() => {
+                            if (previewFilterKey === filter.key) setPreviewFilterKey(null);
+                          }}
                           onLongPress={() => {
+                            setPreviewFilterKey(null);
                             if (active && activeFilters.size >= 1) {
                               openSavePresetModal();
                             } else {
@@ -1710,10 +1724,26 @@ export default function NutritionScreen() {
                 <Animated.Text
                   style={[
                     styles.filterCombinedSummary,
-                    { color: colors.primary, transform: [{ scale: filterSummaryScaleAnim }] },
+                    {
+                      color: previewFilterKey ? colors.secondary : colors.primary,
+                      transform: [{ scale: filterSummaryScaleAnim }],
+                    },
                   ]}
                 >
                   {(() => {
+                    if (previewFilterKey) {
+                      const previewCount = filterResultCounts[previewFilterKey] ?? 0;
+                      const activeLabels = nutritionFilters
+                        .filter((f) => activeFilters.has(f.key))
+                        .map((f) => f.label);
+                      const previewLabel = nutritionFilters.find((f) => f.key === previewFilterKey)?.label ?? "";
+                      const allLabels = [...activeLabels, previewLabel];
+                      const labelText =
+                        allLabels.length === 2
+                          ? `${allLabels[0]} + ${allLabels[1]}`
+                          : `all ${allLabels.length} filters`;
+                      return `${previewCount} ${previewCount === 1 ? "result" : "results"} would match ${labelText}`;
+                    }
                     const count = filteredSearchResults.length;
                     const labels = nutritionFilters
                       .filter((f) => activeFilters.has(f.key))
