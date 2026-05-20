@@ -12,8 +12,16 @@ const app: Express = express();
 // from X-Forwarded-For instead of the proxy's loopback address.
 app.set("trust proxy", 1);
 
-// ── Stripe webhook — MUST be registered before express.json() ───────────────
+// ── Stripe + Billing webhooks — MUST be registered before express.json() ────
 // Stripe requires the raw Buffer; express.json() would destroy it.
+app.post(
+  "/api/billing/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const { handleBillingWebhook } = await import("./lib/billingWebhookHandler");
+    await handleBillingWebhook(req, res);
+  }
+);
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),

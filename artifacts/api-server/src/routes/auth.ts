@@ -344,4 +344,35 @@ authRouter.post("/auth/verify-sms-code", requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// ─── POST /auth/login ─────────────────────────────────────────────────────────
+
+authRouter.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body ?? {};
+
+  if (!email || !password) {
+    res.status(400).json({ error: "email and password are required." });
+    return;
+  }
+
+  const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
+
+  if (error || !data.session) {
+    res.status(401).json({ error: "Invalid email or password." });
+    return;
+  }
+
+  const { session, user } = data;
+  res.json({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at: session.expires_at,
+    user: {
+      id: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at,
+      user_metadata: user.user_metadata,
+    },
+  });
+});
+
 export default authRouter;

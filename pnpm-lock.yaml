@@ -439,6 +439,9 @@ importers:
 
   artifacts/raimzeal:
     dependencies:
+      '@stripe/stripe-js':
+        specifier: ^9.6.0
+        version: 9.6.0
       '@supabase/supabase-js':
         specifier: ^2.105.4
         version: 2.105.4
@@ -2562,6 +2565,10 @@ packages:
 
   '@stardazed/streams-text-encoding@1.0.2':
     resolution: {integrity: sha512-f2Z15BId3t44a/u21yYSGXFAkCyKocmAyduoAy7swnZ4xIfbaZlOWsgly/jDNNOuj6hYQN72UaBRe3Z/tOHfqg==}
+
+  '@stripe/stripe-js@9.6.0':
+    resolution: {integrity: sha512-v5MebYvJbddSRn15fknxTVwypJPzjeIXI1Q2HBxCBrQieWna8PC+RXEVUZ3F4ANAeILEj97HzFlr0r7CXvG7ZA==}
+    engines: {node: '>=12.16'}
 
   '@supabase/auth-js@2.105.4':
     resolution: {integrity: sha512-Ejfa37M5xoIwoxVebxRahnwubPo8g22qkXQ4p50+N9MIvU9UZoN+A8dwVPtczzGf8oV/YXN80ZPxK4aWXuSN/A==}
@@ -8820,6 +8827,8 @@ snapshots:
       '@sinonjs/commons': 3.0.1
 
   '@stardazed/streams-text-encoding@1.0.2': {}
+
+  '@stripe/stripe-js@9.6.0': {}
 
   '@supabase/auth-js@2.105.4':
     dependencies:

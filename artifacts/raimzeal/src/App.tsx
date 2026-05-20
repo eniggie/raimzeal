@@ -32,6 +32,8 @@ import { Coach } from '@/pages/Coach';
 import { Community } from '@/pages/Community';
 import { Settings } from '@/pages/Settings';
 import { Membership } from '@/pages/Membership';
+import { Pricing } from '@/pages/Pricing';
+import { Billing } from '@/pages/Billing';
 import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
@@ -42,6 +44,11 @@ import NotFound from '@/pages/not-found';
 function SignupRoute() {
   const [, navigate] = useLocation();
   return <Signup onLogin={() => navigate('/')} />;
+}
+
+function LoginRoute() {
+  const [, navigate] = useLocation();
+  return <Login onBack={() => navigate('/')} />;
 }
 
 function VerifyPhoneRoute() {
@@ -216,6 +223,12 @@ function AppContent() {
       <Route path="/membership">
         <Membership />
       </Route>
+      <Route path="/pricing">
+        <Pricing />
+      </Route>
+      <Route path="/billing">
+        <Billing />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -233,8 +246,11 @@ function App() {
             <Switch>
               {/* Public / pre-auth routes */}
               <Route path="/signup"><SignupRoute /></Route>
+              <Route path="/login"><LoginRoute /></Route>
               <Route path="/verify-email"><VerifyEmailOTP /></Route>
               <Route path="/verify-phone"><VerifyPhoneRoute /></Route>
+              {/* Public commerce pages */}
+              <Route path="/pricing"><Pricing /></Route>
               {/* Static pages */}
               <Route path="/privacy"><Privacy /></Route>
               <Route path="/terms"><TermsOfService /></Route>
