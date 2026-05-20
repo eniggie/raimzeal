@@ -1,7 +1,12 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
+// EXPO_PUBLIC_SUPABASE_URL may be set to a key value instead of the URL.
+// Fall back to the known project URL so server-side auth always works.
+const rawSupabaseUrl = process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
+const supabaseUrl = rawSupabaseUrl.startsWith("https://")
+  ? rawSupabaseUrl
+  : "https://druogyuqjytmkwihinhg.supabase.co";
 const supabaseAnonKey = process.env["EXPO_PUBLIC_SUPABASE_ANON_KEY"] ?? "";
 
 function getSupabaseClient() {

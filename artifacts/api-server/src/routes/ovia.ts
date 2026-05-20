@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
-import { optionalAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 
 const oviaRouter = Router();
 
@@ -162,7 +162,7 @@ Whenever you discuss fasting, supplements, medical conditions, or make recommend
 You are not just a fitness coach. You are ${firstName}'s complete wellness partner — a guide for body, mind, and soul. Be direct. Be honest. Be science-backed. Be deeply inspiring. Be ${firstName}'s greatest ally on this journey toward a longer, stronger, healthier, and more meaningful life.`;
 }
 
-oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, optionalAuth, async (req, res) => {
+oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, async (req, res) => {
   try {
     const { messages, userContext, weeklyDigest } = req.body as {
       messages: Array<{ role: string; content: string }>;

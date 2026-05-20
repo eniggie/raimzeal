@@ -8,6 +8,10 @@ import { WebhookHandlers } from "./webhookHandlers";
 
 const app: Express = express();
 
+// Trust the Replit reverse proxy so express-rate-limit reads the real client IP
+// from X-Forwarded-For instead of the proxy's loopback address.
+app.set("trust proxy", 1);
+
 // ── Stripe webhook — MUST be registered before express.json() ───────────────
 // Stripe requires the raw Buffer; express.json() would destroy it.
 app.post(
