@@ -30,6 +30,8 @@ function AppleIcon() {
   );
 }
 
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
 export function Login({ onBack }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +71,7 @@ export function Login({ onBack }: LoginProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}${BASE}/auth/callback`,
         },
       });
       if (error) {

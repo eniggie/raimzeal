@@ -1,7 +1,6 @@
 import { Link } from 'wouter';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BottomNav } from '@/components/BottomNav';
 
 export function Privacy() {
   return (
@@ -176,7 +175,6 @@ export function Privacy() {
 
         </div>
       </div>
-      <BottomNav />
     </div>
   );
 }

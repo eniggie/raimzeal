@@ -52,6 +52,19 @@ function LoginRoute() {
   return <Login onBack={() => navigate('/')} />;
 }
 
+function MembershipRoute() {
+  const { session, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (!session) return <Pricing />;
+  return <Membership />;
+}
+
 function VerifyPhoneRoute() {
   const base = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
   return (
@@ -253,6 +266,7 @@ function App() {
               <Route path="/verify-phone"><VerifyPhoneRoute /></Route>
               {/* Public commerce pages */}
               <Route path="/pricing"><Pricing /></Route>
+              <Route path="/membership"><MembershipRoute /></Route>
               {/* Static pages */}
               <Route path="/privacy"><Privacy /></Route>
               <Route path="/terms"><TermsOfService /></Route>

@@ -14,7 +14,8 @@ export function ForgotPassword() {
   const [error, setError] = useState('');
   const [, setLocation] = useLocation();
 
-  const redirectTo = `${window.location.origin}/auth/reset-password`;
+  const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+  const redirectTo = `${window.location.origin}${BASE}/auth/reset-password`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

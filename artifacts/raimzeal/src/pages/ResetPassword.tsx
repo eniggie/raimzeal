@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, CheckCircle, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,8 @@ function validatePassword(pw: string): string {
   return '';
 }
 
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
+
 export function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -22,20 +24,21 @@ export function ResetPassword() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [sessionReady, setSessionReady] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
   const [, setLocation] = useLocation();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Subscribe first so we never miss the event (Supabase replays the current
-    // auth state to new listeners, so this catches both:
-    //   • implicit flow: token arrives in the URL hash on page load
-    //   • PKCE flow:     code was exchanged before this component mounted)
+    // After 7 s with no recovery session, treat the link as expired/invalid
+    timeoutRef.current = setTimeout(() => {
+      setLinkExpired(true);
+    }, 7000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setSessionReady(true);
       }
-      // PKCE: if the session is already set when this listener subscribes the
-      // initial event is INITIAL_SESSION. Accept it when the URL still contains
-      // a Supabase recovery type indicator, or fall back to any active session.
       if (event === 'INITIAL_SESSION' && session) {
         const hash = window.location.hash;
         const search = window.location.search;
@@ -44,12 +47,13 @@ export function ResetPassword() {
           search.includes('type=recovery') ||
           hash.includes('access_token') ||
           search.includes('code=');
-        if (isRecovery) setSessionReady(true);
+        if (isRecovery) {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          setSessionReady(true);
+        }
       }
     });
 
-    // Fallback: if detectSessionInUrl already exchanged the code (PKCE) before
-    // this effect ran, getSession() returns the established recovery session.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return;
       const hash = window.location.hash;
@@ -59,10 +63,16 @@ export function ResetPassword() {
         search.includes('type=recovery') ||
         hash.includes('access_token') ||
         search.includes('code=');
-      if (isRecovery) setSessionReady(true);
+      if (isRecovery) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setSessionReady(true);
+      }
     }).catch(() => {/* ignore */});
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,6 +100,26 @@ export function ResetPassword() {
   };
 
   if (!sessionReady) {
+    if (linkExpired) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center px-6">
+          <div className="text-center space-y-4 max-w-sm">
+            <AlertCircle className="w-14 h-14 text-destructive mx-auto" />
+            <h1 className="text-2xl font-bold font-display">Link expired or invalid</h1>
+            <p className="text-muted-foreground text-sm">
+              This password reset link has expired or already been used. Reset links are valid for 1 hour.
+            </p>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={() => setLocation('/forgot-password')}
+            >
+              Request a new link
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">

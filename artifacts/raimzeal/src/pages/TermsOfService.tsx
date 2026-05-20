@@ -1,7 +1,6 @@
 import { Link } from 'wouter';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BottomNav } from '@/components/BottomNav';
 
 export function TermsOfService() {
   return (
@@ -167,7 +166,6 @@ export function TermsOfService() {
 
         </div>
       </div>
-      <BottomNav />
     </div>
   );
 }
