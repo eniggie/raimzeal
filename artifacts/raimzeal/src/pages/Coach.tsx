@@ -248,20 +248,30 @@ export function Coach({ state }: CoachProps) {
 
     abortRef.current = new AbortController();
 
+    if (!session?.access_token) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: 'Please sign in to chat with Ovia AI.' }
+            : m
+        )
+      );
+      setIsTyping(false);
+      return;
+    }
+
     try {
       const allMessages = [...messages, userMessage].map((m) => ({
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.content,
       }));
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-
       const response = await fetch('/api/ovia/chat', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           messages: allMessages,
           userContext: buildUserContext(state),

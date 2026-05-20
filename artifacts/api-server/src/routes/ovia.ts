@@ -7,6 +7,7 @@ const oviaRouter = Router();
 
 const MAX_MESSAGES = 40;
 const MAX_CONTENT_LENGTH = 4000;
+const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via oversized context
 
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
 // Free-tier users are capped at 50 messages/day regardless of IP address.
@@ -235,6 +236,11 @@ Whenever you discuss fasting, supplements, medical conditions, or make recommend
 You are not just a fitness coach. You are ${firstName}'s complete wellness partner — a guide for body, mind, and soul. Be direct. Be honest. Be science-backed. Be deeply inspiring. Be ${firstName}'s greatest ally on this journey toward a longer, stronger, healthier, and more meaningful life.`;
 }
 
+// Security middleware chain:
+//   1. oviaRateLimit       — IP-based: 30 req / 15 min (blocks unauthenticated floods)
+//   2. oviaDailyRateLimit  — IP-based: 100 req / 24 h  (secondary IP quota)
+//   3. requireAuth         — JWT validation via Supabase; rejects with 401 if token absent/invalid
+//   4. handler             — per-user daily quota (JWT sub, survives IP rotation)
 oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, async (req, res) => {
   try {
     const { messages, userContext, weeklyDigest } = req.body as {
@@ -256,6 +262,16 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     for (const m of messages) {
       if (typeof m.content === "string" && m.content.length > MAX_CONTENT_LENGTH) {
         res.status(400).json({ error: "Message content too long." });
+        return;
+      }
+    }
+
+    // Reject oversized userContext payloads to prevent token-stuffing attacks
+    // (an authenticated user sending a huge context object inflates OpenAI costs).
+    if (userContext !== undefined) {
+      const ctxBytes = Buffer.byteLength(JSON.stringify(userContext), "utf8");
+      if (ctxBytes > MAX_USER_CONTEXT_BYTES) {
+        res.status(400).json({ error: "userContext payload too large." });
         return;
       }
     }

@@ -132,7 +132,7 @@ export default function OviaScreen() {
     let cancelled = false;
 
     async function checkAndSendWeeklyDigest() {
-      if (isTyping) return;
+      if (isTyping || !session?.access_token) return;
       try {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
@@ -153,7 +153,7 @@ export default function OviaScreen() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
         });
@@ -205,6 +205,7 @@ export default function OviaScreen() {
   // Core send — accepts the message directly so suggestion chips can auto-send
   async function handleSendMessage(msg: string) {
     if (!msg.trim() || isTyping) return;
+    if (!session?.access_token) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChatInput("");
     addOviaMessage({ role: "user", content: msg });
@@ -225,7 +226,7 @@ export default function OviaScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ messages: allMessages, userContext }),
       });
