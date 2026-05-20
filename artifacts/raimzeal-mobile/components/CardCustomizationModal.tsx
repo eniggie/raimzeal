@@ -899,12 +899,30 @@ export default function CardCustomizationModal({
     showConfirmation(`${label} set as default`, "success");
   }
 
-  async function handleDismissBadge() {
-    setBadgeDismissed(true);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
-    } catch {
-      // ignore
+  function handleDismissBadge() {
+    const persist = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
+      } catch {
+        // ignore
+      }
+    };
+
+    if (reduceMotionRef.current) {
+      setBadgeDismissed(true);
+      persist();
+    } else {
+      badgeFadeAnim.stopAnimation();
+      Animated.timing(badgeFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setBadgeDismissed(true);
+          persist();
+        }
+      });
     }
   }
 
