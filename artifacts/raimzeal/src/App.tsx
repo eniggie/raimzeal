@@ -4,10 +4,16 @@ import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useAppState } from '@/lib/store';
+import { Loader2 } from 'lucide-react';
+import { useAppState, type UserProfile } from '@/lib/store';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 import { Onboarding } from '@/pages/Onboarding';
 import { Login } from '@/pages/Login';
+import { ForgotPassword } from '@/pages/ForgotPassword';
+import { ResetPassword } from '@/pages/ResetPassword';
+import { VerifyEmail } from '@/pages/VerifyEmail';
+import { AuthCallback } from '@/pages/AuthCallback';
 import { Home } from '@/pages/Home';
 import { Workouts } from '@/pages/Workouts';
 import { WorkoutDetail } from '@/pages/WorkoutDetail';
@@ -28,11 +34,10 @@ import { Support } from '@/pages/Support';
 import NotFound from '@/pages/not-found';
 
 function AppContent() {
+  const { session, user, loading, signOut } = useAuth();
   const {
     state,
     completeOnboarding,
-    login,
-    logout,
     addWorkoutLog,
     addMealLog,
     updateWaterIntake,
@@ -42,10 +47,11 @@ function AppContent() {
     updateProfile,
     exportData,
     exportPdfReport,
-  } = useAppState();
+  } = useAppState(user?.id);
 
   const [showLogin, setShowLogin] = useState(false);
 
+  // Sync theme
   useEffect(() => {
     if (state.settings.darkMode) {
       document.documentElement.classList.add('dark');
@@ -59,26 +65,51 @@ function AppContent() {
     document.documentElement.classList.add(`text-size-${state.settings.textSize}`);
   }, [state.settings.textSize]);
 
-  if (!state.isOnboarded && !state.isLoggedIn) {
-    if (showLogin) {
-      return (
-        <Login
-          onLogin={(email, password) => {
-            login(email, password);
-            setShowLogin(false);
-          }}
-          onBack={() => setShowLogin(false)}
-        />
-      );
+  // When a verified session is established, auto-complete onboarding from Supabase metadata
+  useEffect(() => {
+    if (user && user.email_confirmed_at && !state.isOnboarded) {
+      const meta = user.user_metadata ?? {};
+      if (meta.name) {
+        const profile: UserProfile = {
+          id: user.id,
+          name: meta.name as string,
+          email: user.email ?? '',
+          age: Number(meta.age) || 25,
+          height: Number(meta.height) || 68,
+          weight: Number(meta.weight) || 160,
+          fitnessLevel: (meta.fitnessLevel as UserProfile['fitnessLevel']) ?? 'beginner',
+          goals: (meta.goals as string[]) ?? [],
+          units: 'imperial',
+          createdAt: user.created_at,
+        };
+        completeOnboarding(profile);
+      }
     }
+  }, [user, state.isOnboarded, completeOnboarding]);
+
+  // Loading — waiting for Supabase to restore session
+  if (loading) {
     return (
-      <Onboarding
-        onComplete={completeOnboarding}
-        onLogin={() => setShowLogin(true)}
-      />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
+  // Not authenticated
+  if (!session) {
+    if (showLogin) {
+      return <Login onBack={() => setShowLogin(false)} />;
+    }
+    return <Onboarding onLogin={() => setShowLogin(true)} />;
+  }
+
+  // Authenticated but email not verified
+  if (!user?.email_confirmed_at) {
+    return <VerifyEmail email={user?.email} onSignOut={signOut} />;
+  }
+
+  // Authenticated + verified — show the app
   return (
     <Switch>
       <Route path="/">
@@ -124,7 +155,7 @@ function AppContent() {
           onUpdateProfile={updateProfile}
           onExportData={exportData}
           onExportPdfReport={exportPdfReport}
-          onLogout={logout}
+          onLogout={signOut}
         />
       </Route>
       <Route path="/membership">
@@ -139,15 +170,20 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Toaster />
-          <Switch>
-            <Route path="/privacy"><Privacy /></Route>
-            <Route path="/terms"><TermsOfService /></Route>
-            <Route path="/support"><Support /></Route>
-            <Route><AppContent /></Route>
-          </Switch>
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Toaster />
+            <Switch>
+              <Route path="/privacy"><Privacy /></Route>
+              <Route path="/terms"><TermsOfService /></Route>
+              <Route path="/support"><Support /></Route>
+              <Route path="/forgot-password"><ForgotPassword /></Route>
+              <Route path="/auth/reset-password"><ResetPassword /></Route>
+              <Route path="/auth/callback"><AuthCallback /></Route>
+              <Route><AppContent /></Route>
+            </Switch>
+          </WouterRouter>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

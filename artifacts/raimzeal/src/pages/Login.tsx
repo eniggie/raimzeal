@@ -1,31 +1,52 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocation } from 'wouter';
+import { supabase } from '@/lib/supabase';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
   onBack: () => void;
 }
 
-export function Login({ onLogin, onBack }: LoginProps) {
+export function Login({ onBack }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [, setLocation] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    onLogin(email, password);
-  };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    onLogin('demo@raimzeal.fit', 'demo123');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    setIsLoading(false);
+
+    if (error) {
+      if (
+        error.message.toLowerCase().includes('email not confirmed') ||
+        error.message.toLowerCase().includes('not confirmed')
+      ) {
+        setError('Please verify your email before signing in. Check your inbox for the confirmation link.');
+      } else if (
+        error.message.toLowerCase().includes('invalid login') ||
+        error.message.toLowerCase().includes('invalid credentials') ||
+        error.message.toLowerCase().includes('wrong password') ||
+        error.message.toLowerCase().includes('user not found') ||
+        error.message.toLowerCase().includes('no user found')
+      ) {
+        setError('Incorrect email or password.');
+      } else {
+        setError('Incorrect email or password.');
+      }
+    }
+    // On success, onAuthStateChange in AuthContext fires and re-renders the app
   };
 
   return (
@@ -52,7 +73,7 @@ export function Login({ onLogin, onBack }: LoginProps) {
         <h1 className="text-3xl font-bold font-display mb-2">Welcome back</h1>
         <p className="text-muted-foreground mb-8">Sign in to continue your journey</p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -61,24 +82,52 @@ export function Login({ onLogin, onBack }: LoginProps) {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
               className="h-12 text-lg"
               required
+              autoComplete="email"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              data-testid="input-password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 text-lg"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                data-testid="input-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                className="h-12 text-lg pr-12"
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword(v => !v)}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <div className="text-right">
+            <button
+              type="button"
+              className="text-sm text-primary hover:underline"
+              onClick={() => setLocation('/forgot-password')}
+            >
+              Forgot password?
+            </button>
           </div>
 
           <Button
@@ -95,30 +144,6 @@ export function Login({ onLogin, onBack }: LoginProps) {
             )}
           </Button>
         </form>
-
-        <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">Or</span>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="lg"
-          className="w-full"
-          onClick={handleDemoLogin}
-          disabled={isLoading}
-          data-testid="button-demo"
-        >
-          Try Demo Mode
-        </Button>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Demo mode loads sample data so you can explore all features
-        </p>
       </motion.div>
     </div>
   );

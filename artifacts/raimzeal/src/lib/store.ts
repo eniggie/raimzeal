@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'raimzeal_fitness_data';
+const STORAGE_KEY_BASE = 'raimzeal_data';
 
 export interface UserProfile {
   id: string;
@@ -68,7 +68,6 @@ export interface CommunityPost {
 
 export interface AppState {
   isOnboarded: boolean;
-  isLoggedIn: boolean;
   user: UserProfile | null;
   workoutLogs: WorkoutLog[];
   bodyMeasurements: BodyMeasurement[];
@@ -87,7 +86,6 @@ export interface AppState {
 
 const defaultState: AppState = {
   isOnboarded: false,
-  isLoggedIn: false,
   user: null,
   workoutLogs: [],
   bodyMeasurements: [],
@@ -197,69 +195,54 @@ const generateSampleData = (user: UserProfile): Partial<AppState> => {
   };
 };
 
-export function useAppState() {
-  const [state, setState] = useState<AppState>(() => {
-    if (typeof window === 'undefined') return defaultState;
-    const stored = localStorage.getItem(STORAGE_KEY);
+export function useAppState(userId?: string | null) {
+  const storageKey = userId ? `${STORAGE_KEY_BASE}_${userId}` : null;
+
+  const [state, setState] = useState<AppState>(defaultState);
+
+  // Re-load state from localStorage whenever the user changes (login/logout)
+  useEffect(() => {
+    if (!storageKey) {
+      setState(defaultState);
+      return;
+    }
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        return {
+        setState({
+          ...defaultState,
           ...parsed,
           settings: { ...defaultState.settings, ...(parsed.settings || {}) },
-        };
+        });
       } catch {
-        return defaultState;
+        setState(defaultState);
       }
+    } else {
+      setState(defaultState);
     }
-    return defaultState;
-  });
+  }, [storageKey]);
 
+  // Persist state to localStorage for the current user
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    if (storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+  }, [state, storageKey]);
 
   const updateState = (updates: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...updates }));
   };
 
-  const completeOnboarding = (user: UserProfile) => {
+  const completeOnboarding = useCallback((user: UserProfile) => {
     const sampleData = generateSampleData(user);
     setState(prev => ({
       ...prev,
       isOnboarded: true,
-      isLoggedIn: true,
       user,
       ...sampleData,
     }));
-  };
-
-  const login = (email: string, _password: string) => {
-    const demoUser: UserProfile = {
-      id: 'demo',
-      name: 'Demo User',
-      email,
-      age: 28,
-      height: 70,
-      weight: 175,
-      fitnessLevel: 'intermediate',
-      goals: ['muscle_gain', 'endurance'],
-      units: 'imperial',
-      createdAt: new Date().toISOString(),
-    };
-    const sampleData = generateSampleData(demoUser);
-    setState(prev => ({
-      ...prev,
-      isOnboarded: true,
-      isLoggedIn: true,
-      user: demoUser,
-      ...sampleData,
-    }));
-  };
-
-  const logout = () => {
-    setState(defaultState);
-  };
+  }, []);
 
   const addWorkoutLog = (log: WorkoutLog) => {
     setState(prev => ({
@@ -487,8 +470,6 @@ ${mealLogs.length > 0 ? `<table>
     state,
     updateState,
     completeOnboarding,
-    login,
-    logout,
     addWorkoutLog,
     addMealLog,
     updateWaterIntake,

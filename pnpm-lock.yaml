@@ -432,6 +432,10 @@ importers:
         version: 3.25.76
 
   artifacts/raimzeal:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.105.4
+        version: 2.105.4
     devDependencies:
       '@hookform/resolvers':
         specifier: ^3.10.0
