@@ -650,7 +650,7 @@ export default function CardCustomizationModal({
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
-  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [showInlineSave, setShowInlineSave] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
@@ -769,6 +769,8 @@ export default function CardCustomizationModal({
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
+    setShowInlineSave(false);
+    setPresetNameInput("");
     setThemeScrollAtEnd(false);
     setThemeHasOverflow(false);
     themeContainerWidth.current = 0;
@@ -968,11 +970,11 @@ export default function CardCustomizationModal({
     resetZoomPosition();
   }
 
-  function openSavePresetModal() {
+  function openInlineSave() {
     const activePreset = presets.find((p) => p.id === activePresetId);
     setPresetNameInput(activePreset ? activePreset.name : "");
-    setShowSavePresetModal(true);
-    setTimeout(() => presetNameRef.current?.focus(), 150);
+    setShowInlineSave(true);
+    setTimeout(() => presetNameRef.current?.focus(), 100);
   }
 
   async function handleSavePreset() {
@@ -992,7 +994,7 @@ export default function CardCustomizationModal({
     } else {
       if (presets.length >= MAX_PRESETS) {
         setSavingPreset(false);
-        setShowSavePresetModal(false);
+        setShowInlineSave(false);
         Alert.alert(
           "Preset limit reached",
           `You can save up to ${MAX_PRESETS} presets. Delete one to make room.`
@@ -1014,7 +1016,8 @@ export default function CardCustomizationModal({
     await savePresets(updatedPresets);
     setPresets(updatedPresets);
     setSavingPreset(false);
-    setShowSavePresetModal(false);
+    setShowInlineSave(false);
+    showConfirmation(activePresetId ? `"${name}" updated` : `"${name}" saved`, "success");
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
@@ -1229,12 +1232,18 @@ export default function CardCustomizationModal({
                 PRESETS
               </Text>
               <TouchableOpacity
-                onPress={openSavePresetModal}
-                style={[styles.savePresetBtn, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" }]}
+                onPress={() => {
+                  if (showInlineSave) {
+                    setShowInlineSave(false);
+                  } else {
+                    openInlineSave();
+                  }
+                }}
+                style={[styles.savePresetBtn, { backgroundColor: showInlineSave ? colors.muted : colors.primary + "18", borderColor: showInlineSave ? colors.border : colors.primary + "40" }]}
               >
-                <Ionicons name={activePresetId ? "save-outline" : "add-circle-outline"} size={13} color={colors.primary} />
-                <Text style={[styles.savePresetBtnText, { color: colors.primary }]}>
-                  {activePresetId ? "Update Preset" : "Save Preset"}
+                <Ionicons name={showInlineSave ? "close-outline" : activePresetId ? "save-outline" : "add-circle-outline"} size={13} color={showInlineSave ? colors.mutedForeground : colors.primary} />
+                <Text style={[styles.savePresetBtnText, { color: showInlineSave ? colors.mutedForeground : colors.primary }]}>
+                  {showInlineSave ? "Cancel" : activePresetId ? "Update Preset" : "Save Preset"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1341,7 +1350,56 @@ export default function CardCustomizationModal({
               </>
             )}
 
-            {activePreset && !reorderMode && (
+            {showInlineSave && !reorderMode && (
+              <View style={[styles.inlineSaveWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.inlineSaveLabel, { color: colors.foreground }]}>
+                  {activePresetId ? "Update preset name" : "Name this preset"}
+                </Text>
+                <View style={[styles.inlineSaveInputRow]}>
+                  <TextInput
+                    ref={presetNameRef}
+                    value={presetNameInput}
+                    onChangeText={setPresetNameInput}
+                    placeholder="e.g. Workout Card, Full Stats…"
+                    placeholderTextColor={colors.mutedForeground}
+                    maxLength={32}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSavePreset}
+                    style={[
+                      styles.inlineSaveInput,
+                      {
+                        color: colors.foreground,
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSavePreset}
+                    disabled={!presetNameInput.trim() || savingPreset}
+                    style={[
+                      styles.inlineSaveConfirmBtn,
+                      {
+                        backgroundColor: presetNameInput.trim() ? colors.primary : colors.muted,
+                      },
+                    ]}
+                  >
+                    {savingPreset ? (
+                      <ActivityIndicator size="small" color={colors.primaryForeground} />
+                    ) : (
+                      <Text style={[styles.inlineSaveConfirmText, { color: presetNameInput.trim() ? colors.primaryForeground : colors.mutedForeground }]}>
+                        {activePresetId ? "Update" : "Save"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.inlineSaveCharCount, { color: colors.mutedForeground }]}>
+                  {presetNameInput.trim().length}/32
+                </Text>
+              </View>
+            )}
+
+            {activePreset && !reorderMode && !showInlineSave && (
               <View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
                 <Ionicons name="bookmark" size={12} color={colors.primary} />
                 <Text style={[styles.activePresetBannerText, { color: colors.primary }]}>
@@ -1821,82 +1879,6 @@ export default function CardCustomizationModal({
         </Animated.View>
       </Modal>
 
-      {/* Save Preset modal */}
-      <Modal
-        visible={showSavePresetModal}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowSavePresetModal(false)}
-        statusBarTranslucent
-      >
-        <TouchableOpacity
-          style={styles.presetModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowSavePresetModal(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={[styles.presetModalCard, { backgroundColor: colors.background, borderColor: colors.border }]}
-          >
-            <Text style={[styles.presetModalTitle, { color: colors.foreground }]}>
-              {activePresetId ? "Update Preset" : "Save Preset"}
-            </Text>
-            <Text style={[styles.presetModalSubtitle, { color: colors.mutedForeground }]}>
-              {activePresetId
-                ? "Rename or overwrite this preset with the current settings."
-                : "Give this combination a name so you can quickly switch back to it."}
-            </Text>
-            <TextInput
-              ref={presetNameRef}
-              value={presetNameInput}
-              onChangeText={setPresetNameInput}
-              placeholder="e.g. Workout Card, Full Stats…"
-              placeholderTextColor={colors.mutedForeground}
-              maxLength={32}
-              returnKeyType="done"
-              onSubmitEditing={handleSavePreset}
-              style={[
-                styles.presetNameInput,
-                {
-                  color: colors.foreground,
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-            <Text style={[styles.presetCharCount, { color: colors.mutedForeground }]}>
-              {presetNameInput.trim().length}/32
-            </Text>
-            <View style={styles.presetModalActions}>
-              <TouchableOpacity
-                onPress={() => setShowSavePresetModal(false)}
-                style={[styles.presetModalCancelBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-              >
-                <Text style={[styles.presetModalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSavePreset}
-                disabled={!presetNameInput.trim() || savingPreset}
-                style={[
-                  styles.presetModalSaveBtn,
-                  {
-                    backgroundColor: presetNameInput.trim() ? colors.primary : colors.muted,
-                  },
-                ]}
-              >
-                {savingPreset ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Text style={[styles.presetModalSaveText, { color: presetNameInput.trim() ? colors.primaryForeground : colors.mutedForeground }]}>
-                    {activePresetId ? "Update" : "Save"}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
     </Modal>
   );
 }
@@ -2433,70 +2415,51 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.6)",
   },
-  // Save preset modal
-  presetModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  presetModalCard: {
-    width: "100%",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-  },
-  presetModalTitle: {
-    fontSize: 18,
-    fontFamily: "SpaceGrotesk_700Bold",
-    marginBottom: 6,
-  },
-  presetModalSubtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 19,
-    marginBottom: 18,
-  },
-  presetNameInput: {
+  // Inline save preset form
+  inlineSaveWrap: {
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    marginBottom: 12,
+  },
+  inlineSaveLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 8,
+  },
+  inlineSaveInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inlineSaveInput: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  presetCharCount: {
+  inlineSaveConfirmBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 64,
+  },
+  inlineSaveConfirmText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  inlineSaveCharCount: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     textAlign: "right",
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  presetModalActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  presetModalCancelBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  presetModalCancelText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  presetModalSaveBtn: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  presetModalSaveText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+    marginTop: 5,
   },
   // Confirmation toast
   confirmToastWrap: {
