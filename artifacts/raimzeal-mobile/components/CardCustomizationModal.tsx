@@ -656,6 +656,11 @@ export default function CardCustomizationModal({
   const [reorderMode, setReorderMode] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
 
+  // Preset thumbnail preview
+  const [presetPreviewTarget, setPresetPreviewTarget] = useState<CardPreset | null>(null);
+  const [presetPreviewVisible, setPresetPreviewVisible] = useState(false);
+  const presetPreviewAnim = useRef(new Animated.Value(0)).current;
+
   // Badge fade-in + slide-in animation
   const badgeFadeAnim = useRef(new Animated.Value(0)).current;
   const badgeSlideAnim = useRef(new Animated.Value(5)).current;
@@ -973,6 +978,53 @@ export default function CardCustomizationModal({
     setActivePresetId(preset.id);
     setRestoredFromStorage(false);
     resetZoomPosition();
+  }
+
+  function openPresetPreview(preset: CardPreset) {
+    pinchScale.value = 1;
+    pinchSavedScale.value = 1;
+    pinchTranslateX.value = 0;
+    pinchTranslateY.value = 0;
+    pinchSavedTranslateX.value = 0;
+    pinchSavedTranslateY.value = 0;
+    setPresetPreviewTarget(preset);
+    setPresetPreviewVisible(true);
+    if (reduceMotionRef.current) {
+      presetPreviewAnim.setValue(1);
+    } else {
+      presetPreviewAnim.setValue(0);
+      Animated.spring(presetPreviewAnim, {
+        toValue: 1,
+        damping: 18,
+        stiffness: 280,
+        mass: 0.8,
+        useNativeDriver: true,
+      }).start();
+    }
+  }
+
+  function closePresetPreview() {
+    if (reduceMotionRef.current) {
+      presetPreviewAnim.setValue(0);
+      setPresetPreviewVisible(false);
+      setPresetPreviewTarget(null);
+    } else {
+      Animated.timing(presetPreviewAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setPresetPreviewVisible(false);
+          setPresetPreviewTarget(null);
+        }
+      });
+    }
+  }
+
+  function confirmLoadPreset(preset: CardPreset) {
+    closePresetPreview();
+    loadPreset(preset);
   }
 
   function openInlineSave() {
@@ -1322,7 +1374,7 @@ export default function CardCustomizationModal({
                     return (
                       <TouchableOpacity
                         key={preset.id}
-                        onPress={() => loadPreset(preset)}
+                        onPress={() => openPresetPreview(preset)}
                         onLongPress={() => setReorderMode(true)}
                         delayLongPress={350}
                         activeOpacity={0.75}
@@ -1955,6 +2007,142 @@ export default function CardCustomizationModal({
         </Animated.View>
       </Modal>
 
+      {/* Preset thumbnail preview modal */}
+      <Modal
+        visible={presetPreviewVisible}
+        animationType="none"
+        transparent
+        onRequestClose={closePresetPreview}
+        statusBarTranslucent
+      >
+        <Animated.View
+          style={[
+            styles.zoomOverlay,
+            { opacity: presetPreviewAnim },
+          ]}
+        >
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={closePresetPreview}
+          />
+
+          {presetPreviewTarget && (
+            <>
+              <Animated.View
+                style={{
+                  transform: [
+                    {
+                      scale: presetPreviewAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.85, 1],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <ZoomableCard
+                  cardWidth={CARD_WIDTH * zoomScale}
+                  cardHeight={cardNativeHeight * zoomScale}
+                  scale={pinchScale}
+                  savedScale={pinchSavedScale}
+                  translateX={pinchTranslateX}
+                  translateY={pinchTranslateY}
+                  savedTranslateX={pinchSavedTranslateX}
+                  savedTranslateY={pinchSavedTranslateY}
+                >
+                  {zoomIsOneToOne ? (
+                    <ShareProgressCard
+                      {...cardPreviewData}
+                      visibleStats={presetPreviewTarget.visibleStats}
+                      customMessage={presetPreviewTarget.customMessage}
+                      themeId={presetPreviewTarget.themeId}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.previewScaler,
+                        {
+                          width: CARD_WIDTH,
+                          transform: [{ scale: zoomScale }],
+                        },
+                      ]}
+                    >
+                      <ShareProgressCard
+                        {...cardPreviewData}
+                        visibleStats={presetPreviewTarget.visibleStats}
+                        customMessage={presetPreviewTarget.customMessage}
+                        themeId={presetPreviewTarget.themeId}
+                      />
+                    </View>
+                  )}
+                </ZoomableCard>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.zoomCloseBtnWrap,
+                  { top: insets.top + 16 },
+                  {
+                    opacity: presetPreviewAnim,
+                    transform: [
+                      {
+                        translateY: presetPreviewAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-8, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+                pointerEvents="box-none"
+              >
+                <TouchableOpacity
+                  style={styles.zoomCloseBtn}
+                  onPress={closePresetPreview}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
+                </TouchableOpacity>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.presetPreviewFooter,
+                  {
+                    bottom: insets.bottom + 28,
+                    opacity: presetPreviewAnim,
+                    transform: [
+                      {
+                        translateY: presetPreviewAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [12, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+                pointerEvents="box-none"
+              >
+                <View style={styles.presetPreviewNameBadge} pointerEvents="none">
+                  <Text style={styles.presetPreviewNameText} numberOfLines={1}>
+                    {presetPreviewTarget.name}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.presetPreviewLoadBtn}
+                  activeOpacity={0.85}
+                  onPress={() => confirmLoadPreset(presetPreviewTarget)}
+                >
+                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                  <Text style={styles.presetPreviewLoadBtnText}>Load preset</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </>
+          )}
+        </Animated.View>
+      </Modal>
+
     </Modal>
   );
 }
@@ -2536,6 +2724,41 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "right",
     marginTop: 5,
+  },
+  // Preset preview footer
+  presetPreviewFooter: {
+    position: "absolute",
+    alignItems: "center",
+    gap: 12,
+  },
+  presetPreviewNameBadge: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  presetPreviewNameText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.85)",
+  },
+  presetPreviewLoadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.30)",
+  },
+  presetPreviewLoadBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
   },
   // Confirmation toast
   confirmToastWrap: {
