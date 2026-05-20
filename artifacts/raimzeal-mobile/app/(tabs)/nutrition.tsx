@@ -743,6 +743,14 @@ export default function NutritionScreen() {
   const starToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const starToastAnim = useRef(new Animated.Value(0)).current;
 
+  const [presetSavedMessage, setPresetSavedMessage] = useState<string | null>(null);
+  const presetSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetSavedAnim = useRef(new Animated.Value(0)).current;
+
+  const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
+  const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetUndoAnim = useRef(new Animated.Value(0)).current;
+
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
@@ -928,6 +936,49 @@ export default function NutritionScreen() {
       });
       starToastTimerRef.current = null;
     }, 2000);
+  }
+
+  function showPresetSavedToast(name: string) {
+    if (presetSavedTimerRef.current) clearTimeout(presetSavedTimerRef.current);
+    setPresetSavedMessage(`Preset "${name}" saved`);
+    presetSavedAnim.setValue(0);
+    Animated.spring(presetSavedAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    presetSavedTimerRef.current = setTimeout(() => {
+      Animated.timing(presetSavedAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setPresetSavedMessage(null);
+      });
+      presetSavedTimerRef.current = null;
+    }, 2000);
+  }
+
+  function showPresetDeletedToast(preset: CustomFilterPreset) {
+    if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
+    setDeletedPreset(preset);
+    presetUndoAnim.setValue(0);
+    Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    presetUndoTimerRef.current = setTimeout(() => {
+      dismissPresetUndoToast();
+    }, 3000);
+  }
+
+  function dismissPresetUndoToast() {
+    Animated.timing(presetUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      setDeletedPreset(null);
+    });
+    if (presetUndoTimerRef.current) {
+      clearTimeout(presetUndoTimerRef.current);
+      presetUndoTimerRef.current = null;
+    }
+  }
+
+  function handleUndoPresetDelete() {
+    if (!deletedPreset) return;
+    const restored = deletedPreset;
+    dismissPresetUndoToast();
+    const next = [...customPresets, restored];
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   function showUndoToast(meal: MealLog) {
@@ -1131,13 +1182,16 @@ export default function NutritionScreen() {
     AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     setShowSavePresetModal(false);
     setSavePresetName("");
+    showPresetSavedToast(name);
   }
 
   function deleteCustomPreset(id: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const preset = customPresets.find((p) => p.id === id);
     const next = customPresets.filter((p) => p.id !== id);
     setCustomPresets(next);
     AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    if (preset) showPresetDeletedToast(preset);
   }
 
   function applyPreset(preset: CustomFilterPreset) {
@@ -3532,6 +3586,67 @@ export default function NutritionScreen() {
           <Ionicons name="star" size={16} color="#f59f0a" style={{ marginRight: 6 }} />
           <Text style={[styles.starToastText, { color: colors.foreground }]}>
             {starToastMessage}
+          </Text>
+        </Animated.View>
+      )}
+
+      {deletedPreset !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: presetUndoAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: presetUndoAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+            Preset "{deletedPreset.name}" deleted
+          </Text>
+          <TouchableOpacity
+            onPress={handleUndoPresetDelete}
+            activeOpacity={0.75}
+            style={[styles.undoBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {presetSavedMessage !== null && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: presetSavedAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: presetSavedAnim,
+              bottom: deletedPreset !== null ? insets.bottom + 72 : insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="bookmark" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
+          <Text style={[styles.starToastText, { color: colors.foreground }]}>
+            {presetSavedMessage}
           </Text>
         </Animated.View>
       )}
