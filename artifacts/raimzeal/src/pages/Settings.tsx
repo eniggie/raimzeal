@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  Download, FileText, LogOut, Scale, Edit2, Check, X, Crown
+  Download, FileText, LogOut, Scale, Edit2, Check, X, Crown, Heart, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,6 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 import type { AppState, UserProfile } from '@/lib/store';
+
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/PLACEHOLDER_REPLACE_BEFORE_DEPLOY';
+const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 interface SettingsProps {
   state: AppState;
@@ -329,6 +332,39 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
           </Card>
         </motion.div>
 
+        {/* Support the Mission */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+          <Card className="p-4 border-primary/20 bg-primary/5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">RAIMZEAL is free forever.</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  We turned down deals to keep it that way. If it has helped you, a donation supports the team.
+                </p>
+                <a
+                  href={RAIMZY_LINKTREE}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-1.5 text-xs text-secondary hover:underline"
+                >
+                  Resources at linktr.ee/Raimzy
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              <a
+                href={STRIPE_DONATION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+                aria-label="Donate to support RAIMZEAL"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                Donate
+              </a>
+            </div>
+          </Card>
+        </motion.div>
+
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Button
             variant="destructive"
@@ -357,7 +393,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
             </Link>
           </div>
           <p>RAIMZEAL v1.2.0</p>
-          <p className="mt-1">Made with 💪 for fitness enthusiasts</p>
+          <p className="mt-1">Made with care for fitness enthusiasts</p>
         </motion.div>
       </div>
       <BottomNav />

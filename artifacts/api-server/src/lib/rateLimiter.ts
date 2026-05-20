@@ -90,3 +90,22 @@ export const digestSendNowRateLimit = rateLimit({
   legacyHeaders: false,
   message: { error: "Digest send rate limit reached. Try again in an hour." },
 });
+
+// ── Community mutations ───────────────────────────────────────────────────────
+// Light: likes and comments — 60 per minute per IP (interactive actions)
+export const communityMutateLimitLight = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many community actions — please slow down." },
+});
+
+// Heavy: post creation — 20 per hour per IP (prevents spam flooding)
+export const communityMutateLimitHeavy = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many posts — please wait before posting again." },
+});

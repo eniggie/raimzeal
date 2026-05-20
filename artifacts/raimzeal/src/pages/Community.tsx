@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
-  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw,
+  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw, ExternalLink, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,10 @@ import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Update to real Stripe donation link before final deployment
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/PLACEHOLDER_REPLACE_BEFORE_DEPLOY';
+const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 interface LivePost {
   id: string;
@@ -112,6 +116,66 @@ export function Community() {
         </div>
       </div>
 
+      {/* Resources + Support Section */}
+      <div className="px-4 pt-4 max-w-lg mx-auto w-full space-y-3">
+
+        {/* RAIMZY Resources Card */}
+        <Card className="p-4 border-secondary/30 bg-secondary/5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-secondary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4 text-secondary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Resources from RAIMZY</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                RAIMZY is one of RAIMZEAL's biggest supporters. Access books, music, courses, and coaching.
+              </p>
+              <a
+                href={RAIMZY_LINKTREE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-2 text-xs text-secondary font-semibold hover:underline"
+              >
+                Visit linktr.ee/Raimzy
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </Card>
+
+        {/* Support Prompts */}
+        <div className="grid grid-cols-2 gap-2">
+          <Card className="p-3 border-primary/20 bg-primary/5 text-center">
+            <p className="text-xs font-semibold text-primary">Share Your Win</p>
+            <p className="text-xs text-muted-foreground mt-1">Post a result, a milestone, or just show up. Every story matters.</p>
+          </Card>
+          <Card className="p-3 border-accent/20 bg-accent/5 text-center">
+            <p className="text-xs font-semibold text-accent">Ask the Community</p>
+            <p className="text-xs text-muted-foreground mt-1">Questions welcome. This community lifts each other up.</p>
+          </Card>
+        </div>
+
+        {/* Donation Prompt */}
+        <Card className="p-3 border-primary/20 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold">Enjoying RAIMZEAL?</p>
+            <p className="text-xs text-muted-foreground mt-0.5">We are free forever. Donations keep the lights on for everyone.</p>
+          </div>
+          <motion.a
+            href={STRIPE_DONATION_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+            animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 5 }}
+            aria-label="Donate to support RAIMZEAL"
+          >
+            <Heart className="w-3.5 h-3.5 fill-current" />
+            Donate
+          </motion.a>
+        </Card>
+      </div>
+
       {user && supabaseConfigured && (
         <div className="px-4 py-4 border-b border-border">
           <div className="max-w-lg mx-auto flex gap-3">
@@ -122,7 +186,7 @@ export function Community() {
             </Avatar>
             <div className="flex-1 flex gap-2">
               <Input
-                placeholder="Share your progress…"
+                placeholder="Share your progress..."
                 value={newPost}
                 onChange={e => setNewPost(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
@@ -142,7 +206,7 @@ export function Community() {
           {loading && (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-muted-foreground text-sm">Loading community posts…</p>
+              <p className="text-muted-foreground text-sm">Loading community posts...</p>
             </div>
           )}
 
@@ -159,7 +223,7 @@ export function Community() {
           {!loading && supabaseConfigured && fetchError && (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
               <WifiOff className="w-12 h-12 text-destructive/60" />
-              <h3 className="font-semibold">Couldn't load posts</h3>
+              <h3 className="font-semibold">Could not load posts</h3>
               <p className="text-muted-foreground text-sm max-w-xs">{fetchError}</p>
               <Button variant="outline" size="sm" onClick={loadPosts}>
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -172,7 +236,7 @@ export function Community() {
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
               <Users className="w-12 h-12 text-muted-foreground" />
               <h3 className="font-semibold">No posts yet</h3>
-              <p className="text-muted-foreground text-sm">Be the first to share your fitness journey!</p>
+              <p className="text-muted-foreground text-sm">Be the first to share your fitness journey.</p>
             </div>
           )}
 
@@ -222,6 +286,24 @@ export function Community() {
               </Card>
             </motion.div>
           ))}
+
+          {/* Footer encouragement */}
+          {!loading && (
+            <div className="pt-2 pb-4 text-center space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Every member here is on a real journey. Be kind, be honest, be encouraging.
+              </p>
+              <a
+                href={RAIMZY_LINKTREE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-secondary hover:underline"
+              >
+                Books, courses and coaching at linktr.ee/Raimzy
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
         </div>
       </div>
 

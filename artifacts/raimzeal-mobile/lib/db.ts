@@ -1,7 +1,13 @@
 /**
  * Supabase database helpers — mirrors the web app schema exactly.
  * All functions are no-ops when Supabase is not configured.
+ *
+ * Security note: community mutations (createCommunityPost, toggleLike,
+ * createComment) are routed through the trusted API server instead of
+ * calling Supabase directly. This prevents any authenticated client from
+ * performing cross-user row updates on community_posts.
  */
+import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type {
   WorkoutLog,
@@ -9,6 +15,26 @@ import type {
   BodyMeasurement,
   UserProfile,
 } from "@/contexts/FitnessContext";
+
+// ─── API base URL (mirrors the pattern used in ovia.tsx / membership.tsx) ──
+
+function getApiBase(): string {
+  if (Platform.OS === "web") return "/api";
+  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
+  if (domain) return `https://${domain}/api`;
+  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
+  if (explicit) return explicit;
+  return "http://localhost:80/api";
+}
+
+/**
+ * Returns the current session's access token so community mutation calls
+ * can present a Bearer token to requireAuth on the API server.
+ */
+async function getAccessToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
 
 // ─── Profiles ──────────────────────────────────────────────────────────────
 
@@ -270,28 +296,39 @@ export async function fetchCommunityPosts(
 }
 
 export async function createCommunityPost(
-  userId: string,
+  _userId: string,
   userName: string,
   content: string,
   postType: "post" | "question"
 ): Promise<CommunityPost | null> {
   if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase
-    .from("community_posts")
-    .insert({ user_id: userId, user_name: userName, content, post_type: postType })
-    .select()
-    .single();
-  if (error || !data) return null;
-  return {
-    id: data.id,
-    userId: data.user_id,
-    userName: data.user_name,
-    content: data.content,
-    postType: data.post_type as "post" | "question",
-    likesCount: 0,
-    commentsCount: 0,
-    createdAt: data.created_at,
-  };
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBase()}/community/posts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userName, content, postType }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { post: Record<string, unknown> };
+    const d = json.post;
+    return {
+      id: d.id as string,
+      userId: d.user_id as string,
+      userName: d.user_name as string,
+      content: d.content as string,
+      postType: d.post_type as "post" | "question",
+      likesCount: 0,
+      commentsCount: 0,
+      createdAt: d.created_at as string,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchComments(postId: string): Promise<CommunityComment[]> {
@@ -313,64 +350,59 @@ export async function fetchComments(postId: string): Promise<CommunityComment[]>
 
 export async function createComment(
   postId: string,
-  userId: string,
+  _userId: string,
   userName: string,
   content: string
 ): Promise<CommunityComment | null> {
   if (!isSupabaseConfigured) return null;
-  const { data, error } = await supabase
-    .from("community_comments")
-    .insert({ post_id: postId, user_id: userId, user_name: userName, content })
-    .select()
-    .single();
-  if (error || !data) return null;
-  // Count is maintained by the caller's local state and/or a server-side trigger.
-  // We intentionally do NOT update community_posts.comments_count here because
-  // that would allow any authenticated user to write to another user's post row.
-  return {
-    id: data.id,
-    postId: data.post_id,
-    userId: data.user_id,
-    userName: data.user_name,
-    content: data.content,
-    createdAt: data.created_at,
-  };
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBase()}/community/posts/${encodeURIComponent(postId)}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userName, content }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { comment: Record<string, unknown> };
+    const d = json.comment;
+    return {
+      id: d.id as string,
+      postId: d.post_id as string,
+      userId: d.user_id as string,
+      userName: d.user_name as string,
+      content: d.content as string,
+      createdAt: d.created_at as string,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function toggleLike(
   postId: string,
-  userId: string
+  _userId: string
 ): Promise<{ liked: boolean; newCount: number }> {
   if (!isSupabaseConfigured) return { liked: false, newCount: 0 };
-  const { data: existing } = await supabase
-    .from("community_likes")
-    .select("id")
-    .eq("post_id", postId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from("community_likes")
-      .delete()
-      .eq("post_id", postId)
-      .eq("user_id", userId);
-    if (error) return { liked: true, newCount: -1 };
-  } else {
-    const { error } = await supabase
-      .from("community_likes")
-      .insert({ post_id: postId, user_id: userId });
-    if (error) return { liked: false, newCount: -1 };
+  const token = await getAccessToken();
+  if (!token) return { liked: false, newCount: -1 };
+  try {
+    const res = await fetch(`${getApiBase()}/community/posts/${encodeURIComponent(postId)}/likes`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) return { liked: false, newCount: -1 };
+    const json = (await res.json()) as { liked: boolean; count: number };
+    return { liked: json.liked, newCount: json.count };
+  } catch {
+    return { liked: false, newCount: -1 };
   }
-
-  // Read the authoritative count directly from community_likes — never from
-  // community_posts, which would require a cross-user UPDATE to stay current.
-  const { count } = await supabase
-    .from("community_likes")
-    .select("*", { count: "exact", head: true })
-    .eq("post_id", postId);
-
-  return { liked: !existing, newCount: count ?? 0 };
 }
 
 export async function checkUserLikes(

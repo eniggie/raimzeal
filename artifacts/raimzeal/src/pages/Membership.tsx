@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Zap, Crown, Star, ChevronLeft } from 'lucide-react';
+import { Check, Zap, Crown, Star, ChevronLeft, Heart, ExternalLink } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BottomNav } from '@/components/BottomNav';
+
+// Update to real Stripe donation link before final deployment
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/PLACEHOLDER_REPLACE_BEFORE_DEPLOY';
+const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 interface Plan {
   id: string;
@@ -22,51 +26,51 @@ const FALLBACK_PLANS: Plan[] = [
   {
     id: 'free',
     name: 'Foundation',
-    tagline: 'Start your journey',
+    tagline: 'Free forever, for everyone',
     price: 0,
     priceLabel: 'Free forever',
     features: [
       '10 workouts from library',
-      'Basic calorie & macro tracking',
-      'Community (read-only)',
-      '5 Ovia AI messages/day',
+      'Basic calorie and macro tracking',
+      'Community access',
+      '5 Ovia AI messages per day',
       'Basic progress charts',
       'Weight tracking',
     ],
-    cta: 'Get started',
+    cta: 'Your current plan',
     highlighted: false,
     priceId: null,
   },
   {
     id: 'athlete',
     name: 'Athlete',
-    tagline: 'For the dedicated',
+    tagline: 'Support the mission, unlock more',
     price: 9.99,
     priceLabel: '$9.99 / month',
     features: [
-      'Full workout library & programs',
+      'Full workout library and programs',
       'Unlimited nutrition logging',
       'Full body measurements',
       'Unlimited Ovia AI',
-      'Community posting & comments',
+      'Community posting and comments',
       'Progress PDF export',
-      'Activity tracker & reminders',
+      'Activity tracker and reminders',
       'Progress card sharing',
       'Calendar scheduling',
     ],
-    cta: 'Start Athlete',
+    cta: 'Support as Athlete',
     highlighted: true,
     priceId: null,
   },
   {
     id: 'elite',
     name: 'Elite',
-    tagline: 'Maximum performance',
+    tagline: 'Maximum support, maximum results',
     price: 19.99,
     priceLabel: '$19.99 / month',
     features: [
       'Everything in Athlete',
-      'Priority Ovia AI (GPT-4.1 Turbo)',
+      'Priority Ovia AI (GPT-4.1)',
       'AI-generated meal plans',
       'Weekly Ovia coaching digest',
       'Custom workout builder',
@@ -74,7 +78,7 @@ const FALLBACK_PLANS: Plan[] = [
       'Exclusive Elite badge',
       'PDF coaching reports',
     ],
-    cta: 'Go Elite',
+    cta: 'Support as Elite',
     highlighted: false,
     priceId: null,
   },
@@ -100,10 +104,7 @@ export function Membership() {
   }, []);
 
   async function handleUpgrade(plan: Plan) {
-    if (plan.id === 'free' || !plan.priceId) {
-      // Prompt sign up or no-op for free
-      return;
-    }
+    if (plan.id === 'free' || !plan.priceId) return;
     setCheckoutLoading(plan.id);
     setLoading(true);
     try {
@@ -118,9 +119,7 @@ export function Membership() {
         }),
       });
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      if (data.url) window.location.href = data.url;
     } catch {
       /* silent */
     } finally {
@@ -137,17 +136,57 @@ export function Membership() {
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <Link href="/settings">
             <button className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
               <ChevronLeft className="h-5 w-5 text-foreground/70" />
             </button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Membership</h1>
-            <p className="text-sm text-foreground/60">Choose the plan that fits your goals</p>
+            <h1 className="text-2xl font-bold text-foreground">Support the Mission</h1>
+            <p className="text-sm text-foreground/60">RAIMZEAL is free forever. Your support keeps it that way.</p>
           </div>
         </div>
+
+        {/* Free Forever Mission Statement */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-2xl border border-primary/20 bg-primary/5"
+        >
+          <p className="text-sm font-semibold text-primary mb-1">Free forever, no exceptions.</p>
+          <p className="text-sm text-foreground/70 leading-relaxed">
+            RAIMZEAL helps people with fitness, food therapy, wellness, and healthcare support at zero cost. We have turned down partnerships and deals that could have compromised that mission. We always will. You never have to pay a single penny to use this platform.
+          </p>
+          <p className="text-xs text-foreground/50 mt-2">
+            Paid tiers exist purely for those who want to support the team and unlock extra features. They are never required.
+          </p>
+        </motion.div>
+
+        {/* Donation CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Make a one-time donation</p>
+            <p className="text-xs text-foreground/60 mt-0.5">Any amount helps pay staff, hosting, and support so RAIMZEAL stays free for everyone.</p>
+          </div>
+          <motion.a
+            href={STRIPE_DONATION_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
+            animate={{ scale: [1, 1.05, 1, 1.05, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+            aria-label="Make a donation"
+          >
+            <Heart className="w-4 h-4 fill-current" />
+            Donate
+          </motion.a>
+        </motion.div>
 
         {/* Success banner */}
         {success && (
@@ -156,12 +195,13 @@ export function Membership() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-6 p-4 rounded-2xl bg-primary/20 border border-primary/40 text-center"
           >
-            <p className="font-semibold text-primary">Welcome to RAIMZEAL Premium!</p>
-            <p className="text-sm text-foreground/70 mt-1">Your subscription is now active. Enjoy all the perks.</p>
+            <p className="font-semibold text-primary">Thank you for supporting RAIMZEAL!</p>
+            <p className="text-sm text-foreground/70 mt-1">Your subscription is now active. You are helping keep this platform free for everyone.</p>
           </motion.div>
         )}
 
         {/* Plans */}
+        <h2 className="text-base font-semibold text-foreground/70 mb-3">Optional supporter tiers</h2>
         <div className="space-y-4">
           {plans.map((plan, i) => {
             const Icon = PLAN_ICONS[plan.id as keyof typeof PLAN_ICONS] ?? Star;
@@ -214,15 +254,37 @@ export function Membership() {
                   disabled={plan.id === 'free' || (!!checkoutLoading && checkoutLoading !== plan.id) || loading}
                   onClick={() => handleUpgrade(plan)}
                 >
-                  {checkoutLoading === plan.id ? 'Redirecting…' : plan.id === 'free' ? 'Current plan' : plan.cta}
+                  {checkoutLoading === plan.id ? 'Redirecting...' : plan.cta}
                 </Button>
               </motion.div>
             );
           })}
         </div>
 
+        {/* RAIMZY Resources */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-6 p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
+        >
+          <p className="text-sm font-semibold mb-1">Resources from RAIMZY</p>
+          <p className="text-xs text-foreground/60 leading-relaxed mb-2">
+            RAIMZY is one of RAIMZEAL's biggest supporters and stakeholders. Find books, music, courses, and coaching to complement your fitness journey.
+          </p>
+          <a
+            href={RAIMZY_LINKTREE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+          >
+            Visit linktr.ee/Raimzy
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </motion.div>
+
         <p className="text-center text-xs text-foreground/40 mt-6">
-          Secure payment via Stripe · Cancel anytime
+          Secure payment via Stripe. Cancel anytime. You are never required to pay.
         </p>
       </div>
       <BottomNav />

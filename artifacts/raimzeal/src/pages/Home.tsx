@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
-  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown
+  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
 import { workouts } from '@/lib/store';
 
+// Update this to the real Stripe donation link before final deployment
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/PLACEHOLDER_REPLACE_BEFORE_DEPLOY';
+
 interface HomeProps {
   state: AppState;
   onUpdateWater: (glasses: number) => void;
@@ -20,18 +23,15 @@ interface HomeProps {
 
 function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; proteinGoal: number } {
   if (!user || !user.weight || !user.height) return { caloriesGoal: 2200, proteinGoal: 150 };
-  // Clamp to physiologically plausible ranges before computing
   const rawKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
   const rawCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
   const weightKg = Math.min(Math.max(rawKg, 30), 250);
   const heightCm = Math.min(Math.max(rawCm, 120), 230);
   const age = Math.min(Math.max(user.age || 30, 13), 100);
-  // Mifflin-St Jeor (gender-neutral average)
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
   const activityFactor = user.fitnessLevel === 'advanced' ? 1.725 : user.fitnessLevel === 'intermediate' ? 1.55 : 1.375;
   const tdee = Math.round((bmr * activityFactor) / 50) * 50;
   const protein = Math.round((weightKg * 1.8) / 5) * 5;
-  // Cap output so display never looks absurd
   return {
     caloriesGoal: Math.min(Math.max(tdee, 1500), 5000),
     proteinGoal: Math.min(Math.max(protein, 80), 300),
@@ -58,7 +58,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
     { icon: MessageCircle, label: 'Ovia AI', href: '/coach', color: 'bg-secondary/20 text-secondary' },
     { icon: Users, label: 'Community', href: '/community', color: 'bg-accent/20 text-accent' },
     { icon: Zap, label: 'Programs', href: '/programs', color: 'bg-warning/20 text-warning' },
-    { icon: Crown, label: 'Upgrade Plan', href: '/membership', color: 'bg-yellow-500/20 text-yellow-400' },
+    { icon: Crown, label: 'Support Us', href: '/membership', color: 'bg-yellow-500/20 text-yellow-400' },
   ];
 
   return (
@@ -83,6 +83,33 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             <span className="font-semibold text-primary" data-testid="text-streak">{state.streak}</span>
             <span className="text-xs text-muted-foreground">day streak</span>
           </motion.div>
+        </motion.div>
+
+        {/* Free Forever Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3"
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-primary">Free forever, always.</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              RAIMZEAL is free because your health matters. We turned down deals to keep it that way. If it has helped you, consider supporting us.
+            </p>
+          </div>
+          <motion.a
+            href={STRIPE_DONATION_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
+            animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+            aria-label="Donate to support RAIMZEAL"
+          >
+            <Heart className="w-3.5 h-3.5 fill-current" />
+            Donate
+          </motion.a>
         </motion.div>
 
         {scheduledWorkout && (
@@ -192,7 +219,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
                   <div className={cn('p-2 rounded-lg', action.color)}>
                     <action.icon className="w-5 h-5" />
                   </div>
-                  <span className="text-xs text-center">{action.label}</span>
+                  <span className="text-xs text-center leading-tight">{action.label}</span>
                 </motion.div>
               </Link>
             ))}

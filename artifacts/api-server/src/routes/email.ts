@@ -296,11 +296,16 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
   const subject = `Welcome to RAIMZEAL, ${firstName}! Your journey starts now 🚀`;
 
   const bodyHtml = `
-    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Welcome, ${safeFirstName}! 🎉</p>
+    <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Welcome, ${safeFirstName}!</p>
 
-    <p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#e8e8ec;">
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#e8e8ec;">
       Your RAIMZEAL account is almost ready. Please <strong style="color:#2E8B57;">verify your email address</strong> via the confirmation email to unlock all features.
     </p>
+
+    <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Free forever. No exceptions.</p>
+      <p style="margin:0;font-size:14px;line-height:1.7;color:#e8e8ec;">RAIMZEAL exists to help people with fitness, food therapy, wellness, and healthcare support at zero cost. We have turned down partnerships and commercial deals that would have compromised that mission. You will never be required to pay to use this platform. Paid tiers exist only for those who choose to support the team and want extra features.</p>
+    </div>
 
     <div style="background:#0d1f15;border-radius:10px;padding:20px 24px;margin-bottom:20px;">
       <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Getting Started Checklist</p>
@@ -312,7 +317,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
         <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Chat with Ovia AI — your personal fitness coach</td></tr>
         <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Set up reminders so you never miss a session</td></tr>
         <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Share your progress card with the community</td></tr>
-        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Explore membership plans — upgrade when you're ready</td></tr>
+        <tr><td style="padding:5px 0;color:#e8e8ec;font-size:14px;">&#9989;&nbsp; Explore RAIMZY resources at linktr.ee/Raimzy</td></tr>
       </table>
     </div>
 
@@ -324,14 +329,20 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     <div style="background:#1a1710;border-left:3px solid #C9A84C;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:16px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Your First Fitness Tip</p>
       <p style="margin:0 0 10px;font-size:15px;line-height:1.65;color:#e8e8ec;">${tipObj.tip}</p>
-      <a href="${tipObj.link}" style="font-size:12px;color:#C9A84C;text-decoration:none;font-weight:600;">Read the science →</a>
+      <a href="${tipObj.link}" style="font-size:12px;color:#C9A84C;text-decoration:none;font-weight:600;">Read the science</a>
     </div>
 
-    <div style="background:#0f1520;border-left:3px solid #3b82f6;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
+    <div style="background:#0f1520;border-left:3px solid #3b82f6;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#3b82f6;text-transform:uppercase;">Recommended Health Resource</p>
       <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#e8e8ec;">${resource.name}</p>
       <p style="margin:0 0 8px;font-size:13px;color:#9ca3af;">${resource.desc}</p>
-      <a href="${resource.url}" style="font-size:12px;color:#3b82f6;text-decoration:none;font-weight:600;">${resource.url.replace("https://", "")} →</a>
+      <a href="${resource.url}" style="font-size:12px;color:#3b82f6;text-decoration:none;font-weight:600;">${resource.url.replace("https://", "")}</a>
+    </div>
+
+    <div style="background:#1a0d0d;border-left:3px solid #e11d48;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#e11d48;text-transform:uppercase;">Support the mission (optional)</p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#e8e8ec;">RAIMZEAL is free and will always be free. If it has helped you, a voluntary donation helps us keep the lights on and the team funded. You are never required to give anything.</p>
+      <a href="https://raimzeal.com/membership" style="font-size:12px;color:#e11d48;text-decoration:none;font-weight:600;">Support the mission at raimzeal.com/membership</a>
     </div>
 
     <p style="margin:0 0 24px;font-size:13px;color:#9ca3af;line-height:1.6;">
@@ -344,16 +355,25 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     "",
     "Please verify your email address by clicking the confirmation link.",
     "",
+    "FREE FOREVER. NO EXCEPTIONS.",
+    "RAIMZEAL exists to help people with fitness, food therapy, wellness, and healthcare support at zero cost.",
+    "We have turned down partnerships that would have compromised that mission.",
+    "You will never be required to pay to use this platform.",
+    "",
     "GETTING STARTED:",
     "✅ Verify email · Log a workout · Track a meal · Body measurements",
-    "✅ Chat with Ovia AI · Set reminders · Share progress · Explore plans",
+    "✅ Chat with Ovia AI · Set reminders · Share progress",
+    "✅ Explore RAIMZY resources: https://linktr.ee/Raimzy",
     "",
     "OVIA AI SAYS:", motivation, "",
     "FITNESS TIP:", tipObj.tip, `Learn more: ${tipObj.link}`, "",
     "RECOMMENDED RESOURCE:", `${resource.name} — ${resource.url}`,
     "",
+    "SUPPORT THE MISSION (OPTIONAL):",
+    "If RAIMZEAL has helped you, a voluntary donation keeps the platform free for everyone.",
+    "https://raimzeal.com/membership",
+    "",
     "Open the app: https://www.raimzeal.com",
-    "Visit us: https://www.raimzeal.com",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
