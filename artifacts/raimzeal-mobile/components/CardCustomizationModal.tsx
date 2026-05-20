@@ -741,6 +741,11 @@ export default function CardCustomizationModal({
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
+  // Undo-delete toast
+  const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
+  const undoOpacity = useRef(new Animated.Value(0)).current;
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   function showConfirmation(msg: string, variant: "success" | "error" = "success") {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
@@ -1025,27 +1030,63 @@ export default function CardCustomizationModal({
     await savePresets(newOrder);
   }
 
-  async function handleDeletePreset(presetId: string) {
-    const preset = presets.find((p) => p.id === presetId);
-    if (!preset) return;
+  function dismissUndoToast(cb?: () => void) {
+    if (undoTimerRef.current !== null) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    undoOpacity.stopAnimation();
+    if (reduceMotionRef.current) {
+      undoOpacity.setValue(0);
+      setUndoDeleteState(null);
+      cb?.();
+    } else {
+      Animated.timing(undoOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setUndoDeleteState(null);
+        cb?.();
+      });
+    }
+  }
 
-    Alert.alert(
-      "Delete Preset",
-      `Delete "${preset.name}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const updated = presets.filter((p) => p.id !== presetId);
-            await savePresets(updated);
-            setPresets(updated);
-            if (activePresetId === presetId) setActivePresetId(null);
-          },
-        },
-      ]
-    );
+  function showUndoToast(preset: CardPreset, index: number) {
+    if (undoTimerRef.current !== null) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    undoOpacity.stopAnimation();
+    setUndoDeleteState({ preset, index });
+    if (reduceMotionRef.current) {
+      undoOpacity.setValue(1);
+    } else {
+      undoOpacity.setValue(0);
+      Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      dismissUndoToast();
+    }, 4000);
+  }
+
+  async function handleUndoDelete() {
+    if (!undoDeleteState) return;
+    const { preset, index } = undoDeleteState;
+    dismissUndoToast(async () => {
+      const restored = [...presets];
+      restored.splice(index, 0, preset);
+      await savePresets(restored);
+      setPresets(restored);
+    });
+  }
+
+  async function handleDeletePreset(presetId: string) {
+    const index = presets.findIndex((p) => p.id === presetId);
+    if (index === -1) return;
+    const preset = presets[index];
+    const updated = presets.filter((p) => p.id !== presetId);
+    await savePresets(updated);
+    setPresets(updated);
+    if (activePresetId === presetId) setActivePresetId(null);
+    showUndoToast(preset, index);
   }
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
@@ -1732,6 +1773,41 @@ export default function CardCustomizationModal({
                 >
                   {confirmMessage}
                 </Text>
+              </View>
+            </Animated.View>
+          )}
+          {undoDeleteState && (
+            <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity }]}>
+              <View
+                style={[
+                  styles.confirmToast,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    gap: 0,
+                    paddingHorizontal: 12,
+                  },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={14} color={colors.mutedForeground} />
+                <Text
+                  style={[
+                    styles.confirmToastText,
+                    { color: colors.mutedForeground, marginLeft: 6, marginRight: 10 },
+                  ]}
+                >
+                  "{undoDeleteState.preset.name}" deleted
+                </Text>
+                <TouchableOpacity onPress={handleUndoDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text
+                    style={[
+                      styles.confirmToastText,
+                      { color: colors.primary, fontFamily: "Inter_700Bold" },
+                    ]}
+                  >
+                    Undo
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Animated.View>
           )}
