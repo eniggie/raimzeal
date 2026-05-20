@@ -988,9 +988,11 @@ export default function CardCustomizationModal({
   async function openZoom() {
     setZoomVisible(true);
     zoomAnim.setValue(0);
-    Animated.timing(zoomAnim, {
+    Animated.spring(zoomAnim, {
       toValue: 1,
-      duration: 250,
+      damping: 18,
+      stiffness: 280,
+      mass: 0.8,
       useNativeDriver: true,
     }).start();
     try {
@@ -1006,7 +1008,7 @@ export default function CardCustomizationModal({
   function closeZoom() {
     Animated.timing(zoomAnim, {
       toValue: 0,
-      duration: 250,
+      duration: 200,
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) setZoomVisible(false);
