@@ -1099,12 +1099,25 @@ export default function CardCustomizationModal({
     }, 1000);
   }
 
-  async function handleSetDefault(action: CardAction) {
+  function handleSetDefault(action: CardAction) {
     actionLongPressedRef.current = true;
-    setDefaultAction(action);
-    AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
-    showConfirmation(`${label} set as default`, "success");
+    Alert.alert(
+      "Set as preferred",
+      `Always open with ${label}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Set as preferred",
+          onPress: () => {
+            setDefaultAction(action);
+            AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+            showConfirmation(`★ ${label} set as preferred`, "success");
+          },
+        },
+      ]
+    );
   }
 
   function handleDismissBadge() {
@@ -2171,6 +2184,11 @@ export default function CardCustomizationModal({
           {!anyStatEnabled && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
               Enable at least one stat to generate your card
+            </Text>
+          )}
+          {anyStatEnabled && defaultAction === null && (
+            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+              Long-press any button to set as preferred
             </Text>
           )}
           {confirmMessage && (
