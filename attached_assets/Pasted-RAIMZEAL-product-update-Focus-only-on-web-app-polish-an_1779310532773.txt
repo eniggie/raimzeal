@@ -1,0 +1,77 @@
+RAIMZEAL product update. Focus only on web app polish and finished product readiness.
+
+Mission:
+RAIMZEAL must be free forever. It exists to help people with fitness, food therapy, wellness, and healthcare support. It is not a paid fitness app. It should ask for voluntary donations so the team can pay staff, maintenance, hosting, support, and keep the platform free forever.
+
+Important copy:
+Tell users RAIMZEAL has turned down partnerships and deals that could compromise the free forever mission. Keep the tone grateful, honest, and community powered.
+
+Add this resource link:
+For music, books, courses, and coaching visit https://linktr.ee/Raimzy
+Present RAIMZY as one of RAIMZEAL’s biggest supporters and stakeholders.
+
+Home page:
+Add a short free forever message.
+Add a donation call to action.
+Add a simple animated donation button or heartbeat style attention effect.
+Keep animations lightweight.
+
+Community page:
+Equip the community page with useful resource sections, support prompts, member encouragement, donation support, and RAIMZY resource links.
+Remove video and audio access/features to avoid slowing the app.
+Do not load heavy media on the community page.
+Use compressed images only.
+Lazy load images.
+Reduce image sizes wherever possible.
+
+Donations:
+Add donation buttons in natural places:
+Home page
+Community page
+Membership page
+Settings/profile
+Footer
+Welcome email
+
+Use Stripe donation link support. If the real Stripe donation link is missing, use a safe admin placeholder and clearly report that the exact Stripe donation URL is needed before final deployment.
+
+Welcome email:
+Send new members a welcome email explaining:
+RAIMZEAL is free forever.
+RAIMZEAL helps with fitness, food therapy, wellness, and healthcare support.
+The team turned down offers that would compromise the mission.
+Members never have to pay a dime.
+Donations help pay staff, maintenance, and keep the service running.
+
+Ovia AI:
+Give Ovia AI stronger RAIMZEAL red branding.
+Ovia AI must focus only on fitness, wellness, food therapy, nutrition, habit support, and general healthcare support.
+If users ask unrelated questions, Ovia should politely say:
+I am here to help with fitness, food therapy, wellness, and healthcare support. Let us stay focused on your health journey.
+Ovia must not diagnose, prescribe medication, or replace a doctor.
+Give Ovia internet access only if the backend supports it safely. If not, report what is needed.
+
+Performance:
+Remove video and audio features.
+Compress and resize images.
+Lazy load images.
+Avoid heavy animations.
+Keep mobile fast.
+
+Copy cleanup:
+Remove visible asterisks.
+Remove em dashes.
+Fix grammar and visible errors.
+Remove placeholder/demo text.
+Keep tone warm, clear, and professional.
+
+Books, courses, coaching:
+Make the RAIMZY Linktree resource work clearly for books, music, courses, and coaching.
+Make Amazon book links configurable if the exact URL is missing.
+Do not invent missing payment or Amazon URLs.
+
+Validation:
+Run all TypeScript checks, build checks, route checks, and UI checks.
+Verify /, /login, /signup, /forgot-password, /reset-password, /auth/callback, /settings, /community, /privacy, /terms, /membership, and /coach.
+Checkpoint all successful fixes.
+Before deploy, ask me for any missing links, Stripe donation URL, Amazon URL, sender email, or secrets needed to make this a finished product.
