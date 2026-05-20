@@ -693,6 +693,15 @@ export default function CardCustomizationModal({
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
 
+  // Auto-trigger state: counts down from 3 then fires the default action
+  const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
+  const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
+  const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Keep a ref to always call the latest handleGenerate (avoids stale closure in interval)
+  const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
+  // Tracks the current visible prop so the interval can guard against firing after close
+  const visibleRef = useRef(visible);
+
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -821,7 +830,16 @@ export default function CardCustomizationModal({
   }
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      // Clean up any pending auto-trigger when the modal closes
+      if (autoTriggerIntervalRef.current !== null) {
+        clearInterval(autoTriggerIntervalRef.current);
+        autoTriggerIntervalRef.current = null;
+      }
+      setAutoTriggerCountdown(null);
+      setAutoTriggerAction(null);
+      return;
+    }
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
@@ -831,6 +849,9 @@ export default function CardCustomizationModal({
     setThemeHasOverflow(false);
     themeContainerWidth.current = 0;
     themeContentWidth.current = 0;
+
+    // Cancellation flag: prevents async loadSaved from acting after the modal closes
+    let cancelled = false;
 
     async function loadSaved() {
       try {
@@ -844,6 +865,8 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_THUMB_SIZE),
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
         ]);
+
+        if (cancelled) return;
 
         setPresets(loadedPresets);
         setReorderMode(false);
@@ -874,9 +897,16 @@ export default function CardCustomizationModal({
         setRestoredFromStorage(hadSavedData);
         setBadgeDismissed(dismissedFlag === "1");
         const validActions: CardAction[] = ["share", "save", "both", "copy"];
-        setDefaultAction(
-          validActions.includes(savedAction as CardAction) ? (savedAction as CardAction) : null
-        );
+        const resolvedAction = validActions.includes(savedAction as CardAction)
+          ? (savedAction as CardAction)
+          : null;
+        setDefaultAction(resolvedAction);
+
+        // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
+        const effectiveAnyStatEnabled = Object.values(effectiveStats).some(Boolean);
+        if (resolvedAction && effectiveAnyStatEnabled) {
+          startAutoTrigger(resolvedAction);
+        }
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
         syncKnobsImmediate({ ...DEFAULT_VISIBLE_STATS });
@@ -891,6 +921,7 @@ export default function CardCustomizationModal({
       }
     }
     loadSaved();
+    return () => { cancelled = true; };
   }, [visible]);
 
   useEffect(() => {
@@ -993,7 +1024,17 @@ export default function CardCustomizationModal({
     }
   }
 
+  function cancelAutoTrigger() {
+    if (autoTriggerIntervalRef.current !== null) {
+      clearInterval(autoTriggerIntervalRef.current);
+      autoTriggerIntervalRef.current = null;
+    }
+    setAutoTriggerCountdown(null);
+    setAutoTriggerAction(null);
+  }
+
   async function handleGenerate(action: CardAction) {
+    cancelAutoTrigger();
     await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
@@ -1026,6 +1067,36 @@ export default function CardCustomizationModal({
       const errMsg = err instanceof Error && err.message ? err.message : fallback;
       showConfirmation(errMsg, "error");
     }
+  }
+
+  // Always keep refs current so the interval calls the latest version and sees latest visibility
+  handleGenerateRef.current = handleGenerate;
+  visibleRef.current = visible;
+
+  function startAutoTrigger(action: CardAction) {
+    if (autoTriggerIntervalRef.current !== null) {
+      clearInterval(autoTriggerIntervalRef.current);
+      autoTriggerIntervalRef.current = null;
+    }
+    setAutoTriggerAction(action);
+    const DELAY = 3;
+    setAutoTriggerCountdown(DELAY);
+    let remaining = DELAY;
+    autoTriggerIntervalRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(autoTriggerIntervalRef.current!);
+        autoTriggerIntervalRef.current = null;
+        setAutoTriggerCountdown(null);
+        setAutoTriggerAction(null);
+        // Guard: only fire if the modal is still open
+        if (visibleRef.current) {
+          handleGenerateRef.current?.(action);
+        }
+      } else {
+        setAutoTriggerCountdown(remaining);
+      }
+    }, 1000);
   }
 
   async function handleSetDefault(action: CardAction) {
@@ -1997,6 +2068,24 @@ export default function CardCustomizationModal({
             )}
           </ScrollView>
 
+          {/* Auto-trigger countdown banner */}
+          {autoTriggerCountdown !== null && autoTriggerAction && !generating && (
+            <View
+              style={[
+                styles.autoTriggerBanner,
+                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+              ]}
+            >
+              <Ionicons name="flash" size={14} color={colors.primary} />
+              <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
+                {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
+              </Text>
+              <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={16} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Action buttons */}
           {generating ? (
             <View style={[styles.generateBtn, { backgroundColor: colors.muted }]}>
@@ -2016,6 +2105,7 @@ export default function CardCustomizationModal({
                 ] as const
               ).map(({ action, icon, label, subtitle, bg }) => {
                 const isPreferred = anyStatEnabled && defaultAction === action;
+                const isAutoTarget = autoTriggerAction === action && autoTriggerCountdown !== null;
                 return (
                   <TouchableOpacity
                     key={action}
@@ -2035,8 +2125,8 @@ export default function CardCustomizationModal({
                       {
                         backgroundColor: anyStatEnabled ? bg : colors.muted,
                         flex: 1,
-                        borderWidth: isPreferred ? 2.5 : 0,
-                        borderColor: isPreferred ? colors.primaryForeground : "transparent",
+                        borderWidth: isPreferred || isAutoTarget ? 2.5 : 0,
+                        borderColor: isPreferred || isAutoTarget ? colors.primaryForeground : "transparent",
                       },
                     ]}
                   >
@@ -2842,6 +2932,21 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "right",
     marginBottom: 16,
+  },
+  autoTriggerBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  autoTriggerText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   generateBtn: {
     flexDirection: "row",
