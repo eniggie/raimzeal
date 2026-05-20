@@ -619,6 +619,7 @@ export default function NutritionScreen() {
   const [savePresetName, setSavePresetName] = useState("");
 
   const [filterHintVisible, setFilterHintVisible] = useState(false);
+  const filterHintFadeAnim = useRef(new Animated.Value(0)).current;
   const filterHintShownRef = useRef(false);
   const filterHintDismissedRef = useRef(false);
   const filterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -641,7 +642,11 @@ export default function NutritionScreen() {
       filterHintTimerRef.current = null;
     }
     filterHintDismissedRef.current = true;
-    setFilterHintVisible(false);
+    Animated.timing(filterHintFadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setFilterHintVisible(false));
     AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
   }
 
@@ -1032,11 +1037,23 @@ export default function NutritionScreen() {
     AsyncStorage.getItem(FILTER_HINT_STORAGE_KEY).then((val) => {
       if (val) return;
       if (filterHintDismissedRef.current) return;
+      filterHintFadeAnim.setValue(0);
       setFilterHintVisible(true);
+      Animated.timing(filterHintFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
       filterHintTimerRef.current = setTimeout(() => {
         filterHintTimerRef.current = null;
-        setFilterHintVisible(false);
-        AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+        Animated.timing(filterHintFadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setFilterHintVisible(false);
+          AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+        });
       }, 4000);
     }).catch(() => {});
   }, [activeTab, isSearching]);
@@ -1581,9 +1598,11 @@ export default function NutritionScreen() {
 
             {/* Long-press hint — shown once below filter chips */}
             {activeTab === "today" && isSearching && filterHintVisible && (
-              <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
-                Long-press an active chip to save as preset · long-press an inactive chip to adjust its threshold
-              </Text>
+              <Animated.View style={{ opacity: filterHintFadeAnim }}>
+                <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
+                  Long-press an active chip to save as preset · long-press an inactive chip to adjust its threshold
+                </Text>
+              </Animated.View>
             )}
 
             {/* Search empty state */}
