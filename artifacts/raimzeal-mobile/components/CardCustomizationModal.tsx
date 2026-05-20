@@ -45,6 +45,7 @@ const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 
 const THUMB_SCALE = 72 / CARD_WIDTH;
+const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
 
 function estimateThumbnailHeight(vs: CardVisibleStats, hasMessage: boolean): number {
   const BASE_H = 244;
@@ -589,12 +590,13 @@ function ThemeSwatchItem({
             },
           ]}
         >
-          <View style={styles.themeThumbnailScaler} pointerEvents="none">
+          <View pointerEvents="none">
             <ShareProgressCard
               {...cardPreviewData}
               visibleStats={visibleStats}
               customMessage={customMessage}
               themeId={theme.id}
+              renderScale={THUMB_SCALE}
             />
           </View>
           {isSelected && (
@@ -1389,12 +1391,13 @@ export default function CardCustomizationModal({
                             },
                           ]}
                         >
-                          <View style={styles.presetThumbnailScaler} pointerEvents="none">
+                          <View pointerEvents="none">
                             <ShareProgressCard
                               {...cardPreviewData}
                               visibleStats={preset.visibleStats}
                               customMessage={preset.customMessage}
                               themeId={preset.themeId}
+                              renderScale={PRESET_THUMB_SCALE}
                             />
                           </View>
                           {isActive && (
@@ -2314,11 +2317,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
-  presetThumbnailScaler: {
-    width: CARD_WIDTH,
-    transform: [{ scale: 44 / CARD_WIDTH }],
-    transformOrigin: "top left",
-  },
   presetThumbnailCheck: {
     position: "absolute",
     bottom: 4,
@@ -2449,11 +2447,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     overflow: "hidden",
     position: "relative",
-  },
-  themeThumbnailScaler: {
-    width: CARD_WIDTH,
-    transform: [{ scale: THUMB_SCALE }],
-    transformOrigin: "top left",
   },
   themeThumbnailCheck: {
     position: "absolute",

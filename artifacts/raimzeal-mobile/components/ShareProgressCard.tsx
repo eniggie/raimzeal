@@ -125,6 +125,200 @@ export interface ShareProgressCardProps {
   visibleStats?: Partial<CardVisibleStats>;
   customMessage?: string;
   themeId?: CardThemeId;
+  /**
+   * When provided, all internal dimensions (font sizes, padding, radii, etc.)
+   * are multiplied by this factor and the card renders natively at
+   * `CARD_WIDTH * renderScale` wide — no CSS transform required.
+   * Use this for thumbnail previews to get pixel-crisp output.
+   */
+  renderScale?: number;
+}
+
+// Cache scaled StyleSheet objects to avoid re-creation on every render.
+const styleCache = new Map<number, ReturnType<typeof buildStyles>>();
+
+function buildStyles(s: number) {
+  return StyleSheet.create({
+    card: {
+      width: CARD_WIDTH * s,
+      backgroundColor: "#0a0a0b",
+      borderRadius: 20 * s,
+      padding: 24 * s,
+      gap: 16 * s,
+      overflow: "hidden",
+      position: "relative",
+    },
+    glowTL: {
+      position: "absolute",
+      top: -80 * s,
+      left: -60 * s,
+      width: 240 * s,
+      height: 240 * s,
+      borderRadius: 120 * s,
+    },
+    glowBR: {
+      position: "absolute",
+      bottom: -70 * s,
+      right: -60 * s,
+      width: 200 * s,
+      height: 200 * s,
+      borderRadius: 100 * s,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    },
+    brandRow: { flexDirection: "row", alignItems: "center", gap: 10 * s },
+    logoImage: { width: 34 * s, height: 34 * s },
+    logoBox: {
+      width: 38 * s,
+      height: 38 * s,
+      borderRadius: 10 * s,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandName: {
+      fontSize: Math.max(4, 16 * s),
+      fontWeight: "900",
+      color: "#fafafa",
+      letterSpacing: -0.3 * s,
+    },
+    brandTagline: {
+      fontSize: Math.max(3, 9 * s),
+      fontWeight: "700",
+      letterSpacing: 1.5 * s,
+    },
+    dateBox: { alignItems: "flex-end" },
+    dateText: { fontSize: Math.max(3, 10 * s), color: "#878792", fontWeight: "500" },
+    dateSubtext: { fontSize: Math.max(3, 10 * s), fontWeight: "700", marginTop: 2 * s },
+    heroSection: { alignItems: "center", gap: 6 * s, paddingVertical: 4 * s },
+    avatarCircle: {
+      width: 56 * s,
+      height: 56 * s,
+      borderRadius: 16 * s,
+      borderWidth: Math.max(0.5, 2 * s),
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 4 * s,
+    },
+    avatarInitial: { fontSize: Math.max(4, 26 * s), fontWeight: "900" },
+    heroName: {
+      fontSize: Math.max(4, 22 * s),
+      fontWeight: "800",
+      color: "#fafafa",
+      letterSpacing: -0.4 * s,
+    },
+    heroGoal: { fontSize: Math.max(3, 12 * s), color: "#878792", fontWeight: "500" },
+    customMessageBox: {
+      borderWidth: Math.max(0.5, 1 * s),
+      borderRadius: 10 * s,
+      paddingVertical: 10 * s,
+      paddingHorizontal: 14 * s,
+    },
+    customMessageText: {
+      fontSize: Math.max(3, 12 * s),
+      fontStyle: "italic",
+      fontWeight: "500",
+      textAlign: "center",
+      lineHeight: Math.max(4, 18 * s),
+    },
+    streakBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 12 * s,
+      borderWidth: Math.max(0.5, 1 * s),
+      borderRadius: 14 * s,
+      paddingVertical: 12 * s,
+      paddingHorizontal: 20 * s,
+    },
+    streakNumber: {
+      fontSize: Math.max(5, 36 * s),
+      fontWeight: "900",
+      letterSpacing: -1 * s,
+    },
+    streakRight: { gap: 2 * s },
+    streakLabel: {
+      fontSize: Math.max(3, 10 * s),
+      fontWeight: "700",
+      letterSpacing: 1.2 * s,
+    },
+    streakFires: { fontSize: Math.max(3, 14 * s), lineHeight: Math.max(4, 18 * s) },
+    statsGrid: { flexDirection: "row", gap: 10 * s },
+    statCard: {
+      backgroundColor: "#111113",
+      borderWidth: Math.max(0.5, 1 * s),
+      borderColor: "#1d1d20",
+      borderRadius: 14 * s,
+      padding: 12 * s,
+      alignItems: "center",
+      gap: 3 * s,
+      overflow: "hidden",
+      position: "relative",
+    },
+    statAccentBar: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: Math.max(0.5, 2 * s),
+    },
+    statIcon: { fontSize: Math.max(3, 14 * s), marginTop: 4 * s },
+    statValue: {
+      fontSize: Math.max(4, 20 * s),
+      fontWeight: "800",
+      letterSpacing: -0.5 * s,
+    },
+    statLabel: {
+      fontSize: Math.max(2, 9 * s),
+      fontWeight: "600",
+      color: "#878792",
+      letterSpacing: 0.8 * s,
+    },
+    bottomRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#111113",
+      borderWidth: Math.max(0.5, 1 * s),
+      borderColor: "#1d1d20",
+      borderRadius: 12 * s,
+      padding: 12 * s,
+      gap: 8 * s,
+    },
+    bottomItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 * s },
+    bottomIcon: { fontSize: Math.max(3, 14 * s) },
+    bottomItemLabel: {
+      fontSize: Math.max(2, 9 * s),
+      color: "#878792",
+      fontWeight: "600",
+      letterSpacing: 0.5 * s,
+    },
+    bottomItemValue: {
+      fontSize: Math.max(3, 12 * s),
+      color: "#fafafa",
+      fontWeight: "700",
+      marginTop: 1 * s,
+    },
+    bottomDivider: { width: Math.max(0.5, 1 * s), height: 30 * s, backgroundColor: "#1d1d20" },
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    footerLeft: { fontSize: Math.max(2, 9 * s), color: "#878792", fontWeight: "500" },
+    footerRight: { flexDirection: "row", alignItems: "center", gap: 5 * s },
+    footerDot: { width: 5 * s, height: 5 * s, borderRadius: 3 * s },
+    footerBrand: { fontSize: Math.max(2, 10 * s), fontWeight: "700" },
+  });
+}
+
+function getStyles(scale: number) {
+  const key = Math.round(scale * 10000) / 10000;
+  if (!styleCache.has(key)) {
+    styleCache.set(key, buildStyles(key));
+  }
+  return styleCache.get(key)!;
 }
 
 const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
@@ -143,9 +337,12 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
       visibleStats,
       customMessage,
       themeId,
+      renderScale,
     },
     ref
   ) => {
+    const s = renderScale ?? 1;
+    const styles = getStyles(s);
     const vis: CardVisibleStats = { ...DEFAULT_VISIBLE_STATS, ...visibleStats };
     const theme = getTheme(themeId);
 
@@ -181,7 +378,7 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
       { color: theme.statColors[1], icon: "⚡", value: calStr, label: "CAL BURNED", show: vis.calories },
       { color: theme.statColors[2], icon: "⏱️", value: timeStr, label: "TRAINED", show: vis.time },
     ];
-    const visibleGridStats = gridStats.filter((s) => s.show);
+    const visibleGridStats = gridStats.filter((gs) => gs.show);
 
     return (
       <View ref={ref} style={styles.card} collapsable={false}>
@@ -260,12 +457,12 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
         {/* ── Stats grid ── */}
         {visibleGridStats.length > 0 && (
           <View style={styles.statsGrid}>
-            {visibleGridStats.map((s) => (
-              <View key={s.label} style={[styles.statCard, { flex: 1 }]}>
-                <View style={[styles.statAccentBar, { backgroundColor: s.color }]} />
-                <Text style={styles.statIcon}>{s.icon}</Text>
-                <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
+            {visibleGridStats.map((gs) => (
+              <View key={gs.label} style={[styles.statCard, { flex: 1 }]}>
+                <View style={[styles.statAccentBar, { backgroundColor: gs.color }]} />
+                <Text style={styles.statIcon}>{gs.icon}</Text>
+                <Text style={[styles.statValue, { color: gs.color }]}>{gs.value}</Text>
+                <Text style={styles.statLabel}>{gs.label}</Text>
               </View>
             ))}
           </View>
@@ -314,143 +511,3 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
 
 ShareProgressCard.displayName = "ShareProgressCard";
 export default ShareProgressCard;
-
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_WIDTH,
-    backgroundColor: "#0a0a0b",
-    borderRadius: 20,
-    padding: 24,
-    gap: 16,
-    overflow: "hidden",
-    position: "relative",
-  },
-  glowTL: {
-    position: "absolute",
-    top: -80,
-    left: -60,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-  },
-  glowBR: {
-    position: "absolute",
-    bottom: -70,
-    right: -60,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-  },
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-  },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoImage: { width: 34, height: 34 },
-  logoBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandName: { fontSize: 16, fontWeight: "900", color: "#fafafa", letterSpacing: -0.3 },
-  brandTagline: { fontSize: 9, fontWeight: "700", letterSpacing: 1.5 },
-  dateBox: { alignItems: "flex-end" },
-  dateText: { fontSize: 10, color: "#878792", fontWeight: "500" },
-  dateSubtext: { fontSize: 10, fontWeight: "700", marginTop: 2 },
-  // Hero
-  heroSection: { alignItems: "center", gap: 6, paddingVertical: 4 },
-  avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  avatarInitial: { fontSize: 26, fontWeight: "900" },
-  heroName: { fontSize: 22, fontWeight: "800", color: "#fafafa", letterSpacing: -0.4 },
-  heroGoal: { fontSize: 12, color: "#878792", fontWeight: "500" },
-  // Custom message
-  customMessageBox: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  customMessageText: {
-    fontSize: 12,
-    fontStyle: "italic",
-    fontWeight: "500",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  // Streak
-  streakBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  streakNumber: { fontSize: 36, fontWeight: "900", letterSpacing: -1 },
-  streakRight: { gap: 2 },
-  streakLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2 },
-  streakFires: { fontSize: 14, lineHeight: 18 },
-  // Stats grid
-  statsGrid: { flexDirection: "row", gap: 10 },
-  statCard: {
-    backgroundColor: "#111113",
-    borderWidth: 1,
-    borderColor: "#1d1d20",
-    borderRadius: 14,
-    padding: 12,
-    alignItems: "center",
-    gap: 3,
-    overflow: "hidden",
-    position: "relative",
-  },
-  statAccentBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-  },
-  statIcon: { fontSize: 14, marginTop: 4 },
-  statValue: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5 },
-  statLabel: { fontSize: 9, fontWeight: "600", color: "#878792", letterSpacing: 0.8 },
-  // Bottom row
-  bottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111113",
-    borderWidth: 1,
-    borderColor: "#1d1d20",
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  bottomItem: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  bottomIcon: { fontSize: 14 },
-  bottomItemLabel: { fontSize: 9, color: "#878792", fontWeight: "600", letterSpacing: 0.5 },
-  bottomItemValue: { fontSize: 12, color: "#fafafa", fontWeight: "700", marginTop: 1 },
-  bottomDivider: { width: 1, height: 30, backgroundColor: "#1d1d20" },
-  // Footer
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  footerLeft: { fontSize: 9, color: "#878792", fontWeight: "500" },
-  footerRight: { flexDirection: "row", alignItems: "center", gap: 5 },
-  footerDot: { width: 5, height: 5, borderRadius: 3 },
-  footerBrand: { fontSize: 10, fontWeight: "700" },
-});
