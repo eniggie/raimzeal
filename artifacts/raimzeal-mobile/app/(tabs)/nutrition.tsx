@@ -3258,7 +3258,8 @@ export default function NutritionScreen() {
                             if (servings > 0.5) {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               setServings((s) => {
-                                const next = Math.max(0.5, Math.round((s - 0.5) * 10) / 10);
+                                const steps = Math.round(s * 200) / 100;
+                                const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
                                 setServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                                 return next;
                               });
@@ -3297,7 +3298,8 @@ export default function NutritionScreen() {
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setServings((s) => {
-                              const next = Math.round((s + 0.5) * 10) / 10;
+                              const steps = Math.round(s * 200) / 100;
+                              const next = Math.floor(steps + 1) * 0.5;
                               setServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                               return next;
                             });
