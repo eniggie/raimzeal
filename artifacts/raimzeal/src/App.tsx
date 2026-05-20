@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 import { Onboarding } from '@/pages/Onboarding';
 import { Login } from '@/pages/Login';
+import { OAuthSetup } from '@/pages/OAuthSetup';
 import { ForgotPassword } from '@/pages/ForgotPassword';
 import { ResetPassword } from '@/pages/ResetPassword';
 import { VerifyEmail } from '@/pages/VerifyEmail';
@@ -65,9 +66,15 @@ function AppContent() {
     document.documentElement.classList.add(`text-size-${state.settings.textSize}`);
   }, [state.settings.textSize]);
 
-  // When a verified session is established, auto-complete onboarding from Supabase metadata
+  // When a verified email/password user lands post-confirmation, auto-complete onboarding
+  // from the metadata they saved during sign-up (name, age, height, weight, goals etc.).
+  // OAuth users (Google, Apple) are handled separately in the render below via OAuthSetup.
   useEffect(() => {
     if (user && user.email_confirmed_at && !state.isOnboarded) {
+      const provider = (user.app_metadata as Record<string, unknown>)?.provider as string | undefined;
+      const isOAuth = provider && provider !== 'email';
+      if (isOAuth) return; // let the render block below handle OAuth users
+
       const meta = user.user_metadata ?? {};
       if (meta.name) {
         const profile: UserProfile = {
@@ -104,9 +111,15 @@ function AppContent() {
     return <Onboarding onLogin={() => setShowLogin(true)} />;
   }
 
-  // Authenticated but email not verified
+  // Authenticated but email not verified (email/password users only)
   if (!user?.email_confirmed_at) {
     return <VerifyEmail email={user?.email} onSignOut={signOut} />;
+  }
+
+  // OAuth user (Google/Apple) who hasn't set up their fitness profile yet
+  const oauthProvider = (user?.app_metadata as Record<string, unknown>)?.provider as string | undefined;
+  if (oauthProvider && oauthProvider !== 'email' && !state.isOnboarded) {
+    return <OAuthSetup user={user} onComplete={completeOnboarding} />;
   }
 
   // Authenticated + verified — show the app
