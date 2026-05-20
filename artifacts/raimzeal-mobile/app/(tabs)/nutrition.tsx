@@ -1199,6 +1199,7 @@ export default function NutritionScreen() {
     const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
     const keys = preset.filterKeys.filter((k) => validKeys.has(k));
     setActiveFilters(new Set(keys));
+    setTimeout(() => searchInputRef.current?.focus(), 50);
   }
 
   function openSavePresetModal() {
@@ -1308,6 +1309,7 @@ export default function NutritionScreen() {
   }
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<TextInput>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const runSearch = useCallback(async (q: string) => {
@@ -1799,6 +1801,7 @@ export default function NutritionScreen() {
             >
               <Ionicons name="search-outline" size={17} color={isSearching ? colors.primary : colors.mutedForeground} />
               <TextInput
+                ref={searchInputRef}
                 placeholder="Search food by name…"
                 placeholderTextColor={colors.mutedForeground}
                 value={searchQuery}
@@ -2416,6 +2419,43 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </TouchableOpacity>
                     ))}
+                  </>
+                )}
+
+                {customPresets.length > 0 && (
+                  <>
+                    <View style={styles.presetChipsHeader}>
+                      <Text style={[styles.presetChipsLabel, { color: colors.mutedForeground }]}>
+                        Saved Presets
+                      </Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={[styles.filterScroll, { paddingVertical: 2, marginBottom: 4 }]}
+                    >
+                      {customPresets.map((preset) => (
+                        <TouchableOpacity
+                          key={preset.id}
+                          onPress={() => applyPreset(preset)}
+                          activeOpacity={0.75}
+                          style={[
+                            styles.presetChip,
+                            { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
+                          ]}
+                        >
+                          <View style={styles.presetChipInner}>
+                            <Ionicons name="bookmark" size={12} color={colors.secondary} />
+                            <Text
+                              style={[styles.presetChipText, { color: colors.secondary }]}
+                              numberOfLines={1}
+                            >
+                              {preset.name}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   </>
                 )}
 
