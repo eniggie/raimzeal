@@ -63,6 +63,7 @@ export default function ProfileScreen() {
     cameraRollStatus,
     hasSeenRationale,
     markRationaleDismissed,
+    resetRationale,
     requestCameraRollPermission,
     updateCameraRollStatus,
   } = usePermissions();
@@ -172,6 +173,15 @@ export default function ProfileScreen() {
   async function handlePhotoRationaleNotNow() {
     setShowPhotoRationaleModal(false);
     await markRationaleDismissed();
+  }
+
+  async function handleResetRationalePrompt() {
+    await resetRationale();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      "Prompt Reset",
+      "The next time you save a progress card, the photo access explanation will appear again."
+    );
   }
 
   function handlePickUndoWindow() {
@@ -537,6 +547,15 @@ export default function ProfileScreen() {
               }
               onPress={handlePhotoAccessPress}
             />
+            {hasSeenRationale && cameraRollStatus === "undetermined" && (
+              <ActionRow
+                icon="refresh-outline"
+                label="Reset photo access prompt"
+                sublabel="Re-show the explanation on next save attempt"
+                color={colors.accent}
+                onPress={handleResetRationalePrompt}
+              />
+            )}
             <SettingToggleRow
               icon="refresh-circle-outline"
               label="Show restore badge"

@@ -27,6 +27,12 @@ interface PermissionsContextType {
    */
   markRationaleDismissed: () => Promise<void>;
   /**
+   * Clears the rationale-dismissed flag so the explanation sheet will
+   * re-appear on the next save attempt. Only meaningful when
+   * cameraRollStatus is "undetermined".
+   */
+  resetRationale: () => Promise<void>;
+  /**
    * Shows an in-app explanation dialog, then — if the user accepts — triggers
    * the OS photo-library permission prompt and caches the result.
    * Resolves to "undetermined" if the user declines or dismisses without granting.
@@ -97,6 +103,11 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     setHasSeenRationale(true);
   }, []);
 
+  const resetRationale = useCallback(async () => {
+    await AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY);
+    setHasSeenRationale(false);
+  }, []);
+
   const updateCameraRollStatus = useCallback((status: CameraRollPermissionStatus) => {
     setCameraRollStatus(status);
   }, []);
@@ -126,6 +137,7 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
         permissionsBootstrapped,
         hasSeenRationale,
         markRationaleDismissed,
+        resetRationale,
         requestCameraRollPermission,
         updateCameraRollStatus,
       }}
