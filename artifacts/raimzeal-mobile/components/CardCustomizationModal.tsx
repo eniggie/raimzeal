@@ -571,9 +571,22 @@ function ThemeSwatchItem({
 }: ThemeSwatchItemProps) {
   const scale = useSharedValue(1);
   const reduceMotion = useReduceMotion();
+  const animatedHeight = useSharedValue(estimatedHeight);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  useEffect(() => {
+    if (reduceMotion) {
+      animatedHeight.value = estimatedHeight;
+    } else {
+      animatedHeight.value = withSpring(estimatedHeight, { damping: 18, stiffness: 280, mass: 0.6 });
+    }
+  }, [estimatedHeight, reduceMotion]);
+
+  const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const frameStyle = useAnimatedStyle(() => ({
+    height: animatedHeight.value,
   }));
 
   function handlePress() {
@@ -593,15 +606,15 @@ function ThemeSwatchItem({
       activeOpacity={0.85}
       style={styles.themeThumbnailItem}
     >
-      <Reanimated.View style={animatedStyle}>
-        <View
+      <Reanimated.View style={scaleStyle}>
+        <Reanimated.View
           style={[
             styles.themeThumbnailFrame,
             {
-              height: estimatedHeight,
               borderColor: isSelected ? theme.accent : colors.border,
               borderWidth: isSelected ? 2.5 : 1.5,
             },
+            frameStyle,
           ]}
         >
           <View pointerEvents="none">
@@ -618,7 +631,7 @@ function ThemeSwatchItem({
               <Ionicons name="checkmark" size={10} color="#fff" />
             </View>
           )}
-        </View>
+        </Reanimated.View>
         <Text
           style={[
             styles.themeThumbnailLabel,
