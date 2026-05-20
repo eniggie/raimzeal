@@ -619,6 +619,11 @@ export default function NutritionScreen() {
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
 
+  const [filterSummaryVisible, setFilterSummaryVisible] = useState(false);
+  const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
+  const filterSummarySlideAnim = useRef(new Animated.Value(-6)).current;
+  const filterSummaryScaleAnim = useRef(new Animated.Value(1)).current;
+
   const [filterHintVisible, setFilterHintVisible] = useState(false);
   const filterHintFadeAnim = useRef(new Animated.Value(0)).current;
   const filterHintShownRef = useRef(false);
@@ -1112,6 +1117,66 @@ export default function NutritionScreen() {
       }, 4000);
     }).catch(() => {});
   }, [activeTab, isSearching]);
+
+  const shouldShowFilterSummary =
+    activeTab === "today" && isSearching && activeFilters.size >= 2 && !searchLoading && searchDone;
+
+  useEffect(() => {
+    if (shouldShowFilterSummary) {
+      filterSummaryFadeAnim.setValue(0);
+      filterSummarySlideAnim.setValue(-6);
+      setFilterSummaryVisible(true);
+      Animated.parallel([
+        Animated.timing(filterSummaryFadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(filterSummarySlideAnim, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(filterSummaryFadeAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(filterSummarySlideAnim, {
+          toValue: -6,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setFilterSummaryVisible(false);
+      });
+    }
+  }, [shouldShowFilterSummary]);
+
+  const prevFilterSummaryCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!shouldShowFilterSummary) return;
+    const count = filteredSearchResults.length;
+    if (prevFilterSummaryCountRef.current !== null && prevFilterSummaryCountRef.current !== count) {
+      filterSummaryScaleAnim.setValue(1);
+      Animated.sequence([
+        Animated.timing(filterSummaryScaleAnim, {
+          toValue: 1.18,
+          duration: 110,
+          useNativeDriver: true,
+        }),
+        Animated.timing(filterSummaryScaleAnim, {
+          toValue: 1,
+          duration: 110,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevFilterSummaryCountRef.current = count;
+  }, [filteredSearchResults.length, shouldShowFilterSummary]);
 
   function toggleFilter(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1635,20 +1700,32 @@ export default function NutritionScreen() {
             )}
 
             {/* Combined filter summary — shown below chips when 2+ filters are active */}
-            {activeTab === "today" && isSearching && activeFilters.size >= 2 && !searchLoading && searchDone && (
-              <Text style={[styles.filterCombinedSummary, { color: colors.primary }]}>
-                {(() => {
-                  const count = filteredSearchResults.length;
-                  const labels = nutritionFilters
-                    .filter((f) => activeFilters.has(f.key))
-                    .map((f) => f.label);
-                  const labelText =
-                    labels.length === 2
-                      ? `${labels[0]} + ${labels[1]}`
-                      : `all ${labels.length} filters`;
-                  return `${count} ${count === 1 ? "result" : "results"} match ${labelText}`;
-                })()}
-              </Text>
+            {filterSummaryVisible && (
+              <Animated.View
+                style={{
+                  opacity: filterSummaryFadeAnim,
+                  transform: [{ translateY: filterSummarySlideAnim }],
+                }}
+              >
+                <Animated.Text
+                  style={[
+                    styles.filterCombinedSummary,
+                    { color: colors.primary, transform: [{ scale: filterSummaryScaleAnim }] },
+                  ]}
+                >
+                  {(() => {
+                    const count = filteredSearchResults.length;
+                    const labels = nutritionFilters
+                      .filter((f) => activeFilters.has(f.key))
+                      .map((f) => f.label);
+                    const labelText =
+                      labels.length === 2
+                        ? `${labels[0]} + ${labels[1]}`
+                        : `all ${labels.length} filters`;
+                    return `${count} ${count === 1 ? "result" : "results"} match ${labelText}`;
+                  })()}
+                </Animated.Text>
+              </Animated.View>
             )}
 
             {/* Long-press hint — shown once below filter chips */}
