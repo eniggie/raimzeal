@@ -813,12 +813,14 @@ export default function CardCustomizationModal({
   function toggleStat(key: keyof CardVisibleStats) {
     setVisibleStats((prev) => ({ ...prev, [key]: !prev[key] }));
     setActivePresetId(null);
+    setRestoredFromStorage(false);
     resetZoomPosition();
   }
 
   function handleThemeChange(themeId: CardThemeId) {
     setSelectedThemeId(themeId);
     setActivePresetId(null);
+    setRestoredFromStorage(false);
     resetZoomPosition();
     if (themeTransitionTimer.current !== null) {
       clearTimeout(themeTransitionTimer.current);
@@ -842,6 +844,7 @@ export default function CardCustomizationModal({
   function handleMessageChange(text: string) {
     setCustomMessage(text);
     setActivePresetId(null);
+    setRestoredFromStorage(false);
     resetZoomPosition();
   }
 
