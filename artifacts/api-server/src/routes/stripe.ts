@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { getUncachableStripeClient } from "../stripeClient";
 import { logger } from "../lib/logger";
-import { requireAuth, optionalAuth } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 
 const stripeRouter = Router();
 
@@ -115,50 +115,43 @@ stripeRouter.get("/stripe/subscription", requireAuth, async (req, res) => {
 });
 
 // POST /api/stripe/checkout — create a Stripe Checkout Session
-// optionalAuth: uses verified userId from JWT when present; falls back to anonymous session
-stripeRouter.post("/stripe/checkout", optionalAuth, async (req, res) => {
+// requireAuth: userId and email come exclusively from verified JWT — never from request body.
+stripeRouter.post("/stripe/checkout", requireAuth, async (req, res) => {
   try {
-    const { priceId, email, successUrl, cancelUrl } = req.body as {
+    const { priceId, successUrl, cancelUrl } = req.body as {
       priceId: string;
-      email?: string;
       successUrl: string;
       cancelUrl: string;
     };
 
     if (!priceId) return res.status(400).json({ error: "priceId required" });
 
-    // userId comes ONLY from verified JWT middleware — never from request body
-    const userId = (req as any).userId as string | undefined;
+    // Both userId and email are resolved from verified JWT — body values are ignored.
+    const userId = (req as any).userId as string;
+    const userEmail = (req as any).userEmail as string | undefined;
 
     const stripe = await getUncachableStripeClient();
 
-    // Look up or create Stripe customer
-    let customerId: string | undefined;
-    if (userId) {
-      const result = await db.execute(
-        sql`SELECT stripe_customer_id FROM users WHERE id = ${userId}`
-      );
-      const row = result.rows[0] as { stripe_customer_id?: string } | undefined;
-      customerId = row?.stripe_customer_id ?? undefined;
-    }
+    // Look up existing Stripe customer from DB using verified userId only.
+    const result = await db.execute(
+      sql`SELECT stripe_customer_id FROM users WHERE id = ${userId}`
+    );
+    const row = result.rows[0] as { stripe_customer_id?: string } | undefined;
+    let customerId: string | undefined = row?.stripe_customer_id ?? undefined;
 
-    const resolvedEmail = email ?? ((req as any).userEmail as string | undefined);
-    if (!customerId && resolvedEmail) {
+    if (!customerId) {
       const customer = await stripe.customers.create({
-        email: resolvedEmail,
-        metadata: userId ? { userId } : {},
+        email: userEmail,
+        metadata: { userId },
       });
       customerId = customer.id;
-      if (userId) {
-        await db.execute(
-          sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${userId}`
-        );
-      }
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${userId}`
+      );
     }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : resolvedEmail,
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",

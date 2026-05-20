@@ -117,7 +117,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
 TODAY: ${now}
 
 ABOUT ${firstName.toUpperCase()} — REAL-TIME DATA (use this in every response):
-Name: ${userName}
+First name: ${firstName}
 Current streak: ${streak} days
 Fitness goals: ${goals}
 Fitness level: ${fitnessLevel}
@@ -275,7 +275,16 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
       }
     }
 
-    let systemPrompt = buildSystemPrompt(userContext ?? {});
+    // Strip PII fields that must not be forwarded to the model.
+    // userId is never in userContext; strip email/phone defensively.
+    const safeContext: Record<string, unknown> = { ...(userContext ?? {}) };
+    delete safeContext["email"];
+    delete safeContext["userEmail"];
+    delete safeContext["phone"];
+    delete safeContext["phone_e164"];
+    delete safeContext["phoneE164"];
+
+    let systemPrompt = buildSystemPrompt(safeContext);
 
     if (weeklyDigest) {
       const wkName = ((userContext?.name as string) ?? "Champion").split(" ")[0];

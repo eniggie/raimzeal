@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
+import { requireAuth } from "../middleware/auth";
 
 const emailRouter = Router();
 
@@ -412,7 +413,7 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
-emailRouter.post("/email/send", emailSendRateLimit, async (req, res) => {
+emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res) => {
   const { to, userName, type, message } = req.body as {
     to: string; userName: string;
     type: "motivation" | "tip" | "custom" | "weekly" | "welcome" | "midweek";
@@ -469,7 +470,7 @@ emailRouter.post("/email/send", emailSendRateLimit, async (req, res) => {
   }
 });
 
-emailRouter.post("/email/verify", emailVerifyRateLimit, async (req, res) => {
+emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req, res) => {
   const { to, userName } = req.body as { to: string; userName: string };
   if (!to || !userName) { res.status(400).json({ error: "to and userName are required." }); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.status(400).json({ error: "Invalid email address." }); return; }
@@ -489,7 +490,7 @@ emailRouter.post("/email/verify", emailVerifyRateLimit, async (req, res) => {
       html: buildSimpleHtmlEmail(subject, `Hi ${firstName},<br /><br />Your RAIMZEAL verification code is:<br /><br /><span style="font-size:32px;font-weight:700;letter-spacing:6px;color:#2E8B57;">${otp}</span><br /><br />This code expires in 10 minutes. Do not share it with anyone.`),
     });
     req.log.info({ to }, "Verification OTP sent");
-    res.json({ success: true, otp, message: "Verification code sent." });
+    res.json({ success: true, message: "Verification code sent." });
   } catch (err) {
     res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" });
   }
