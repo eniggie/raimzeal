@@ -1064,10 +1064,23 @@ export default function NutritionScreen() {
   }, [filterThresholds]);
 
   function resetAllThresholds() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const defaults = getDefaultThresholds();
-    setFilterThresholds(defaults);
-    AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
+    Alert.alert(
+      "Reset All Filters",
+      "This will restore all thresholds to their default values.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            const defaults = getDefaultThresholds();
+            setFilterThresholds(defaults);
+            AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
+          },
+        },
+      ]
+    );
   }
 
   function resetSingleThreshold() {
