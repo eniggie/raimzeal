@@ -138,6 +138,7 @@ const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const HISTORY_FILTER_HINT_STORAGE_KEY = "@nutrition_history_filter_hint_dismissed";
+const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 
 interface CustomFilterPreset {
   id: string;
@@ -668,6 +669,18 @@ export default function NutritionScreen() {
   type TrendMetric = "calories" | "protein" | "carbs" | "fat";
 
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("calories");
+
+  useEffect(() => {
+    AsyncStorage.getItem(TREND_METRIC_STORAGE_KEY).then((val) => {
+      if (val === "calories" || val === "protein" || val === "carbs" || val === "fat") {
+        setTrendMetric(val);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(TREND_METRIC_STORAGE_KEY, trendMetric).catch(() => {});
+  }, [trendMetric]);
 
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
