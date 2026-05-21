@@ -933,6 +933,7 @@ export default function CardCustomizationModal({
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
   const undoOpacity = useRef(new Animated.Value(0)).current;
+  const undoProgressAnim = useRef(new Animated.Value(1)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function dismissConfirmToast() {
@@ -1595,6 +1596,7 @@ export default function CardCustomizationModal({
       undoTimerRef.current = null;
     }
     undoOpacity.stopAnimation();
+    undoProgressAnim.stopAnimation();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(0);
       setUndoDeleteState(null);
@@ -1613,12 +1615,19 @@ export default function CardCustomizationModal({
       undoTimerRef.current = null;
     }
     undoOpacity.stopAnimation();
+    undoProgressAnim.stopAnimation();
     setUndoDeleteState({ preset, index });
+    undoProgressAnim.setValue(1);
     if (reduceMotionRef.current) {
       undoOpacity.setValue(1);
     } else {
       undoOpacity.setValue(0);
       Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(undoProgressAnim, {
+        toValue: 0,
+        duration: 4000,
+        useNativeDriver: false,
+      }).start();
     }
     undoTimerRef.current = setTimeout(() => {
       undoTimerRef.current = null;
@@ -2662,29 +2671,45 @@ export default function CardCustomizationModal({
                     backgroundColor: colors.card,
                     borderColor: colors.border,
                     gap: 0,
-                    paddingHorizontal: 12,
+                    paddingHorizontal: 0,
+                    paddingVertical: 0,
+                    flexDirection: "column",
+                    overflow: "hidden",
                   },
                 ]}
               >
-                <Ionicons name="trash-outline" size={14} color={colors.mutedForeground} />
-                <Text
-                  style={[
-                    styles.confirmToastText,
-                    { color: colors.mutedForeground, marginLeft: 6, marginRight: 10 },
-                  ]}
-                >
-                  "{undoDeleteState.preset.name}" deleted
-                </Text>
-                <TouchableOpacity onPress={handleUndoDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 7 }}>
+                  <Ionicons name="trash-outline" size={14} color={colors.mutedForeground} />
                   <Text
                     style={[
                       styles.confirmToastText,
-                      { color: colors.primary, fontFamily: "Inter_700Bold" },
+                      { color: colors.mutedForeground, marginLeft: 6, marginRight: 10 },
                     ]}
                   >
-                    Undo
+                    "{undoDeleteState.preset.name}" deleted
                   </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity onPress={handleUndoDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text
+                      style={[
+                        styles.confirmToastText,
+                        { color: colors.primary, fontFamily: "Inter_700Bold" },
+                      ]}
+                    >
+                      Undo
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Animated.View
+                  style={{
+                    height: 3,
+                    width: undoProgressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 400],
+                    }),
+                    backgroundColor: colors.primary,
+                    opacity: 0.7,
+                  }}
+                />
               </View>
             </Animated.View>
           )}
