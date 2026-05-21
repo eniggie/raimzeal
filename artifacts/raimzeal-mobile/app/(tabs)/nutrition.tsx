@@ -712,6 +712,7 @@ export default function NutritionScreen() {
   const [servings, setServings] = useState(1);
   const [servingsText, setServingsText] = useState("1");
   const [grams, setGrams] = useState("100");
+  const [gramsPreFillHint, setGramsPreFillHint] = useState<string | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
@@ -1633,18 +1634,23 @@ export default function NutritionScreen() {
     setServingsText("1");
 
     let lastGrams = "100";
+    let isRemembered = false;
     if (!food.servingLabel) {
       try {
         const raw = await AsyncStorage.getItem(LAST_USED_GRAMS_KEY);
         if (raw) {
           const map: Record<string, string> = JSON.parse(raw);
-          if (map[food.name]) lastGrams = map[food.name];
+          if (map[food.name]) {
+            lastGrams = map[food.name];
+            isRemembered = true;
+          }
         }
       } catch {
         // ignore
       }
     }
     setGrams(lastGrams);
+    setGramsPreFillHint(isRemembered ? lastGrams : null);
 
     let lastMeal: MealLog["mealType"] = "snack";
     try {
@@ -1706,6 +1712,7 @@ export default function NutritionScreen() {
       .catch(() => {});
 
     setShowModal(false);
+    setGramsPreFillHint(null);
   }
 
   function handleConfirmManual() {
@@ -3231,7 +3238,7 @@ export default function NutritionScreen() {
         visible={showModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={() => { setShowModal(false); setGramsPreFillHint(null); }}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -3271,6 +3278,7 @@ export default function NutritionScreen() {
                               ? parts[0] + "." + parts.slice(1).join("")
                               : stripped;
                             setGrams(normalized);
+                            if (gramsPreFillHint !== null) setGramsPreFillHint(null);
                           }}
                           onBlur={() => {
                             const n = parseFloat(grams);
@@ -3284,6 +3292,11 @@ export default function NutritionScreen() {
                         />
                         <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g / ml</Text>
                       </View>
+                      {gramsPreFillHint !== null && (
+                        <Text style={[styles.gramsLastUsedHint, { color: colors.mutedForeground }]}>
+                          Last used: {gramsPreFillHint}g
+                        </Text>
+                      )}
                     </View>
                     </>
                   ) : (
@@ -3414,7 +3427,7 @@ export default function NutritionScreen() {
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => setShowModal(false)}
+                onPress={() => { setShowModal(false); setGramsPreFillHint(null); }}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -4569,6 +4582,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginBottom: 8,
+  },
+  gramsLastUsedHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
+    textAlign: "right",
   },
   modalNutrients: {
     flexDirection: "row",
