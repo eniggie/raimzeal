@@ -132,6 +132,7 @@ const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
+const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
@@ -1600,14 +1601,26 @@ export default function NutritionScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
-  function handleAddFood(food: Omit<MealLog, "id" | "date">) {
+  async function handleAddFood(food: Omit<MealLog, "id" | "date">) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedFood(food);
     setSelectedFoodServingLabel(undefined);
     setSelectedFoodIsApiResult(false);
     setServings(1);
     setServingsText("1");
-    setSelectedMeal(food.mealType);
+
+    let mealType = food.mealType;
+    try {
+      const raw = await AsyncStorage.getItem(LAST_USED_MEAL_KEY);
+      if (raw) {
+        const map: Record<string, string> = JSON.parse(raw);
+        if (map[food.name]) mealType = map[food.name] as typeof mealType;
+      }
+    } catch {
+      // ignore
+    }
+    setSelectedMeal(mealType);
+
     setShowModal(true);
   }
 
@@ -1618,7 +1631,6 @@ export default function NutritionScreen() {
     setSelectedFoodIsApiResult(true);
     setServings(1);
     setServingsText("1");
-    setSelectedMeal("snack");
 
     let lastGrams = "100";
     if (!food.servingLabel) {
@@ -1633,6 +1645,18 @@ export default function NutritionScreen() {
       }
     }
     setGrams(lastGrams);
+
+    let lastMeal: MealLog["mealType"] = "snack";
+    try {
+      const raw = await AsyncStorage.getItem(LAST_USED_MEAL_KEY);
+      if (raw) {
+        const map: Record<string, string> = JSON.parse(raw);
+        if (map[food.name]) lastMeal = map[food.name] as MealLog["mealType"];
+      }
+    } catch {
+      // ignore
+    }
+    setSelectedMeal(lastMeal);
 
     setShowModal(true);
   }
@@ -1672,6 +1696,14 @@ export default function NutritionScreen() {
         })
         .catch(() => {});
     }
+
+    AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+      .then((raw) => {
+        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+        map[name] = selectedMeal;
+        return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
+      })
+      .catch(() => {});
 
     setShowModal(false);
   }
@@ -3223,7 +3255,7 @@ export default function NutritionScreen() {
                   </Text>
                   {isGramsMode ? (
                     <>
-                    <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
+                    <Text style={[styles.gramsHintCentered, { color: colors.mutedForeground }]}>
                       Nutrition values are per 100 g — enter your amount below
                     </Text>
                     <View style={styles.servingsRow}>
@@ -4532,7 +4564,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
-  gramsHint: {
+  gramsHintCentered: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
