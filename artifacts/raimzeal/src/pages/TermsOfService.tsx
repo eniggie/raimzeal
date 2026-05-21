@@ -155,7 +155,7 @@ export function TermsOfService() {
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">13. Governing Law &amp; Disputes</h2>
-            <p>These Terms are governed by the laws of the United States of America and the state in which ECONTEUR LLC is incorporated, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in the applicable US jurisdiction. You waive any right to participate in class-action proceedings against RAIMZEAL.</p>
+            <p>These Terms are governed by the laws of the State of Arizona, United States, without regard to conflict of law principles. ECONTEUR LLC is registered in the State of Arizona (Phoenix, AZ). Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in Maricopa County, Arizona. You waive any right to participate in class-action proceedings against RAIMZEAL.</p>
           </section>
 
           <section>

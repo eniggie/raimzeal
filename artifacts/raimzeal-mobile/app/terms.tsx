@@ -152,7 +152,7 @@ export default function TermsScreen() {
       icon: "globe-outline",
       color: "#6b7280",
       paragraphs: [
-        "These Terms shall be governed by and construed in accordance with applicable laws. Any dispute arising from these Terms or your use of RAIMZEAL shall first be submitted to good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to binding arbitration.",
+        "These Terms shall be governed by and construed in accordance with the laws of the State of Arizona, United States. ECONTEUR LLC is registered in the State of Arizona (Phoenix, AZ). Any dispute arising from these Terms or your use of RAIMZEAL shall first be submitted to good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in Maricopa County, Arizona.",
         "You waive any right to participate in class-action lawsuits or class-wide arbitration against RAIMZEAL.",
       ],
     },
