@@ -215,11 +215,11 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
     });
 
     const emailCode = generateCode();
-    await storeCode(userId, "email", emailCode);
     try {
       await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(emailCode, fullName));
+      await storeCode(userId, "email", emailCode);
     } catch (err) {
-      req.log?.warn({ err }, "Failed to send verification email");
+      req.log?.warn({ err }, "Failed to send verification email — code not stored");
     }
 
     if (phoneE164) {
@@ -292,14 +292,17 @@ authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res)
     if (rl.limited) { res.status(429).json({ error: rl.message }); return; }
 
     const code = generateCode();
-    await storeCode(user.id, "email", code);
     const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
     try {
       await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(code, name));
-    } catch (err) {
+    } catch (err: any) {
       req.log?.warn({ err }, "Failed to send email OTP resend");
+      res.status(503).json({ error: "Failed to send email. Please check your inbox or try again later." });
+      return;
     }
 
+    // Store only after successful send so failed sends don't burn rate-limit quota
+    await storeCode(user.id, "email", code);
     res.json({ success: true });
   } catch (err) {
     req.log?.error({ err }, "POST /auth/send-email-code error");
