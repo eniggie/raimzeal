@@ -94,11 +94,13 @@ function estimateThumbnailHeight(
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
+export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
+const DEFAULT_AUTO_TRIGGER_DELAY = 3;
 
 const MAX_PRESETS = 5;
 
@@ -1268,7 +1270,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -1279,6 +1281,7 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_OPENS),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_AND_RUN),
+          AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
         ]);
 
         if (cancelled) return;
@@ -1354,8 +1357,15 @@ export default function CardCustomizationModal({
 
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
         const effectiveAnyStatEnabled = Object.values(effectiveStats).some(Boolean);
-        if (resolvedAction && effectiveAnyStatEnabled) {
-          startAutoTrigger(resolvedAction);
+        let effectiveAutoTriggerDelay = DEFAULT_AUTO_TRIGGER_DELAY;
+        if (savedAutoTriggerDelay === "off") {
+          effectiveAutoTriggerDelay = 0;
+        } else if (savedAutoTriggerDelay !== null) {
+          const parsed = parseInt(savedAutoTriggerDelay, 10);
+          if (!isNaN(parsed) && parsed > 0) effectiveAutoTriggerDelay = parsed;
+        }
+        if (resolvedAction && effectiveAnyStatEnabled && effectiveAutoTriggerDelay > 0) {
+          startAutoTrigger(resolvedAction, effectiveAutoTriggerDelay);
         }
       } catch {
         setVisibleStats({ ...DEFAULT_VISIBLE_STATS });
@@ -1595,13 +1605,13 @@ export default function CardCustomizationModal({
   handleGenerateRef.current = handleGenerate;
   visibleRef.current = visible;
 
-  function startAutoTrigger(action: CardAction) {
+  function startAutoTrigger(action: CardAction, delay: number) {
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
       autoTriggerIntervalRef.current = null;
     }
     setAutoTriggerAction(action);
-    const DELAY = 3;
+    const DELAY = delay;
     setAutoTriggerCountdown(DELAY);
     let remaining = DELAY;
     autoTriggerIntervalRef.current = setInterval(() => {

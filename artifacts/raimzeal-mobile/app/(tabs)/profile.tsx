@@ -29,7 +29,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
@@ -81,6 +81,7 @@ export default function ProfileScreen() {
   const [cardBgPhotoUri, setCardBgPhotoUri] = useState<string | undefined>(undefined);
   const [cardBgPhotoCrop, setCardBgPhotoCrop] = useState<BackgroundPhotoCrop | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
+  const [autoTriggerDelay, setAutoTriggerDelay] = useState<string>("3");
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
@@ -93,9 +94,10 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction] = await Promise.all([
+        const [savedTheme, savedAction, savedDelay] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
+          AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
         ]);
         if (!cancelled) {
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
@@ -103,6 +105,10 @@ export default function ProfileScreen() {
           const validActions: CardAction[] = ["share", "save", "both", "copy"];
           if (savedAction && validActions.includes(savedAction as CardAction)) {
             setDefaultCardAction(savedAction as CardAction);
+          }
+          const validDelays = ["off", "2", "3", "5"];
+          if (savedDelay && validDelays.includes(savedDelay)) {
+            setAutoTriggerDelay(savedDelay);
           }
         }
       } catch {
@@ -157,6 +163,32 @@ export default function ProfileScreen() {
         { text: LABELS.save, onPress: () => handleSetDefaultCardAction("save") },
         { text: LABELS.copy, onPress: () => handleSetDefaultCardAction("copy") },
         { text: LABELS.both, onPress: () => handleSetDefaultCardAction("both") },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
+  async function handleSetAutoTriggerDelay(value: string) {
+    setAutoTriggerDelay(value);
+    try {
+      const AsyncStorage = (
+        await import("@react-native-async-storage/async-storage")
+      ).default;
+      await AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY, value);
+    } catch {
+      // ignore write errors
+    }
+  }
+
+  function handlePickAutoTriggerDelay() {
+    Alert.alert(
+      "Auto-generate Countdown",
+      "How long to wait before the card generates automatically when you have a default action set?",
+      [
+        { text: "Off", onPress: () => handleSetAutoTriggerDelay("off") },
+        { text: "2 seconds", onPress: () => handleSetAutoTriggerDelay("2") },
+        { text: "3 seconds (default)", onPress: () => handleSetAutoTriggerDelay("3") },
+        { text: "5 seconds", onPress: () => handleSetAutoTriggerDelay("5") },
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -546,6 +578,13 @@ export default function ProfileScreen() {
               }
               color={colors.accent}
               onPress={handlePickDefaultCardAction}
+            />
+            <SettingPickerRow
+              icon="hourglass-outline"
+              label="Auto-generate countdown"
+              value={autoTriggerDelay === "off" ? "Off" : `${autoTriggerDelay}s`}
+              color={colors.accent}
+              onPress={handlePickAutoTriggerDelay}
             />
             <SettingPickerRow
               icon="timer-outline"
