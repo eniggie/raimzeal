@@ -13,12 +13,6 @@ type = "image"
 title = "raimzeal splash screen dark"
 
 [[outputs]]
-id = "4EDzSGRPUOiXUWCJ06oX2"
-uri = "file://RAIMZEAL_User_Guide.pdf"
-type = "pdf"
-title = "RAIMZEAL Complete User Guide"
-
-[[outputs]]
 id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"
 type = "text"
