@@ -44,7 +44,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
   });
 
   const steps = [
-    { title: 'Welcome', subtitle: 'Your fitness journey starts here' },
+    { title: 'Welcome', subtitle: 'Free fitness, food therapy & health awareness — powered by AI.' },
     { title: 'About You', subtitle: 'Tell us a bit about yourself' },
     { title: 'Your Stats', subtitle: 'Help us personalise your experience' },
     { title: 'Fitness Level', subtitle: 'Where are you in your journey?' },
@@ -188,7 +188,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
                   <div className="text-center space-y-2">
                     <h2 className="text-xl font-semibold">Welcome to RAIMZEAL</h2>
                     <p className="text-muted-foreground text-sm">
-                      Your premium AI-powered fitness companion.
+                      Fitness · Food Therapy · Health Awareness — free, forever.
                     </p>
                   </div>
 

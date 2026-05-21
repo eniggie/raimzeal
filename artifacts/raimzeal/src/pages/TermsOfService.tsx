@@ -32,7 +32,7 @@ export function TermsOfService() {
             <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
               <p className="text-foreground font-semibold">🌱 About RAIMZEAL</p>
               <p>RAIMZEAL is a <strong className="text-foreground">free, non-profit fitness, food therapy, and healthcare awareness platform</strong> operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.</p>
-              <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
+              <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, food therapy, and healthcare awareness information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
               <p>We are sustained entirely by voluntary donations from our community. No donation is ever required to access any feature.</p>
             </div>
           </section>
@@ -155,7 +155,7 @@ export function TermsOfService() {
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">13. Governing Law &amp; Disputes</h2>
-            <p>These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in Nigeria. You waive any right to participate in class-action proceedings against RAIMZEAL.</p>
+            <p>These Terms are governed by the laws of the United States of America and the state in which ECONTEUR LLC is incorporated, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in the applicable US jurisdiction. You waive any right to participate in class-action proceedings against RAIMZEAL.</p>
           </section>
 
           <section>

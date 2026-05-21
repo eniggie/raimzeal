@@ -27,7 +27,7 @@ export function Support() {
               <div>
                 <h2 className="font-semibold text-foreground mb-1">Email Support</h2>
                 <p className="text-sm text-muted-foreground mb-3">
-                  For account issues, billing questions, and technical problems.
+                  For account issues, donation questions, and technical problems.
                 </p>
                 <a
                   href="mailto:support@raimzeal.com"
@@ -48,7 +48,7 @@ export function Support() {
               <div>
                 <h2 className="font-semibold text-foreground mb-1">Ovia AI Coach</h2>
                 <p className="text-sm text-muted-foreground mb-3">
-                  For fitness, nutrition, and wellness questions — ask Ovia directly in the app.
+                  For fitness, nutrition, food therapy, and health awareness questions — ask Ovia directly in the app.
                 </p>
                 <Link href="/coach">
                   <Button size="sm" variant="outline">Open Ovia AI</Button>
@@ -102,7 +102,7 @@ export function Support() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground pt-2">
-            RAIMZEAL · v1.2.0 · <a href="https://raimzeal.com" className="hover:underline">raimzeal.com</a>
+            RAIMZEAL · <a href="https://raimzeal.com" className="hover:underline">raimzeal.com</a> · Created and powered by ECONTEUR LLC
           </p>
         </div>
       </div>
