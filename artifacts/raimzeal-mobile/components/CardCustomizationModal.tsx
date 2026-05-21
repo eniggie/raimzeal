@@ -1523,6 +1523,11 @@ export default function CardCustomizationModal({
   const presetContainerWidth = useRef(0);
   const presetContentWidth = useRef(0);
   const zoomAnim = useRef(new Animated.Value(0)).current;
+  const zoomTranslateX = useRef(new Animated.Value(0)).current;
+  const zoomTranslateY = useRef(new Animated.Value(0)).current;
+  const zoomOriginScale = useRef(new Animated.Value(1)).current;
+  const zoomOriginRect = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const cardPreviewRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
   const [showPinchHint, setShowPinchHint] = useState(false);
   const pinchHintAnim = useRef(new Animated.Value(0)).current;
@@ -1569,15 +1574,49 @@ export default function CardCustomizationModal({
     setZoomVisible(true);
     if (reduceMotionRef.current) {
       zoomAnim.setValue(1);
+      zoomTranslateX.setValue(0);
+      zoomTranslateY.setValue(0);
+      zoomOriginScale.setValue(1);
     } else {
-      zoomAnim.setValue(0);
-      Animated.spring(zoomAnim, {
-        toValue: 1,
-        damping: 16,
-        stiffness: 400,
-        mass: 0.6,
-        useNativeDriver: true,
-      }).start();
+      const win = Dimensions.get("window");
+      const screenW = win.width;
+      const screenH = win.height;
+
+      const launchAnimation = (
+        initialTX: number,
+        initialTY: number,
+        initialScale: number
+      ) => {
+        zoomAnim.setValue(0);
+        zoomTranslateX.setValue(initialTX);
+        zoomTranslateY.setValue(initialTY);
+        zoomOriginScale.setValue(initialScale);
+
+        const springConfig = { damping: 16, stiffness: 400, mass: 0.6, useNativeDriver: true as const };
+        Animated.parallel([
+          Animated.spring(zoomAnim, { toValue: 1, ...springConfig }),
+          Animated.spring(zoomTranslateX, { toValue: 0, ...springConfig }),
+          Animated.spring(zoomTranslateY, { toValue: 0, ...springConfig }),
+          Animated.spring(zoomOriginScale, { toValue: 1, ...springConfig }),
+        ]).start();
+      };
+
+      if (cardPreviewRef.current) {
+        cardPreviewRef.current.measureInWindow((px: number, py: number, width: number, height: number) => {
+          const originCenterX = px + width / 2;
+          const originCenterY = py + height / 2;
+          const zoomCardW = CARD_WIDTH * zoomScale;
+          const initialScale = width / zoomCardW;
+          zoomOriginRect.current = { x: px, y: py, width, height };
+          launchAnimation(
+            originCenterX - screenW / 2,
+            originCenterY - screenH / 2,
+            initialScale
+          );
+        });
+      } else {
+        launchAnimation(0, 0, cardScale / zoomScale);
+      }
     }
     try {
       const seen = await AsyncStorage.getItem(STORAGE_KEY_PINCH_HINT_SEEN);
@@ -1592,16 +1631,32 @@ export default function CardCustomizationModal({
   function closeZoom() {
     if (reduceMotionRef.current) {
       zoomAnim.setValue(0);
+      zoomTranslateX.setValue(0);
+      zoomTranslateY.setValue(0);
+      zoomOriginScale.setValue(1);
       setZoomVisible(false);
     } else {
-      Animated.spring(zoomAnim, {
-        toValue: 0,
-        damping: 32,
-        stiffness: 400,
-        mass: 0.6,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) setZoomVisible(false);
+      const win = Dimensions.get("window");
+      const screenW = win.width;
+      const screenH = win.height;
+      const { x, y, width, height } = zoomOriginRect.current;
+      const originCenterX = x + width / 2;
+      const originCenterY = y + height / 2;
+      const zoomCardW = CARD_WIDTH * zoomScale;
+      const targetScale = width > 0 ? width / zoomCardW : cardScale / zoomScale;
+      const springConfig = { damping: 32, stiffness: 400, mass: 0.6, useNativeDriver: true as const };
+      Animated.parallel([
+        Animated.spring(zoomAnim, { toValue: 0, ...springConfig }),
+        Animated.spring(zoomTranslateX, { toValue: originCenterX - screenW / 2, ...springConfig }),
+        Animated.spring(zoomTranslateY, { toValue: originCenterY - screenH / 2, ...springConfig }),
+        Animated.spring(zoomOriginScale, { toValue: targetScale, ...springConfig }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setZoomVisible(false);
+          zoomTranslateX.setValue(0);
+          zoomTranslateY.setValue(0);
+          zoomOriginScale.setValue(1);
+        }
       });
     }
   }
@@ -1918,6 +1973,7 @@ export default function CardCustomizationModal({
               Same card, same content — tap to see{zoomIsOneToOne ? " the 1:1 pixel-accurate view" : " a larger preview"}
             </Text>
             <TouchableOpacity
+              ref={cardPreviewRef}
               activeOpacity={0.9}
               onPress={openZoom}
               style={[
@@ -2481,12 +2537,9 @@ export default function CardCustomizationModal({
           <Animated.View
             style={{
               transform: [
-                {
-                  scale: zoomAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.85, 1],
-                  }),
-                },
+                { translateX: zoomTranslateX },
+                { translateY: zoomTranslateY },
+                { scale: zoomOriginScale },
               ],
             }}
           >
