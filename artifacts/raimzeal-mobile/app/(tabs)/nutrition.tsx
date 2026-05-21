@@ -41,6 +41,7 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
 import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
+import { MacroRing } from "@/components/MacroRing";
 
 const DEBOUNCE_MS = 500;
 const PAGE_SIZE = 20;
@@ -2837,10 +2838,17 @@ export default function NutritionScreen() {
                               {isYesterday ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
                             </Text>
                           </View>
-                          <View style={[styles.historyDayBadge, { backgroundColor: colors.primary + "18" }]}>
-                            <Text style={[styles.historyDayBadgeText, { color: colors.primary }]}>
-                              {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
-                            </Text>
+                          <View style={styles.historyDayHeaderRight}>
+                            <MacroRing
+                              protein={totals.protein}
+                              carbs={totals.carbs}
+                              fat={totals.fat}
+                            />
+                            <View style={[styles.historyDayBadge, { backgroundColor: colors.primary + "18" }]}>
+                              <Text style={[styles.historyDayBadgeText, { color: colors.primary }]}>
+                                {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
+                              </Text>
+                            </View>
                           </View>
                         </View>
                         <View style={[styles.historyMacroRow, { borderBottomColor: colors.border }]}>
@@ -5080,6 +5088,10 @@ const styles = StyleSheet.create({
   },
   historyDayHeaderLeft: {
     gap: 1,
+  },
+  historyDayHeaderRight: {
+    alignItems: "flex-end",
+    gap: 6,
   },
   historyDayLabel: {
     fontSize: 15,
