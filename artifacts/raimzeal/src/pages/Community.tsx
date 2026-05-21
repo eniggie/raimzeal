@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
-  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw, ExternalLink, BookOpen,
+  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw, ExternalLink, BookOpen, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTier } from '@/hooks/useTier';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
@@ -40,6 +41,7 @@ function formatTime(dateStr: string): string {
 
 export function Community() {
   const { user } = useAuth();
+  const { canWrite, loading: tierLoading } = useTier();
   const [communityDonationError, setCommunityDonationError] = useState(false);
   const [posts, setPosts] = useState<LivePost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,26 +217,41 @@ export function Community() {
         </Card>
       </div>
 
+      {/* Post composer — full access for Rise/Reign/Legacy; upgrade prompt for Foundation */}
       {user && supabaseConfigured && (
         <div className="px-4 py-4 border-b border-border">
-          <div className="max-w-lg mx-auto flex gap-3">
-            <Avatar>
-              <AvatarFallback>
-                {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 flex gap-2">
-              <Input
-                placeholder="Share your progress..."
-                value={newPost}
-                onChange={e => setNewPost(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
-                data-testid="input-new-post"
-              />
-              <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
-                {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
+          <div className="max-w-lg mx-auto">
+            {canWrite ? (
+              <div className="flex gap-3">
+                <Avatar>
+                  <AvatarFallback>
+                    {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 flex gap-2">
+                  <Input
+                    placeholder="Share your progress..."
+                    value={newPost}
+                    onChange={e => setNewPost(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
+                    data-testid="input-new-post"
+                  />
+                  <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
+                    {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+            ) : !tierLoading && (
+              <div className="flex items-center gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5">
+                <Lock className="w-5 h-5 text-primary shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Upgrade to Rise to join the conversation</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Foundation members can view and like posts. Rise ($9.99/mo), Reign ($19.99/mo), and Legacy ($49.99/mo) unlock full community participation.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

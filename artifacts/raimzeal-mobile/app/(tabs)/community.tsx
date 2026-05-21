@@ -33,6 +33,7 @@ import {
 } from "@/lib/db";
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
+import { useTier } from "@/hooks/useTier";
 
 type FeedTab = "feed" | "questions";
 
@@ -127,6 +128,7 @@ export default function CommunityScreen() {
   const [newPostType, setNewPostType] = useState<"post" | "question">("post");
   const [newPostContent, setNewPostContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { canWrite } = useTier(userId);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -280,6 +282,14 @@ export default function CommunityScreen() {
       Alert.alert("Sign in required", "Please sign in to comment.");
       return;
     }
+    if (!canWrite && isSupabaseConfigured) {
+      Alert.alert(
+        "Rise Membership Required",
+        "Commenting requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
+        [{ text: "Got it" }]
+      );
+      return;
+    }
     const content = post.commentInput.trim();
     const userName = user?.name ?? "Anonymous";
     const optimisticComment: CommunityComment = {
@@ -343,6 +353,14 @@ export default function CommunityScreen() {
     if (!newPostContent.trim()) return;
     if (!userId && isSupabaseConfigured) {
       Alert.alert("Sign in required", "Please sign in to post.");
+      return;
+    }
+    if (!canWrite && isSupabaseConfigured) {
+      Alert.alert(
+        "Rise Membership Required",
+        "Creating posts requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
+        [{ text: "Got it" }]
+      );
       return;
     }
     setSubmitting(true);
@@ -560,62 +578,83 @@ export default function CommunityScreen() {
                   </Text>
                 )}
 
-                <View
-                  style={[
-                    styles.commentInputRow,
-                    { borderTopColor: colors.border },
-                  ]}
-                >
-                  <TextInput
-                    value={item.commentInput}
-                    onChangeText={(text) =>
-                      setPosts((prev) =>
-                        prev.map((p) =>
-                          p.id === item.id ? { ...p, commentInput: text } : p
-                        )
-                      )
-                    }
-                    placeholder="Add a comment..."
-                    placeholderTextColor={colors.mutedForeground}
+                {canWrite ? (
+                  <View
                     style={[
-                      styles.commentInput,
-                      {
-                        backgroundColor: colors.background,
-                        color: colors.foreground,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                    returnKeyType="send"
-                    onSubmitEditing={() => handleSubmitComment(item.id)}
-                    editable={!item.submittingComment}
-                  />
-                  <TouchableOpacity
-                    onPress={() => handleSubmitComment(item.id)}
-                    disabled={!item.commentInput.trim() || item.submittingComment}
-                    style={[
-                      styles.commentSendBtn,
-                      {
-                        backgroundColor: item.commentInput.trim()
-                          ? colors.primary
-                          : colors.muted,
-                      },
+                      styles.commentInputRow,
+                      { borderTopColor: colors.border },
                     ]}
                   >
-                    {item.submittingComment ? (
-                      <ActivityIndicator size="small" color={colors.primaryForeground} />
-                    ) : (
-                      <Ionicons
-                        name="arrow-up"
-                        size={16}
-                        color={
-                          item.commentInput.trim()
-                            ? colors.primaryForeground
-                            : colors.mutedForeground
-                        }
-                      />
-                    )}
+                    <TextInput
+                      value={item.commentInput}
+                      onChangeText={(text) =>
+                        setPosts((prev) =>
+                          prev.map((p) =>
+                            p.id === item.id ? { ...p, commentInput: text } : p
+                          )
+                        )
+                      }
+                      placeholder="Add a comment..."
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[
+                        styles.commentInput,
+                        {
+                          backgroundColor: colors.background,
+                          color: colors.foreground,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                      returnKeyType="send"
+                      onSubmitEditing={() => handleSubmitComment(item.id)}
+                      editable={!item.submittingComment}
+                    />
+                    <TouchableOpacity
+                      onPress={() => handleSubmitComment(item.id)}
+                      disabled={!item.commentInput.trim() || item.submittingComment}
+                      style={[
+                        styles.commentSendBtn,
+                        {
+                          backgroundColor: item.commentInput.trim()
+                            ? colors.primary
+                            : colors.muted,
+                        },
+                      ]}
+                    >
+                      {item.submittingComment ? (
+                        <ActivityIndicator size="small" color={colors.primaryForeground} />
+                      ) : (
+                        <Ionicons
+                          name="arrow-up"
+                          size={16}
+                          color={
+                            item.commentInput.trim()
+                              ? colors.primaryForeground
+                              : colors.mutedForeground
+                          }
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.upgradeCommentRow,
+                      { borderTopColor: colors.border, backgroundColor: colors.muted + "60" },
+                    ]}
+                    onPress={() =>
+                      Alert.alert(
+                        "Rise Membership Required",
+                        "Commenting requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
+                        [{ text: "Got it" }]
+                      )
+                    }
+                  >
+                    <Ionicons name="lock-closed-outline" size={13} color={colors.primary} />
+                    <Text style={[styles.upgradeCommentText, { color: colors.primary }]}>
+                      Upgrade to Rise to join the conversation
+                    </Text>
                   </TouchableOpacity>
-                </View>
+                )}
               </>
             )}
           </View>
@@ -641,6 +680,14 @@ export default function CommunityScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => {
+            if (!canWrite && isSupabaseConfigured) {
+              Alert.alert(
+                "Rise Membership Required",
+                "Creating posts requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
+                [{ text: "Got it" }]
+              );
+              return;
+            }
             setNewPostContent("");
             setNewPostType("post");
             setShowNewPost(true);
@@ -1169,4 +1216,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   donateBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  upgradeCommentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 4,
+    paddingTop: 10,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+    borderTopWidth: 1,
+    borderRadius: 8,
+  },
+  upgradeCommentText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
 });

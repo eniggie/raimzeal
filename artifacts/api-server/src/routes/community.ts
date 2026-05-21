@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
+import { requireCommunityWrite } from "../middleware/requireCommunityWrite";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
 
 // Supabase project URL — fall back to the known project ref if the env var
@@ -31,6 +32,7 @@ const communityRouter = Router();
 communityRouter.post(
   "/community/posts",
   requireAuth,
+  requireCommunityWrite,
   communityMutateLimitHeavy,
   async (req, res) => {
     const userId = (req as any).userId as string;
@@ -128,6 +130,7 @@ communityRouter.post(
 communityRouter.post(
   "/community/posts/:postId/comments",
   requireAuth,
+  requireCommunityWrite,
   communityMutateLimitLight,
   async (req, res) => {
     const userId = (req as any).userId as string;
