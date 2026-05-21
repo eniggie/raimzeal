@@ -15,6 +15,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Switch,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
@@ -90,6 +91,7 @@ export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
+const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
 
 const MAX_PRESETS = 5;
@@ -699,6 +701,7 @@ export default function CardCustomizationModal({
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
+  const [longPressAndRun, setLongPressAndRun] = useState(true);
 
   // Auto-trigger state: counts down from 3 then fires the default action
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
@@ -886,7 +889,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto, lpHintSeen, lpHintOpensRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -897,6 +900,7 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_OPENS),
+          AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_AND_RUN),
         ]);
 
         if (cancelled) return;
@@ -934,6 +938,9 @@ export default function CardCustomizationModal({
           ? (savedAction as CardAction)
           : null;
         setDefaultAction(resolvedAction);
+
+        // Long-press-and-run preference: null means the user has never changed it → default true
+        setLongPressAndRun(savedLpAndRun === null ? true : savedLpAndRun !== "0");
 
         // Long-press hint: show for up to LONGPRESS_HINT_MAX_OPENS sessions, dismiss once user long-presses.
         // Skip entirely if the user already has a default set (they've already discovered the gesture).
@@ -1175,21 +1182,30 @@ export default function CardCustomizationModal({
       setShowLongPressHint(false);
       AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
     }
-    Alert.alert(
-      "Set as preferred",
-      `Always open with ${label}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Set as preferred",
-          onPress: () => {
-            setDefaultAction(action);
-            AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
-            showConfirmation(`★ ${label} set as preferred`, "success");
+
+    if (longPressAndRun) {
+      // "Long-press and run" mode: set default immediately and generate in one gesture
+      setDefaultAction(action);
+      AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+      handleGenerate(action);
+    } else {
+      // "Set-only" mode: show confirmation alert before setting default
+      Alert.alert(
+        "Set as preferred",
+        `Always open with ${label}?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Set as preferred",
+            onPress: () => {
+              setDefaultAction(action);
+              AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+              showConfirmation(`★ ${label} set as preferred`, "success");
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }
 
   function handleDismissBadge() {
@@ -2287,8 +2303,33 @@ export default function CardCustomizationModal({
           )}
           {anyStatEnabled && showLongPressHint && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Long-press a button to set it as your default
+              {longPressAndRun
+                ? "Long-press a button to set it as default and generate instantly"
+                : "Long-press a button to set it as your default"}
             </Text>
+          )}
+          {anyStatEnabled && (
+            <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
+              <View style={styles.longPressSettingText}>
+                <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
+                  Long-press also generates
+                </Text>
+                <Text style={[styles.longPressSettingDesc, { color: colors.mutedForeground }]}>
+                  {longPressAndRun
+                    ? "Sets as default and runs in one gesture"
+                    : "Sets as default only — tap to generate"}
+                </Text>
+              </View>
+              <Switch
+                value={longPressAndRun}
+                onValueChange={(val) => {
+                  setLongPressAndRun(val);
+                  AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_AND_RUN, val ? "1" : "0").catch(() => {});
+                }}
+                trackColor={{ false: colors.muted, true: colors.primary + "99" }}
+                thumbColor={longPressAndRun ? colors.primary : colors.mutedForeground}
+              />
+            </View>
           )}
           {confirmMessage && (
             <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity }]}>
@@ -3166,6 +3207,27 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 8,
+  },
+  longPressSettingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 12,
+    marginTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 12,
+  },
+  longPressSettingText: {
+    flex: 1,
+    gap: 2,
+  },
+  longPressSettingLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  longPressSettingDesc: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   zoomOverlay: {
     flex: 1,
