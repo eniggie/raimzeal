@@ -59,7 +59,7 @@ externalPort = 4200
 SMTP_HOST = "smtp.gmail.com"
 SMTP_USER = "eniggie@gmail.com"
 SMTP_FROM = "eniggie@gmail.com"
-TWILIO_FROM_NUMBER = "+19128006023"
+TWILIO_FROM_NUMBER = "+18186746891"
 
 [nix]
 channel = "stable-25_05"
