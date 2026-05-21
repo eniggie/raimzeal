@@ -88,7 +88,10 @@ export default function MembershipScreen() {
         </LinearGradient>
 
         <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-          RAIMZEAL is free forever — no subscriptions, no limits.
+          Non-profit organization · RAIMZY is free forever.{"\n"}
+          We turned down deals to keep it that way.{"\n"}
+          If it has helped you, a donation supports the team.{"\n"}
+          Resources at linktr.ee/Raimzy
         </Text>
       </ScrollView>
     </View>

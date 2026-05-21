@@ -116,14 +116,13 @@ export default function PrivacyScreen() {
         </Section>
 
         <Section title="6. Children's Privacy">
-          <Body>RAIMZEAL is not intended for users under 18. We do not knowingly collect data from minors. If you believe we have data from a minor, contact us at privacy@raimzeal.com.</Body>
+          <Body>RAIMZEAL is not intended for users under 18. We do not knowingly collect data from minors. If you believe we have data from a minor, contact us at support@raimzeal.com.</Body>
         </Section>
 
         <Section title="7. Contact Us">
           <View style={styles.contactCard}>
             <Text style={styles.contactTitle}>RAIMZEAL</Text>
-            <Text style={styles.contactText}>Privacy: privacy@raimzeal.com</Text>
-            <Text style={styles.contactText}>Support: support@raimzeal.com</Text>
+            <Text style={styles.contactText}>support@raimzeal.com</Text>
             <TouchableOpacity onPress={() => Linking.openURL("https://www.raimzeal.com")}>
               <Text style={styles.contactLink}>www.raimzeal.com</Text>
             </TouchableOpacity>

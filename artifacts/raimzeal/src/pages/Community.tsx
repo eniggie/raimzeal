@@ -178,8 +178,8 @@ export function Community() {
         {/* Donation Prompt */}
         <Card className="p-3 border-primary/20 flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold">Enjoying RAIMZEAL?</p>
-            <p className="text-xs text-muted-foreground mt-0.5">We are free forever. Donations keep the lights on for everyone.</p>
+            <p className="text-xs font-semibold">Non-profit org · RAIMZY is free forever</p>
+            <p className="text-xs text-muted-foreground mt-0.5">We turned down deals to keep it that way. If it has helped you, a donation supports the team.</p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">

@@ -89,8 +89,8 @@ export function Membership() {
           className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Support the mission</p>
-            <p className="text-xs text-foreground/60 mt-0.5">Any amount helps keep RAIMZEAL free for everyone.</p>
+            <p className="text-sm font-semibold">Non-profit organization · RAIMZY is free forever</p>
+            <p className="text-xs text-foreground/60 mt-0.5">We turned down deals to keep it that way. If it has helped you, a donation supports the team.</p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">

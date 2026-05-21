@@ -298,9 +298,10 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 <!-- ══ DONATION CTA ══ -->
 <div class="donation-section">
   <div class="donation-heart">💚</div>
-  <div class="donation-title">Help Keep RAIMZEAL Free — Forever</div>
+  <div class="donation-title">Non-profit Organization · RAIMZY is Free Forever</div>
   <div class="donation-text">
-    RAIMZEAL is a non-profit platform with no membership fees, no subscriptions, and no ads. We pay for servers, app maintenance, AI services, and our small team entirely through voluntary donations. If this platform has helped your fitness journey, please consider supporting us. Every contribution — no matter the size — keeps RAIMZEAL alive for everyone.
+    We turned down deals to keep it that way. RAIMZEAL has no membership fees, no subscriptions, and no ads. If this platform has helped your fitness journey, a donation supports the team. Every contribution — no matter the size — keeps RAIMZEAL alive for everyone.<br/><br/>
+    Resources at <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a> — books, music, courses &amp; coaching from RAIMZY.
   </div>
   <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener">
     💚 &nbsp;Donate to Support RAIMZEAL
@@ -311,7 +312,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 <!-- ══ FOOTER ══ -->
 <div class="report-footer">
   <strong>RAIMZEAL</strong> — AI-Powered Fitness &amp; Health Platform · Free Forever<br/>
-  Created and powered by <a href="https://www.econteur.com" target="_blank">ECONTEUR LLC</a> · <a href="https://www.econteur.com">www.econteur.com</a><br/>
+  Created and powered by <a href="https://www.econteur.com" target="_blank">ECONTEUR LLC</a> · <a href="https://www.econteur.com">www.econteur.com</a> · <a href="mailto:support@raimzeal.com">support@raimzeal.com</a><br/>
   Generated ${exportDate} · This document is confidential and belongs to ${u?.name ?? 'the account holder'}
 </div>
 

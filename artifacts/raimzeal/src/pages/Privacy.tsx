@@ -130,12 +130,12 @@ export function Privacy() {
               <li><strong className="text-foreground">Withdraw consent:</strong> unsubscribe from the weekly digest at any time via Profile → Reminders, or by clicking "Unsubscribe" in any digest email.</li>
               <li><strong className="text-foreground">California residents (CCPA):</strong> you have the right to know what personal information is collected, the right to delete it, and the right to opt out of the sale of personal information (we do not sell personal information).</li>
             </ul>
-            <p className="mt-2">To exercise any of these rights, contact us at <strong className="text-foreground">privacy@raimzeal.com</strong> or through Settings in the app.</p>
+            <p className="mt-2">To exercise any of these rights, contact us at <strong className="text-foreground">support@raimzeal.com</strong> or through Settings in the app.</p>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">8. Children's Privacy</h2>
-            <p>RAIMZEAL is not intended for users under the age of 18. We do not knowingly collect personal information from anyone under 18. Our Terms of Service require users to be at least 18 years old. If we learn that we have collected personal data from a person under 18, we will delete that data immediately. If you believe we have collected data from a minor, contact us at privacy@raimzeal.com.</p>
+            <p>RAIMZEAL is not intended for users under the age of 18. We do not knowingly collect personal information from anyone under 18. Our Terms of Service require users to be at least 18 years old. If we learn that we have collected personal data from a person under 18, we will delete that data immediately. If you believe we have collected data from a minor, contact us at support@raimzeal.com.</p>
           </section>
 
           <section>

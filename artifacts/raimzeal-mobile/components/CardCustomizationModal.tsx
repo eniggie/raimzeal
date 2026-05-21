@@ -842,7 +842,7 @@ export default function CardCustomizationModal({
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
-    const holdDuration = retryFn ? 4500 : variant === "error" ? 2200 : 1600;
+    const holdDuration = (retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600;
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       setTimeout(() => {
@@ -1253,6 +1253,7 @@ export default function CardCustomizationModal({
           "Photo access blocked — tap to open Settings",
           "error",
           "lock-closed-outline",
+          undefined,
           () => Linking.openSettings(),
           "Settings"
         );
@@ -2335,7 +2336,7 @@ export default function CardCustomizationModal({
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={styles.confirmRetryBtn}
                   >
-                    <Text style={styles.confirmRetryText}>{confirmActionLabel}</Text>
+                    <Text style={styles.confirmRetryText}>Retry</Text>
                   </TouchableOpacity>
                 )}
               </View>
