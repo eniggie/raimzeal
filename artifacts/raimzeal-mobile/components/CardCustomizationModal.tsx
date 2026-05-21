@@ -1659,6 +1659,54 @@ export default function CardCustomizationModal({
       AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
     }
 
+    const isAlreadyDefault = defaultAction === action;
+
+    if (isAlreadyDefault) {
+      // Long-pressing the currently-preferred button: offer to change or clear
+      Alert.alert(
+        "Preferred action",
+        `${label} is your current preferred action.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Change preferred",
+            onPress: () => {
+              // Re-show set-as-preferred alert for this action
+              Alert.alert(
+                "Set as preferred",
+                `Always open with ${label}?`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Set as preferred",
+                    onPress: () => {
+                      setDefaultAction(action);
+                      setSelectedAction(action);
+                      AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+                      showConfirmation(`★ ${label} set as preferred`, "success");
+                    },
+                  },
+                ]
+              );
+            },
+          },
+          {
+            text: "Clear preference",
+            style: "destructive",
+            onPress: () => {
+              setDefaultAction(null);
+              AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
+              // Restore the long-press hint so the user knows they can set one again
+              AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
+              setShowLongPressHint(true);
+              showConfirmation("Preference cleared", "success");
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     if (longPressAndRun) {
       // "Long-press and run" mode: set default immediately and generate in one gesture
       setDefaultAction(action);
