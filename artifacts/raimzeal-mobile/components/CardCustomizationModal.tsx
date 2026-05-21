@@ -2041,6 +2041,7 @@ export default function CardCustomizationModal({
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
                   contentContainerStyle={styles.presetsScroll}
                   onContentSizeChange={(w) => {
                     presetContentWidth.current = w;
@@ -3261,7 +3262,6 @@ const styles = StyleSheet.create({
   presetsScroll: {
     gap: 10,
     paddingBottom: 4,
-    marginBottom: 12,
     alignItems: "flex-start",
   },
   presetChip: {
@@ -3412,6 +3412,8 @@ const styles = StyleSheet.create({
   // Preset thumbnail picker
   presetsThumbnailsWrapper: {
     position: "relative",
+    overflow: "hidden",
+    marginBottom: 12,
   },
   presetFadeRight: {
     position: "absolute",
