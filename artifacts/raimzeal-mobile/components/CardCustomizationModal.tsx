@@ -780,6 +780,9 @@ export default function CardCustomizationModal({
   const badgeFadeAnim = useRef(new Animated.Value(0)).current;
   const badgeSlideAnim = useRef(new Animated.Value(5)).current;
 
+  // Timer that fires the badge-dismissed persist after the undo window expires
+  const badgePersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     badgeFadeAnim.stopAnimation();
     badgeSlideAnim.stopAnimation();
@@ -953,6 +956,14 @@ export default function CardCustomizationModal({
       }
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
+      // Flush any pending badge-dismissed persist immediately so the
+      // preference is not lost if the user closes the modal mid-undo-window.
+      if (badgePersistTimerRef.current !== null) {
+        clearTimeout(badgePersistTimerRef.current);
+        badgePersistTimerRef.current = null;
+        AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1").catch(() => {});
+        onBadgeDismiss?.();
+      }
       return;
     }
     setRestoredFromStorage(false);
@@ -1293,20 +1304,46 @@ export default function CardCustomizationModal({
   }
 
   function handleDismissBadge() {
-    const persist = async () => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
-      } catch {
-        // ignore
+    // Delay the actual persist so the user has ~3 s to undo.
+    const schedulePersist = () => {
+      if (badgePersistTimerRef.current !== null) {
+        clearTimeout(badgePersistTimerRef.current);
       }
-      // Sync the preference to the cloud settings object so it persists
-      // across devices (authenticated users).
-      onBadgeDismiss?.();
+      badgePersistTimerRef.current = setTimeout(async () => {
+        badgePersistTimerRef.current = null;
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1");
+        } catch {
+          // ignore
+        }
+        // Sync the preference to the cloud settings object so it persists
+        // across devices (authenticated users).
+        onBadgeDismiss?.();
+      }, 3000);
+    };
+
+    const showUndoToast = () => {
+      showConfirmation(
+        "Badge dismissed",
+        "success",
+        "checkmark-circle-outline",
+        undefined,
+        () => {
+          // Undo: cancel the pending persist and re-show the badge.
+          if (badgePersistTimerRef.current !== null) {
+            clearTimeout(badgePersistTimerRef.current);
+            badgePersistTimerRef.current = null;
+          }
+          setBadgeDismissed(false);
+        },
+        "Undo",
+      );
     };
 
     if (reduceMotionRef.current) {
       setBadgeDismissed(true);
-      persist();
+      schedulePersist();
+      showUndoToast();
       dismissCardChip();
     } else {
       badgeFadeAnim.stopAnimation();
@@ -1325,7 +1362,8 @@ export default function CardCustomizationModal({
       ]).start(({ finished }) => {
         if (finished) {
           setBadgeDismissed(true);
-          persist();
+          schedulePersist();
+          showUndoToast();
         }
       });
       dismissCardChip();
