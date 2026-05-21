@@ -15,7 +15,9 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness, WorkoutLog } from "@/contexts/FitnessContext";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
 
-const REST_SECONDS = 60;
+const REST_SECONDS_DEFAULT = 60;
+const REST_SECONDS_MIN = 15;
+const REST_SECONDS_MAX = 300;
 
 type Phase = "exercise" | "rest" | "complete";
 
@@ -37,7 +39,8 @@ export default function WorkoutPlayerScreen() {
   const [exerciseIdx, setExerciseIdx] = useState(0);
   const [setIdx, setSetIdx] = useState(0);
   const [phase, setPhase] = useState<Phase>("exercise");
-  const [restSecsLeft, setRestSecsLeft] = useState(REST_SECONDS);
+  const [restDuration, setRestDuration] = useState(REST_SECONDS_DEFAULT);
+  const [restSecsLeft, setRestSecsLeft] = useState(REST_SECONDS_DEFAULT);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [logged, setLogged] = useState(false);
 
@@ -74,7 +77,7 @@ export default function WorkoutPlayerScreen() {
 
   useEffect(() => {
     if (phase === "rest") {
-      setRestSecsLeft(REST_SECONDS);
+      setRestSecsLeft(restDuration);
       restIntervalRef.current = setInterval(() => {
         setRestSecsLeft((s) => {
           if (s <= 1) {
@@ -250,7 +253,18 @@ export default function WorkoutPlayerScreen() {
     );
   }
 
-  const restPercent = phase === "rest" ? restSecsLeft / REST_SECONDS : 1;
+  function adjustRest(deltaSecs: number) {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    setRestDuration((prev) => {
+      const next = Math.max(REST_SECONDS_MIN, Math.min(REST_SECONDS_MAX, prev + deltaSecs));
+      setRestSecsLeft((cur) => Math.max(REST_SECONDS_MIN, Math.min(next, cur + deltaSecs)));
+      return next;
+    });
+  }
+
+  const restPercent = phase === "rest" ? restSecsLeft / restDuration : 1;
 
   return (
     <View
@@ -360,6 +374,27 @@ export default function WorkoutPlayerScreen() {
               <Text style={[styles.restLabel, { color: colors.mutedForeground }]}>
                 REST
               </Text>
+            </View>
+
+            {/* Rest duration adjuster */}
+            <View style={styles.restAdjuster}>
+              <Pressable
+                onPress={() => adjustRest(-15)}
+                hitSlop={10}
+                style={[styles.restAdjBtn, { backgroundColor: colors.muted }]}
+              >
+                <Text style={[styles.restAdjBtnText, { color: colors.foreground }]}>−15s</Text>
+              </Pressable>
+              <Text style={[styles.restAdjLabel, { color: colors.mutedForeground }]}>
+                {restDuration}s rest
+              </Text>
+              <Pressable
+                onPress={() => adjustRest(15)}
+                hitSlop={10}
+                style={[styles.restAdjBtn, { backgroundColor: colors.muted }]}
+              >
+                <Text style={[styles.restAdjBtnText, { color: colors.foreground }]}>+15s</Text>
+              </Pressable>
             </View>
 
             <Text style={[styles.exerciseName, { color: colors.foreground }]}>
@@ -569,6 +604,27 @@ const styles = StyleSheet.create({
   restProgressFill: {
     height: "100%",
     borderRadius: 2,
+  },
+  restAdjuster: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 4,
+  },
+  restAdjBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  restAdjBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  restAdjLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    minWidth: 60,
+    textAlign: "center",
   },
   skipBtn: {
     flexDirection: "row",

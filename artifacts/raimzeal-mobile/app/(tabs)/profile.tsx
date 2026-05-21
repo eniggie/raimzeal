@@ -542,6 +542,40 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Tools & Wellness */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tools & Wellness</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="calculator-outline"
+              label="BMR & 1RM Calculators"
+              sublabel="Calorie targets · Strength estimator"
+              color="#3b82f6"
+              onPress={() => router.push("/calculators")}
+            />
+            <ActionRow
+              icon="checkmark-circle-outline"
+              label="Habit Tracker"
+              sublabel="Daily habits · 7-day streaks"
+              color="#10b981"
+              onPress={() => router.push("/habit-tracker")}
+            />
+            <ActionRow
+              icon="leaf-outline"
+              label="Breathing & Mindfulness"
+              sublabel="Box · 4-7-8 · Equal · Quick calm"
+              color="#8b5cf6"
+              onPress={() => router.push("/breathing")}
+            />
+            <ActionRow
+              icon="medkit-outline"
+              label="Supplement Tracker"
+              sublabel="Daily stack · 7-day compliance"
+              color="#f59e0b"
+              onPress={() => router.push("/supplements")}
+              isLast
+            />
+          </GlassCard>
+
           {/* Membership */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>
           <GlassCard style={styles.actionsCard}>
