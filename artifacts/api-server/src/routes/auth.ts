@@ -379,7 +379,6 @@ authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async
     if (rl.limited) { res.status(429).json({ error: rl.message }); return; }
 
     const code = generateCode();
-    await storeCode(userId, "sms", code);
 
     try {
       await sendSms(phoneE164, `Your RAIMZEAL verification code: ${code}. Expires in 10 minutes.`);
@@ -389,6 +388,8 @@ authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async
       return;
     }
 
+    // Store only after successful send so failed attempts don't burn rate-limit quota
+    await storeCode(userId, "sms", code);
     res.json({ success: true });
   } catch (err) {
     req.log?.error({ err }, "POST /auth/send-sms-code error");
