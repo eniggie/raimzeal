@@ -820,6 +820,7 @@ export default function NutritionScreen() {
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
   const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyCardYsRef = useRef<Record<string, number>>({});
+  const trendChartYRef = useRef<number>(0);
 
   function dismissFilterHint() {
     if (filterHintTimerRef.current) {
@@ -2691,6 +2692,9 @@ export default function NutritionScreen() {
                 {/* Calorie / macro trend chart */}
                 {trendChartDays.length > 0 && (
                   <View
+                    onLayout={(e) => {
+                      trendChartYRef.current = e.nativeEvent.layout.y;
+                    }}
                     style={[
                       styles.trendChartCard,
                       { backgroundColor: colors.card, borderColor: colors.border },
@@ -2810,9 +2814,39 @@ export default function NutritionScreen() {
                       </View>
                     </View>
                     <View style={styles.weeklyAvgMacroRow}>
-                      <HistoryMacroChip label="P" value={weeklyAvgSummary.avgProtein} goal={PROTEIN_GOAL} color={colors.secondary} />
-                      <HistoryMacroChip label="C" value={weeklyAvgSummary.avgCarbs} goal={CARBS_GOAL} color={colors.warning} />
-                      <HistoryMacroChip label="F" value={weeklyAvgSummary.avgFat} goal={FAT_GOAL} color={colors.accent} />
+                      <HistoryMacroChip
+                        label="P"
+                        value={weeklyAvgSummary.avgProtein}
+                        goal={PROTEIN_GOAL}
+                        color={colors.secondary}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setTrendMetric("protein");
+                          flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                        }}
+                      />
+                      <HistoryMacroChip
+                        label="C"
+                        value={weeklyAvgSummary.avgCarbs}
+                        goal={CARBS_GOAL}
+                        color={colors.warning}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setTrendMetric("carbs");
+                          flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                        }}
+                      />
+                      <HistoryMacroChip
+                        label="F"
+                        value={weeklyAvgSummary.avgFat}
+                        goal={FAT_GOAL}
+                        color={colors.accent}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setTrendMetric("fat");
+                          flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                        }}
+                      />
                     </View>
                   </View>
                 )}
@@ -4450,16 +4484,18 @@ function HistoryMacroChip({
   value,
   goal,
   color,
+  onPress,
 }: {
   label: string;
   value: number;
   goal: number;
   color: string;
+  onPress?: () => void;
 }) {
   const colors = useColors();
   const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
-  return (
-    <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
+  const inner = (
+    <>
       <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
       <Text style={[styles.historyMacroChipValue, { color }]}>
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
@@ -4467,6 +4503,22 @@ function HistoryMacroChip({
       <View style={[styles.historyMacroChipBar, { backgroundColor: color + "30" }]}>
         <View style={[styles.historyMacroChipBarFill, { backgroundColor: color, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
       </View>
+    </>
+  );
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "55" }]}
+      >
+        {inner}
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
+      {inner}
     </View>
   );
 }
