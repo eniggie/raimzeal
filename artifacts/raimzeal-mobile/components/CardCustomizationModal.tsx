@@ -1001,6 +1001,9 @@ export default function CardCustomizationModal({
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Progress bar animation: goes from 1 → 0 over the full countdown window
+  const autoTriggerProgress = useRef(new Animated.Value(1)).current;
+  const autoTriggerProgressAnim = useRef<Animated.CompositeAnimation | null>(null);
   // Keep a ref to always call the latest handleGenerate (avoids stale closure in interval)
   const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
   // Tracks the current visible prop so the interval can guard against firing after close
@@ -1542,6 +1545,9 @@ export default function CardCustomizationModal({
       clearInterval(autoTriggerIntervalRef.current);
       autoTriggerIntervalRef.current = null;
     }
+    autoTriggerProgressAnim.current?.stop();
+    autoTriggerProgressAnim.current = null;
+    autoTriggerProgress.setValue(1);
     setAutoTriggerCountdown(null);
     setAutoTriggerAction(null);
   }
@@ -1609,6 +1615,18 @@ export default function CardCustomizationModal({
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
       autoTriggerIntervalRef.current = null;
+    }
+    // Reset and start the smooth progress bar (skip when reduce-motion is on)
+    autoTriggerProgressAnim.current?.stop();
+    autoTriggerProgressAnim.current = null;
+    autoTriggerProgress.setValue(1);
+    if (!reduceMotionRef.current) {
+      autoTriggerProgressAnim.current = Animated.timing(autoTriggerProgress, {
+        toValue: 0,
+        duration: delay * 1000,
+        useNativeDriver: true,
+      });
+      autoTriggerProgressAnim.current.start();
     }
     setAutoTriggerAction(action);
     const DELAY = delay;
@@ -2883,6 +2901,18 @@ export default function CardCustomizationModal({
               <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close-circle" size={16} color={colors.primary} />
               </TouchableOpacity>
+              {/* Smooth shrink bar — hidden for reduce-motion users */}
+              {!reduceMotion && (
+                <Animated.View
+                  style={[
+                    styles.autoTriggerBar,
+                    {
+                      backgroundColor: colors.primary + "60",
+                      transform: [{ scaleX: autoTriggerProgress }],
+                    },
+                  ]}
+                />
+              )}
             </View>
           )}
 
@@ -3932,11 +3962,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     marginTop: 8,
+    overflow: "hidden",
   },
   autoTriggerText: {
     flex: 1,
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  autoTriggerBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    borderRadius: 2,
   },
   generateBtn: {
     flexDirection: "row",
