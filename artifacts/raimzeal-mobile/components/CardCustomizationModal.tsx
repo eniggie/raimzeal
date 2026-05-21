@@ -2231,6 +2231,10 @@ export default function CardCustomizationModal({
                     <TouchableOpacity
                       key={action}
                       onPress={() => {
+                        if (!anyStatEnabled) {
+                          showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
+                          return;
+                        }
                         if (isPhotoBlocked) {
                           Linking.openSettings();
                           return;
@@ -2242,10 +2246,10 @@ export default function CardCustomizationModal({
                         handleGenerate(action);
                       }}
                       onLongPress={() => {
+                        if (!anyStatEnabled) return;
                         if (!isPhotoBlocked) handleSetDefault(action);
                       }}
                       delayLongPress={500}
-                      disabled={!anyStatEnabled}
                       activeOpacity={0.85}
                       style={[
                         styles.actionBtn,
