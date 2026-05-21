@@ -1,0 +1,57 @@
+STOP. Read fully. Do not rebuild auth — it is mostly correct. This is a surgical fix of two specific problems plus a config correction. Do not touch working code beyond what's specified.
+
+═══ PROBLEM 1: EMAIL VERIFICATION IS BYPASSED ═══
+
+In artifacts/api-server/src/routes/auth.ts, the /auth/signup route creates users with `email_confirm: true`. This marks every account as confirmed instantly, so the verification code is never enforced and anyone can log in without verifying.
+
+FIX:
+- Change the signup createUser call to `email_confirm: false` so accounts start UNVERIFIED.
+- Keep emailing the OTP code on signup (that logic is already correct).
+- The /auth/verify-email-code route already sets email_confirm: true after a correct code — that stays.
+- This means: user signs up → unverified → must enter emailed code → THEN can log in.
+
+═══ PROBLEM 2: LOGIN DOES NOT ENFORCE VERIFICATION ═══
+
+In artifacts/raimzeal/src/pages/Login.tsx, login only blocks if Supabase returns "email not confirmed". With Problem 1 fixed, Supabase WILL now return that error for unverified users — so the existing check will start working. 
+
+VERIFY AND FIX:
+- After fixing Problem 1, confirm that logging in with an unverified account is rejected with the "please verify your email" message AND the user is routed to the email verification (OTP) screen to enter their code.
+- Do the same fix on the mobile login: artifacts/raimzeal-mobile/app/auth/login.tsx — block unverified users and route them to verify-email.tsx.
+- Apply the same to AuthCallback.tsx if it handles post-login routing.
+
+═══ PROBLEM 3: SWITCH TO EMAIL-ONLY VERIFICATION ═══
+
+Per business decision, disable SMS/phone verification at signup (Twilio is reserved for reminders later).
+- Make phone optional and remove the phone verification step from the signup flow on both web (VerifyPhone.tsx) and mobile (verify-phone.tsx, phone.tsx).
+- Do NOT delete the SMS code — just remove it from the required signup path. Email verification only.
+
+═══ PROBLEM 4: CODEBASE CONTRADICTS ITSELF ON PRICING ═══
+
+replit.md currently says "free forever — no subscriptions, no tiers" AND "never add paywalls or paid tiers", but the code contains Pricing.tsx, Membership.tsx, Billing.tsx, billing.ts, and requirePremium.ts. This contradiction causes confusion.
+
+DECISION (update replit.md to match): RAIMZEAL now uses a 4-tier model:
+- Foundation ($0, "Free Forever", GPT-4o-mini for Ovia, 15 msg/day)
+- Rise ($9.99/mo or $99/yr, GPT-4o unlimited)
+- Reign ($19.99/mo or $199/yr, GPT-4o priority)
+- Legacy ($49.99/mo or $499/yr, GPT-4o + coaching features)
+Update replit.md User preferences section to remove "never add paid tiers" and document this 4-tier model so future work stops fighting it. The free Foundation tier is still genuinely free forever.
+
+═══ MANDATORY TESTS — show me PASS/FAIL for each ═══
+□ Sign up new account → account is UNVERIFIED, OTP email sent
+□ Try to log in BEFORE entering code → BLOCKED, routed to verify screen
+□ Enter WRONG OTP code → rejected
+□ Enter CORRECT OTP code → account verified
+□ Now log in with correct password → SUCCESS
+□ Log in with WRONG password → rejected with "Incorrect email or password"
+□ Log in with email that doesn't exist → rejected (same message)
+□ Forgot password flow → reset email sent and works
+□ No phone/SMS step appears anywhere in signup
+□ replit.md updated to 4-tier model, contradiction removed
+
+RULES:
+1. This is surgical. Do not rewrite the auth system — it is mostly correct.
+2. Do not touch CardCustomizationModal.tsx or unrelated files.
+3. Show me PASS/FAIL test results before claiming done.
+4. Commit to Git before starting.
+
+Begin with Problem 1 and Problem 4 (the config fixes), then test verification end-to-end.
