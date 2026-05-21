@@ -2,6 +2,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
+import { getUserTier } from "../lib/tier";
 
 const oviaRouter = Router();
 
@@ -10,20 +11,20 @@ const MAX_CONTENT_LENGTH = 4000;
 const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via oversized context
 
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
-// Free-tier users are capped at 50 messages/day regardless of IP address.
+// Foundation: capped at 15 messages/day on gpt-4o-mini.
+// Rise/Reign/Legacy: capped at 200 messages/day on gpt-4o (effectively unlimited for real use).
 // Each entry auto-expires after 24 h; the Map stays small because it only grows
 // by one entry per active user per day.
-const USER_DAILY_LIMIT = 50;
 const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
 
-function consumeUserDailyQuota(userId: string): boolean {
+function consumeUserDailyQuota(userId: string, limit: number): boolean {
   const now = Date.now();
   const entry = userDailyCounters.get(userId);
   if (!entry || now > entry.resetAt) {
     userDailyCounters.set(userId, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
     return true; // allowed
   }
-  if (entry.count >= USER_DAILY_LIMIT) return false; // quota exhausted
+  if (entry.count >= limit) return false; // quota exhausted
   entry.count++;
   return true;
 }
@@ -279,8 +280,15 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
     const userId = (req as any).userId as string;
-    if (!consumeUserDailyQuota(userId)) {
-      res.status(429).json({ error: "Daily Ovia AI limit reached. Please try again tomorrow." });
+    const userTier = await getUserTier(userId);
+    const oviaModel = userTier === "foundation" ? "gpt-4o-mini" : "gpt-4o";
+    const oviaLimit = userTier === "foundation" ? 15 : 200;
+    if (!consumeUserDailyQuota(userId, oviaLimit)) {
+      const limitMsg =
+        userTier === "foundation"
+          ? "Daily Ovia AI limit reached (15 messages/day on Foundation). Upgrade to Rise for unlimited Ovia access."
+          : "Daily Ovia AI limit reached. Please try again tomorrow.";
+      res.status(429).json({ error: limitMsg, code: "OVIA_QUOTA_EXCEEDED" });
       return;
     }
 
@@ -352,7 +360,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     ];
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: oviaModel,
       max_completion_tokens: 2048,
       messages: chatMessages,
       stream: true,
@@ -394,7 +402,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const searchResults = await performWebSearch(searchQuery);
 
         const continuation = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: oviaModel,
           max_completion_tokens: 2048,
           messages: [
             ...chatMessages,

@@ -99,9 +99,22 @@ Dr. Ephraim Oviawe is an author, strategist, technologist, creative entrepreneur
 - `lib/db/src/schema.ts` — database schema (source of truth)
 - `lib/api-spec/` — OpenAPI spec + codegen
 
+## Subscription model
+
+RAIMZEAL has 4 tiers (prices locked — do not change):
+- **Foundation** — $0, free forever. Ovia: 15 msgs/day (gpt-4o-mini). Community: read + like only.
+- **Rise** — $9.99/mo or $99/yr. Unlimited Ovia (gpt-4o). Full community. Full library.
+- **Reign** — $19.99/mo or $199/yr. Everything in Rise + priority Ovia + AI meal plans + custom workouts + weekly digest.
+- **Legacy** — $49.99/mo or $499/yr. Everything in Reign + adaptive programs + wearable (Coming Soon) + founder's circle.
+
+Stripe price IDs are stored in env vars: `STRIPE_PRICE_RISE_MONTHLY`, `STRIPE_PRICE_RISE_YEARLY`, `STRIPE_PRICE_REIGN_MONTHLY`, `STRIPE_PRICE_REIGN_YEARLY`, `STRIPE_PRICE_LEGACY_MONTHLY`, `STRIPE_PRICE_LEGACY_YEARLY`. Set these in Replit Secrets before enabling checkout.
+
+Tier logic lives in `artifacts/api-server/src/lib/tier.ts` — use `getUserTier(userId)` and `canAccess(userTier, requiredTier)` everywhere. Never scatter tier checks.
+
+Core features (workouts, tracking, basic Ovia) remain free forever — Foundation is still free.
+
 ## User preferences
 
-- All features must remain free forever — never add paywalls or paid tiers
 - Primary green: #2E8B57
 - Mobile is always dark theme
 - Use "RAIMZEAL" for the app, "RAIMZY" for the creator/artist

@@ -1,0 +1,27 @@
+PHASE 4 — IMPLEMENT 4 TIERS + COMMUNITY GATING. The billing/webhook/premium infrastructure already exists and works — extend it, do not rebuild. Update replit.md to remove "never add paid tiers" and document this model. Commit to Git first.
+
+TIERS (locked, do not change prices):
+- FOUNDATION — $0, "Free Forever". Core features free. Ovia capped at 15 messages/day on gpt-4o-mini. Community: READ-ONLY (view feed + posts, can like, CANNOT post/comment/reply).
+- RISE — $9.99/mo or $99/yr. Unlimited Ovia (gpt-4o), full library/programs/macros, FULL community participation.
+- REIGN — $19.99/mo or $199/yr. Everything in Rise + priority Ovia + AI meal plans + custom workout builder + weekly digest.
+- LEGACY — $49.99/mo or $499/yr. Everything in Reign + adaptive programs + wearable integration + quarterly photo body-comp + founder's circle. If any Legacy feature is not built yet, label it "Coming Soon" — do NOT charge for non-functional features.
+
+BUILD:
+1. Map Stripe price IDs to tier names in billingWebhookHandler.ts (foundation/rise/reign/legacy).
+2. Extend the feature-gating to check TIER, not just active/inactive. One central function (e.g. getUserTier + canAccess) — do not scatter checks.
+3. COMMUNITY GATING — enforce in BOTH places:
+   - UI: Foundation users see the feed but post/comment/reply inputs are hidden or disabled, with an "Upgrade to Rise to join the conversation" prompt.
+   - SERVER (critical): community.ts must REJECT post/comment/reply writes from Foundation-tier users. Never trust the client — check tier server-side before accepting any community write.
+4. Pricing.tsx: comparison table of all 4 tiers, "Most Popular" badge on RISE, REIGN visually emphasized as best value, annual shown as per-month equivalent.
+5. Billing/account page: show current tier, allow upgrade/downgrade/cancel via Stripe Customer Portal. On cancel, keep access until period end, then downgrade to Foundation. Never delete data.
+
+TEST (show PASS/FAIL):
+- All 4 tiers display correctly (web + mobile).
+- Foundation user CANNOT post/comment in community (test the actual API call, not just the hidden button).
+- Rise user CAN post/comment.
+- Subscribe to Rise (test card 4242...) → tier updates to "rise" in profiles via webhook.
+- Upgrade Rise→Reign→Legacy works.
+- Cancel → access until period end → downgrades to Foundation.
+- Existing auth, RLS, and Ovia still work untouched.
+
+RULES: extend existing billing code, don't rebuild. Gate community server-side, not just UI. Show PASS/FAIL before claiming done. Commit first.

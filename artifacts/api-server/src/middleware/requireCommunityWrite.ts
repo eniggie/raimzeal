@@ -1,5 +1,5 @@
 import { type Request, type Response, type NextFunction } from "express";
-import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { getUserTier, canAccess } from "../lib/tier";
 
 /**
  * requireCommunityWrite — 403 if the authenticated user is on the Foundation (free) tier.
@@ -18,20 +18,9 @@ export async function requireCommunityWrite(
     return;
   }
 
-  const { data: profile, error } = await supabaseAdmin
-    .from("profiles")
-    .select("subscription_status")
-    .eq("id", userId)
-    .single();
+  const tier = await getUserTier(userId);
 
-  if (error || !profile) {
-    res.status(500).json({ error: "Could not verify membership tier." });
-    return;
-  }
-
-  const status = (profile as any).subscription_status as string | null;
-
-  if (status !== "active") {
+  if (!canAccess(tier, "rise")) {
     res.status(403).json({
       error:
         "Creating posts, comments, and replies requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",

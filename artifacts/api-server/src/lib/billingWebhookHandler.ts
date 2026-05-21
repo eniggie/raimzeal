@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { getUncachableStripeClient } from "../stripeClient";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "./logger";
+import { normaliseTier } from "./tier";
 
 // ─── Idempotency ─────────────────────────────────────────────────────────────
 // Every incoming Stripe event is recorded in stripe_webhook_events by its
@@ -36,7 +37,8 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
 
       const stripe = await getUncachableStripeClient();
       const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-      const tier = sub.items.data[0]?.price?.metadata?.["tier"] ?? "athlete";
+      const rawTier = sub.items.data[0]?.price?.metadata?.["tier"];
+      const tier = normaliseTier(rawTier);
       const periodEnd = (sub as any).current_period_end as number | undefined;
 
       await supabaseAdmin.from("profiles").update({
@@ -53,7 +55,8 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const tier = sub.items.data[0]?.price?.metadata?.["tier"] ?? "athlete";
+      const rawTier = sub.items.data[0]?.price?.metadata?.["tier"];
+      const tier = normaliseTier(rawTier);
       const periodEnd = (sub as any).current_period_end as number | undefined;
 
       await supabaseAdmin.from("profiles").update({
@@ -72,11 +75,11 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
 
       await supabaseAdmin.from("profiles").update({
         subscription_status: "canceled",
-        subscription_tier: "free",
+        subscription_tier: "foundation",
         current_period_end: null,
       }).eq("stripe_customer_id", customerId);
 
-      logger.info({ customerId }, "Subscription canceled");
+      logger.info({ customerId }, "Subscription canceled — downgraded to Foundation");
       break;
     }
 
