@@ -24,7 +24,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
-import { exportToPdf } from "@/lib/pdf";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
@@ -68,7 +67,6 @@ export default function ProfileScreen() {
     updateCameraRollStatus,
   } = usePermissions();
 
-  const [exportLoading, setExportLoading] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [showPhotoRationaleModal, setShowPhotoRationaleModal] = useState(false);
@@ -219,29 +217,6 @@ export default function ProfileScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const primaryGoal = user?.goals?.[0] ?? "improve_fitness";
-
-  async function handleExportPdf() {
-    setExportLoading(true);
-    try {
-      await exportToPdf({
-        isOnboarded: true,
-        isLoggedIn: true,
-        user,
-        workoutLogs,
-        mealLogs,
-        bodyMeasurements,
-        waterIntake,
-        streak,
-        personalRecords,
-        settings,
-        oviaMessages,
-        favoriteFoods,
-      });
-    } catch (e) {
-      Alert.alert("Export failed", "Could not generate PDF. Please try again.");
-    }
-    setExportLoading(false);
-  }
 
   function handleOpenCardModal() {
     setShowCustomizeModal(true);
@@ -571,10 +546,10 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>
           <GlassCard style={styles.actionsCard}>
             <ActionRow
-              icon="diamond-outline"
-              label="Upgrade Plan"
-              sublabel="Foundation · Free forever"
-              color={colors.secondary}
+              icon="star-outline"
+              label="RAIMZEAL · Free Forever"
+              sublabel="All features included, no subscription"
+              color="#2E8B57"
               onPress={() => router.push("/membership")}
               isLast
             />
@@ -606,13 +581,6 @@ export default function ProfileScreen() {
               }
               loading={shareLoading || saveLoading}
               sublabel={cameraRollStatus === "denied" ? "Tap to open Settings" : undefined}
-            />
-            <ActionRow
-              icon="document-text-outline"
-              label={exportLoading ? "Generating PDF…" : "Export Data as PDF"}
-              color={colors.secondary}
-              onPress={handleExportPdf}
-              loading={exportLoading}
             />
             <ActionRow
               icon="notifications-outline"

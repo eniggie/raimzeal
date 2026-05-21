@@ -216,8 +216,6 @@ function AppContent() {
           state={state}
           onUpdateSettings={updateSettings}
           onUpdateProfile={updateProfile}
-          onExportData={exportData}
-          onExportPdfReport={exportPdfReport}
           onLogout={signOut}
         />
       </Route>

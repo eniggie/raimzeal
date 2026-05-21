@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  Download, FileText, LogOut, Scale, Edit2, Check, X, Crown, Heart, ExternalLink
+  LogOut, Scale, Edit2, Check, X, Crown, Heart, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,12 +28,10 @@ interface SettingsProps {
   state: AppState;
   onUpdateSettings: (settings: Partial<AppState['settings']>) => void;
   onUpdateProfile: (updates: Partial<UserProfile>) => void;
-  onExportData: () => void;
-  onExportPdfReport: () => void;
   onLogout: () => void;
 }
 
-export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportData, onExportPdfReport, onLogout }: SettingsProps) {
+export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -301,41 +299,6 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
           </Card>
         </motion.div>
 
-        {/* Data & Reports */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Data & Reports</h3>
-          <Card className="divide-y divide-border">
-            <div
-              className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={onExportPdfReport}
-              data-testid="setting-health-report"
-            >
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                <FileText className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium">Download Health Report</div>
-                <div className="text-sm text-muted-foreground">Full report with workouts, measurements & nutrition</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-
-            <div
-              className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={onExportData}
-              data-testid="setting-export-data"
-            >
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                <Download className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium">Export Raw Data</div>
-                <div className="text-sm text-muted-foreground">Download all your data as JSON</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </Card>
-        </motion.div>
 
         {/* Support the Mission */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
