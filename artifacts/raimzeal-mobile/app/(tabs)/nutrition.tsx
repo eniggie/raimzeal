@@ -3222,6 +3222,10 @@ export default function NutritionScreen() {
                       : "per serving"}
                   </Text>
                   {isGramsMode ? (
+                    <>
+                    <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
+                      Nutrition values are per 100 g — enter your amount below
+                    </Text>
                     <View style={styles.servingsRow}>
                       <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount</Text>
                       <View style={styles.gramsInputRow}>
@@ -3249,6 +3253,7 @@ export default function NutritionScreen() {
                         <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g / ml</Text>
                       </View>
                     </View>
+                    </>
                   ) : (
                     <View style={styles.servingsRow}>
                       <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
@@ -4526,6 +4531,12 @@ const styles = StyleSheet.create({
   gramsUnit: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  gramsHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginBottom: 8,
   },
   modalNutrients: {
     flexDirection: "row",
