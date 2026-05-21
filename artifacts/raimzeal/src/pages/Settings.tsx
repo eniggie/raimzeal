@@ -42,92 +42,288 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
     try {
       const u = state.user;
       const wUnit = state.settings.weightUnit ?? 'lbs';
-      const rows = (arr: unknown[]) => arr.length;
+      const exportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const exportDateShort = new Date().toISOString().slice(0, 10);
 
-      const tableRows = (items: { date: string; label: string; value: string }[]) =>
-        items.map(r => `<tr><td>${r.date}</td><td>${r.label}</td><td>${r.value}</td></tr>`).join('');
+      const totalCalBurned = state.workoutLogs.reduce((s, w) => s + (w.caloriesBurned ?? 0), 0);
+      const totalMinutes = state.workoutLogs.reduce((s, w) => s + (w.duration ?? 0), 0);
+      const avgDailyCal = state.mealLogs.length
+        ? Math.round(state.mealLogs.reduce((s, m) => s + (m.calories ?? 0), 0) / Math.max(1, new Set(state.mealLogs.map(m => m.date)).size))
+        : 0;
 
-      const workoutRows = state.workoutLogs.slice(0, 200).map(w => ({
-        date: w.date ?? '',
-        label: w.workoutName ?? '',
-        value: w.duration ? `${w.duration} min` : '',
-      }));
+      const statCard = (val: string | number, label: string, icon: string) =>
+        `<div class="stat-card"><div class="stat-icon">${icon}</div><div class="stat-val">${val}</div><div class="stat-lbl">${label}</div></div>`;
 
-      const mealRows = state.mealLogs.slice(0, 200).map(m => ({
-        date: m.date ?? '',
-        label: m.name ?? '',
-        value: `${m.calories ?? 0} kcal · P ${m.protein ?? 0}g · C ${m.carbs ?? 0}g · F ${m.fat ?? 0}g`,
-      }));
+      const profileField = (label: string, value: string | number | undefined) =>
+        `<div class="pf-item"><div class="pf-label">${label}</div><div class="pf-value">${value ?? '—'}</div></div>`;
 
-      const bodyRows = state.bodyMeasurements.slice(0, 200).map(b => ({
-        date: b.date ?? '',
-        label: 'Body weight',
-        value: `${b.weight ?? ''} ${wUnit}`,
-      }));
+      const workoutTableRows = state.workoutLogs.slice(0, 200).map(w =>
+        `<tr><td>${w.date ?? ''}</td><td class="fw600">${w.workoutName ?? ''}</td><td>${w.duration ? w.duration + ' min' : '—'}</td><td>${w.caloriesBurned ? w.caloriesBurned + ' kcal' : '—'}</td></tr>`
+      ).join('');
 
-      const waterRows = state.waterIntake.slice(0, 200).map(w => ({
-        date: w.date ?? '',
-        label: 'Water intake',
-        value: `${w.glasses ?? 0} glasses`,
-      }));
+      const mealTableRows = state.mealLogs.slice(0, 200).map(m =>
+        `<tr><td>${m.date ?? ''}</td><td class="fw600">${m.name ?? ''}</td><td>${m.mealType ?? ''}</td><td class="num">${m.calories ?? 0}</td><td class="num green">${m.protein ?? 0}g</td><td class="num orange">${m.carbs ?? 0}g</td><td class="num blue">${m.fat ?? 0}g</td></tr>`
+      ).join('');
 
-      const prRows = state.personalRecords.slice(0, 200).map(pr => ({
-        date: pr.date ?? '',
-        label: pr.exercise ?? '',
-        value: `${pr.weight ?? ''} ${wUnit}`,
-      }));
+      const bodyTableRows = state.bodyMeasurements.slice(0, 200).map(b =>
+        `<tr><td>${b.date ?? ''}</td><td class="fw600">${b.weight ?? '—'} ${wUnit}</td><td>${b.chest ?? '—'}</td><td>${b.waist ?? '—'}</td><td>${b.hips ?? '—'}</td></tr>`
+      ).join('');
 
-      const section = (title: string, rows: { date: string; label: string; value: string }[], emptyMsg: string) =>
-        `<h2>${title}</h2>${rows.length
-          ? `<table><thead><tr><th>Date</th><th>Activity</th><th>Details</th></tr></thead><tbody>${tableRows(rows)}</tbody></table>`
-          : `<p class="empty">${emptyMsg}</p>`}`;
+      const prTableRows = state.personalRecords.slice(0, 200).map(pr =>
+        `<tr><td class="fw600">${pr.exercise ?? ''}</td><td class="num">${pr.weight ?? '—'} ${wUnit}</td><td>${pr.date ?? ''}</td></tr>`
+      ).join('');
 
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
-<title>RAIMZEAL Data Export — ${u?.name ?? 'User'}</title>
+      const waterTableRows = state.waterIntake.slice(0, 200).map(w =>
+        `<tr><td>${w.date ?? ''}</td><td class="num">${w.glasses ?? 0} glasses</td><td class="num">${Math.round((w.glasses ?? 0) * 240)} ml</td></tr>`
+      ).join('');
+
+      const bloodGroup = u?.bloodType ? `${u.bloodType}${u.rhFactor ?? ''}` : null;
+      const healthProfileHtml = (bloodGroup || u?.genotype) ? `
+<div class="section-header"><span class="section-icon">🧬</span> Health Profile</div>
+<div class="health-grid">
+  ${bloodGroup ? `<div class="health-card"><div class="health-val">${bloodGroup}</div><div class="health-lbl">Blood Group</div></div>` : ''}
+  ${u?.genotype ? `<div class="health-card ${u.genotype === 'SS' || u.genotype === 'SC' ? 'health-card-alert' : ''}"><div class="health-val">${u.genotype}</div><div class="health-lbl">Genotype</div></div>` : ''}
+</div>` : '';
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RAIMZEAL Health &amp; Fitness Report — ${u?.name ?? 'User'}</title>
 <style>
-  body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#111;background:#fff}
-  h1{font-size:1.6rem;margin-bottom:4px}
-  .sub{color:#666;font-size:.85rem;margin-bottom:32px}
-  h2{font-size:1.1rem;margin:28px 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
-  .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
-  .pcard{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
-  .pcard .val{font-size:1.2rem;font-weight:700;color:#6d28d9}
-  .pcard .lbl{font-size:.75rem;color:#666;margin-top:2px}
-  table{width:100%;border-collapse:collapse;font-size:.875rem;margin-bottom:8px}
-  th{background:#f3f4f6;text-align:left;padding:8px 10px;font-weight:600}
-  td{padding:7px 10px;border-bottom:1px solid #f3f4f6}
-  tr:last-child td{border-bottom:none}
-  .empty{color:#9ca3af;font-size:.875rem;margin:0}
-  .footer{margin-top:48px;text-align:center;font-size:.75rem;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:16px}
-  @media print{body{margin:20px}}
-</style></head><body>
-<h1>RAIMZEAL — Data Export</h1>
-<p class="sub">Exported on ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} · ${u?.name ?? 'User'} · ${u?.email ?? ''}</p>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f4f0;color:#1a1a1a;min-height:100vh}
 
-<h2>Profile</h2>
-<div class="profile-grid">
-  <div class="pcard"><div class="val">${u?.age ?? '—'}</div><div class="lbl">Age (yrs)</div></div>
-  <div class="pcard"><div class="val">${u?.height ?? '—'}</div><div class="lbl">Height (cm)</div></div>
-  <div class="pcard"><div class="val">${u?.weight ?? '—'} ${wUnit}</div><div class="lbl">Weight</div></div>
-  <div class="pcard"><div class="val">${rows(state.workoutLogs)}</div><div class="lbl">Workouts logged</div></div>
-  <div class="pcard"><div class="val">${rows(state.mealLogs)}</div><div class="lbl">Meals logged</div></div>
-  <div class="pcard"><div class="val">${state.streak}</div><div class="lbl">Current streak</div></div>
+  /* ── HEADER ── */
+  .report-header{background:linear-gradient(135deg,#1a2e1a 0%,#2E8B57 100%);color:#fff;padding:40px 48px 36px;position:relative;overflow:hidden}
+  .report-header::after{content:'';position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .logo-row{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .logo-mark{width:48px;height:48px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo-mark svg{width:32px;height:32px}
+  .logo-text{font-size:1.6rem;font-weight:800;letter-spacing:-.5px;color:#fff}
+  .logo-sub{font-size:.75rem;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+  .header-meta{display:flex;gap:32px;margin-top:8px;flex-wrap:wrap}
+  .header-meta-item{display:flex;flex-direction:column;gap:2px}
+  .header-meta-label{font-size:.7rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px}
+  .header-meta-value{font-size:.95rem;font-weight:600;color:#fff}
+  .report-title{font-size:2rem;font-weight:800;margin-bottom:6px;line-height:1.1}
+  .report-subtitle{font-size:.9rem;color:rgba(255,255,255,.75);margin-bottom:24px}
+
+  /* ── BODY ── */
+  .page-body{max-width:920px;margin:0 auto;padding:32px 32px 48px}
+
+  /* ── MISSION BANNER ── */
+  .mission-banner{background:#fff;border:1px solid #d1fae5;border-left:4px solid #2E8B57;border-radius:12px;padding:18px 22px;margin-bottom:28px;display:flex;gap:16px;align-items:flex-start}
+  .mission-icon{font-size:1.5rem;flex-shrink:0;margin-top:2px}
+  .mission-title{font-size:.85rem;font-weight:700;color:#166534;margin-bottom:4px}
+  .mission-text{font-size:.8rem;color:#4b5563;line-height:1.5}
+
+  /* ── STATS ROW ── */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+  .stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .stat-icon{font-size:1.4rem;margin-bottom:6px}
+  .stat-val{font-size:1.6rem;font-weight:800;color:#2E8B57;line-height:1}
+  .stat-lbl{font-size:.7rem;color:#6b7280;margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* ── SECTION ── */
+  .section{background:#fff;border:1px solid #e5e7eb;border-radius:14px;margin-bottom:22px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .section-header{display:flex;align-items:center;gap:10px;padding:16px 22px;font-size:.9rem;font-weight:700;color:#1a1a1a;background:#f9faf9;border-bottom:1px solid #e5e7eb}
+  .section-icon{font-size:1.1rem}
+
+  /* ── PROFILE FIELDS ── */
+  .pf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:0}
+  .pf-item{padding:14px 22px;border-bottom:1px solid #f3f4f6;border-right:1px solid #f3f4f6}
+  .pf-item:nth-child(3n){border-right:none}
+  .pf-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px}
+  .pf-value{font-size:.95rem;font-weight:600;color:#1a1a1a}
+
+  /* ── HEALTH PROFILE ── */
+  .health-grid{display:flex;gap:14px;padding:18px 22px;flex-wrap:wrap}
+  .health-card{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 22px;text-align:center;min-width:100px}
+  .health-card-alert{background:#fef2f2;border-color:#fecaca}
+  .health-val{font-size:1.6rem;font-weight:800;color:#166534}
+  .health-card-alert .health-val{color:#dc2626}
+  .health-lbl{font-size:.7rem;color:#6b7280;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* ── TABLES ── */
+  table{width:100%;border-collapse:collapse;font-size:.82rem}
+  thead tr{background:#f9faf9}
+  th{padding:10px 22px;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+  td{padding:10px 22px;border-bottom:1px solid #f3f4f6;color:#374151}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#fafafa}
+  .fw600{font-weight:600;color:#1a1a1a}
+  .num{font-variant-numeric:tabular-nums;text-align:right}
+  .green{color:#16a34a;font-weight:600}
+  .orange{color:#d97706;font-weight:600}
+  .blue{color:#2563eb;font-weight:600}
+  .empty-row td{text-align:center;color:#9ca3af;padding:28px;font-style:italic}
+
+  /* ── DONATION CTA ── */
+  .donation-section{background:linear-gradient(135deg,#1a2e1a,#166534);border-radius:14px;padding:32px;margin-bottom:22px;color:#fff;text-align:center}
+  .donation-heart{font-size:2.5rem;margin-bottom:12px}
+  .donation-title{font-size:1.2rem;font-weight:800;margin-bottom:8px}
+  .donation-text{font-size:.85rem;color:rgba(255,255,255,.8);line-height:1.6;max-width:540px;margin:0 auto 20px}
+  .donation-btn{display:inline-block;background:#fff;color:#166534;font-size:.9rem;font-weight:700;padding:12px 36px;border-radius:50px;text-decoration:none;letter-spacing:.2px}
+  .donation-url{font-size:.75rem;color:rgba(255,255,255,.5);margin-top:10px}
+
+  /* ── FOOTER ── */
+  .report-footer{text-align:center;font-size:.75rem;color:#9ca3af;padding:24px 0 0;border-top:1px solid #e5e7eb;line-height:1.8}
+  .report-footer a{color:#2E8B57;text-decoration:none}
+  .disclaimer{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 20px;margin-bottom:28px;font-size:.78rem;color:#92400e;line-height:1.5}
+  .disclaimer strong{font-weight:700}
+
+  @media print{
+    body{background:#fff}
+    .page-body{padding:16px}
+    .donation-section{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .report-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="report-header">
+  <div class="logo-row">
+    <div class="logo-mark">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="8" fill="#2E8B57"/>
+        <path d="M8 8h8a6 6 0 0 1 0 12h-4l5 8H13l-5-8V8zm4 4v4h4a2 2 0 0 0 0-4h-4z" fill="#fff"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">RAIMZEAL</div>
+      <div class="logo-sub">AI-Powered Fitness &amp; Health Platform</div>
+    </div>
+  </div>
+  <div class="report-title">Health &amp; Fitness Report</div>
+  <div class="report-subtitle">Personal health data export · All data is private and belongs to you</div>
+  <div class="header-meta">
+    <div class="header-meta-item"><div class="header-meta-label">Member</div><div class="header-meta-value">${u?.name ?? 'User'}</div></div>
+    <div class="header-meta-item"><div class="header-meta-label">Email</div><div class="header-meta-value">${u?.email ?? '—'}</div></div>
+    <div class="header-meta-item"><div class="header-meta-label">Generated</div><div class="header-meta-value">${exportDate}</div></div>
+    <div class="header-meta-item"><div class="header-meta-label">Member Since</div><div class="header-meta-value">${u?.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US',{year:'numeric',month:'short'}) : '—'}</div></div>
+  </div>
 </div>
 
-${section('Workout History', workoutRows, 'No workouts logged yet.')}
-${section('Nutrition / Meals', mealRows, 'No meals logged yet.')}
-${section('Body Measurements', bodyRows, 'No measurements logged yet.')}
-${section('Water Intake', waterRows, 'No water intake logged yet.')}
-${section('Personal Records', prRows, 'No personal records yet.')}
+<div class="page-body">
 
-<div class="footer">Created and powered by ECONTEUR LLC · www.econteur.com</div>
-</body></html>`;
+<!-- ══ MISSION BANNER ══ -->
+<div class="mission-banner">
+  <div class="mission-icon">🌱</div>
+  <div>
+    <div class="mission-title">RAIMZEAL is a free, non-profit fitness platform — forever.</div>
+    <div class="mission-text">We have no membership plans, no paid tiers, and no hidden fees. Every feature in this report — AI coaching, nutrition tracking, workout logging, body analytics — is 100% free. RAIMZEAL is operated by ECONTEUR LLC as a non-profit community health initiative. We are sustained entirely by voluntary donations from users like you. No donation is ever required.</div>
+  </div>
+</div>
+
+<!-- ══ STATS ══ -->
+<div class="stats-row">
+  ${statCard(state.workoutLogs.length, 'Total Workouts', '🏋️')}
+  ${statCard(totalCalBurned.toLocaleString(), 'Calories Burned', '🔥')}
+  ${statCard(totalMinutes.toLocaleString(), 'Minutes Trained', '⏱️')}
+  ${statCard(avgDailyCal.toLocaleString(), 'Avg Daily Calories', '🥗')}
+</div>
+
+<!-- ══ PROFILE ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">👤</span> Member Profile</div>
+  <div class="pf-grid">
+    ${profileField('Full Name', u?.name)}
+    ${profileField('Email', u?.email)}
+    ${profileField('Age', u?.age ? u.age + ' years' : undefined)}
+    ${profileField('Height', u?.height ? u.height + ' cm' : undefined)}
+    ${profileField('Current Weight', u?.weight ? u.weight + ' ' + wUnit : undefined)}
+    ${profileField('Fitness Level', u?.fitnessLevel ? u.fitnessLevel.charAt(0).toUpperCase() + u.fitnessLevel.slice(1) : undefined)}
+    ${profileField('Goals', u?.goals?.join(', ') || undefined)}
+    ${profileField('Current Streak', state.streak + ' days')}
+    ${profileField('Units', u?.units ?? '—')}
+  </div>
+</div>
+
+${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
+
+<!-- ══ WORKOUT HISTORY ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">🏋️</span> Workout History</div>
+  ${state.workoutLogs.length ? `<table>
+    <thead><tr><th>Date</th><th>Workout</th><th>Duration</th><th style="text-align:right">Calories</th></tr></thead>
+    <tbody>${workoutTableRows}</tbody>
+  </table>` : '<table><tbody><tr class="empty-row"><td colspan="4">No workouts logged yet — start your first session!</td></tr></tbody></table>'}
+</div>
+
+<!-- ══ PERSONAL RECORDS ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">🏆</span> Personal Records</div>
+  ${state.personalRecords.length ? `<table>
+    <thead><tr><th>Exercise</th><th style="text-align:right">Best Weight</th><th>Date Achieved</th></tr></thead>
+    <tbody>${prTableRows}</tbody>
+  </table>` : '<table><tbody><tr class="empty-row"><td colspan="3">No personal records yet.</td></tr></tbody></table>'}
+</div>
+
+<!-- ══ BODY MEASUREMENTS ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">📏</span> Body Measurements</div>
+  ${state.bodyMeasurements.length ? `<table>
+    <thead><tr><th>Date</th><th>Weight</th><th>Chest</th><th>Waist</th><th>Hips</th></tr></thead>
+    <tbody>${bodyTableRows}</tbody>
+  </table>` : '<table><tbody><tr class="empty-row"><td colspan="5">No measurements logged yet.</td></tr></tbody></table>'}
+</div>
+
+<!-- ══ NUTRITION LOG ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">🥗</span> Nutrition Log <span style="font-weight:400;color:#9ca3af;font-size:.8rem;margin-left:6px">(last 200 entries)</span></div>
+  ${state.mealLogs.length ? `<table>
+    <thead><tr><th>Date</th><th>Food</th><th>Meal</th><th style="text-align:right">Calories</th><th style="text-align:right">Protein</th><th style="text-align:right">Carbs</th><th style="text-align:right">Fat</th></tr></thead>
+    <tbody>${mealTableRows}</tbody>
+  </table>` : '<table><tbody><tr class="empty-row"><td colspan="7">No meals logged yet.</td></tr></tbody></table>'}
+</div>
+
+<!-- ══ WATER INTAKE ══ -->
+<div class="section">
+  <div class="section-header"><span class="section-icon">💧</span> Water Intake</div>
+  ${state.waterIntake.length ? `<table>
+    <thead><tr><th>Date</th><th style="text-align:right">Glasses</th><th style="text-align:right">Volume (ml)</th></tr></thead>
+    <tbody>${waterTableRows}</tbody>
+  </table>` : '<table><tbody><tr class="empty-row"><td colspan="3">No water intake logged yet.</td></tr></tbody></table>'}
+</div>
+
+<!-- ══ DISCLAIMER ══ -->
+<div class="disclaimer">
+  <strong>Medical disclaimer:</strong> This report is based on data you have personally logged in RAIMZEAL. It is provided for personal reference only and does not constitute medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional before making changes to your diet, exercise routine, or health management.
+</div>
+
+<!-- ══ DONATION CTA ══ -->
+<div class="donation-section">
+  <div class="donation-heart">💚</div>
+  <div class="donation-title">Help Keep RAIMZEAL Free — Forever</div>
+  <div class="donation-text">
+    RAIMZEAL is a non-profit platform with no membership fees, no subscriptions, and no ads. We pay for servers, app maintenance, AI services, and our small team entirely through voluntary donations. If this platform has helped your fitness journey, please consider supporting us. Every contribution — no matter the size — keeps RAIMZEAL alive for everyone.
+  </div>
+  <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener">
+    💚 &nbsp;Donate to Support RAIMZEAL
+  </a>
+  <div class="donation-url">donate.stripe.com · Secure · No account required · Any amount helps</div>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<div class="report-footer">
+  <strong>RAIMZEAL</strong> — AI-Powered Fitness &amp; Health Platform · Free Forever<br/>
+  Created and powered by <a href="https://www.econteur.com" target="_blank">ECONTEUR LLC</a> · <a href="https://www.econteur.com">www.econteur.com</a><br/>
+  Generated ${exportDate} · This document is confidential and belongs to ${u?.name ?? 'the account holder'}
+</div>
+
+</div><!-- /page-body -->
+</body>
+</html>`;
 
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `raimzeal-export-${new Date().toISOString().slice(0, 10)}.html`;
+      a.download = `raimzeal-report-${exportDateShort}.html`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
