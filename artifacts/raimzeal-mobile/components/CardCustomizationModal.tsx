@@ -112,6 +112,7 @@ export interface CardPreset {
   customMessage: string;
   themeId: CardThemeId;
   createdAt: number;
+  backgroundPhotoUri?: string;
 }
 
 const STAT_TOGGLES: StatToggleConfig[] = [
@@ -1635,6 +1636,8 @@ export default function CardCustomizationModal({
     setDisplayedThemeId(preset.themeId);
     setActivePresetId(preset.id);
     setRestoredFromStorage(false);
+    setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
+    setBackgroundPhotoCrop(null);
     resetZoomPosition();
   }
 
@@ -1743,7 +1746,7 @@ export default function CardCustomizationModal({
       // Overwrite existing preset
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
-          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId }
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined }
           : p
       );
     } else {
@@ -1763,6 +1766,7 @@ export default function CardCustomizationModal({
         customMessage: customMessage.trim(),
         themeId: selectedThemeId,
         createdAt: Date.now(),
+        backgroundPhotoUri: backgroundPhotoUri ?? undefined,
       };
       updatedPresets = [...presets, newPreset];
       setActivePresetId(newPreset.id);
