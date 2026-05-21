@@ -1,5 +1,5 @@
-// RAIMZEAL Service Worker — v1.2.0
-const CACHE_NAME = 'raimzeal-v3';
+// RAIMZEAL Service Worker — v1.2.1
+const CACHE_NAME = 'raimzeal-v4';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
