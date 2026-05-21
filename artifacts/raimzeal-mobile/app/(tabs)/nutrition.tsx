@@ -820,6 +820,8 @@ export default function NutritionScreen() {
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
+
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
   const pendingScrollFavoriteRef = useRef<string | null>(null);
@@ -2955,11 +2957,18 @@ export default function NutritionScreen() {
                               carbs={totals.carbs}
                               fat={totals.fat}
                             />
-                            <View style={[styles.historyDayBadge, { backgroundColor: totals.calories <= CALORIE_GOAL ? colors.success + "20" : colors.destructive + "20" }]}>
-                              <Text style={[styles.historyDayBadgeText, { color: totals.calories <= CALORIE_GOAL ? colors.success : colors.destructive }]}>
-                                {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
-                              </Text>
-                            </View>
+                            <TouchableOpacity
+                              onPress={() => setDayBreakdownDate(date)}
+                              activeOpacity={0.75}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <View style={[styles.historyDayBadge, styles.historyDayBadgeTappable, { backgroundColor: totals.calories <= CALORIE_GOAL ? colors.success + "20" : colors.destructive + "20" }]}>
+                                <Text style={[styles.historyDayBadgeText, { color: totals.calories <= CALORIE_GOAL ? colors.success : colors.destructive }]}>
+                                  {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
+                                </Text>
+                                <Ionicons name="chevron-up" size={11} color={totals.calories <= CALORIE_GOAL ? colors.success : colors.destructive} style={{ marginLeft: 2 }} />
+                              </View>
+                            </TouchableOpacity>
                           </View>
                         </View>
                         <View style={[styles.historyMacroRow, { borderBottomColor: colors.border }]}>
@@ -3876,6 +3885,135 @@ export default function NutritionScreen() {
           </GlassCard>
         </View>
       </Modal>
+
+      {/* Day Calorie Breakdown Sheet */}
+      {(() => {
+        const dayData = dayBreakdownDate
+          ? historyDays.find((d) => d.date === dayBreakdownDate)
+          : null;
+        const d = dayData ? new Date(dayData.date + "T12:00:00") : null;
+        const yesterday = new Date(Date.now() - 86400000);
+        const isYesterday = d ? d.toDateString() === yesterday.toDateString() : false;
+        const dayLabel = d
+          ? isYesterday
+            ? "Yesterday"
+            : d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })
+          : "";
+        return (
+          <Modal
+            visible={dayBreakdownDate !== null}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setDayBreakdownDate(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <GlassCard
+                style={[styles.modalCard, styles.breakdownSheetCard, { backgroundColor: colors.card }]}
+                variant="elevated"
+              >
+                <View style={styles.breakdownSheetHeader}>
+                  <View>
+                    <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                      {dayLabel}
+                    </Text>
+                    {dayData && (
+                      <Text style={[styles.breakdownSheetSubtitle, { color: colors.mutedForeground }]}>
+                        {Math.round(dayData.totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal total
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setDayBreakdownDate(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Ionicons name="close" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+
+                {dayData && (
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    style={styles.breakdownScrollView}
+                    contentContainerStyle={styles.breakdownScrollContent}
+                  >
+                    {MEALS.map((meal) => {
+                      const entries = dayData.logs.filter((m) => m.mealType === meal);
+                      if (entries.length === 0) return null;
+                      const mealCal = entries.reduce((s, m) => s + m.calories, 0);
+                      const mealProt = entries.reduce((s, m) => s + m.protein, 0);
+                      const mealCarbs = entries.reduce((s, m) => s + m.carbs, 0);
+                      const mealFat = entries.reduce((s, m) => s + m.fat, 0);
+                      return (
+                        <View key={meal} style={[styles.breakdownMealSection, { borderColor: colors.border }]}>
+                          <View style={styles.breakdownMealHeader}>
+                            <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[meal] }]} />
+                            <Text style={[styles.breakdownMealTitle, { color: colors.foreground }]}>
+                              {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                            </Text>
+                            <Text style={[styles.breakdownMealCal, { color: MEAL_COLORS[meal] }]}>
+                              {Math.round(mealCal)} kcal
+                            </Text>
+                          </View>
+                          <View style={[styles.breakdownMacroRow, { backgroundColor: colors.muted }]}>
+                            <View style={styles.breakdownMacroItem}>
+                              <Text style={[styles.breakdownMacroValue, { color: colors.secondary }]}>{Math.round(mealProt)}g</Text>
+                              <Text style={[styles.breakdownMacroLabel, { color: colors.mutedForeground }]}>Protein</Text>
+                            </View>
+                            <View style={[styles.breakdownMacroDivider, { backgroundColor: colors.border }]} />
+                            <View style={styles.breakdownMacroItem}>
+                              <Text style={[styles.breakdownMacroValue, { color: colors.warning }]}>{Math.round(mealCarbs)}g</Text>
+                              <Text style={[styles.breakdownMacroLabel, { color: colors.mutedForeground }]}>Carbs</Text>
+                            </View>
+                            <View style={[styles.breakdownMacroDivider, { backgroundColor: colors.border }]} />
+                            <View style={styles.breakdownMacroItem}>
+                              <Text style={[styles.breakdownMacroValue, { color: colors.accent }]}>{Math.round(mealFat)}g</Text>
+                              <Text style={[styles.breakdownMacroLabel, { color: colors.mutedForeground }]}>Fat</Text>
+                            </View>
+                          </View>
+                          {entries.map((log) => (
+                            <View key={log.id} style={[styles.breakdownFoodRow, { borderTopColor: colors.border }]}>
+                              <Text style={[styles.breakdownFoodName, { color: colors.foreground }]} numberOfLines={1}>
+                                {log.name}
+                              </Text>
+                              <Text style={[styles.breakdownFoodMacros, { color: colors.mutedForeground }]}>
+                                P {Math.round(log.protein)}g · C {Math.round(log.carbs)}g · F {Math.round(log.fat)}g
+                              </Text>
+                              <Text style={[styles.breakdownFoodCal, { color: colors.primary }]}>
+                                {Math.round(log.calories)} kcal
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })}
+
+                    <View style={[styles.breakdownTotalRow, { borderTopColor: colors.border, backgroundColor: colors.muted }]}>
+                      <Text style={[styles.breakdownTotalLabel, { color: colors.foreground }]}>Day Total</Text>
+                      <View style={styles.breakdownTotalRight}>
+                        <Text style={[styles.breakdownTotalMacros, { color: colors.mutedForeground }]}>
+                          P {Math.round(dayData.totals.protein)}g · C {Math.round(dayData.totals.carbs)}g · F {Math.round(dayData.totals.fat)}g
+                        </Text>
+                        <Text style={[styles.breakdownTotalCal, { color: dayData.totals.calories <= CALORIE_GOAL ? colors.success : colors.destructive }]}>
+                          {Math.round(dayData.totals.calories).toLocaleString()} kcal
+                        </Text>
+                      </View>
+                    </View>
+                  </ScrollView>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setDayBreakdownDate(null)}
+                  activeOpacity={0.8}
+                  style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.breakdownDoneBtnText, { color: colors.primaryForeground }]}>Done</Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
+          </Modal>
+        );
+      })()}
 
       {undoMeal !== null && (
         <Animated.View
@@ -5291,8 +5429,146 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
+  historyDayBadgeTappable: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   historyDayBadgeText: {
     fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  breakdownSheetCard: {
+    maxHeight: "80%",
+    gap: 0,
+    paddingBottom: 0,
+  },
+  breakdownSheetHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  breakdownSheetSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  breakdownCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  breakdownScrollView: {
+    flexShrink: 1,
+  },
+  breakdownScrollContent: {
+    gap: 10,
+    paddingBottom: 14,
+  },
+  breakdownMealSection: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  breakdownMealHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  breakdownMealTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  breakdownMealCal: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  breakdownMacroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  breakdownMacroItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  breakdownMacroDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    marginHorizontal: 4,
+  },
+  breakdownMacroValue: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  breakdownMacroLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  breakdownFoodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 6,
+  },
+  breakdownFoodName: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  breakdownFoodMacros: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  breakdownFoodCal: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 60,
+    textAlign: "right",
+  },
+  breakdownTotalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 2,
+  },
+  breakdownTotalLabel: {
+    fontSize: 14,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  breakdownTotalRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  breakdownTotalMacros: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  breakdownTotalCal: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  breakdownDoneBtn: {
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 14,
+  },
+  breakdownDoneBtnText: {
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
   historyMacroRow: {
