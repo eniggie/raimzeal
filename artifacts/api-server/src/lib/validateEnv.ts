@@ -15,6 +15,7 @@ const OPTIONAL: Array<{ key: string; feature: string }> = [
   { key: "TWILIO_ACCOUNT_SID", feature: "SMS OTP delivery" },
   { key: "TWILIO_AUTH_TOKEN", feature: "SMS OTP delivery" },
   { key: "TWILIO_FROM_NUMBER", feature: "SMS OTP delivery" },
+  { key: "BRAVE_SEARCH_API_KEY", feature: "Ovia AI web search (degrades to knowledge-only answers when absent)" },
 ];
 
 export function validateEnv(): void {

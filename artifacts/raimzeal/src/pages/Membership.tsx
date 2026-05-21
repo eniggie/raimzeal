@@ -4,13 +4,7 @@ import { Check, ChevronLeft, Heart, ExternalLink, Star } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
-const DONATION_ACTIVE = Boolean(
-  STRIPE_DONATION_URL &&
-  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
-  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
-);
-const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 const ALL_FEATURES = [
   'Full workout library & programs',

@@ -13,13 +13,7 @@ import { cn } from '@/lib/utils';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
-const DONATION_ACTIVE = Boolean(
-  STRIPE_DONATION_URL &&
-  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
-  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
-);
-const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 interface LivePost {
   id: string;
@@ -148,7 +142,7 @@ export function Community() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Resources from RAIMZY</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                RAIMZY is one of RAIMZEAL's biggest supporters. Access books, music, courses, and coaching.
+                RAIMZY — Dr. Ephraim Oviawe — is the mind behind RAIMZEAL. Author, music artist, strategist, and coach.
               </p>
               <a
                 href={RAIMZY_LINKTREE}
@@ -344,7 +338,7 @@ export function Community() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-secondary hover:underline"
               >
-                Books, courses and coaching at linktr.ee/Raimzy
+                Books · Music · Courses · Coaching at linktr.ee/Raimzy
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

@@ -3,13 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Heart, ExternalLink } from 'lucide-react';
 import { Link } from 'wouter';
 
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
-const DONATION_ACTIVE = Boolean(
-  STRIPE_DONATION_URL &&
-  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
-  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
-);
-const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 export function Billing() {
   const [donationError, setDonationError] = useState(false);
@@ -24,7 +18,7 @@ export function Billing() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Billing</h1>
-            <p className="text-muted-foreground text-sm">RAIMZEAL is free forever</p>
+            <p className="text-muted-foreground text-sm">RAIMZEAL is free forever.</p>
           </div>
         </div>
 

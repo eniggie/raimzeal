@@ -8,6 +8,7 @@ import {
   Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { STRIPE_DONATION_URL } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
@@ -99,7 +100,7 @@ export default function MembershipScreen() {
           <TouchableOpacity
             style={styles.donateBtn}
             onPress={() =>
-              Linking.openURL("https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00").catch(() => {
+              Linking.openURL(STRIPE_DONATION_URL).catch(() => {
                 Linking.openURL("mailto:support@raimzeal.com?subject=Donation");
               })
             }

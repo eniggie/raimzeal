@@ -16,13 +16,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { cn } from '@/lib/utils';
 import type { AppState, UserProfile } from '@/lib/store';
 
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
-const DONATION_ACTIVE = Boolean(
-  STRIPE_DONATION_URL &&
-  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
-  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
-);
-const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 interface SettingsProps {
   state: AppState;
@@ -301,9 +295,9 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
   <div class="donation-title">We turned down deals. RAIMZEAL is free forever.</div>
   <div class="donation-text">
     We turned down deals to keep it that way. No membership fees, no subscriptions, no ads — your health was never up for sale. Please support the team. A donation supports the team keeping this alive for everyone who needs it.<br/><br/>
-    Books · Music · Courses · Coaching · Resources at <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
+    Books · Music · Courses · Coaching · Resources at <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
   </div>
-  <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener">
+  <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener noreferrer">
     💚 &nbsp;Donate — Support the Team
   </a>
   <div class="donation-url">donate.stripe.com · Secure · No account required · Any amount helps</div>
@@ -312,7 +306,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 <!-- ══ FOOTER ══ -->
 <div class="report-footer">
   <strong>RAIMZEAL</strong> — AI-Powered Fitness &amp; Health Platform · Free Forever<br/>
-  Created and powered by <a href="https://www.econteur.com" target="_blank">ECONTEUR LLC</a> · <a href="https://www.econteur.com">www.econteur.com</a> · <a href="mailto:support@raimzeal.com">support@raimzeal.com</a><br/>
+  Created and powered by <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer">ECONTEUR LLC</a> · www.econteur.com · <a href="mailto:support@raimzeal.com">support@raimzeal.com</a><br/>
   Generated ${exportDate} · This document is confidential and belongs to ${u?.name ?? 'the account holder'}
 </div>
 

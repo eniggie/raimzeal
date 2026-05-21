@@ -13,12 +13,7 @@ import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
 import { workouts } from '@/lib/store';
 
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
-const DONATION_ACTIVE = Boolean(
-  STRIPE_DONATION_URL &&
-  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
-  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
-);
+import { STRIPE_DONATION_URL, DONATION_ACTIVE } from '@/lib/constants';
 
 interface HomeProps {
   state: AppState;
