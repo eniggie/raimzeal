@@ -14,7 +14,7 @@ import type { AppState } from '@/lib/store';
 import { workouts } from '@/lib/store';
 
 // Update this to the real Stripe donation link before final deployment
-const STRIPE_DONATION_URL = 'https://donate.stripe.com/PLACEHOLDER_REPLACE_BEFORE_DEPLOY';
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
 
 interface HomeProps {
   state: AppState;
