@@ -389,7 +389,7 @@ function DraggableFavItem({
         </Text>
         <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
           <Text style={[styles.servingPillText, { color: colors.primary }]}>
-            per serving
+            {food.servingLabel ? `per ${food.servingLabel}` : "per serving"}
           </Text>
         </View>
       </View>
@@ -2379,7 +2379,7 @@ export default function NutritionScreen() {
                                 </Text>
                                 <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
                                   <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                                    per serving
+                                    {food.servingLabel ? `per ${food.servingLabel}` : "per serving"}
                                   </Text>
                                 </View>
                               </View>
@@ -2838,7 +2838,7 @@ export default function NutritionScreen() {
               : item.servingLabel
               ? `per ${item.servingLabel}`
               : "per 100g";
-            const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack" };
+            const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack", servingLabel: item.servingLabel };
             const starred = isFavorite(item.name);
             return (
               <TouchableOpacity

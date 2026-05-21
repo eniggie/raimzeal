@@ -91,7 +91,10 @@ export interface OviaMessage {
 }
 
 /** A pinned food item; structurally identical to a MealLog entry without id/date */
-export type FavoriteFood = Omit<MealLog, "id" | "date">;
+export type FavoriteFood = Omit<MealLog, "id" | "date"> & {
+  /** Human-readable serving size label saved at star time (e.g. "150g", "1 cup") */
+  servingLabel?: string;
+};
 
 /** Matches web app store.ts AppState (subset relevant to mobile) */
 export interface AppState {
