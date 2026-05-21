@@ -17,6 +17,11 @@ import { cn } from '@/lib/utils';
 import type { AppState, UserProfile } from '@/lib/store';
 
 const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
+const DONATION_ACTIVE = Boolean(
+  STRIPE_DONATION_URL &&
+  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
+  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
+);
 const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 interface SettingsProps {
@@ -351,16 +356,20 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onExportDat
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
-              <a
-                href={STRIPE_DONATION_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
-                aria-label="Donate to support RAIMZEAL"
-              >
-                <Heart className="w-3.5 h-3.5 fill-current" />
-                Donate
-              </a>
+              {DONATION_ACTIVE ? (
+                <a
+                  href={STRIPE_DONATION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+                  aria-label="Donate to support RAIMZEAL"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-current" />
+                  Donate
+                </a>
+              ) : (
+                <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
+              )}
             </div>
           </Card>
         </motion.div>

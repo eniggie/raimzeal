@@ -13,8 +13,12 @@ import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
 import { workouts } from '@/lib/store';
 
-// Update this to the real Stripe donation link before final deployment
 const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
+const DONATION_ACTIVE = Boolean(
+  STRIPE_DONATION_URL &&
+  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
+  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
+);
 
 interface HomeProps {
   state: AppState;
@@ -98,18 +102,22 @@ export function Home({ state, onUpdateWater }: HomeProps) {
               RAIMZEAL is free because your health matters. We turned down deals to keep it that way. If it has helped you, consider supporting us.
             </p>
           </div>
-          <motion.a
-            href={STRIPE_DONATION_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
-            animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
-            aria-label="Donate to support RAIMZEAL"
-          >
-            <Heart className="w-3.5 h-3.5 fill-current" />
-            Donate
-          </motion.a>
+          {DONATION_ACTIVE ? (
+            <motion.a
+              href={STRIPE_DONATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
+              animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+              aria-label="Donate to support RAIMZEAL"
+            >
+              <Heart className="w-3.5 h-3.5 fill-current" />
+              Donate
+            </motion.a>
+          ) : (
+            <p className="shrink-0 text-xs text-muted-foreground italic whitespace-nowrap">Donation link coming soon.</p>
+          )}
         </motion.div>
 
         {scheduledWorkout && (

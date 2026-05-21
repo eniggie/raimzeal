@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BottomNav } from '@/components/BottomNav';
 
-// Update to real Stripe donation link before final deployment
 const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
+const DONATION_ACTIVE = Boolean(
+  STRIPE_DONATION_URL &&
+  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
+  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
+);
 const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 interface Plan {
@@ -174,18 +178,22 @@ export function Membership() {
             <p className="text-sm font-semibold">Make a one-time donation</p>
             <p className="text-xs text-foreground/60 mt-0.5">Any amount helps pay staff, hosting, and support so RAIMZEAL stays free for everyone.</p>
           </div>
-          <motion.a
-            href={STRIPE_DONATION_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
-            animate={{ scale: [1, 1.05, 1, 1.05, 1] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
-            aria-label="Make a donation"
-          >
-            <Heart className="w-4 h-4 fill-current" />
-            Donate
-          </motion.a>
+          {DONATION_ACTIVE ? (
+            <motion.a
+              href={STRIPE_DONATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
+              animate={{ scale: [1, 1.05, 1, 1.05, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+              aria-label="Make a donation"
+            >
+              <Heart className="w-4 h-4 fill-current" />
+              Donate
+            </motion.a>
+          ) : (
+            <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
+          )}
         </motion.div>
 
         {/* Success banner */}

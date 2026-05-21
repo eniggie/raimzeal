@@ -32,6 +32,11 @@ import {
 } from "@/lib/db";
 
 const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
+const DONATION_ACTIVE = Boolean(
+  STRIPE_DONATION_URL &&
+  STRIPE_DONATION_URL.startsWith('https://donate.stripe.com/') &&
+  !STRIPE_DONATION_URL.includes('PLACEHOLDER')
+);
 
 type FeedTab = "feed" | "questions";
 
@@ -719,17 +724,35 @@ export default function CommunityScreen() {
           ListHeaderComponent={
             <TouchableOpacity
               style={[styles.donateBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => Linking.openURL(STRIPE_DONATION_URL)}
-              activeOpacity={0.75}
+              onPress={async () => {
+                if (!DONATION_ACTIVE) return;
+                try {
+                  const canOpen = await Linking.canOpenURL(STRIPE_DONATION_URL);
+                  if (canOpen) {
+                    await Linking.openURL(STRIPE_DONATION_URL);
+                  } else {
+                    Alert.alert('Coming Soon', 'Donation link coming soon. RAIMZEAL remains free forever.');
+                  }
+                } catch {
+                  Alert.alert('Coming Soon', 'Donation link coming soon. RAIMZEAL remains free forever.');
+                }
+              }}
+              activeOpacity={DONATION_ACTIVE ? 0.75 : 1}
             >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.donateTitle, { color: colors.foreground }]}>Enjoying RAIMZEAL?</Text>
-                <Text style={[styles.donateSubtitle, { color: colors.mutedForeground }]}>We are free forever. Donations keep the lights on for everyone.</Text>
+                <Text style={[styles.donateSubtitle, { color: colors.mutedForeground }]}>
+                  {DONATION_ACTIVE
+                    ? 'We are free forever. Donations keep the lights on for everyone.'
+                    : 'Donation link coming soon. RAIMZEAL remains free forever.'}
+                </Text>
               </View>
-              <View style={[styles.donateBtn, { backgroundColor: colors.primary }]}>
-                <Ionicons name="heart" size={13} color={colors.primaryForeground} />
-                <Text style={[styles.donateBtnText, { color: colors.primaryForeground }]}>Donate</Text>
-              </View>
+              {DONATION_ACTIVE && (
+                <View style={[styles.donateBtn, { backgroundColor: colors.primary }]}>
+                  <Ionicons name="heart" size={13} color={colors.primaryForeground} />
+                  <Text style={[styles.donateBtnText, { color: colors.primaryForeground }]}>Donate</Text>
+                </View>
+              )}
             </TouchableOpacity>
           }
           ListEmptyComponent={
