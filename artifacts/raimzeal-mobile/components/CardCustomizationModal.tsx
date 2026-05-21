@@ -842,6 +842,7 @@ export default function CardCustomizationModal({
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
+  const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
@@ -1159,6 +1160,7 @@ export default function CardCustomizationModal({
           ? (savedAction as CardAction)
           : null;
         setDefaultAction(resolvedAction);
+        setSelectedAction(resolvedAction);
 
         // Long-press-and-run preference: null means the user has never changed it → default true
         setLongPressAndRun(savedLpAndRun === null ? true : savedLpAndRun !== "0");
@@ -1194,6 +1196,7 @@ export default function CardCustomizationModal({
         setRestoredFromStorage(false);
         setBadgeDismissed(false);
         setDefaultAction(null);
+        setSelectedAction(null);
         setShowLongPressHint(false);
       }
     }
@@ -1319,6 +1322,7 @@ export default function CardCustomizationModal({
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
+    setSelectedAction(action);
     try {
       await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined });
       const msg =
@@ -1409,6 +1413,7 @@ export default function CardCustomizationModal({
     if (longPressAndRun) {
       // "Long-press and run" mode: set default immediately and generate in one gesture
       setDefaultAction(action);
+      setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
       handleGenerate(action);
     } else {
@@ -1422,6 +1427,7 @@ export default function CardCustomizationModal({
             text: "Set as preferred",
             onPress: () => {
               setDefaultAction(action);
+              setSelectedAction(action);
               AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
               showConfirmation(`★ ${label} set as preferred`, "success");
             },
@@ -2613,6 +2619,25 @@ export default function CardCustomizationModal({
                   </Text>
                 </TouchableOpacity>
               )}
+              {/* Quick-generate button: visible when a selection is pre-loaded and no countdown is running */}
+              {anyStatEnabled && selectedAction && autoTriggerCountdown === null && (() => {
+                const requiresPhotoAccess = selectedAction === "save" || selectedAction === "both";
+                const isPhotoBlocked = requiresPhotoAccess && cameraRollStatus === "denied";
+                if (isPhotoBlocked) return null;
+                const actionLabel = selectedAction === "share" ? "Share" : selectedAction === "save" ? "Save" : selectedAction === "copy" ? "Copy" : "Both";
+                return (
+                  <TouchableOpacity
+                    onPress={() => handleGenerate(selectedAction)}
+                    activeOpacity={0.82}
+                    style={[styles.quickGenerateBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                  >
+                    <Ionicons name="flash" size={15} color={colors.primaryForeground} />
+                    <Text style={[styles.quickGenerateBtnText, { color: colors.primaryForeground }]}>
+                      Generate · {actionLabel}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
               <View style={styles.actionRow}>
                 {(
                   [
@@ -2624,7 +2649,7 @@ export default function CardCustomizationModal({
                 ).map(({ action, icon, label, subtitle, bg }) => {
                   const requiresPhotoAccess = action === "save" || action === "both";
                   const isPhotoBlocked = requiresPhotoAccess && cameraRollStatus === "denied";
-                  const isPreferred = anyStatEnabled && defaultAction === action;
+                  const isSelected = anyStatEnabled && selectedAction === action && !isPhotoBlocked;
                   const isAutoTarget = autoTriggerAction === action && autoTriggerCountdown !== null;
                   const isEnabled = anyStatEnabled && !isPhotoBlocked;
                   return (
@@ -2643,6 +2668,7 @@ export default function CardCustomizationModal({
                           actionLongPressedRef.current = false;
                           return;
                         }
+                        setSelectedAction(action);
                         handleGenerate(action);
                       }}
                       onLongPress={() => {
@@ -2656,8 +2682,8 @@ export default function CardCustomizationModal({
                         {
                           backgroundColor: isEnabled ? bg : colors.muted,
                           flex: 1,
-                          borderWidth: (isPreferred || isAutoTarget) && !isPhotoBlocked ? 2.5 : 0,
-                          borderColor: (isPreferred || isAutoTarget) && !isPhotoBlocked ? colors.primaryForeground : "transparent",
+                          borderWidth: (isSelected || isAutoTarget) ? 2.5 : 0,
+                          borderColor: (isSelected || isAutoTarget) ? colors.primaryForeground : "transparent",
                         },
                       ]}
                     >
@@ -2690,7 +2716,10 @@ export default function CardCustomizationModal({
                         >
                           {isPhotoBlocked ? "Enable in Settings" : subtitle}
                         </Text>
-                        {isPreferred && !isPhotoBlocked && (
+                        {isSelected && !isPhotoBlocked && (
+                          <Text style={styles.preferredLabel}>✓ Selected</Text>
+                        )}
+                        {!isSelected && defaultAction === action && !isPhotoBlocked && (
                           <Text style={styles.preferredLabel}>★ Default</Text>
                         )}
                       </View>
@@ -3611,6 +3640,21 @@ const styles = StyleSheet.create({
   },
   generateBtnText: {
     fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  quickGenerateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 0,
+  },
+  quickGenerateBtnText: {
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
   permissionBanner: {
