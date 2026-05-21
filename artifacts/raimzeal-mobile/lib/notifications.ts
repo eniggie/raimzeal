@@ -191,7 +191,7 @@ const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
     id: "ovia_pre_workout",
     title: "💪 Time to Train — Your Body is Ready",
     body:
-      "Late afternoon is scientifically your peak performance window. Core body temperature is elevated, muscle strength is 10 to 20% higher than morning, reaction time is faster, and natural testosterone is at its daily high. You do not need motivation — you need to move. 45 minutes of focused, intentional training will compound into the results you are working for. Get it done." +
+      "Late afternoon is scientifically your peak performance window. Core body temperature is elevated, muscle strength is 10 to 20% higher than morning, reaction time is faster, and your body's natural energy is at its daily high. You do not need motivation — you need to move. 45 minutes of focused, intentional training will compound into the results you are working for. Get it done." +
       DISCLAIMER,
     hour: 17,
     minute: 0,
