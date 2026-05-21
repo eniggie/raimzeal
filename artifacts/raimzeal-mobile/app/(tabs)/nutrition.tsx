@@ -1049,12 +1049,20 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (!historyFiltersHydratedRef.current) return;
-    AsyncStorage.setItem(HISTORY_DATE_RANGE_KEY, historyDateRange).catch(() => {});
+    if (historyDateRange === "all") {
+      AsyncStorage.removeItem(HISTORY_DATE_RANGE_KEY).catch(() => {});
+    } else {
+      AsyncStorage.setItem(HISTORY_DATE_RANGE_KEY, historyDateRange).catch(() => {});
+    }
   }, [historyDateRange]);
 
   useEffect(() => {
     if (!historyFiltersHydratedRef.current) return;
-    AsyncStorage.setItem(HISTORY_MEAL_FILTER_KEY, historyMealFilter).catch(() => {});
+    if (historyMealFilter === "all") {
+      AsyncStorage.removeItem(HISTORY_MEAL_FILTER_KEY).catch(() => {});
+    } else {
+      AsyncStorage.setItem(HISTORY_MEAL_FILTER_KEY, historyMealFilter).catch(() => {});
+    }
   }, [historyMealFilter]);
 
   useEffect(() => {
@@ -2584,6 +2592,29 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       );
                     })}
+
+                    {(historyDateRange !== "all" || historyMealFilter !== "all") && (
+                      <>
+                        <View style={styles.historyFilterDivider} />
+                        <TouchableOpacity
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setHistoryDateRange("all");
+                            setHistoryMealFilter("all");
+                          }}
+                          style={[
+                            styles.historyFilterChip,
+                            { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "60" },
+                          ]}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons name="close-circle-outline" size={13} color={colors.destructive} />
+                          <Text style={[styles.historyFilterChipText, { color: colors.destructive }]}>
+                            Reset
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </ScrollView>
                 </View>
 
