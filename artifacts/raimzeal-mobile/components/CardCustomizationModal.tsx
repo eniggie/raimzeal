@@ -988,6 +988,13 @@ export default function CardCustomizationModal({
       }
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
+      // Dismiss any in-progress undo-delete toast so the timer doesn't fire
+      // against unmounted/invisible state after the modal closes.
+      if (undoTimerRef.current !== null) {
+        clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = null;
+      }
+      setUndoDeleteState(null);
       // Flush any pending badge-dismissed persist immediately so the
       // preference is not lost if the user closes the modal mid-undo-window.
       if (badgePersistTimerRef.current !== null) {
