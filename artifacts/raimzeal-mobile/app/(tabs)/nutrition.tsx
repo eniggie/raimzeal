@@ -3839,6 +3839,13 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
   const [editServings, setEditServings] = useState(1);
   const [editServingsText, setEditServingsText] = useState("1");
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+  const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
+  const [editGramsText, setEditGramsText] = useState(
+    log.amountGrams !== undefined
+      ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
+      : ""
+  );
+  const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3853,7 +3860,47 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
     setEditServings(1);
     setEditServingsText("1");
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    const g = log.amountGrams;
+    setEditGrams(g);
+    setEditGramsText(
+      g !== undefined
+        ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
+        : ""
+    );
+    if (g !== undefined && g > 0) {
+      perGramRef.current = {
+        calories: log.calories / g,
+        protein: log.protein / g,
+        carbs: log.carbs / g,
+        fat: log.fat / g,
+      };
+    } else {
+      perGramRef.current = null;
+    }
     setShowEditSheet(true);
+  }
+
+  function handleGramsChange(text: string) {
+    const stripped = text.replace(/[^0-9.]/g, "");
+    const parts = stripped.split(".");
+    const normalized = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : stripped;
+    setEditGramsText(normalized);
+    const n = parseFloat(normalized);
+    if (!isNaN(n) && n > 0) {
+      setEditGrams(n);
+      if (perGramRef.current) {
+        setEditBase({
+          calories: perGramRef.current.calories * n,
+          protein: perGramRef.current.protein * n,
+          carbs: perGramRef.current.carbs * n,
+          fat: perGramRef.current.fat * n,
+        });
+        setEditServings(1);
+        setEditServingsText("1");
+      }
+    } else if (normalized === "" || normalized === "0") {
+      setEditGrams(undefined);
+    }
   }
 
   function handleSaveEdit() {
@@ -3867,6 +3914,7 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
       carbs: Math.round(editBase.carbs * editServings * 10) / 10,
       fat: Math.round(editBase.fat * editServings * 10) / 10,
       mealType: editMealType,
+      amountGrams: editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined,
     });
     setShowEditSheet(false);
   }
@@ -3980,6 +4028,36 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
                 { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
               ]}
             />
+
+            <View style={styles.gramsRow}>
+              <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount (g)</Text>
+              <TextInput
+                placeholder="—"
+                placeholderTextColor={colors.mutedForeground}
+                value={editGramsText}
+                onChangeText={handleGramsChange}
+                onBlur={() => {
+                  const n = parseFloat(editGramsText);
+                  if (isNaN(n) || n <= 0) {
+                    setEditGramsText(editGrams !== undefined ? String(editGrams) : "");
+                  }
+                }}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                returnKeyType="done"
+                maxLength={7}
+                style={[
+                  styles.gramsInput,
+                  { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              />
+              <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
+              {perGramRef.current !== null && (
+                <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
+                  · macros scale
+                </Text>
+              )}
+            </View>
 
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
@@ -4395,6 +4473,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  gramsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  gramsHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
   },
   servingsLabel: {
     fontSize: 14,
