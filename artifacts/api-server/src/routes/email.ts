@@ -174,9 +174,18 @@ function buildHtmlEmail(subject: string, bodyHtml: string): string {
       <td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#111113;border-radius:16px;overflow:hidden;border:1px solid #1e1e22;">
           <tr>
-            <td style="background:linear-gradient(135deg,#1a5c38 0%,#2E8B57 60%,#3da86a 100%);padding:28px 32px;">
-              <p style="margin:0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">RAIMZEAL</p>
-              <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.80);font-weight:500;">Your AI-powered fitness &amp; wellness coach</p>
+            <td style="background:linear-gradient(135deg,#0a0a0b 0%,#111113 100%);padding:24px 32px;border-bottom:2px solid #2E8B57;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:14px;">
+                    <img src="https://raimzeal.com/favicon.png" alt="RAIMZEAL" style="width:52px;height:52px;border-radius:13px;display:block;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">RAIMZEAL</p>
+                    <p style="margin:3px 0 0;font-size:12px;color:#2E8B57;font-weight:600;letter-spacing:0.3px;">Your AI-powered fitness &amp; wellness coach</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>

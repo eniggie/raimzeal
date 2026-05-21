@@ -153,7 +153,7 @@ function emailOtpHtml(code: string, name: string): string {
 <html>
 <body style="font-family:sans-serif;background:#0a0a0b;color:#f5f5f5;margin:0;padding:32px;">
   <div style="max-width:480px;margin:0 auto;background:#111;border-radius:16px;padding:32px;">
-    <img src="https://raimzeal.replit.app/favicon.png" alt="RAIMZEAL" style="width:56px;height:56px;border-radius:14px;margin-bottom:24px;" />
+    <img src="https://raimzeal.com/favicon.png" alt="RAIMZEAL" style="width:64px;height:64px;border-radius:16px;margin-bottom:24px;display:block;" />
     <h1 style="color:#2E8B57;margin:0 0 8px;">Verify your email</h1>
     <p style="color:#aaa;margin:0 0 24px;">Hi ${name || "there"}, use the code below to verify your RAIMZEAL account.</p>
     <div style="background:#1a1a1a;border:2px solid #2E8B57;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
