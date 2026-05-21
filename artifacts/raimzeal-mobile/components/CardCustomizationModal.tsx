@@ -846,6 +846,23 @@ export default function CardCustomizationModal({
     };
   }, [restoredFromStorage, reduceMotion]);
 
+  function dismissCardChip() {
+    if (cardChipTimerRef.current !== null) {
+      clearTimeout(cardChipTimerRef.current);
+      cardChipTimerRef.current = null;
+    }
+    cardChipFadeAnim.stopAnimation();
+    if (reduceMotion) {
+      cardChipFadeAnim.setValue(0);
+    } else {
+      Animated.timing(cardChipFadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }
+
   // Confirmation / error toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
@@ -2048,10 +2065,16 @@ export default function CardCustomizationModal({
                     styles.cardChip,
                     { opacity: cardChipFadeAnim },
                   ]}
-                  pointerEvents="none"
+                  pointerEvents="auto"
                 >
-                  <Ionicons name="time-outline" size={11} color="#fff" />
-                  <Text style={styles.cardChipText}>Last used</Text>
+                  <TouchableOpacity
+                    onPress={dismissCardChip}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                  >
+                    <Ionicons name="time-outline" size={11} color="#fff" />
+                    <Text style={styles.cardChipText}>Last used</Text>
+                  </TouchableOpacity>
                 </Animated.View>
               )}
             </TouchableOpacity>
