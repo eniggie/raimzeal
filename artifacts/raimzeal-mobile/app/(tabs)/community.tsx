@@ -731,10 +731,10 @@ export default function CommunityScreen() {
                   if (canOpen) {
                     await Linking.openURL(STRIPE_DONATION_URL);
                   } else {
-                    Alert.alert('Coming Soon', 'Donation link coming soon. RAIMZEAL remains free forever.');
+                    Alert.alert('Unavailable', 'Donation link temporarily unavailable — please try again shortly.');
                   }
                 } catch {
-                  Alert.alert('Coming Soon', 'Donation link coming soon. RAIMZEAL remains free forever.');
+                  Alert.alert('Unavailable', 'Donation link temporarily unavailable — please try again shortly.');
                 }
               }}
               activeOpacity={DONATION_ACTIVE ? 0.75 : 1}

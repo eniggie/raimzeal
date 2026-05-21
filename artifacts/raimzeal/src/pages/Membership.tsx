@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, ChevronLeft, Heart, ExternalLink, Star } from 'lucide-react';
 import { Link } from 'wouter';
@@ -27,6 +28,7 @@ const ALL_FEATURES = [
 ];
 
 export function Membership() {
+  const [donationError, setDonationError] = useState(false);
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="max-w-2xl mx-auto px-4 pt-6">
@@ -91,16 +93,28 @@ export function Membership() {
             <p className="text-xs text-foreground/60 mt-0.5">Any amount helps keep RAIMZEAL free for everyone.</p>
           </div>
           {DONATION_ACTIVE ? (
-            <a
-              href={STRIPE_DONATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80"
-              aria-label="Make a donation"
-            >
-              <Heart className="w-4 h-4 fill-current" />
-              Donate
-            </a>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <button
+                onClick={() => {
+                  try {
+                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                    if (!w) throw new Error('blocked');
+                    setDonationError(false);
+                  } catch {
+                    setDonationError(true);
+                    setTimeout(() => setDonationError(false), 5000);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80 cursor-pointer"
+                aria-label="Make a donation"
+              >
+                <Heart className="w-4 h-4 fill-current" />
+                Donate
+              </button>
+              {donationError && (
+                <p className="text-xs text-destructive text-right">Temporarily unavailable — try again shortly.</p>
+              )}
+            </div>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
           )}

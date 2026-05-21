@@ -33,6 +33,7 @@ interface SettingsProps {
 
 export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
+  const [settingsDonationError, setSettingsDonationError] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
     name: user?.name || '',
@@ -320,16 +321,28 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
                 </a>
               </div>
               {DONATION_ACTIVE ? (
-                <a
-                  href={STRIPE_DONATION_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
-                  aria-label="Donate to support RAIMZEAL"
-                >
-                  <Heart className="w-3.5 h-3.5 fill-current" />
-                  Donate
-                </a>
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                  <button
+                    onClick={() => {
+                      try {
+                        const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                        if (!w) throw new Error('blocked');
+                        setSettingsDonationError(false);
+                      } catch {
+                        setSettingsDonationError(true);
+                        setTimeout(() => setSettingsDonationError(false), 5000);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
+                    aria-label="Donate to support RAIMZEAL"
+                  >
+                    <Heart className="w-3.5 h-3.5 fill-current" />
+                    Donate
+                  </button>
+                  {settingsDonationError && (
+                    <p className="text-xs text-destructive text-right">Temporarily unavailable — try again shortly.</p>
+                  )}
+                </div>
               ) : (
                 <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
               )}

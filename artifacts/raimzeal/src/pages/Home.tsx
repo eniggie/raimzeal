@@ -43,6 +43,7 @@ function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; protein
 }
 
 export function Home({ state, onUpdateWater }: HomeProps) {
+  const [homeDonationError, setHomeDonationError] = useState(false);
   const today = new Date().toISOString().split('T')[0];
   const todayWater = state.waterIntake.find(w => w.date === today)?.glasses || 0;
   const todayMeals = state.mealLogs.filter(m => m.date === today);
@@ -103,18 +104,30 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </p>
           </div>
           {DONATION_ACTIVE ? (
-            <motion.a
-              href={STRIPE_DONATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
-              animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
-              aria-label="Donate to support RAIMZEAL"
-            >
-              <Heart className="w-3.5 h-3.5 fill-current" />
-              Donate
-            </motion.a>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <motion.button
+                onClick={() => {
+                  try {
+                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                    if (!w) throw new Error('blocked');
+                    setHomeDonationError(false);
+                  } catch {
+                    setHomeDonationError(true);
+                    setTimeout(() => setHomeDonationError(false), 5000);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap cursor-pointer"
+                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+                aria-label="Donate to support RAIMZEAL"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                Donate
+              </motion.button>
+              {homeDonationError && (
+                <p className="text-xs text-destructive whitespace-nowrap">Temporarily unavailable — try again shortly.</p>
+              )}
+            </div>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic whitespace-nowrap">Donation link coming soon.</p>
           )}

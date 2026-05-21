@@ -46,6 +46,7 @@ function formatTime(dateStr: string): string {
 
 export function Community() {
   const { user } = useAuth();
+  const [communityDonationError, setCommunityDonationError] = useState(false);
   const [posts, setPosts] = useState<LivePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -181,18 +182,30 @@ export function Community() {
             <p className="text-xs text-muted-foreground mt-0.5">We are free forever. Donations keep the lights on for everyone.</p>
           </div>
           {DONATION_ACTIVE ? (
-            <motion.a
-              href={STRIPE_DONATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
-              animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 5 }}
-              aria-label="Donate to support RAIMZEAL"
-            >
-              <Heart className="w-3.5 h-3.5 fill-current" />
-              Donate
-            </motion.a>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <motion.button
+                onClick={() => {
+                  try {
+                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                    if (!w) throw new Error('blocked');
+                    setCommunityDonationError(false);
+                  } catch {
+                    setCommunityDonationError(true);
+                    setTimeout(() => setCommunityDonationError(false), 5000);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
+                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 5 }}
+                aria-label="Donate to support RAIMZEAL"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                Donate
+              </motion.button>
+              {communityDonationError && (
+                <p className="text-xs text-destructive">Temporarily unavailable — try again shortly.</p>
+              )}
+            </div>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic">Donation link coming soon.</p>
           )}

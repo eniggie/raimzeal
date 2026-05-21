@@ -78,7 +78,8 @@ function cleanChunk(text: string): string {
     .replace(/^(\s*)-\s+/gm, "$1")
     .replace(/^(\s*)\*\s+/gm, "$1")
     .replace(/`{1,3}[^`]*`{1,3}/g, "")
-    .replace(/~~([^~]*)~~/g, "$1");
+    .replace(/~~([^~]*)~~/g, "$1")
+    .replace(/\*/g, "");
 }
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {

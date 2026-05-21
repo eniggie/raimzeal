@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Heart, ExternalLink } from 'lucide-react';
 import { Link } from 'wouter';
@@ -11,6 +12,7 @@ const DONATION_ACTIVE = Boolean(
 const RAIMZY_LINKTREE = 'https://linktr.ee/Raimzy';
 
 export function Billing() {
+  const [donationError, setDonationError] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground px-4 py-8 pb-24">
       <div className="max-w-lg mx-auto">
@@ -48,15 +50,27 @@ export function Billing() {
               <p className="text-sm font-semibold">Support the mission</p>
               <p className="text-xs text-foreground/60 mt-0.5">Optional donation to help keep RAIMZEAL free.</p>
             </div>
-            <a
-              href={STRIPE_DONATION_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
-            >
-              <Heart className="w-4 h-4 fill-current" />
-              Donate
-            </a>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <button
+                onClick={() => {
+                  try {
+                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                    if (!w) throw new Error('blocked');
+                    setDonationError(false);
+                  } catch {
+                    setDonationError(true);
+                    setTimeout(() => setDonationError(false), 5000);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer"
+              >
+                <Heart className="w-4 h-4 fill-current" />
+                Donate
+              </button>
+              {donationError && (
+                <p className="text-xs text-destructive text-right">Temporarily unavailable — try again shortly.</p>
+              )}
+            </div>
           </motion.div>
         )}
 
