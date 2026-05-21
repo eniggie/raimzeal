@@ -88,6 +88,9 @@ const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
+const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
+const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
+const LONGPRESS_HINT_MAX_OPENS = 3;
 
 const MAX_PRESETS = 5;
 
@@ -695,6 +698,7 @@ export default function CardCustomizationModal({
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
+  const [showLongPressHint, setShowLongPressHint] = useState(false);
 
   // Auto-trigger state: counts down from 3 then fires the default action
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
@@ -882,7 +886,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto, lpHintSeen, lpHintOpensRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -891,6 +895,8 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
           AsyncStorage.getItem(STORAGE_KEY_THUMB_SIZE),
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
+          AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_SEEN),
+          AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_OPENS),
         ]);
 
         if (cancelled) return;
@@ -929,6 +935,21 @@ export default function CardCustomizationModal({
           : null;
         setDefaultAction(resolvedAction);
 
+        // Long-press hint: show for up to LONGPRESS_HINT_MAX_OPENS sessions, dismiss once user long-presses.
+        // Skip entirely if the user already has a default set (they've already discovered the gesture).
+        if (lpHintSeen !== "1" && resolvedAction === null) {
+          const opens = parseInt(lpHintOpensRaw ?? "0", 10) || 0;
+          const nextOpens = opens + 1;
+          if (nextOpens <= LONGPRESS_HINT_MAX_OPENS) {
+            setShowLongPressHint(true);
+            AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_OPENS, String(nextOpens)).catch(() => {});
+          } else {
+            setShowLongPressHint(false);
+          }
+        } else {
+          setShowLongPressHint(false);
+        }
+
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
         const effectiveAnyStatEnabled = Object.values(effectiveStats).some(Boolean);
         if (resolvedAction && effectiveAnyStatEnabled) {
@@ -945,6 +966,7 @@ export default function CardCustomizationModal({
         setRestoredFromStorage(false);
         setBadgeDismissed(false);
         setDefaultAction(null);
+        setShowLongPressHint(false);
       }
     }
     loadSaved();
@@ -1148,6 +1170,11 @@ export default function CardCustomizationModal({
     actionLongPressedRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
+    // Dismiss the long-press hint permanently once the user has discovered the gesture
+    if (showLongPressHint) {
+      setShowLongPressHint(false);
+      AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+    }
     Alert.alert(
       "Set as preferred",
       `Always open with ${label}?`,
@@ -2257,9 +2284,9 @@ export default function CardCustomizationModal({
               Enable at least one stat to generate your card
             </Text>
           )}
-          {anyStatEnabled && defaultAction === null && (
+          {anyStatEnabled && showLongPressHint && (
             <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Long-press any button to set as preferred
+              Long-press a button to set it as your default
             </Text>
           )}
           {confirmMessage && (
