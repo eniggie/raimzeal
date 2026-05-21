@@ -219,7 +219,9 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
       await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(emailCode, fullName));
       await storeCode(userId, "email", emailCode);
     } catch (err) {
-      req.log?.warn({ err }, "Failed to send verification email — code not stored");
+      req.log?.error({ err }, "Failed to send verification email — aborting signup");
+      res.status(500).json({ error: "Could not send verification email. Please try again." });
+      return;
     }
 
     if (phoneE164) {

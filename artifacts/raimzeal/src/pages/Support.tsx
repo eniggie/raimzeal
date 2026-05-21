@@ -102,7 +102,7 @@ export function Support() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground pt-2">
-            RAIMZEAL · Version 1.0.0 · <a href="https://raimzeal.com" className="hover:underline">raimzeal.com</a>
+            RAIMZEAL · v1.2.0 · <a href="https://raimzeal.com" className="hover:underline">raimzeal.com</a>
           </p>
         </div>
       </div>

@@ -35,7 +35,20 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
     fat: acc.fat + meal.fat,
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-  const goals = { calories: 2200, protein: 150, carbs: 250, fat: 70 };
+  const user = state.user;
+  const goals = (() => {
+    if (!user?.weight || !user?.height || !user?.age) {
+      return { calories: 2200, protein: 150, carbs: 250, fat: 70 };
+    }
+    const weightKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
+    const heightCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
+    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * user.age + 5;
+    const tdee = Math.round(bmr * 1.55);
+    const protein = Math.round(weightKg * 2.2);
+    const fat = Math.round(tdee * 0.25 / 9);
+    const carbs = Math.max(Math.round((tdee - protein * 4 - fat * 9) / 4), 0);
+    return { calories: tdee, protein, carbs, fat };
+  })();
 
   const filteredFoods = quickFoods.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase())
