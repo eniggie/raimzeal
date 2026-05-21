@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
+import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { StatCard } from "@/components/StatCard";
 import { ProgressRing } from "@/components/ProgressRing";
@@ -39,7 +40,8 @@ export default function HomeScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const recentWorkouts = workoutLogs.slice(0, 3);
-  const { calories: totalCaloriesToday } = getTodayMacros();
+  const { calories: totalCaloriesToday, protein: proteinToday, carbs: carbsToday, fat: fatToday } = getTodayMacros();
+  const { goals: macroGoals } = useMacroGoals();
   const waterGlasses = getTodayWaterGlasses();
   const unit = settings.weightUnit;
 
@@ -51,6 +53,14 @@ export default function HomeScreen() {
         : 10 * user.weight + 6.25 * user.height - 5 * user.age + 5;
     return Math.round(bmr * 1.55);
   })();
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const caloriesTodayBurned = workoutLogs
+    .filter((w) => w.date === todayStr)
+    .reduce((sum, w) => sum + (w.caloriesBurned ?? 0), 0);
+  const netCalories = totalCaloriesToday - caloriesTodayBurned;
+  const netRemaining = calorieGoal - netCalories;
+  const isDeficit = netCalories <= calorieGoal;
 
   const latestWeight = bodyMeasurements.length > 0
     ? bodyMeasurements[bodyMeasurements.length - 1].weight
@@ -111,23 +121,65 @@ export default function HomeScreen() {
       <GlassCard style={styles.ringCard}>
         <View style={styles.ringRow}>
           <ProgressRing
-            progress={totalCaloriesToday / calorieGoal}
+            progress={netCalories / calorieGoal}
             size={110}
             strokeWidth={9}
-            color={colors.primary}
-            label={totalCaloriesToday.toString()}
-            sublabel="kcal"
+            color={isDeficit ? colors.primary : colors.warning}
+            label={netCalories.toString()}
+            sublabel="net kcal"
           />
           <View style={styles.ringStats}>
             <RingStat color={colors.primary} label="Consumed" value={totalCaloriesToday} />
+            {caloriesTodayBurned > 0 && (
+              <RingStat color={colors.secondary} label="Burned" value={caloriesTodayBurned} />
+            )}
             <RingStat
-              color={colors.secondary}
-              label="Remaining"
-              value={Math.max(0, calorieGoal - totalCaloriesToday)}
+              color={isDeficit ? colors.success : colors.warning}
+              label={isDeficit ? "Deficit" : "Surplus"}
+              value={Math.abs(netRemaining)}
             />
             <RingStat color={colors.muted} label="Goal" value={calorieGoal} />
           </View>
         </View>
+        {/* Macro progress bars */}
+        <View style={styles.macroRow}>
+          {[
+            { label: "P", value: proteinToday, goal: macroGoals.protein, color: colors.secondary },
+            { label: "C", value: carbsToday, goal: macroGoals.carbs, color: colors.warning },
+            { label: "F", value: fatToday, goal: macroGoals.fat, color: colors.accent },
+          ].map(({ label, value, goal, color }) => {
+            const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
+            return (
+              <View key={label} style={styles.macroBar}>
+                <View style={styles.macroBarHeader}>
+                  <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>{label}</Text>
+                  <Text style={[styles.macroBarVal, { color }]}>{value}<Text style={{ color: colors.mutedForeground, fontSize: 9 }}>/{goal}g</Text></Text>
+                </View>
+                <View style={[styles.macroBarTrack, { backgroundColor: color + "25" }]}>
+                  <View style={[styles.macroBarFill, { width: `${Math.round(pct * 100)}%` as `${number}%`, backgroundColor: color }]} />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        {caloriesTodayBurned > 0 && (
+          <View style={[styles.netBanner, {
+            backgroundColor: isDeficit ? colors.success + "15" : colors.warning + "15",
+            borderColor: isDeficit ? colors.success + "40" : colors.warning + "40",
+          }]}>
+            <Ionicons
+              name={isDeficit ? "trending-down" : "trending-up"}
+              size={14}
+              color={isDeficit ? colors.success : colors.warning}
+            />
+            <Text style={[styles.netBannerText, { color: isDeficit ? colors.success : colors.warning }]}>
+              {isDeficit
+                ? `${Math.abs(netRemaining)} kcal deficit today — great work!`
+                : `${Math.abs(netRemaining)} kcal over goal — adjust your next meal`}
+            </Text>
+          </View>
+        )}
       </GlassCard>
 
       {/* Stats Grid */}
@@ -493,4 +545,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   noWorkoutsText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  netBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  netBannerText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
+  macroRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  macroBar: { flex: 1, gap: 4 },
+  macroBarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  macroBarLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "uppercase" },
+  macroBarVal: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  macroBarTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
+  macroBarFill: { height: "100%", borderRadius: 3 },
 });
