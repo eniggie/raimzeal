@@ -972,6 +972,14 @@ export default function CardCustomizationModal({
       ])
     )
   ).current;
+  const pillColorAnims = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(
+      STAT_TOGGLES.map((t) => [
+        t.key,
+        new Animated.Value(DEFAULT_VISIBLE_STATS[t.key as keyof typeof DEFAULT_VISIBLE_STATS] ? 1 : 0),
+      ])
+    )
+  ).current;
   const actionLongPressedRef = useRef(false);
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
@@ -1392,6 +1400,7 @@ export default function CardCustomizationModal({
   function syncKnobsImmediate(stats: CardVisibleStats) {
     STAT_TOGGLES.forEach(({ key }) => {
       knobAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 20 : 0);
+      pillColorAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 1 : 0);
     });
   }
 
@@ -1401,8 +1410,10 @@ export default function CardCustomizationModal({
     setVisibleStats((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       const toValue = next[key] ? 20 : 0;
+      const colorToValue = next[key] ? 1 : 0;
       if (reduceMotionRef.current) {
         knobAnims[key].setValue(toValue);
+        pillColorAnims[key].setValue(colorToValue);
       } else {
         Animated.spring(knobAnims[key], {
           toValue,
@@ -1410,6 +1421,13 @@ export default function CardCustomizationModal({
           stiffness: 300,
           mass: 0.8,
           useNativeDriver: true,
+        }).start();
+        Animated.spring(pillColorAnims[key], {
+          toValue: colorToValue,
+          damping: 20,
+          stiffness: 300,
+          mass: 0.8,
+          useNativeDriver: false,
         }).start();
       }
       return next;
@@ -2649,6 +2667,18 @@ export default function CardCustomizationModal({
             <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {STAT_TOGGLES.map((item, index) => {
                 const isOn = visibleStats[item.key];
+                const pillBg = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.muted, colors.primary],
+                });
+                const pillBorder = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.border, colors.primary],
+                });
+                const knobBg = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.mutedForeground, colors.primaryForeground],
+                });
                 return (
                   <TouchableOpacity
                     key={item.key}
@@ -2682,12 +2712,12 @@ export default function CardCustomizationModal({
                         {item.description}
                       </Text>
                     </View>
-                    <View
+                    <Animated.View
                       style={[
                         styles.pill,
                         {
-                          backgroundColor: isOn ? colors.primary : colors.muted,
-                          borderColor: isOn ? colors.primary : colors.border,
+                          backgroundColor: pillBg,
+                          borderColor: pillBorder,
                         },
                       ]}
                     >
@@ -2695,12 +2725,12 @@ export default function CardCustomizationModal({
                         style={[
                           styles.pillKnob,
                           {
-                            backgroundColor: isOn ? colors.primaryForeground : colors.mutedForeground,
+                            backgroundColor: knobBg,
                             transform: [{ translateX: knobAnims[item.key] }],
                           },
                         ]}
                       />
-                    </View>
+                    </Animated.View>
                   </TouchableOpacity>
                 );
               })}
