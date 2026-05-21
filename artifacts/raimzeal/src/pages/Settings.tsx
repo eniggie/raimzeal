@@ -298,13 +298,13 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 <!-- ══ DONATION CTA ══ -->
 <div class="donation-section">
   <div class="donation-heart">💚</div>
-  <div class="donation-title">Non-profit Organization · RAIMZY is Free Forever</div>
+  <div class="donation-title">We turned down deals. RAIMZEAL is free forever.</div>
   <div class="donation-text">
-    We turned down deals to keep it that way. RAIMZEAL has no membership fees, no subscriptions, and no ads. If this platform has helped your fitness journey, a donation supports the team. Every contribution — no matter the size — keeps RAIMZEAL alive for everyone.<br/><br/>
-    Resources at <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a> — books, music, courses &amp; coaching from RAIMZY.
+    We turned down deals to keep it that way. No membership fees, no subscriptions, no ads — your health was never up for sale. Please support the team. A donation supports the team keeping this alive for everyone who needs it.<br/><br/>
+    Books · Music · Courses · Coaching · Resources at <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
   </div>
   <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener">
-    💚 &nbsp;Donate to Support RAIMZEAL
+    💚 &nbsp;Donate — Support the Team
   </a>
   <div class="donation-url">donate.stripe.com · Secure · No account required · Any amount helps</div>
 </div>
@@ -674,9 +674,9 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
           <Card className="p-4 border-primary/20 bg-primary/5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">RAIMZEAL is free forever.</p>
+                <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  We turned down deals to keep it that way. If it has helped you, a donation supports the team.
+                  We turned down deals to keep it that way. Please support the team — a donation supports the team.
                 </p>
                 <a
                   href={RAIMZY_LINKTREE}
@@ -684,13 +684,13 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-1.5 text-xs text-secondary hover:underline"
                 >
-                  Resources at linktr.ee/Raimzy
+                  Books · Music · Courses · Coaching at linktr.ee/Raimzy
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
               {DONATION_ACTIVE ? (
                 <div className="shrink-0 flex flex-col items-end gap-1">
-                  <button
+                  <motion.button
                     onClick={async () => {
                       const popup = window.open('about:blank', '_blank');
                       if (!popup) {
@@ -711,11 +711,13 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                       }
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
+                    animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
                     aria-label="Donate to support RAIMZEAL"
                   >
                     <Heart className="w-3.5 h-3.5 fill-current" />
                     Donate
-                  </button>
+                  </motion.button>
                   {settingsDonationError && (
                     <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
                   )}

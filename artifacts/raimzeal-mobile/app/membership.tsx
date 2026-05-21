@@ -91,10 +91,10 @@ export default function MembershipScreen() {
         {/* Donation card */}
         <View style={[styles.donationCard, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
           <Text style={[styles.donationHeadline, { color: colors.foreground }]}>
-            Non-profit organization · RAIMZEAL is free forever
+            We turned down deals. RAIMZEAL is free forever.
           </Text>
           <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
-            Most platforms sold out. We didn't.{"\n\n"}No ads. No investors. No subscriptions — just your health, protected. We said no to deals that would have changed that.{"\n\n"}If RAIMZEAL has played even a small role in your journey, a donation keeps the lights on for you and for the next person who finds us. You're not supporting an app. You're part of a movement.
+            We turned down deals to keep it that way.{"\n\n"}No ads. No investors. No subscriptions — your health was never up for sale.{"\n\n"}Please support the team. A donation supports the team keeping this alive for everyone who needs it.
           </Text>
           <TouchableOpacity
             style={styles.donateBtn}
@@ -109,7 +109,7 @@ export default function MembershipScreen() {
             <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
           </TouchableOpacity>
           <Text style={[styles.donationLinksLabel, { color: colors.mutedForeground }]}>
-            RAIMZY — Dr. Ephraim Oviawe{"\n"}Author · Music Artist · Strategist · The mind behind RAIMZEAL
+            Books · Music · Courses · Coaching · Resources{"\n"}by RAIMZY — Dr. Ephraim Oviawe
           </Text>
           <View style={styles.donationLinkCol}>
             <TouchableOpacity onPress={() => Linking.openURL("https://linktr.ee/Raimzy")}>

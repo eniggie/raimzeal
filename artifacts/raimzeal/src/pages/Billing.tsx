@@ -47,11 +47,11 @@ export function Billing() {
             className="p-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4 mb-4"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Non-profit organization · RAIMZEAL is free forever</p>
-              <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We said no to deals that would have changed this. No ads, no tiers, no investors pulling strings. If RAIMZEAL has helped you, a donation supports the team keeping it alive for everyone.</p>
+              <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
+              <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We turned down deals to keep it that way. No ads, no tiers, no investors. Please support the team — a donation supports the team keeping it alive for everyone.</p>
             </div>
             <div className="shrink-0 flex flex-col items-end gap-1">
-              <button
+              <motion.button
                 onClick={async () => {
                   const popup = window.open('about:blank', '_blank');
                   if (!popup) {
@@ -72,10 +72,12 @@ export function Billing() {
                   }
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer"
+                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
               >
                 <Heart className="w-4 h-4 fill-current" />
                 Donate
-              </button>
+              </motion.button>
               {donationError && (
                 <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
               )}

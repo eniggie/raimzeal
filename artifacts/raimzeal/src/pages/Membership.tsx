@@ -89,12 +89,12 @@ export function Membership() {
           className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Non-profit organization · RAIMZEAL is free forever</p>
-            <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We said no to investors, subscription tiers, and ad deals — because your health isn't a product. Every feature, forever, for everyone. If this platform has played even a small role in your journey, a donation keeps the lights on for you and the next person who finds us. You're not supporting an app. You're part of a movement.</p>
+            <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
+            <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We turned down deals to keep it that way. No ads. No investors. No subscriptions — your health was never up for sale. Please support the team. A donation supports the team keeping this alive for everyone who needs it. Books · Music · Courses · Coaching · Resources at <span className="font-semibold">linktr.ee/Raimzy</span></p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
-              <button
+              <motion.button
                 onClick={async () => {
                   const popup = window.open('about:blank', '_blank');
                   if (!popup) {
@@ -115,11 +115,13 @@ export function Membership() {
                   }
                 }}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80 cursor-pointer"
+                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
                 aria-label="Make a donation"
               >
                 <Heart className="w-4 h-4 fill-current" />
                 Donate
-              </button>
+              </motion.button>
               {donationError && (
                 <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
               )}
