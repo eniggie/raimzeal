@@ -1625,7 +1625,7 @@ export default function NutritionScreen() {
     setShowModal(true);
   }
 
-  async function handleScannedFood(food: ScannedFood) {
+  async function handleScannedFood(food: ScannedFood, forceGrams?: string) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelectedFood({ ...food, mealType: "snack" });
     setSelectedFoodServingLabel(food.servingLabel);
@@ -1633,9 +1633,9 @@ export default function NutritionScreen() {
     setServings(1);
     setServingsText("1");
 
-    let lastGrams = "100";
+    let lastGrams = forceGrams ?? "100";
     let isRemembered = false;
-    if (!food.servingLabel) {
+    if (!forceGrams && !food.servingLabel) {
       try {
         const raw = await AsyncStorage.getItem(LAST_USED_GRAMS_KEY);
         if (raw) {
@@ -2843,7 +2843,20 @@ export default function NutritionScreen() {
             return (
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => handleScannedFood(item)}
+                onPress={() => {
+                  if (showing100g && item.nutrients100g) {
+                    handleScannedFood({
+                      ...item,
+                      calories: item.nutrients100g.calories,
+                      protein: item.nutrients100g.protein,
+                      carbs: item.nutrients100g.carbs,
+                      fat: item.nutrients100g.fat,
+                      servingLabel: undefined,
+                    }, "100");
+                  } else {
+                    handleScannedFood(item);
+                  }
+                }}
                 style={[
                   styles.foodCard,
                   { backgroundColor: colors.card, borderColor: colors.border },
