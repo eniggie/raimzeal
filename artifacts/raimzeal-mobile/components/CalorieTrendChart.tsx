@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
@@ -86,13 +86,20 @@ export function CalorieTrendChart({
     }
   }, [highlightedDate]);
 
-  const highlightedDay = highlightedDate
-    ? days.find((d) => d.date === highlightedDate)
-    : null;
+  const [pillLabel, setPillLabel] = useState("");
 
-  const pillLabel = highlightedDay && highlightedDate
-    ? `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`
-    : "";
+  useEffect(() => {
+    if (highlightedDate) {
+      const highlightedDay = days.find((d) => d.date === highlightedDate);
+      if (highlightedDay) {
+        setPillLabel(
+          `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`
+        );
+      }
+    } else {
+      setPillLabel("");
+    }
+  }, [highlightedDate, days, unit]);
 
   return (
     <View>
