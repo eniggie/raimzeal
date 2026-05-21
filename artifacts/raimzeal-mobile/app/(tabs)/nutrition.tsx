@@ -4176,18 +4176,7 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
   function handleDelete() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
-    Alert.alert(
-      "Delete meal?",
-      `Remove "${log.name}" from today's log?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => onDelete(log),
-        },
-      ]
-    );
+    onDelete(log);
   }
 
   function renderRightActions() {
