@@ -31,6 +31,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
@@ -527,23 +528,15 @@ function DraggablePresetItem({
 export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, toggleFavoriteFood, reorderFavoriteFoods, settings } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings } = useFitness();
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
   const CARBS_GOAL = macroGoals.carbs;
   const FAT_GOAL = macroGoals.fat;
 
-  const isFavorite = useCallback(
-    (name: string) => favoriteFoods.some((f) => f.name === name),
-    [favoriteFoods]
-  );
-
   function handleToggleFavorite(food: FavoriteFood) {
-    const willStar = !isFavorite(food.name);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggleFavoriteFood(food);
-    showStarToast(willStar);
+    const willStar = toggleFavoriteWithToast(food);
     if (willStar) {
       setHighlightedFavorite(food.name);
       highlightAnim.setValue(1);
@@ -749,9 +742,9 @@ export default function NutritionScreen() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoAnim = useRef(new Animated.Value(0)).current;
 
-  const [starToastMessage, setStarToastMessage] = useState<string | null>(null);
-  const starToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const starToastAnim = useRef(new Animated.Value(0)).current;
+  const { toggleFavoriteWithToast, isFavorite, starToastElement } = useToggleFavorite({
+    bottomOffset: undoMeal !== null ? insets.bottom + 72 : insets.bottom + 16,
+  });
 
   const [presetSavedMessage, setPresetSavedMessage] = useState<string | null>(null);
   const presetSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -935,25 +928,6 @@ export default function NutritionScreen() {
       if (starScrollTimerRef.current) clearTimeout(starScrollTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    return () => {
-      if (starToastTimerRef.current) clearTimeout(starToastTimerRef.current);
-    };
-  }, []);
-
-  function showStarToast(added: boolean) {
-    if (starToastTimerRef.current) clearTimeout(starToastTimerRef.current);
-    setStarToastMessage(added ? "Added to Favorites" : "Removed from Favorites");
-    starToastAnim.setValue(0);
-    Animated.spring(starToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    starToastTimerRef.current = setTimeout(() => {
-      Animated.timing(starToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setStarToastMessage(null);
-      });
-      starToastTimerRef.current = null;
-    }, 2000);
-  }
 
   function showPresetSavedToast(name: string) {
     if (presetSavedTimerRef.current) clearTimeout(presetSavedTimerRef.current);
@@ -3745,33 +3719,7 @@ export default function NutritionScreen() {
         </Animated.View>
       )}
 
-      {starToastMessage !== null && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.starToast,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              transform: [
-                {
-                  translateY: starToastAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [100, 0],
-                  }),
-                },
-              ],
-              opacity: starToastAnim,
-              bottom: undoMeal !== null ? insets.bottom + 72 : insets.bottom + 16,
-            },
-          ]}
-        >
-          <Ionicons name="star" size={16} color="#f59f0a" style={{ marginRight: 6 }} />
-          <Text style={[styles.starToastText, { color: colors.foreground }]}>
-            {starToastMessage}
-          </Text>
-        </Animated.View>
-      )}
+      {starToastElement}
 
       {deletedPreset !== null && (
         <Animated.View
