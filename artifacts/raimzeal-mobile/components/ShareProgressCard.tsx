@@ -148,6 +148,11 @@ export interface ShareProgressCardProps {
    * transforms so the user-framed portion of the image fills the card.
    */
   backgroundPhotoCrop?: BackgroundPhotoCrop;
+  /**
+   * Opacity of the dark overlay applied on top of the background photo.
+   * Range: 0–1. Defaults to 0.62 when not specified.
+   */
+  backgroundPhotoDimLevel?: number;
 }
 
 // Cache scaled StyleSheet objects to avoid re-creation on every render.
@@ -356,6 +361,7 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
       renderScale,
       backgroundPhotoUri,
       backgroundPhotoCrop,
+      backgroundPhotoDimLevel,
     },
     ref
   ) => {
@@ -428,7 +434,7 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
             <View
               style={[
                 StyleSheet.absoluteFillObject,
-                { backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 20 * s },
+                { backgroundColor: `rgba(0,0,0,${(backgroundPhotoDimLevel ?? 0.62).toFixed(2)})`, borderRadius: 20 * s },
               ]}
             />
           </>

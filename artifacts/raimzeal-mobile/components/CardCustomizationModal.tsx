@@ -55,6 +55,10 @@ const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 const STORAGE_KEY_BG_PHOTO = "@raimzeal_card_bg_photo";
 
+const DEFAULT_DIM_LEVEL = 0.62;
+const DIM_MIN = 0.25;
+const DIM_MAX = 0.88;
+
 const THUMB_SCALE = 72 / CARD_WIDTH;
 const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
 
@@ -113,6 +117,7 @@ export interface CardPreset {
   themeId: CardThemeId;
   createdAt: number;
   backgroundPhotoUri?: string;
+  backgroundPhotoDimLevel?: number;
 }
 
 const STAT_TOGGLES: StatToggleConfig[] = [
@@ -163,6 +168,7 @@ export interface CardCustomizationResult {
   action: CardAction;
   backgroundPhotoUri?: string;
   backgroundPhotoCrop?: CropData;
+  backgroundPhotoDimLevel?: number;
 }
 
 export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
@@ -623,6 +629,126 @@ function ZoomableCard({
   );
 }
 
+interface DimLevelSliderProps {
+  value: number;
+  onChange: (v: number) => void;
+  colors: ReturnType<typeof useColors>;
+}
+
+function DimLevelSlider({ value, onChange, colors }: DimLevelSliderProps) {
+  const trackWidthSV = useSharedValue(0);
+  const knobX = useSharedValue(0);
+  const savedX = useSharedValue(0);
+
+  useEffect(() => {
+    const w = trackWidthSV.value;
+    if (w === 0) return;
+    const ratio = (value - DIM_MIN) / (DIM_MAX - DIM_MIN);
+    const x = ratio * w;
+    knobX.value = x;
+    savedX.value = x;
+  }, [value, trackWidthSV.value]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-6, 6])
+    .onUpdate((e) => {
+      "worklet";
+      const w = trackWidthSV.value;
+      if (w === 0) return;
+      const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
+      knobX.value = x;
+      const ratio = x / w;
+      const newVal = DIM_MIN + ratio * (DIM_MAX - DIM_MIN);
+      runOnJS(onChange)(Math.round(newVal * 100) / 100);
+    })
+    .onEnd((e) => {
+      "worklet";
+      const w = trackWidthSV.value;
+      if (w === 0) return;
+      const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
+      savedX.value = x;
+      knobX.value = x;
+    });
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: knobX.value,
+  }));
+
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: knobX.value - 12 }],
+  }));
+
+  function handleTrackLayout(w: number) {
+    trackWidthSV.value = w;
+    const ratio = (value - DIM_MIN) / (DIM_MAX - DIM_MIN);
+    const x = ratio * w;
+    knobX.value = x;
+    savedX.value = x;
+  }
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8, alignItems: "center" }}>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+          Dim level
+        </Text>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+          {value < 0.38 ? "Subtle" : value < 0.55 ? "Light" : value < 0.72 ? "Medium" : "Strong"}
+        </Text>
+      </View>
+      <View
+        style={{ height: 36, justifyContent: "center" }}
+        onLayout={(e) => handleTrackLayout(e.nativeEvent.layout.width)}
+      >
+        <View
+          style={{
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: colors.border,
+            width: "100%",
+            overflow: "visible",
+          }}
+        >
+          <Reanimated.View
+            style={[
+              { height: 4, borderRadius: 2, backgroundColor: colors.primary },
+              fillStyle,
+            ]}
+          />
+        </View>
+        <GestureDetector gesture={pan}>
+          <Reanimated.View
+            style={[
+              {
+                position: "absolute",
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: colors.primary,
+                top: 6,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 3,
+                elevation: 3,
+              },
+              knobStyle,
+            ]}
+          />
+        </GestureDetector>
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          Subtle
+        </Text>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          Strong
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 interface ThemeSwatchItemProps {
   theme: typeof CARD_THEMES[0];
   isSelected: boolean;
@@ -829,6 +955,8 @@ export default function CardCustomizationModal({
   const [customMessage, setCustomMessage] = useState("");
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [backgroundPhotoCrop, setBackgroundPhotoCrop] = useState<CropData | null>(null);
+  const [backgroundPhotoDimLevel, setBackgroundPhotoDimLevel] = useState(DEFAULT_DIM_LEVEL);
+  const dimPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
@@ -1155,21 +1283,24 @@ export default function CardCustomizationModal({
         setCustomMessage(effectiveMessage);
         if (savedBgPhoto) {
           try {
-            const parsed = JSON.parse(savedBgPhoto) as { uri: string; scale?: number; panX?: number; panY?: number };
+            const parsed = JSON.parse(savedBgPhoto) as { uri: string; scale?: number; panX?: number; panY?: number; dimLevel?: number };
             setBackgroundPhotoUri(parsed.uri);
             if (parsed.scale != null) {
               setBackgroundPhotoCrop({ scale: parsed.scale, panX: parsed.panX ?? 0, panY: parsed.panY ?? 0 });
             } else {
               setBackgroundPhotoCrop(null);
             }
+            setBackgroundPhotoDimLevel(parsed.dimLevel ?? DEFAULT_DIM_LEVEL);
           } catch {
             // Legacy: plain URI string stored before crop was introduced
             setBackgroundPhotoUri(savedBgPhoto);
             setBackgroundPhotoCrop(null);
+            setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
           }
         } else {
           setBackgroundPhotoUri(null);
           setBackgroundPhotoCrop(null);
+          setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
         }
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
@@ -1227,6 +1358,21 @@ export default function CardCustomizationModal({
     loadSaved();
     return () => { cancelled = true; };
   }, [visible]);
+
+  // Persist the dim level to AsyncStorage (debounced) whenever the user moves the slider.
+  useEffect(() => {
+    if (!backgroundPhotoUri) return;
+    if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
+    dimPersistTimerRef.current = setTimeout(() => {
+      const payload = backgroundPhotoCrop
+        ? JSON.stringify({ uri: backgroundPhotoUri, ...backgroundPhotoCrop, dimLevel: backgroundPhotoDimLevel })
+        : JSON.stringify({ uri: backgroundPhotoUri, dimLevel: backgroundPhotoDimLevel });
+      AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+    }, 250);
+    return () => {
+      if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
+    };
+  }, [backgroundPhotoDimLevel, backgroundPhotoUri, backgroundPhotoCrop]);
 
   useEffect(() => {
     if (!visible) return;
@@ -1317,7 +1463,8 @@ export default function CardCustomizationModal({
     message: string,
     themeId: CardThemeId,
     bgUri: string | null,
-    bgCrop: CropData | null
+    bgCrop: CropData | null,
+    dimLevel: number
   ) {
     try {
       const ops: Promise<void>[] = [
@@ -1327,8 +1474,8 @@ export default function CardCustomizationModal({
       ];
       if (bgUri) {
         const payload = bgCrop
-          ? JSON.stringify({ uri: bgUri, ...bgCrop })
-          : JSON.stringify({ uri: bgUri });
+          ? JSON.stringify({ uri: bgUri, ...bgCrop, dimLevel })
+          : JSON.stringify({ uri: bgUri, dimLevel });
         ops.push(AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload));
       } else {
         ops.push(AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO));
@@ -1350,14 +1497,14 @@ export default function CardCustomizationModal({
 
   async function handleGenerate(action: CardAction) {
     cancelAutoTrigger();
-    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop);
+    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop, backgroundPhotoDimLevel);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
     setSelectedAction(action);
     try {
-      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined });
+      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined });
       const msg =
         action === "save"
           ? "Saved to camera roll"
@@ -1543,6 +1690,7 @@ export default function CardCustomizationModal({
     setCustomMessage("");
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
+    setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
     setSelectedThemeId(DEFAULT_THEME_ID);
     setDisplayedThemeId(DEFAULT_THEME_ID);
     setThumbnailSize("m");
@@ -1603,7 +1751,7 @@ export default function CardCustomizationModal({
     setBackgroundPhotoCrop(crop);
     setActivePresetId(null);
     setRestoredFromStorage(false);
-    const payload = JSON.stringify({ uri, ...crop });
+    const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel });
     AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
   }
 
@@ -1622,6 +1770,7 @@ export default function CardCustomizationModal({
     if (showInlineSave) setShowInlineSave(false);
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
+    setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
     setActivePresetId(null);
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
@@ -1638,6 +1787,7 @@ export default function CardCustomizationModal({
     setRestoredFromStorage(false);
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
     setBackgroundPhotoCrop(null);
+    setBackgroundPhotoDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
     resetZoomPosition();
   }
 
@@ -1746,7 +1896,7 @@ export default function CardCustomizationModal({
       // Overwrite existing preset
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
-          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined }
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined }
           : p
       );
     } else {
@@ -1767,6 +1917,7 @@ export default function CardCustomizationModal({
         themeId: selectedThemeId,
         createdAt: Date.now(),
         backgroundPhotoUri: backgroundPhotoUri ?? undefined,
+        backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined,
       };
       updatedPresets = [...presets, newPreset];
       setActivePresetId(newPreset.id);
@@ -2361,6 +2512,7 @@ export default function CardCustomizationModal({
                     themeId={displayedThemeId}
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                     backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
+                    backgroundPhotoDimLevel={backgroundPhotoDimLevel}
                   />
                 </View>
               </Animated.View>
@@ -2585,40 +2737,47 @@ export default function CardCustomizationModal({
               BACKGROUND PHOTO (OPTIONAL)
             </Text>
             {backgroundPhotoUri ? (
-              <View
-                style={[
-                  styles.bgPhotoRow,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Image
-                  source={{ uri: backgroundPhotoUri }}
-                  style={styles.bgPhotoThumb}
-                  resizeMode="cover"
-                />
-                <View style={styles.bgPhotoInfo}>
-                  <Text style={[styles.bgPhotoLabel, { color: colors.foreground }]}>
-                    Background photo set
-                  </Text>
-                  <Text style={[styles.bgPhotoSub, { color: colors.mutedForeground }]}>
-                    Blurred & dimmed behind card content
-                  </Text>
+              <>
+                <View
+                  style={[
+                    styles.bgPhotoRow,
+                    { backgroundColor: colors.card, borderColor: colors.border },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: backgroundPhotoUri }}
+                    style={styles.bgPhotoThumb}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.bgPhotoInfo}>
+                    <Text style={[styles.bgPhotoLabel, { color: colors.foreground }]}>
+                      Background photo set
+                    </Text>
+                    <Text style={[styles.bgPhotoSub, { color: colors.mutedForeground }]}>
+                      Blurred & dimmed behind card content
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleAdjustCrop}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.bgPhotoAdjustBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Ionicons name="crop-outline" size={15} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleRemoveBackgroundPhoto}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.bgPhotoRemoveBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Ionicons name="close" size={15} color={colors.mutedForeground} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  onPress={handleAdjustCrop}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={[styles.bgPhotoAdjustBtn, { backgroundColor: colors.muted }]}
-                >
-                  <Ionicons name="crop-outline" size={15} color={colors.mutedForeground} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleRemoveBackgroundPhoto}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={[styles.bgPhotoRemoveBtn, { backgroundColor: colors.muted }]}
-                >
-                  <Ionicons name="close" size={15} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
+                <DimLevelSlider
+                  value={backgroundPhotoDimLevel}
+                  onChange={setBackgroundPhotoDimLevel}
+                  colors={colors}
+                />
+              </>
             ) : (
               <TouchableOpacity
                 onPress={handlePickBackgroundPhoto}
@@ -2991,6 +3150,7 @@ export default function CardCustomizationModal({
                   themeId={selectedThemeId}
                   backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                   backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
+                  backgroundPhotoDimLevel={backgroundPhotoDimLevel}
                 />
               ) : (
                 // Narrow screen: scale down to fit, same approach as the modal preview.
@@ -3010,6 +3170,7 @@ export default function CardCustomizationModal({
                     themeId={selectedThemeId}
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                     backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
+                    backgroundPhotoDimLevel={backgroundPhotoDimLevel}
                   />
                 </View>
               )}
