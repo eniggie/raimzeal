@@ -802,6 +802,7 @@ export default function CardCustomizationModal({
   // Confirmation / error toast
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
+  const [confirmIcon, setConfirmIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
   // Undo-delete toast
@@ -809,10 +810,11 @@ export default function CardCustomizationModal({
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function showConfirmation(msg: string, variant: "success" | "error" = "success") {
+  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap) {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
+    setConfirmIcon(icon ?? null);
     confirmOpacity.setValue(0);
     const holdDuration = variant === "error" ? 2200 : 1600;
     if (reduceMotionRef.current) {
@@ -1053,7 +1055,15 @@ export default function CardCustomizationModal({
           : action === "copy"
           ? "Copied to clipboard"
           : "Saved to camera roll · Share sheet opened";
-      showConfirmation(msg, "success");
+      const icon: keyof typeof Ionicons.glyphMap =
+        action === "save"
+          ? "camera"
+          : action === "share"
+          ? "share-social"
+          : action === "copy"
+          ? "copy-outline"
+          : "layers-outline";
+      showConfirmation(msg, "success", icon);
     } catch (err) {
       // "PERMISSION_DENIED" is a sentinel from the parent — the permission Alert
       // was already shown there. Skip the inline toast to avoid double feedback.
@@ -2229,7 +2239,7 @@ export default function CardCustomizationModal({
                 ]}
               >
                 <Ionicons
-                  name={confirmVariant === "error" ? "alert-circle" : "checkmark-circle"}
+                  name={confirmVariant === "error" ? "alert-circle" : (confirmIcon ?? "checkmark-circle")}
                   size={14}
                   color={confirmVariant === "error" ? "#ff4436" : colors.primary}
                 />
