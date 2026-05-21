@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +12,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -225,12 +227,31 @@ function formatCacheAge(cachedAt: number): string {
   return `Saved ${diffDays} days ago`;
 }
 
+function formatScannedDate(ts: number): string {
+  const now = Date.now();
+  const diff = now - ts;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   onFoodFound: (food: ScannedFood) => void;
   onManualEntry: () => void;
 }
+
+type ActiveTab = "scan" | "recent";
 
 export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEntry }: Props) {
   const colors = useColors();
@@ -242,6 +263,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("scan");
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
+
+  const loadRecentScans = useCallback(async () => {
+    setRecentLoading(true);
+    const data = await getRecentScans();
+    setRecentScans(data);
+    setRecentLoading(false);
+  }, []);
 
   // Reset scanner state every time the modal opens so it's always ready
   useEffect(() => {
@@ -252,8 +283,17 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setCachedResult(null);
       setRefreshing(false);
       setRefreshFailed(false);
+      setActiveTab("scan");
+      loadRecentScans();
     }
-  }, [visible]);
+  }, [visible, loadRecentScans]);
+
+  // Reload recent scans when switching to the Recent tab
+  useEffect(() => {
+    if (activeTab === "recent") {
+      loadRecentScans();
+    }
+  }, [activeTab, loadRecentScans]);
 
   const handleBarcodeScanned = useCallback(
     async ({ data }: { data: string }) => {
@@ -306,6 +346,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setCachedResult(null);
     setRefreshFailed(false);
     setScanning(true);
+    setActiveTab("scan");
   }
 
   function handleClose() {
@@ -327,6 +368,27 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setRefreshFailed(false);
     onClose();
     onManualEntry();
+  }
+
+  function handleSelectRecent(food: ScannedFood) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onFoodFound(food);
+    handleClose();
+  }
+
+  async function handleRemoveRecent(barcode: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await removeRecentScan(barcode);
+    setRecentScans((prev) => prev.filter((s) => s.barcode !== barcode));
+  }
+
+  function handleSwitchTab(tab: ActiveTab) {
+    setActiveTab(tab);
+    if (tab === "scan") {
+      setScanning(true);
+      setError(null);
+      setCachedResult(null);
+    }
   }
 
   if (Platform.OS === "web") {
@@ -432,7 +494,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                   "datamatrix",
                 ],
               }}
-              onBarcodeScanned={scanning ? handleBarcodeScanned : undefined}
+              onBarcodeScanned={scanning && activeTab === "scan" ? handleBarcodeScanned : undefined}
             />
 
             {/* Overlay */}
@@ -442,105 +504,218 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                 <TouchableOpacity onPress={handleClose} style={styles.closeIcon}>
                   <Ionicons name="close" size={28} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.topBarTitle}>Scan Barcode</Text>
+                <Text style={styles.topBarTitle}>
+                  {activeTab === "scan" ? "Scan Barcode" : "Recent"}
+                </Text>
                 <View style={{ width: 44 }} />
               </View>
 
-              {/* Scan frame */}
-              <View style={[styles.scanFrameWrapper, { pointerEvents: "none" }]}>
-                <View style={styles.scanFrame}>
-                  <View style={[styles.corner, styles.cornerTL]} />
-                  <View style={[styles.corner, styles.cornerTR]} />
-                  <View style={[styles.corner, styles.cornerBL]} />
-                  <View style={[styles.corner, styles.cornerBR]} />
-                </View>
-                <Text style={styles.scanHint}>
-                  Point at a food product barcode
-                </Text>
+              {/* Tab switcher */}
+              <View style={styles.tabRow}>
+                <TouchableOpacity
+                  onPress={() => handleSwitchTab("scan")}
+                  style={[styles.tab, activeTab === "scan" && styles.tabActive]}
+                >
+                  <Ionicons
+                    name="barcode-outline"
+                    size={15}
+                    color={activeTab === "scan" ? "#09090b" : "rgba(255,255,255,0.7)"}
+                  />
+                  <Text style={[styles.tabText, activeTab === "scan" && styles.tabTextActive]}>
+                    Scan
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleSwitchTab("recent")}
+                  style={[styles.tab, activeTab === "recent" && styles.tabActive]}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={15}
+                    color={activeTab === "recent" ? "#09090b" : "rgba(255,255,255,0.7)"}
+                  />
+                  <Text style={[styles.tabText, activeTab === "recent" && styles.tabTextActive]}>
+                    Recent
+                  </Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Bottom status */}
-              <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 24 }]}>
-                {loading && (
-                  <View style={styles.statusPill}>
-                    <ActivityIndicator color="#fff" size="small" />
-                    <Text style={styles.statusText}>Looking up product…</Text>
-                  </View>
-                )}
-                {!loading && !error && !cachedResult && scanning && (
-                  <View style={styles.statusPill}>
-                    <View style={styles.scanDot} />
-                    <Text style={styles.statusText}>Ready to scan</Text>
-                  </View>
-                )}
-                {error && (
-                  <View style={styles.errorCard}>
-                    <Ionicons name="alert-circle-outline" size={20} color="#f87171" />
-                    <Text style={styles.errorText}>{error}</Text>
-                    <View style={styles.errorActions}>
-                      <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
-                        <Text style={styles.retryText}>Scan Again</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={handleManualEntry} style={styles.manualBtn}>
-                        <Text style={styles.manualText}>Enter Manually</Text>
-                      </TouchableOpacity>
+              {/* Scan tab content */}
+              {activeTab === "scan" && (
+                <>
+                  {/* Scan frame */}
+                  <View style={[styles.scanFrameWrapper, { pointerEvents: "none" }]}>
+                    <View style={styles.scanFrame}>
+                      <View style={[styles.corner, styles.cornerTL]} />
+                      <View style={[styles.corner, styles.cornerTR]} />
+                      <View style={[styles.corner, styles.cornerBL]} />
+                      <View style={[styles.corner, styles.cornerBR]} />
                     </View>
-                  </View>
-                )}
-                {cachedResult && (
-                  <View style={styles.resultCard}>
-                    <View style={styles.resultHeader}>
-                      <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
-                      <Text style={styles.resultName} numberOfLines={1}>
-                        {cachedResult.food.name}
-                      </Text>
-                    </View>
-                    <Text style={styles.resultMacros}>
-                      {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
+                    <Text style={styles.scanHint}>
+                      Point at a food product barcode
                     </Text>
-                    <View style={styles.cacheAgeRow}>
-                      <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.45)" />
-                      <Text style={styles.cacheAgeText}>
-                        {formatCacheAge(cachedResult.cachedAt)}
-                      </Text>
-                    </View>
-                    {refreshFailed && (
-                      <View style={styles.refreshFailedRow}>
-                        <Ionicons name="cloud-offline-outline" size={13} color="#f87171" />
-                        <Text style={styles.refreshFailedText}>
-                          Couldn't refresh — showing saved data
-                        </Text>
+                  </View>
+
+                  {/* Bottom status */}
+                  <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 24 }]}>
+                    {loading && (
+                      <View style={styles.statusPill}>
+                        <ActivityIndicator color="#fff" size="small" />
+                        <Text style={styles.statusText}>Looking up product…</Text>
                       </View>
                     )}
-                    <View style={styles.resultActions}>
-                      <TouchableOpacity
-                        onPress={handleUseCached}
-                        style={styles.useBtn}
-                        disabled={refreshing}
-                      >
-                        <Text style={styles.useBtnText}>Add Food</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleRefresh}
-                        style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
-                        disabled={refreshing}
-                      >
-                        {refreshing ? (
-                          <ActivityIndicator color="#fff" size="small" style={{ width: 14, height: 14 }} />
-                        ) : (
-                          <Ionicons name="refresh" size={14} color="#fff" />
-                        )}
-                        <Text style={styles.refreshBtnText}>
-                          {refreshing ? "Updating…" : "Refresh"}
+                    {!loading && !error && !cachedResult && scanning && (
+                      <View style={styles.statusPill}>
+                        <View style={styles.scanDot} />
+                        <Text style={styles.statusText}>Ready to scan</Text>
+                      </View>
+                    )}
+                    {error && (
+                      <View style={styles.errorCard}>
+                        <Ionicons name="alert-circle-outline" size={20} color="#f87171" />
+                        <Text style={styles.errorText}>{error}</Text>
+                        <View style={styles.errorActions}>
+                          <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
+                            <Text style={styles.retryText}>Scan Again</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={handleManualEntry} style={styles.manualBtn}>
+                            <Text style={styles.manualText}>Enter Manually</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                    {cachedResult && (
+                      <View style={styles.resultCard}>
+                        <View style={styles.resultHeader}>
+                          <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
+                          <Text style={styles.resultName} numberOfLines={1}>
+                            {cachedResult.food.name}
+                          </Text>
+                        </View>
+                        <Text style={styles.resultMacros}>
+                          {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
                         </Text>
+                        <View style={styles.cacheAgeRow}>
+                          <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.45)" />
+                          <Text style={styles.cacheAgeText}>
+                            {formatCacheAge(cachedResult.cachedAt)}
+                          </Text>
+                        </View>
+                        {refreshFailed && (
+                          <View style={styles.refreshFailedRow}>
+                            <Ionicons name="cloud-offline-outline" size={13} color="#f87171" />
+                            <Text style={styles.refreshFailedText}>
+                              Couldn't refresh — showing saved data
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.resultActions}>
+                          <TouchableOpacity
+                            onPress={handleUseCached}
+                            style={styles.useBtn}
+                            disabled={refreshing}
+                          >
+                            <Text style={styles.useBtnText}>Add Food</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleRefresh}
+                            style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
+                            disabled={refreshing}
+                          >
+                            {refreshing ? (
+                              <ActivityIndicator color="#fff" size="small" style={{ width: 14, height: 14 }} />
+                            ) : (
+                              <Ionicons name="refresh" size={14} color="#fff" />
+                            )}
+                            <Text style={styles.refreshBtnText}>
+                              {refreshing ? "Updating…" : "Refresh"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity onPress={handleRetry} style={styles.scanAgainLink}>
+                          <Text style={styles.scanAgainText}>Scan a different product</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* Recent tab content */}
+              {activeTab === "recent" && (
+                <View style={[styles.recentPanel, { paddingBottom: insets.bottom + 16 }]}>
+                  {recentLoading ? (
+                    <View style={styles.recentCenter}>
+                      <ActivityIndicator color="#fff" size="large" />
+                    </View>
+                  ) : recentScans.length === 0 ? (
+                    <View style={styles.recentCenter}>
+                      <Ionicons name="barcode-outline" size={48} color="rgba(255,255,255,0.35)" />
+                      <Text style={styles.recentEmptyTitle}>No recent scans</Text>
+                      <Text style={styles.recentEmptySub}>
+                        Products you scan will appear here so you can quickly re-add them.
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleSwitchTab("scan")}
+                        style={styles.recentScanNowBtn}
+                      >
+                        <Ionicons name="barcode-outline" size={16} color="#09090b" />
+                        <Text style={styles.recentScanNowText}>Scan a Product</Text>
                       </TouchableOpacity>
                     </View>
-                    <TouchableOpacity onPress={handleRetry} style={styles.scanAgainLink}>
-                      <Text style={styles.scanAgainText}>Scan a different product</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
+                  ) : (
+                    <ScrollView
+                      style={styles.recentList}
+                      contentContainerStyle={styles.recentListContent}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <Text style={styles.recentHint}>
+                        Tap a product to add it as a meal entry.
+                      </Text>
+                      {recentScans.map((scan) => (
+                        <TouchableOpacity
+                          key={scan.barcode}
+                          onPress={() => handleSelectRecent(scan.food)}
+                          activeOpacity={0.75}
+                          style={styles.recentItem}
+                        >
+                          <View style={styles.recentIconBox}>
+                            <Ionicons name="barcode-outline" size={20} color="#fff" />
+                          </View>
+                          <View style={styles.recentItemInfo}>
+                            <Text style={styles.recentItemName} numberOfLines={1}>
+                              {scan.food.name}
+                            </Text>
+                            <View style={styles.recentItemMeta}>
+                              <Text style={styles.recentItemCal}>
+                                {scan.food.calories} kcal
+                              </Text>
+                              <Text style={styles.recentItemDot}>·</Text>
+                              <Text style={styles.recentItemMacros}>
+                                P {scan.food.protein}g · C {scan.food.carbs}g · F {scan.food.fat}g
+                              </Text>
+                            </View>
+                            <Text style={styles.recentItemDate}>
+                              {formatScannedDate(scan.scannedAt)}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveRecent(scan.barcode)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.recentRemoveBtn}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={17}
+                              color="rgba(255,255,255,0.4)"
+                            />
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+              )}
             </View>
           </>
         )}
@@ -590,6 +765,35 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: "center",
     justifyContent: "center",
+  },
+  tabRow: {
+    flexDirection: "row",
+    alignSelf: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 20,
+    padding: 3,
+    gap: 2,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 17,
+  },
+  tabActive: {
+    backgroundColor: "#fff",
+  },
+  tabText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.7)",
+  },
+  tabTextActive: {
+    color: "#09090b",
   },
   scanFrameWrapper: {
     flex: 1,
@@ -857,4 +1061,115 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  // Recent tab styles
+  recentPanel: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  recentCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  recentEmptyTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  recentEmptySub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  recentScanNowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  recentScanNowText: {
+    color: "#09090b",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  recentList: {
+    flex: 1,
+  },
+  recentListContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 10,
+  },
+  recentHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 4,
+  },
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  recentIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recentItemInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  recentItemName: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  recentItemMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  recentItemCal: {
+    color: "#a3e635",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  recentItemDot: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 13,
+  },
+  recentItemMacros: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  recentItemDate: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  recentRemoveBtn: {
+    padding: 4,
+  },
 });
