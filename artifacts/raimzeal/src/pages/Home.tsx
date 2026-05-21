@@ -312,6 +312,9 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </div>
           </motion.div>
         )}
+        <p className="text-xs text-muted-foreground/50 text-center px-2 pt-4 pb-2 leading-relaxed">
+          RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
+        </p>
       </div>
       <BottomNav />
     </div>
