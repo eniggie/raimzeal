@@ -22,6 +22,8 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { useMacroGoals } from "@/contexts/MacroGoalsContext";
+import { exportToPdf } from "@/lib/pdf";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
@@ -58,6 +60,7 @@ export default function ProfileScreen() {
     updateSettings,
   } = useFitness();
   const { signOut } = useAuth();
+  const { goals: macroGoals } = useMacroGoals();
   const {
     cameraRollStatus,
     hasSeenRationale,
@@ -69,6 +72,7 @@ export default function ProfileScreen() {
 
   const [shareLoading, setShareLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [showPhotoRationaleModal, setShowPhotoRationaleModal] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
@@ -294,6 +298,30 @@ export default function ProfileScreen() {
         }
       });
     });
+  }
+
+  async function handleExportPdf() {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      const fitnessState = {
+        user,
+        workoutLogs,
+        mealLogs,
+        bodyMeasurements,
+        waterIntake,
+        personalRecords,
+        streak,
+        settings,
+        favoriteFoods,
+        oviaMessages,
+      };
+      await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals);
+    } catch {
+      Alert.alert("Export Failed", "Something went wrong while generating the PDF. Please try again.");
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   async function handleLogout() {
@@ -631,6 +659,14 @@ export default function ProfileScreen() {
               label="Edit Profile"
               color={colors.primary}
               onPress={() => router.push("/edit-profile")}
+            />
+            <ActionRow
+              icon="document-text-outline"
+              label={pdfLoading ? "Generating PDF…" : "Export Data as PDF"}
+              sublabel="Full report with goals, workouts & meals"
+              color="#3b82f6"
+              onPress={handleExportPdf}
+              loading={pdfLoading}
             />
             <ActionRow
               icon={cameraRollStatus === "denied" ? "lock-closed-outline" : "share-social-outline"}

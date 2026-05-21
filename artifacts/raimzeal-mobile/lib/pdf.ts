@@ -1,8 +1,9 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { AppState } from "@/contexts/FitnessContext";
+import type { MacroGoals } from "@/contexts/MacroGoalsContext";
 
-export async function exportToPdf(state: AppState): Promise<void> {
+export async function exportToPdf(state: AppState, macroGoals?: MacroGoals): Promise<void> {
   const { user, workoutLogs, mealLogs, bodyMeasurements, streak, personalRecords } = state;
 
   const generatedAt = new Date().toLocaleString();
@@ -12,6 +13,18 @@ export async function exportToPdf(state: AppState): Promise<void> {
   const avgCal =
     uniqueDays > 0
       ? Math.round(mealLogs.reduce((s, m) => s + m.calories, 0) / uniqueDays)
+      : 0;
+  const avgProtein =
+    uniqueDays > 0
+      ? Math.round(mealLogs.reduce((s, m) => s + m.protein, 0) / uniqueDays)
+      : 0;
+  const avgCarbs =
+    uniqueDays > 0
+      ? Math.round(mealLogs.reduce((s, m) => s + m.carbs, 0) / uniqueDays)
+      : 0;
+  const avgFat =
+    uniqueDays > 0
+      ? Math.round(mealLogs.reduce((s, m) => s + m.fat, 0) / uniqueDays)
       : 0;
   const latestWeight = bodyMeasurements[bodyMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
   const unit = state.settings.weightUnit;
@@ -105,6 +118,19 @@ export async function exportToPdf(state: AppState): Promise<void> {
     thead th { padding: 9px 10px; text-align: left; font-weight: 600; font-size: 11px; letter-spacing: 0.3px; }
     tbody tr:nth-child(even) { background: #f9fafb; }
     tbody td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+    /* Nutrition Goals */
+    .goals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .goal-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 12px; text-align: center; background: #f9fafb; }
+    .goal-card .macro-name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; margin-bottom: 10px; }
+    .goal-card .goal-val { font-size: 20px; font-weight: 800; color: #82cb15; }
+    .goal-card .goal-unit { font-size: 10px; color: #9ca3af; margin-bottom: 8px; }
+    .goal-card .avg-row { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e5e7eb; }
+    .goal-card .avg-label { font-size: 10px; color: #9ca3af; }
+    .goal-card .avg-val { font-size: 12px; font-weight: 700; }
+    .avg-under { color: #3b82f6; }
+    .avg-over { color: #ef4444; }
+    .avg-on { color: #82cb15; }
+    .no-data-note { font-size: 11px; color: #9ca3af; font-style: italic; margin-top: 8px; }
     /* Badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; text-transform: capitalize; }
     .badge-breakfast { background: #fef3c7; color: #92400e; }
@@ -156,6 +182,38 @@ export async function exportToPdf(state: AppState): Promise<void> {
       <div class="profile-item"><div class="label">Member Since</div><div class="value">${user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div></div>
     </div>
   </div>
+
+  <!-- Nutrition Goals -->
+  ${macroGoals ? `
+  <div class="section">
+    <div class="section-title">🎯 Nutrition Goals</div>
+    <div class="goals-grid">
+      ${(
+        [
+          { key: "calories", label: "Calories", goal: macroGoals.calories, avg: uniqueDays > 0 ? avgCal : null, unit: "kcal" },
+          { key: "protein", label: "Protein", goal: macroGoals.protein, avg: uniqueDays > 0 ? avgProtein : null, unit: "g" },
+          { key: "carbs", label: "Carbs", goal: macroGoals.carbs, avg: uniqueDays > 0 ? avgCarbs : null, unit: "g" },
+          { key: "fat", label: "Fat", goal: macroGoals.fat, avg: uniqueDays > 0 ? avgFat : null, unit: "g" },
+        ] as const
+      )
+        .map(({ label, goal, avg, unit: u }) => {
+          const diff = avg !== null ? avg - goal : null;
+          const pct = avg !== null && goal > 0 ? Math.round((avg / goal) * 100) : null;
+          const cls = diff === null ? "" : Math.abs(diff) <= goal * 0.05 ? "avg-on" : diff < 0 ? "avg-under" : "avg-over";
+          const arrow = diff === null ? "" : Math.abs(diff) <= goal * 0.05 ? "✓" : diff < 0 ? "▼" : "▲";
+          const avgBlock = avg !== null
+            ? `<div class="avg-row"><span class="avg-label">Avg</span><span class="avg-val ${cls}">${arrow} ${avg} ${u} (${pct}%)</span></div>`
+            : `<div class="avg-row"><span class="no-data-note">No data yet</span></div>`;
+          return `<div class="goal-card">
+            <div class="macro-name">${label}</div>
+            <div class="goal-val">${goal}</div>
+            <div class="goal-unit">Goal · ${u}/day</div>
+            ${avgBlock}
+          </div>`;
+        })
+        .join("")}
+    </div>
+  </div>` : ""}
 
   <!-- Workout History -->
   <div class="section">
