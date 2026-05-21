@@ -167,16 +167,29 @@ export function CalorieTrendChart({
               </SvgText>
               {/* Value label on top of bar when highlighted */}
               {isHighlighted && day.value > 0 && (
-                <SvgText
-                  x={x + barW / 2}
-                  y={y - 4}
-                  fontSize={9}
-                  fill={colors.warning}
-                  textAnchor="middle"
-                  fontWeight="bold"
-                >
-                  {day.value}
-                </SvgText>
+                <>
+                  <SvgText
+                    x={x + barW / 2}
+                    y={Math.max(TOP_PADDING - 2, y - 14)}
+                    fontSize={8}
+                    fill={colors.warning}
+                    textAnchor="middle"
+                    fontWeight="bold"
+                    opacity={0.9}
+                  >
+                    {formatPillDate(day.date)}
+                  </SvgText>
+                  <SvgText
+                    x={x + barW / 2}
+                    y={Math.max(TOP_PADDING + 9, y - 4)}
+                    fontSize={9}
+                    fill={colors.warning}
+                    textAnchor="middle"
+                    fontWeight="bold"
+                  >
+                    {day.value.toLocaleString()}
+                  </SvgText>
+                </>
               )}
             </React.Fragment>
           );
