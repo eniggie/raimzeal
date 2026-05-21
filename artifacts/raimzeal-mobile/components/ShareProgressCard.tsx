@@ -111,6 +111,12 @@ function getTheme(themeId?: CardThemeId): CardTheme {
   return CARD_THEMES.find((t) => t.id === themeId) ?? CARD_THEMES[0];
 }
 
+export interface BackgroundPhotoCrop {
+  scale: number;
+  panX: number;
+  panY: number;
+}
+
 export interface ShareProgressCardProps {
   userName: string;
   goalLabel: string;
@@ -137,6 +143,11 @@ export interface ShareProgressCardProps {
    * background behind all card content.
    */
   backgroundPhotoUri?: string;
+  /**
+   * When provided together with backgroundPhotoUri, applies pan/zoom crop
+   * transforms so the user-framed portion of the image fills the card.
+   */
+  backgroundPhotoCrop?: BackgroundPhotoCrop;
 }
 
 // Cache scaled StyleSheet objects to avoid re-creation on every render.
@@ -344,6 +355,7 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
       themeId,
       renderScale,
       backgroundPhotoUri,
+      backgroundPhotoCrop,
     },
     ref
   ) => {
@@ -397,7 +409,19 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
           <>
             <Image
               source={{ uri: backgroundPhotoUri }}
-              style={[StyleSheet.absoluteFillObject, { borderRadius: 20 * s }]}
+              style={[
+                StyleSheet.absoluteFillObject,
+                { borderRadius: 20 * s },
+                backgroundPhotoCrop
+                  ? {
+                      transform: [
+                        { scale: backgroundPhotoCrop.scale },
+                        { translateX: backgroundPhotoCrop.panX * s },
+                        { translateY: backgroundPhotoCrop.panY * s },
+                      ],
+                    }
+                  : undefined,
+              ]}
               resizeMode="cover"
               blurRadius={18}
             />

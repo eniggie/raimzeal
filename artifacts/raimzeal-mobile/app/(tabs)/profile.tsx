@@ -28,7 +28,7 @@ import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal"
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import ShareProgressCard, { CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
+import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 const GOAL_LABELS: Record<string, string> = {
@@ -79,6 +79,7 @@ export default function ProfileScreen() {
   const [cardCustomMessage, setCardCustomMessage] = useState("");
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [cardBgPhotoUri, setCardBgPhotoUri] = useState<string | undefined>(undefined);
+  const [cardBgPhotoCrop, setCardBgPhotoCrop] = useState<BackgroundPhotoCrop | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
@@ -242,11 +243,12 @@ export default function ProfileScreen() {
     setShowCustomizeModal(true);
   }
 
-  async function handleGenerateCard({ visibleStats, customMessage, themeId, action, backgroundPhotoUri }: CardCustomizationResult): Promise<void> {
+  async function handleGenerateCard({ visibleStats, customMessage, themeId, action, backgroundPhotoUri, backgroundPhotoCrop }: CardCustomizationResult): Promise<void> {
     setCardVisibleStats(visibleStats);
     setCardCustomMessage(customMessage);
     setCardThemeId(themeId);
     setCardBgPhotoUri(backgroundPhotoUri);
+    setCardBgPhotoCrop(backgroundPhotoCrop);
 
     if (action === "save" || action === "both") {
       setSaveLoading(true);
@@ -398,6 +400,7 @@ export default function ProfileScreen() {
           customMessage={cardCustomMessage}
           themeId={cardThemeId}
           backgroundPhotoUri={cardBgPhotoUri}
+          backgroundPhotoCrop={cardBgPhotoCrop}
         />
       </View>
 

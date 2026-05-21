@@ -33,6 +33,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import CropPhotoModal, { CropData } from "@/components/CropPhotoModal";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -160,6 +161,7 @@ export interface CardCustomizationResult {
   themeId: CardThemeId;
   action: CardAction;
   backgroundPhotoUri?: string;
+  backgroundPhotoCrop?: CropData;
 }
 
 export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
@@ -825,6 +827,9 @@ export default function CardCustomizationModal({
   });
   const [customMessage, setCustomMessage] = useState("");
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
+  const [backgroundPhotoCrop, setBackgroundPhotoCrop] = useState<CropData | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
@@ -1147,7 +1152,24 @@ export default function CardCustomizationModal({
         setVisibleStats(effectiveStats);
         syncKnobsImmediate(effectiveStats);
         setCustomMessage(effectiveMessage);
-        setBackgroundPhotoUri(savedBgPhoto ?? null);
+        if (savedBgPhoto) {
+          try {
+            const parsed = JSON.parse(savedBgPhoto) as { uri: string; scale?: number; panX?: number; panY?: number };
+            setBackgroundPhotoUri(parsed.uri);
+            if (parsed.scale != null) {
+              setBackgroundPhotoCrop({ scale: parsed.scale, panX: parsed.panX ?? 0, panY: parsed.panY ?? 0 });
+            } else {
+              setBackgroundPhotoCrop(null);
+            }
+          } catch {
+            // Legacy: plain URI string stored before crop was introduced
+            setBackgroundPhotoUri(savedBgPhoto);
+            setBackgroundPhotoCrop(null);
+          }
+        } else {
+          setBackgroundPhotoUri(null);
+          setBackgroundPhotoCrop(null);
+        }
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
         setRestoredFromStorage(hadSavedData);
@@ -1190,6 +1212,7 @@ export default function CardCustomizationModal({
         syncKnobsImmediate({ ...DEFAULT_VISIBLE_STATS });
         setCustomMessage("");
         setBackgroundPhotoUri(null);
+        setBackgroundPhotoCrop(null);
         setSelectedThemeId(DEFAULT_THEME_ID);
         setDisplayedThemeId(DEFAULT_THEME_ID);
         setThumbnailSize("m");
@@ -1288,15 +1311,24 @@ export default function CardCustomizationModal({
     resetZoomPosition();
   }
 
-  async function saveToStorage(stats: CardVisibleStats, message: string, themeId: CardThemeId, bgPhoto: string | null) {
+  async function saveToStorage(
+    stats: CardVisibleStats,
+    message: string,
+    themeId: CardThemeId,
+    bgUri: string | null,
+    bgCrop: CropData | null
+  ) {
     try {
       const ops: Promise<void>[] = [
         AsyncStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)),
         AsyncStorage.setItem(STORAGE_KEY_MESSAGE, message),
         AsyncStorage.setItem(STORAGE_KEY_THEME, themeId),
       ];
-      if (bgPhoto) {
-        ops.push(AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, bgPhoto));
+      if (bgUri) {
+        const payload = bgCrop
+          ? JSON.stringify({ uri: bgUri, ...bgCrop })
+          : JSON.stringify({ uri: bgUri });
+        ops.push(AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload));
       } else {
         ops.push(AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO));
       }
@@ -1317,14 +1349,14 @@ export default function CardCustomizationModal({
 
   async function handleGenerate(action: CardAction) {
     cancelAutoTrigger();
-    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri);
+    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
     setSelectedAction(action);
     try {
-      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined });
+      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined });
       const msg =
         action === "save"
           ? "Saved to camera roll"
@@ -1509,6 +1541,7 @@ export default function CardCustomizationModal({
     syncKnobsImmediate({ ...DEFAULT_VISIBLE_STATS });
     setCustomMessage("");
     setBackgroundPhotoUri(null);
+    setBackgroundPhotoCrop(null);
     setSelectedThemeId(DEFAULT_THEME_ID);
     setDisplayedThemeId(DEFAULT_THEME_ID);
     setThumbnailSize("m");
@@ -1547,25 +1580,47 @@ export default function CardCustomizationModal({
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [9, 16],
-        quality: 0.85,
+        allowsEditing: false,
+        quality: 0.9,
       });
       if (!result.canceled && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setBackgroundPhotoUri(uri);
-        setActivePresetId(null);
-        setRestoredFromStorage(false);
-        AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, uri).catch(() => {});
+        setPendingCropUri(uri);
+        setShowCropModal(true);
       }
     } catch {
       // ignore picker errors
     }
   }
 
+  function handleCropConfirm(crop: CropData) {
+    if (!pendingCropUri) return;
+    setShowCropModal(false);
+    const uri = pendingCropUri;
+    setPendingCropUri(null);
+    setBackgroundPhotoUri(uri);
+    setBackgroundPhotoCrop(crop);
+    setActivePresetId(null);
+    setRestoredFromStorage(false);
+    const payload = JSON.stringify({ uri, ...crop });
+    AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+  }
+
+  function handleCropCancel() {
+    setShowCropModal(false);
+    setPendingCropUri(null);
+  }
+
+  function handleAdjustCrop() {
+    if (!backgroundPhotoUri) return;
+    setPendingCropUri(backgroundPhotoUri);
+    setShowCropModal(true);
+  }
+
   function handleRemoveBackgroundPhoto() {
     if (showInlineSave) setShowInlineSave(false);
     setBackgroundPhotoUri(null);
+    setBackgroundPhotoCrop(null);
     setActivePresetId(null);
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
@@ -2301,6 +2356,7 @@ export default function CardCustomizationModal({
                     customMessage={customMessage.trim()}
                     themeId={displayedThemeId}
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
+                    backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                   />
                 </View>
               </Animated.View>
@@ -2544,6 +2600,13 @@ export default function CardCustomizationModal({
                     Blurred & dimmed behind card content
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={handleAdjustCrop}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[styles.bgPhotoAdjustBtn, { backgroundColor: colors.muted }]}
+                >
+                  <Ionicons name="crop-outline" size={15} color={colors.mutedForeground} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleRemoveBackgroundPhoto}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -2923,6 +2986,7 @@ export default function CardCustomizationModal({
                   customMessage={customMessage.trim()}
                   themeId={selectedThemeId}
                   backgroundPhotoUri={backgroundPhotoUri ?? undefined}
+                  backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                 />
               ) : (
                 // Narrow screen: scale down to fit, same approach as the modal preview.
@@ -2941,6 +3005,7 @@ export default function CardCustomizationModal({
                     customMessage={customMessage.trim()}
                     themeId={selectedThemeId}
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
+                    backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                   />
                 </View>
               )}
@@ -3196,6 +3261,13 @@ export default function CardCustomizationModal({
         </Animated.View>
       </Modal>
 
+      <CropPhotoModal
+        visible={showCropModal}
+        photoUri={pendingCropUri}
+        initialCrop={backgroundPhotoCrop ?? undefined}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
     </Modal>
   );
 }
@@ -4009,6 +4081,14 @@ const styles = StyleSheet.create({
   bgPhotoSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  bgPhotoAdjustBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
   },
   bgPhotoRemoveBtn: {
     width: 30,
