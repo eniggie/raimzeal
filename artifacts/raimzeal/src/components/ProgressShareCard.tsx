@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Share2, Flame, Scale, Dumbbell, Trophy } from 'lucide-react';
+import { Download, Share2, Copy, Check } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import type { AppState } from '@/lib/store';
 
 interface ProgressShareCardProps {
@@ -13,6 +14,7 @@ interface ProgressShareCardProps {
 
 export function ProgressShareCard({ open, onClose, state }: ProgressShareCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   const latestWeight = state.bodyMeasurements[0]?.weight || state.user?.weight || 0;
   const previousWeight = state.bodyMeasurements[1]?.weight || latestWeight;
@@ -44,6 +46,22 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
       link.click();
     } catch (err) {
       console.error('Failed to export image', err);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!cardRef.current) return;
+    try {
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
+      const blob = await (await fetch(dataUrl)).blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ description: 'Copied to clipboard' });
+    } catch (err) {
+      console.error('Failed to copy image', err);
     }
   };
 
@@ -193,6 +211,19 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
           <Button variant="outline" className="flex-1" onClick={handleDownload}>
             <Download className="w-4 h-4 mr-2" />
             Download
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={handleCopy}>
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 mr-2 text-green-500" />
+                <span className="text-green-500">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy Image
+              </>
+            )}
           </Button>
           <Button className="flex-1" onClick={handleShare}>
             <Share2 className="w-4 h-4 mr-2" />
