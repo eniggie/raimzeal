@@ -32,7 +32,8 @@ export function Login({ onBack }: LoginProps) {
           error.message.toLowerCase().includes('email not confirmed') ||
           error.message.toLowerCase().includes('not confirmed')
         ) {
-          setError('Please verify your email before signing in. Check your inbox for the confirmation link.');
+          sessionStorage.setItem('pending_auth', JSON.stringify({ email, password }));
+          setLocation(`${BASE}/verify-email?email=${encodeURIComponent(email)}`);
         } else {
           setError('Incorrect email or password.');
         }

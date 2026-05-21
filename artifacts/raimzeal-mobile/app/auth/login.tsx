@@ -70,6 +70,11 @@ export default function LoginScreen() {
     const { error } = await signIn(email.trim().toLowerCase(), password);
     setLoading(false);
     if (error) {
+      const msg = error.toLowerCase();
+      if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+        router.push({ pathname: "/auth/verify-email", params: { email: email.trim().toLowerCase() } });
+        return;
+      }
       Alert.alert("Sign in failed", error);
       return;
     }

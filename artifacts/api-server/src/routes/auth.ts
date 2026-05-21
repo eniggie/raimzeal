@@ -177,7 +177,7 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // allow immediate login; app-level verification tracked via profiles.email_verified
+      email_confirm: false, // accounts start unverified; OTP flow sets this to true via /auth/verify-email-code
       user_metadata: {
         full_name: fullName,
         name: fullName,

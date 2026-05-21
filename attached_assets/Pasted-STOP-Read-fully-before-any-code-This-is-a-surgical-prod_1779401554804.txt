@@ -1,0 +1,67 @@
+STOP. Read fully before any code. This is a surgical production-readiness pass on RAIMZEAL based on a complete audit. The codebase is mostly correct — do NOT rebuild systems. Fix exactly these items, in order. Show me results after each phase. Commit to Git before starting.
+
+═══ PHASE 1 — AUTH (CRITICAL) ═══
+File: artifacts/api-server/src/routes/auth.ts
+- In /auth/signup, change `email_confirm: true` to `email_confirm: false`. Accounts must start UNVERIFIED.
+- Keep the OTP email send on signup (already correct).
+- /auth/verify-email-code already flips email_confirm to true on correct code — leave it.
+
+File: artifacts/raimzeal/src/pages/Login.tsx AND artifacts/raimzeal-mobile/app/auth/login.tsx
+- After fixing the above, unverified logins will be rejected by Supabase. Ensure that when login fails due to unconfirmed email, the user is routed to the OTP verification screen to enter their emailed code.
+
+TEST (show PASS/FAIL): new signup is unverified → login blocked before code → wrong code rejected → correct code verifies → then login works → wrong password rejected → nonexistent email rejected.
+
+═══ PHASE 2 — DATABASE SECURITY (CRITICAL) ═══
+There are 14 tables and ZERO Row Level Security policies. This is a data-breach risk.
+- Enable RLS on EVERY table containing user data.
+- Add policies so each user can only SELECT/INSERT/UPDATE/DELETE rows where the row's user_id (or id, for profiles) equals auth.uid().
+- The service role (server) bypasses RLS and must continue to work for admin operations.
+- Provide the SQL migration and apply it.
+
+TEST (show PASS/FAIL): create user A and user B; confirm as A you CANNOT read or write B's profile, measurements, messages, or community data via the anon key.
+
+═══ PHASE 3 — LEGAL / WORDING (CRITICAL) ═══
+File: artifacts/api-server/src/routes/ovia.ts — rewrite the system prompt to remove ALL medical/clinical claims:
+- Remove the words "nutritionist", "therapist", "preventive healthcare therapist", "evidence-based nutritionist". Replace with "fitness coach and wellness guide" and "nutrition guide" (NOT nutritionist).
+- Remove specific medical guidance: hormone/testosterone optimization, blood panel markers, supplement dosages, fasting protocols for diabetics or medical populations, thyroid/insulin/cortisol prescriptive advice.
+- Ovia may give GENERAL fitness, food awareness, hydration, sleep, and motivation guidance only.
+- Add a hard rule to the prompt: "You are not a doctor, dietitian, nutritionist, or therapist. You never diagnose, treat, prescribe, or give medical/clinical advice. For any medical, medication, pregnancy, injury, eating-disorder, or mental-health concern, warmly direct the user to a qualified professional."
+- Keep the existing standard disclaimer language from replit.md.
+
+Also scan these pages and remove/soften any "cure", "treat", "diagnose", "nutritionist", or "medical treatment" claims, replacing with wellness/awareness language: Coach.tsx, Settings.tsx, Privacy.tsx, TermsOfService.tsx, VerifyPhone.tsx, and the mobile equivalents. Keep the disclaimer: "RAIMZEAL does not replace any doctor, dietitian, or licensed healthcare professional. We exist to complement their work — not take their place."
+
+TEST: confirm the word "nutritionist" and "therapist" appear NOWHERE in user-facing text or the AI prompt.
+
+═══ PHASE 4 — PRICING MODEL (resolve the contradiction) ═══
+Update replit.md: remove "free forever — no tiers" and "never add paid tiers". Document the new 4-tier model so future work stops fighting it.
+
+Implement 4 tiers (the billing/webhook/premium infrastructure already exists — extend it, don't rebuild):
+- FOUNDATION — $0, labeled "Free Forever". Genuinely free core: workouts, food logging, tracking, community, and Ovia AI capped at 15 messages/day on the cheaper model.
+- RISE — $9.99/mo or $99/yr. Unlimited Ovia, full library/programs, full macros, all features.
+- REIGN — $19.99/mo or $199/yr. Everything in Rise + priority Ovia + AI meal plans + custom workout builder + weekly digest.
+- LEGACY — $49.99/mo or $499/yr. Everything in Reign + adaptive programs + wearable integration + quarterly photo body-comp + founder's circle. If any Legacy feature is not built yet, label it "Coming Soon" — do NOT charge for non-functional features.
+
+In billingWebhookHandler.ts, map Stripe price IDs to tier names: free/foundation, rise, reign, legacy. Update requirePremium and feature gating to check tier, not just active/inactive. Build/refresh the Pricing.tsx comparison page showing all 4 tiers with "Most Popular" on RISE and visual emphasis on REIGN as best value. Annual prices shown as per-month equivalent.
+
+═══ PHASE 5 — COST CONTROL & CLEANUP ═══
+File: artifacts/api-server/src/routes/ovia.ts
+- Set the model to "gpt-4o-mini" for FOUNDATION (free) tier users, and "gpt-4o" for RISE/REIGN/LEGACY. Read the user's tier from their profile to choose the model. (Note: there is no "free ChatGPT API" — gpt-4o-mini is the cost-saving model and is the correct approach.)
+
+File: artifacts/api-server/src/lib/supabaseAdmin.ts
+- Remove the hardcoded Supabase URL fallback ("https://druogyuqjytmkwihinhg.supabase.co"). Require it from env only; fail loudly if missing.
+
+Verification:
+- Remove Twilio SMS from the signup path (web VerifyPhone.tsx, mobile verify-phone.tsx/phone.tsx). Email verification only. Make phone optional. Do not delete SMS code — just remove from required signup flow.
+
+═══ PHASE 6 — FINAL VERIFICATION ═══
+- App builds with zero TypeScript errors (run pnpm run typecheck).
+- Produce a FINAL_REPORT.md with PASS/FAIL for every test above.
+
+ABSOLUTE RULES:
+1. Surgical fixes only. Do NOT rebuild auth, Stripe, or the webhook — they are mostly correct.
+2. Do NOT touch CardCustomizationModal.tsx.
+3. Do NOT claim anything fixed without showing the PASS/FAIL test result.
+4. If an env var or Supabase dashboard setting is missing, STOP and tell me exactly what you need — do not guess and burn credits.
+5. Work phase by phase. Show me results after each phase before continuing.
+
+Begin Phase 1. Show me the result before Phase 2.
