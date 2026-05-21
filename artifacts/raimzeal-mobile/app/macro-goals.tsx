@@ -17,6 +17,8 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
+import { useFitness } from "@/contexts/FitnessContext";
+import { computeSuggestedGoals, primaryGoalLabel } from "@/lib/tdee";
 
 interface GoalField {
   key: "calories" | "protein" | "carbs" | "fat";
@@ -31,6 +33,7 @@ export default function MacroGoalsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { goals, setGoals, loaded } = useMacroGoals();
+  const { user } = useFitness();
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());
@@ -47,6 +50,18 @@ export default function MacroGoalsScreen() {
       setFat(goals.fat.toString());
     }
   }, [loaded, goals]);
+
+  const suggested = computeSuggestedGoals(user);
+  const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
+
+  function applySuggestion() {
+    if (!suggested) return;
+    Haptics.selectionAsync();
+    setCalories(suggested.calories.toString());
+    setProtein(suggested.protein.toString());
+    setCarbs(suggested.carbs.toString());
+    setFat(suggested.fat.toString());
+  }
 
   const fields: GoalField[] = [
     { key: "calories", label: "Daily Calories", unit: "kcal", placeholder: "2200", color: colors.primary },
@@ -132,6 +147,37 @@ export default function MacroGoalsScreen() {
           Set your personal daily nutrition targets. These are used for progress rings and macro tracking across the app.
         </Text>
 
+        {/* Suggested for you banner */}
+        {suggested && (
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={applySuggestion}
+            style={[
+              styles.suggestionBanner,
+              { backgroundColor: colors.primary + "18", borderColor: colors.primary + "55" },
+            ]}
+          >
+            <View style={styles.suggestionIconWrap}>
+              <Ionicons name="sparkles" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.suggestionBody}>
+              <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
+                Suggested for you
+              </Text>
+              <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
+                Based on your profile &amp; {goalLabel} — tap to pre-fill
+              </Text>
+              <View style={styles.suggestionPills}>
+                <SuggestionPill label={`${suggested.calories} kcal`} color={colors.primary} />
+                <SuggestionPill label={`${suggested.protein}g protein`} color={colors.secondary} />
+                <SuggestionPill label={`${suggested.carbs}g carbs`} color={colors.warning} />
+                <SuggestionPill label={`${suggested.fat}g fat`} color={colors.accent} />
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+          </TouchableOpacity>
+        )}
+
         {/* Goal inputs */}
         {fields.map((field) => (
           <View key={field.key} style={styles.fieldWrap}>
@@ -187,6 +233,14 @@ export default function MacroGoalsScreen() {
   );
 }
 
+function SuggestionPill({ label, color }: { label: string; color: string }) {
+  return (
+    <View style={[styles.pill, { backgroundColor: color + "22" }]}>
+      <Text style={[styles.pillText, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 16 },
   header: {
@@ -203,6 +257,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 4,
   },
+  suggestionBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  suggestionIconWrap: { marginTop: 1 },
+  suggestionBody: { flex: 1, gap: 3 },
+  suggestionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  suggestionSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  suggestionPills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+  pill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  pillText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   fieldWrap: { gap: 6 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   fieldDot: { width: 8, height: 8, borderRadius: 4 },
