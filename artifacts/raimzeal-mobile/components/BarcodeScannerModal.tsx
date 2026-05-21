@@ -65,7 +65,7 @@ async function addToRecentScans(barcode: string, food: ScannedFood): Promise<voi
   }
 }
 
-async function getCachedBarcode(barcode: string): Promise<ScannedFood | null> {
+async function getCachedBarcode(barcode: string): Promise<CacheEntry | null> {
   try {
     const raw = await AsyncStorage.getItem(CACHE_PREFIX + barcode);
     if (!raw) return null;
@@ -74,7 +74,7 @@ async function getCachedBarcode(barcode: string): Promise<ScannedFood | null> {
       await AsyncStorage.removeItem(CACHE_PREFIX + barcode);
       return null;
     }
-    return entry.food;
+    return entry;
   } catch {
     return null;
   }
@@ -194,13 +194,14 @@ async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
 interface FetchResult {
   food: ScannedFood;
   fromCache: boolean;
+  cachedAt?: number;
 }
 
 async function fetchFoodByBarcode(barcode: string): Promise<FetchResult | null> {
   const cached = await getCachedBarcode(barcode);
   if (cached) {
-    await addToRecentScans(barcode, cached);
-    return { food: cached, fromCache: true };
+    await addToRecentScans(barcode, cached.food);
+    return { food: cached.food, fromCache: true, cachedAt: cached.cachedAt };
   }
 
   const food = await fetchFromNetwork(barcode);
@@ -209,6 +210,19 @@ async function fetchFoodByBarcode(barcode: string): Promise<FetchResult | null> 
   await setCachedBarcode(barcode, food);
   await addToRecentScans(barcode, food);
   return { food, fromCache: false };
+}
+
+function formatCacheAge(cachedAt: number): string {
+  const diffMs = Date.now() - cachedAt;
+  const diffMins = Math.floor(diffMs / 60_000);
+  const diffHours = Math.floor(diffMs / 3_600_000);
+  const diffDays = Math.floor(diffMs / 86_400_000);
+
+  if (diffMins < 1) return "Saved just now";
+  if (diffMins < 60) return `Saved ${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
+  if (diffHours < 24) return `Saved ${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  if (diffDays === 1) return "Saved yesterday";
+  return `Saved ${diffDays} days ago`;
 }
 
 interface Props {
@@ -225,7 +239,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string } | null>(null);
+  const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
 
@@ -253,7 +267,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
       if (result) {
         if (result.fromCache) {
-          setCachedResult({ food: result.food, barcode: data });
+          setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now() });
         } else {
           onFoodFound(result.food);
           onClose();
@@ -484,6 +498,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     <Text style={styles.resultMacros}>
                       {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
                     </Text>
+                    <View style={styles.cacheAgeRow}>
+                      <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.45)" />
+                      <Text style={styles.cacheAgeText}>
+                        {formatCacheAge(cachedResult.cachedAt)}
+                      </Text>
+                    </View>
                     {refreshFailed && (
                       <View style={styles.refreshFailedRow}>
                         <Ionicons name="cloud-offline-outline" size={13} color="#f87171" />
@@ -764,6 +784,18 @@ const styles = StyleSheet.create({
   scanAgainText: {
     color: "rgba(255,255,255,0.45)",
     fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  cacheAgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginLeft: 26,
+    marginTop: 2,
+  },
+  cacheAgeText: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
   refreshFailedRow: {
