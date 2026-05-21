@@ -799,6 +799,7 @@ export default function CardCustomizationModal({
 
   // Card-preview chip: fade in then auto-dismiss after ~2.5 s
   const cardChipFadeAnim = useRef(new Animated.Value(0)).current;
+  const cardChipSlideAnim = useRef(new Animated.Value(6)).current;
   const cardChipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -807,25 +808,36 @@ export default function CardCustomizationModal({
       cardChipTimerRef.current = null;
     }
     cardChipFadeAnim.stopAnimation();
+    cardChipSlideAnim.stopAnimation();
 
     if (!restoredFromStorage) {
       cardChipFadeAnim.setValue(0);
+      cardChipSlideAnim.setValue(6);
       return;
     }
 
     if (reduceMotion) {
       cardChipFadeAnim.setValue(1);
+      cardChipSlideAnim.setValue(0);
       cardChipTimerRef.current = setTimeout(() => {
         cardChipFadeAnim.setValue(0);
         cardChipTimerRef.current = null;
       }, 2500);
     } else {
       cardChipFadeAnim.setValue(0);
-      Animated.timing(cardChipFadeAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      cardChipSlideAnim.setValue(6);
+      Animated.parallel([
+        Animated.timing(cardChipFadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardChipSlideAnim, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
         if (!finished) return;
         cardChipTimerRef.current = setTimeout(() => {
           cardChipTimerRef.current = null;
@@ -2063,7 +2075,10 @@ export default function CardCustomizationModal({
                 <Animated.View
                   style={[
                     styles.cardChip,
-                    { opacity: cardChipFadeAnim },
+                    {
+                      opacity: cardChipFadeAnim,
+                      transform: [{ translateY: cardChipSlideAnim }],
+                    },
                   ]}
                   pointerEvents="auto"
                 >
