@@ -1573,9 +1573,9 @@ export default function CardCustomizationModal({
       zoomAnim.setValue(0);
       Animated.spring(zoomAnim, {
         toValue: 1,
-        damping: 18,
-        stiffness: 280,
-        mass: 0.8,
+        damping: 16,
+        stiffness: 400,
+        mass: 0.6,
         useNativeDriver: true,
       }).start();
     }
@@ -1594,9 +1594,11 @@ export default function CardCustomizationModal({
       zoomAnim.setValue(0);
       setZoomVisible(false);
     } else {
-      Animated.timing(zoomAnim, {
+      Animated.spring(zoomAnim, {
         toValue: 0,
-        duration: 200,
+        damping: 28,
+        stiffness: 380,
+        mass: 0.6,
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (finished) setZoomVisible(false);
