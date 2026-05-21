@@ -24,6 +24,7 @@ import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   withSequence,
   runOnJS,
   SharedValue,
@@ -770,6 +771,36 @@ export default function CardCustomizationModal({
   const [savingPreset, setSavingPreset] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
+
+  // Inline-save expand/collapse animation
+  const INLINE_SAVE_EXPANDED_H = 118;
+  const inlineSaveHeight = useSharedValue(0);
+  const inlineSaveOpacity = useSharedValue(0);
+  const inlineSaveOpen = useRef(false);
+  useEffect(() => {
+    const open = showInlineSave && !reorderMode;
+    if (!open && inlineSaveOpen.current) {
+      // Blur the input so the keyboard dismisses when the field collapses
+      presetNameRef.current?.blur();
+    }
+    inlineSaveOpen.current = open;
+    if (reduceMotion) {
+      inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
+      inlineSaveOpacity.value = open ? 1 : 0;
+    } else if (open) {
+      inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
+      inlineSaveOpacity.value = withTiming(1, { duration: 180 });
+    } else {
+      inlineSaveHeight.value = withTiming(0, { duration: 160 });
+      inlineSaveOpacity.value = withTiming(0, { duration: 120 });
+    }
+  }, [showInlineSave, reorderMode, reduceMotion]);
+  const inlineSaveAnimStyle = useAnimatedStyle(() => ({
+    height: inlineSaveHeight.value,
+    opacity: inlineSaveOpacity.value,
+    overflow: "hidden",
+    pointerEvents: inlineSaveHeight.value > 0 ? "auto" : "none",
+  }));
 
   // Preset thumbnail preview
   const [presetPreviewTarget, setPresetPreviewTarget] = useState<CardPreset | null>(null);
@@ -2036,7 +2067,7 @@ export default function CardCustomizationModal({
               </>
             )}
 
-            {showInlineSave && !reorderMode && (
+            <Reanimated.View style={inlineSaveAnimStyle}>
               <View style={[styles.inlineSaveWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.inlineSaveLabel, { color: colors.foreground }]}>
                   {activePresetId ? "Update preset name" : "Name this preset"}
@@ -2083,7 +2114,7 @@ export default function CardCustomizationModal({
                   {presetNameInput.trim().length}/32
                 </Text>
               </View>
-            )}
+            </Reanimated.View>
 
             {activePreset && !reorderMode && !showInlineSave && (
               <View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
