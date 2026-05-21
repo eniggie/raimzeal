@@ -15,9 +15,11 @@ import { useColors } from "@/hooks/useColors";
 import {
   getRecentScans,
   removeRecentScan,
+  updateRecentScan,
   RecentScan,
   ScannedFood,
 } from "@/components/BarcodeScannerModal";
+import { ScanEditSheet } from "@/components/ScanEditSheet";
 
 interface Props {
   visible: boolean;
@@ -47,6 +49,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const insets = useSafeAreaInsets();
   const [scans, setScans] = useState<RecentScan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
 
   const loadScans = useCallback(async () => {
     setLoading(true);
@@ -71,6 +74,22 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onFoodFound(food);
     onClose();
+  }
+
+  function handleLongPress(scan: RecentScan) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setEditTarget(scan);
+  }
+
+  async function handleSaveEdit(updated: ScannedFood) {
+    if (!editTarget) return;
+    await updateRecentScan(editTarget.barcode, updated);
+    setScans((prev) =>
+      prev.map((s) =>
+        s.barcode === editTarget.barcode ? { ...s, food: updated } : s
+      )
+    );
+    setEditTarget(null);
   }
 
   return (
@@ -110,6 +129,13 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             </TouchableOpacity>
           </View>
 
+          <ScanEditSheet
+            visible={editTarget !== null}
+            food={editTarget?.food ?? null}
+            onSave={handleSaveEdit}
+            onClose={() => setEditTarget(null)}
+          />
+
           {/* Content */}
           {loading ? (
             <View style={styles.center}>
@@ -136,12 +162,14 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Tap a product to add it as a meal entry.
+                Tap to add · Long-press to edit
               </Text>
               {scans.map((scan) => (
                 <TouchableOpacity
                   key={scan.barcode}
                   onPress={() => handleSelect(scan.food)}
+                  onLongPress={() => handleLongPress(scan)}
+                  delayLongPress={400}
                   activeOpacity={0.75}
                   style={[
                     styles.item,

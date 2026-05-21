@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScanEditSheet } from "@/components/ScanEditSheet";
 
 const CACHE_PREFIX = "barcode_cache_v1:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -50,6 +51,19 @@ export async function removeRecentScan(barcode: string): Promise<void> {
     const scans = await getRecentScans();
     const next = scans.filter((s) => s.barcode !== barcode);
     await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+  } catch {
+    // Non-fatal
+  }
+}
+
+export async function updateRecentScan(barcode: string, food: ScannedFood): Promise<void> {
+  try {
+    const scans = await getRecentScans();
+    const next = scans.map((s) =>
+      s.barcode === barcode ? { ...s, food } : s
+    );
+    await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
+    await setCachedBarcode(barcode, food);
   } catch {
     // Non-fatal
   }
@@ -266,6 +280,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [activeTab, setActiveTab] = useState<ActiveTab>("scan");
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
 
   const loadRecentScans = useCallback(async () => {
     setRecentLoading(true);
@@ -380,6 +395,22 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await removeRecentScan(barcode);
     setRecentScans((prev) => prev.filter((s) => s.barcode !== barcode));
+  }
+
+  function handleLongPressRecent(scan: RecentScan) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setEditTarget(scan);
+  }
+
+  async function handleSaveEdit(updated: ScannedFood) {
+    if (!editTarget) return;
+    await updateRecentScan(editTarget.barcode, updated);
+    setRecentScans((prev) =>
+      prev.map((s) =>
+        s.barcode === editTarget.barcode ? { ...s, food: updated } : s
+      )
+    );
+    setEditTarget(null);
   }
 
   function handleSwitchTab(tab: ActiveTab) {
@@ -670,12 +701,14 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       showsVerticalScrollIndicator={false}
                     >
                       <Text style={styles.recentHint}>
-                        Tap a product to add it as a meal entry.
+                        Tap to add · Long-press to edit
                       </Text>
                       {recentScans.map((scan) => (
                         <TouchableOpacity
                           key={scan.barcode}
                           onPress={() => handleSelectRecent(scan.food)}
+                          onLongPress={() => handleLongPressRecent(scan)}
+                          delayLongPress={400}
                           activeOpacity={0.75}
                           style={styles.recentItem}
                         >
@@ -720,6 +753,13 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
           </>
         )}
       </View>
+
+      <ScanEditSheet
+        visible={editTarget !== null}
+        food={editTarget?.food ?? null}
+        onSave={handleSaveEdit}
+        onClose={() => setEditTarget(null)}
+      />
     </Modal>
   );
 }
