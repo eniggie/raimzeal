@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  LogOut, Scale, Edit2, Check, X, Crown, Heart, ExternalLink
+  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -199,12 +199,12 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
           <Link href="/membership">
             <Card className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-secondary" />
+                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Upgrade Plan</div>
-                  <div className="text-sm text-muted-foreground">Foundation · Free forever</div>
+                  <div className="font-medium">RAIMZEAL · Free Forever</div>
+                  <div className="text-sm text-muted-foreground">All features included, no subscription</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
