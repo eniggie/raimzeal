@@ -3836,6 +3836,9 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
     fat: String(log.fat),
   });
   const [editMealType, setEditMealType] = useState<MealType>(log.mealType);
+  const [editServings, setEditServings] = useState(1);
+  const [editServingsText, setEditServingsText] = useState("1");
+  const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3847,6 +3850,9 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
       fat: String(log.fat),
     });
     setEditMealType(log.mealType);
+    setEditServings(1);
+    setEditServingsText("1");
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     setShowEditSheet(true);
   }
 
@@ -3856,10 +3862,10 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     updateMealLog(log.id, {
       name,
-      calories: parseInt(editForm.calories, 10) || 0,
-      protein: parseFloat(editForm.protein) || 0,
-      carbs: parseFloat(editForm.carbs) || 0,
-      fat: parseFloat(editForm.fat) || 0,
+      calories: Math.round(editBase.calories * editServings),
+      protein: Math.round(editBase.protein * editServings * 10) / 10,
+      carbs: Math.round(editBase.carbs * editServings * 10) / 10,
+      fat: Math.round(editBase.fat * editServings * 10) / 10,
       mealType: editMealType,
     });
     setShowEditSheet(false);
@@ -3975,32 +3981,88 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
               ]}
             />
 
-            <View style={styles.macroInputRow}>
-              <MacroInput
-                label="Calories"
-                value={editForm.calories}
-                onChangeText={(v) => setEditForm((f) => ({ ...f, calories: v }))}
-                colors={colors}
-              />
-              <MacroInput
-                label="Protein (g)"
-                value={editForm.protein}
-                onChangeText={(v) => setEditForm((f) => ({ ...f, protein: v }))}
-                colors={colors}
-              />
+            <View style={styles.servingsRow}>
+              <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
+              <View style={styles.servingsControl}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (editServings > 0.5) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setEditServings((s) => {
+                        const steps = Math.round(s * 200) / 100;
+                        const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
+                        setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                        return next;
+                      });
+                    }
+                  }}
+                  style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="remove" size={16} color={editServings <= 0.5 ? colors.mutedForeground : colors.foreground} />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.servingsValue, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 }]}
+                  value={editServingsText}
+                  onChangeText={(v) => {
+                    const stripped = v.replace(/[^0-9.]/g, "");
+                    const parts = stripped.split(".");
+                    const normalized = parts.length > 2
+                      ? parts[0] + "." + parts.slice(1).join("")
+                      : stripped;
+                    setEditServingsText(normalized);
+                    const n = parseFloat(normalized);
+                    if (!isNaN(n) && n > 0) setEditServings(n);
+                  }}
+                  onBlur={() => {
+                    const n = parseFloat(editServingsText);
+                    const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
+                    setEditServings(valid);
+                    setEditServingsText(String(valid));
+                  }}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                  returnKeyType="done"
+                  maxLength={7}
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setEditServings((s) => {
+                      const steps = Math.round(s * 200) / 100;
+                      const next = Math.floor(steps + 1) * 0.5;
+                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                      return next;
+                    });
+                  }}
+                  style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="add" size={16} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.macroInputRow}>
-              <MacroInput
-                label="Carbs (g)"
-                value={editForm.carbs}
-                onChangeText={(v) => setEditForm((f) => ({ ...f, carbs: v }))}
-                colors={colors}
+
+            <View style={styles.modalNutrients}>
+              <NutrientChip
+                label="Calories"
+                value={`${Math.round(editBase.calories * editServings)}`}
+                color={colors.primary}
               />
-              <MacroInput
-                label="Fat (g)"
-                value={editForm.fat}
-                onChangeText={(v) => setEditForm((f) => ({ ...f, fat: v }))}
-                colors={colors}
+              <NutrientChip
+                label="Protein"
+                value={`${Math.round(editBase.protein * editServings * 10) / 10}g`}
+                color={colors.secondary}
+              />
+              <NutrientChip
+                label="Carbs"
+                value={`${Math.round(editBase.carbs * editServings * 10) / 10}g`}
+                color={colors.warning}
+              />
+              <NutrientChip
+                label="Fat"
+                value={`${Math.round(editBase.fat * editServings * 10) / 10}g`}
+                color="#ef4444"
               />
             </View>
 
