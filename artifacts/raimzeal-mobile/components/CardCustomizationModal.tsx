@@ -2141,6 +2141,7 @@ export default function CardCustomizationModal({
                 <View
                   style={styles.presetsThumbnailsWrapper}
                   onLayout={(e) => {
+                    if (presets.length <= 1) return;
                     const w = e.nativeEvent.layout.width;
                     presetContainerWidth.current = w;
                     setPresetHasOverflow(presetContentWidth.current > w + 4);
@@ -2152,6 +2153,7 @@ export default function CardCustomizationModal({
                   decelerationRate="fast"
                   contentContainerStyle={styles.presetsScroll}
                   onContentSizeChange={(w) => {
+                    if (presets.length <= 1) return;
                     presetContentWidth.current = w;
                     setPresetHasOverflow(w > presetContainerWidth.current + 4);
                   }}
@@ -2180,7 +2182,7 @@ export default function CardCustomizationModal({
                     </Text>
                   )}
                 </ScrollView>
-                {presetHasOverflow && !presetScrollAtEnd && (
+                {presets.length > 1 && presetHasOverflow && !presetScrollAtEnd && (
                   <LinearGradient
                     colors={["transparent", colors.background]}
                     start={{ x: 0, y: 0 }}
