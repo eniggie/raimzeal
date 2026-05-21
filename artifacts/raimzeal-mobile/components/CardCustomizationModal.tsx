@@ -1318,7 +1318,7 @@ export default function CardCustomizationModal({
           useNativeDriver: true,
         }),
         Animated.timing(badgeSlideAnim, {
-          toValue: 5,
+          toValue: -5,
           duration: 200,
           useNativeDriver: true,
         }),
