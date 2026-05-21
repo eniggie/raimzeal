@@ -47,8 +47,8 @@ export function Billing() {
             className="p-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4 mb-4"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">Non-profit organization · RAIMZY is free forever</p>
-              <p className="text-xs text-foreground/60 mt-0.5">We turned down deals to keep it that way. If it has helped you, a donation supports the team.</p>
+              <p className="text-sm font-semibold">Non-profit organization · RAIMZEAL is free forever</p>
+              <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We said no to deals that would have changed this. No ads, no tiers, no investors pulling strings. If RAIMZEAL has helped you, a donation supports the team keeping it alive for everyone.</p>
             </div>
             <div className="shrink-0 flex flex-col items-end gap-1">
               <button
@@ -89,19 +89,28 @@ export function Billing() {
           transition={{ delay: 0.12 }}
           className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
         >
-          <p className="text-sm font-semibold mb-1">Resources from RAIMZY</p>
-          <p className="text-xs text-foreground/60 leading-relaxed mb-2">
-            Books, music, courses, and coaching to complement your fitness journey.
+          <p className="text-sm font-semibold mb-1">Books, Courses, Music &amp; Coaching — RAIMZY</p>
+          <p className="text-xs text-foreground/60 leading-relaxed mb-3">
+            Everything RAIMZY has created to complement your fitness journey. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
           </p>
-          <a
-            href={RAIMZY_LINKTREE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
-          >
-            Visit linktr.ee/Raimzy
-            <ExternalLink className="w-3 h-3" />
-          </a>
+          <div className="flex flex-col gap-1.5">
+            <a
+              href={RAIMZY_LINKTREE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+            >
+              linktr.ee/Raimzy <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href="https://www.raimzy.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+            >
+              www.raimzy.com <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </motion.div>
       </div>
     </div>

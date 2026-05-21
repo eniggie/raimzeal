@@ -89,8 +89,8 @@ export function Membership() {
           className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">Non-profit organization · RAIMZY is free forever</p>
-            <p className="text-xs text-foreground/60 mt-0.5">We turned down deals to keep it that way. If it has helped you, a donation supports the team.</p>
+            <p className="text-sm font-semibold">Non-profit organization · RAIMZEAL is free forever</p>
+            <p className="text-xs text-foreground/60 mt-1 leading-relaxed">We said no to investors, subscription tiers, and ad deals — because your health isn't a product. Every feature, forever, for everyone. If this platform has played even a small role in your journey, a donation keeps the lights on for you and the next person who finds us. You're not supporting an app. You're part of a movement.</p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
@@ -136,19 +136,28 @@ export function Membership() {
           transition={{ delay: 0.1 }}
           className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
         >
-          <p className="text-sm font-semibold mb-1">Resources from RAIMZY</p>
-          <p className="text-xs text-foreground/60 leading-relaxed mb-2">
-            RAIMZY is one of RAIMZEAL's biggest supporters. Find books, music, courses, and coaching to complement your fitness journey.
+          <p className="text-sm font-semibold mb-1">Books, Courses, Music &amp; Coaching — RAIMZY</p>
+          <p className="text-xs text-foreground/60 leading-relaxed mb-3">
+            Explore everything RAIMZY has created — books, music, online courses, and 1-on-1 coaching — built to complement your fitness and wellness journey. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
           </p>
-          <a
-            href={RAIMZY_LINKTREE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
-          >
-            Visit linktr.ee/Raimzy
-            <ExternalLink className="w-3 h-3" />
-          </a>
+          <div className="flex flex-col gap-1.5">
+            <a
+              href={RAIMZY_LINKTREE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+            >
+              linktr.ee/Raimzy <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href="https://www.raimzy.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+            >
+              www.raimzy.com <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </motion.div>
 
       </div>

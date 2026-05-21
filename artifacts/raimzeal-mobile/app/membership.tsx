@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -87,12 +88,38 @@ export default function MembershipScreen() {
           </TouchableOpacity>
         </LinearGradient>
 
-        <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-          Non-profit organization · RAIMZY is free forever.{"\n"}
-          We turned down deals to keep it that way.{"\n"}
-          If it has helped you, a donation supports the team.{"\n"}
-          Resources at linktr.ee/Raimzy
-        </Text>
+        {/* Donation card */}
+        <View style={[styles.donationCard, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
+          <Text style={[styles.donationHeadline, { color: colors.foreground }]}>
+            Non-profit organization · RAIMZEAL is free forever
+          </Text>
+          <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
+            Most platforms sold out. We didn't.{"\n\n"}No ads. No investors. No subscriptions — just your health, protected. We said no to deals that would have changed that.{"\n\n"}If RAIMZEAL has played even a small role in your journey, a donation keeps the lights on for you and for the next person who finds us. You're not supporting an app. You're part of a movement.
+          </Text>
+          <TouchableOpacity
+            style={styles.donateBtn}
+            onPress={() => Linking.openURL("https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00")}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="heart" size={15} color="#fff" />
+            <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
+          </TouchableOpacity>
+          <Text style={[styles.donationLinksLabel, { color: colors.mutedForeground }]}>
+            Books, courses, music &amp; coaching from RAIMZY:
+          </Text>
+          <View style={styles.donationLinkRow}>
+            <TouchableOpacity onPress={() => Linking.openURL("https://linktr.ee/Raimzy")}>
+              <Text style={styles.donationLink}>linktr.ee/Raimzy</Text>
+            </TouchableOpacity>
+            <Text style={[styles.donationLinkSep, { color: colors.mutedForeground }]}> · </Text>
+            <TouchableOpacity onPress={() => Linking.openURL("https://www.raimzy.com")}>
+              <Text style={styles.donationLink}>www.raimzy.com</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.donationAttrib, { color: colors.mutedForeground }]}>
+            Created and powered by ECONTEUR LLC{"\n"}www.econteur.com
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -143,5 +170,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ctaText: { fontSize: 15, fontWeight: "700" },
-  footer: { fontSize: 12, textAlign: "center", marginTop: 8 },
+  donationCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    gap: 10,
+  },
+  donationHeadline: { fontSize: 14, fontWeight: "800", lineHeight: 20 },
+  donationBody:     { fontSize: 12, lineHeight: 19 },
+  donateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    backgroundColor: "#2E8B57",
+    borderRadius: 14,
+    paddingVertical: 13,
+    marginTop: 4,
+  },
+  donateBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  donationLinksLabel: { fontSize: 11, marginTop: 4 },
+  donationLinkRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  donationLink:    { fontSize: 12, fontWeight: "700", color: "#2E8B57" },
+  donationLinkSep: { fontSize: 12 },
+  donationAttrib:  { fontSize: 11, lineHeight: 17, marginTop: 4 },
 });

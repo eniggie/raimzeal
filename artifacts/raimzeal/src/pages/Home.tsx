@@ -98,9 +98,9 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-primary">Non-profit · RAIMZY is free forever.</p>
+            <p className="text-sm font-semibold text-primary">Non-profit · RAIMZEAL is free forever. We turned down deals.</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              We turned down deals to keep it that way. If it has helped you, a donation supports the team.
+              Most platforms sold out. We didn't. No ads, no investors — just your health, protected. If we've helped, a donation keeps it alive for the next person who needs it.
             </p>
           </div>
           {DONATION_ACTIVE ? (
