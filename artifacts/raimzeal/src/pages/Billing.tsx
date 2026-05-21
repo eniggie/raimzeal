@@ -93,7 +93,7 @@ export function Billing() {
         >
           <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe</p>
           <p className="text-xs text-foreground/60 leading-relaxed mb-3">
-            Author, music artist, strategist, and the mind behind RAIMZEAL. Books, music, courses, and coaching on leadership, wellness, creativity, and business. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
+            Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
           </p>
           <div className="flex flex-col gap-1.5">
             <a href={RAIMZY_LINKTREE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">

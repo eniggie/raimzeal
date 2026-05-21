@@ -108,8 +108,11 @@ export default function MembershipScreen() {
             <Ionicons name="heart" size={15} color="#fff" />
             <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
           </TouchableOpacity>
-          <Text style={[styles.donationLinksLabel, { color: colors.mutedForeground }]}>
-            Books · Music · Courses · Coaching · Resources{"\n"}by RAIMZY — Dr. Ephraim Oviawe
+          <Text style={[styles.donationLinksLabel, { color: colors.foreground }]}>
+            RAIMZY — Dr. Ephraim Oviawe
+          </Text>
+          <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
+            Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution.
           </Text>
           <View style={styles.donationLinkCol}>
             <TouchableOpacity onPress={() => Linking.openURL("https://linktr.ee/Raimzy")}>
@@ -126,7 +129,7 @@ export default function MembershipScreen() {
             </TouchableOpacity>
           </View>
           <Text style={[styles.donationAttrib, { color: colors.mutedForeground }]}>
-            Created and powered by ECONTEUR LLC{"\n"}www.econteur.com
+            Created and powered by ECONTEUR LLC · www.econteur.com
           </Text>
         </View>
       </ScrollView>
