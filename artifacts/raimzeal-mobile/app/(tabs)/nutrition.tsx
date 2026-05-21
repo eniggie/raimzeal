@@ -968,9 +968,10 @@ export default function NutritionScreen() {
     setDeletedPreset(preset);
     presetUndoAnim.setValue(0);
     Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    const durationMs = (settings.undoWindowSeconds ?? 3) * 1000;
     presetUndoTimerRef.current = setTimeout(() => {
       dismissPresetUndoToast();
-    }, 3000);
+    }, durationMs);
   }
 
   function dismissPresetUndoToast() {
