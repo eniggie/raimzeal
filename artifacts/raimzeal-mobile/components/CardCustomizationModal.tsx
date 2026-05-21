@@ -37,6 +37,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
+import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import ShareProgressCard, {
   CARD_THEMES,
@@ -51,13 +52,12 @@ import ShareProgressCard, {
 const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
-const STORAGE_KEY_THUMB_SIZE = "@raimzeal_card_thumb_size";
 const STORAGE_KEY_BG_PHOTO = "@raimzeal_card_bg_photo";
 
 const THUMB_SCALE = 72 / CARD_WIDTH;
 const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
 
-export type ThumbnailSize = "s" | "m" | "l";
+export type { ThumbnailSize } from "@/hooks/useThumbnailSize";
 
 const THUMB_SIZE_OFFSETS: Record<ThumbnailSize, number> = {
   s: -18,
@@ -827,7 +827,7 @@ export default function CardCustomizationModal({
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
-  const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>("m");
+  const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knobAnims = useRef<Record<string, Animated.Value>>(
@@ -1115,14 +1115,13 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedThumbSize, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           loadPresets(),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
           AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
-          AsyncStorage.getItem(STORAGE_KEY_THUMB_SIZE),
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_OPENS),
@@ -1144,19 +1143,12 @@ export default function CardCustomizationModal({
 
         const hadSavedData = !!(savedStats || savedMessage || savedTheme);
 
-        const validSizes: ThumbnailSize[] = ["s", "m", "l"];
-        const effectiveThumbSize: ThumbnailSize =
-          validSizes.includes(savedThumbSize as ThumbnailSize)
-            ? (savedThumbSize as ThumbnailSize)
-            : "m";
-
         setVisibleStats(effectiveStats);
         syncKnobsImmediate(effectiveStats);
         setCustomMessage(effectiveMessage);
         setBackgroundPhotoUri(savedBgPhoto ?? null);
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
-        setThumbnailSize(effectiveThumbSize);
         setRestoredFromStorage(hadSavedData);
         // Badge is dismissed if AsyncStorage says so OR if the cloud-backed
         // preference (initialBadgeDismissed) is true — the latter ensures a
@@ -1519,12 +1511,12 @@ export default function CardCustomizationModal({
     setActivePresetId(null);
     resetZoomPosition();
     try {
+      setThumbnailSize("m");
       await Promise.all([
         AsyncStorage.removeItem(STORAGE_KEY_STATS),
         AsyncStorage.removeItem(STORAGE_KEY_MESSAGE),
         AsyncStorage.removeItem(STORAGE_KEY_THEME),
         AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED),
-        AsyncStorage.removeItem(STORAGE_KEY_THUMB_SIZE),
         AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO),
       ]);
     } catch {
@@ -1571,11 +1563,6 @@ export default function CardCustomizationModal({
     setActivePresetId(null);
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
-  }
-
-  function handleThumbSizeChange(size: ThumbnailSize) {
-    setThumbnailSize(size);
-    AsyncStorage.setItem(STORAGE_KEY_THUMB_SIZE, size).catch(() => {});
   }
 
   function loadPreset(preset: CardPreset) {
@@ -2352,7 +2339,7 @@ export default function CardCustomizationModal({
                 {(["s", "m", "l"] as ThumbnailSize[]).map((sz) => (
                   <TouchableOpacity
                     key={sz}
-                    onPress={() => handleThumbSizeChange(sz)}
+                    onPress={() => setThumbnailSize(sz)}
                     style={[
                       styles.thumbSizeBtn,
                       thumbnailSize === sz && {

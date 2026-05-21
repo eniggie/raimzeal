@@ -26,6 +26,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider } from "@/contexts/FitnessContext";
 import { MacroGoalsProvider } from "@/contexts/MacroGoalsContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
+import { ThumbnailSizeProvider } from "@/hooks/useThumbnailSize";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   loadReminderSettings,
@@ -159,7 +160,9 @@ export default function RootLayout() {
                 <FitnessProvider>
                   <MacroGoalsProvider>
                     <PermissionsProvider>
-                      <AuthGate />
+                      <ThumbnailSizeProvider>
+                        <AuthGate />
+                      </ThumbnailSizeProvider>
                     </PermissionsProvider>
                   </MacroGoalsProvider>
                 </FitnessProvider>
