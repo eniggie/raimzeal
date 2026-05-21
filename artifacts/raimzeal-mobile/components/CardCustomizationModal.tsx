@@ -1310,11 +1310,19 @@ export default function CardCustomizationModal({
       dismissCardChip();
     } else {
       badgeFadeAnim.stopAnimation();
-      Animated.timing(badgeFadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      badgeSlideAnim.stopAnimation();
+      Animated.parallel([
+        Animated.timing(badgeFadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(badgeSlideAnim, {
+          toValue: 5,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
         if (finished) {
           setBadgeDismissed(true);
           persist();
