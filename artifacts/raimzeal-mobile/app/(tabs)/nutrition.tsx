@@ -2955,8 +2955,8 @@ export default function NutritionScreen() {
                               carbs={totals.carbs}
                               fat={totals.fat}
                             />
-                            <View style={[styles.historyDayBadge, { backgroundColor: colors.primary + "18" }]}>
-                              <Text style={[styles.historyDayBadgeText, { color: colors.primary }]}>
+                            <View style={[styles.historyDayBadge, { backgroundColor: totals.calories <= CALORIE_GOAL ? colors.success + "20" : colors.destructive + "20" }]}>
+                              <Text style={[styles.historyDayBadgeText, { color: totals.calories <= CALORIE_GOAL ? colors.success : colors.destructive }]}>
                                 {Math.round(totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal
                               </Text>
                             </View>
