@@ -771,6 +771,8 @@ export default function CardCustomizationModal({
   const badgeSlideAnim = useRef(new Animated.Value(5)).current;
 
   useEffect(() => {
+    badgeFadeAnim.stopAnimation();
+    badgeSlideAnim.stopAnimation();
     if (restoredFromStorage && !badgeDismissed) {
       badgeFadeAnim.setValue(0);
       badgeSlideAnim.setValue(5);
