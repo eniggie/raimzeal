@@ -80,6 +80,12 @@ export interface UserProfile {
   goals: string[];
   units: "imperial" | "metric";
   createdAt: string;
+  /** ABO blood group */
+  bloodType?: "A" | "B" | "AB" | "O";
+  /** Rhesus factor */
+  rhFactor?: "+" | "-";
+  /** Haemoglobin genotype (sickle-cell locus) */
+  genotype?: "AA" | "AS" | "AC" | "SS" | "SC";
 }
 
 /** Mobile-only: Ovia AI conversation history */

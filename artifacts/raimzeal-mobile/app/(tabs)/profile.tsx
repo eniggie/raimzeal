@@ -604,6 +604,23 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Health */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Health</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="water-outline"
+              label="Health Profile & Food Guide"
+              sublabel={
+                user?.bloodType || user?.genotype
+                  ? `Blood ${user?.bloodType ?? "?"}${user?.rhFactor ?? ""} · Genotype ${user?.genotype ?? "?"}`
+                  : "Set blood type, Rh factor & genotype"
+              }
+              color="#ef4444"
+              onPress={() => router.push("/health-profile")}
+              isLast
+            />
+          </GlassCard>
+
           {/* Training & Stats */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Training & Stats</Text>
           <GlassCard style={styles.actionsCard}>

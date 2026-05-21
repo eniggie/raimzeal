@@ -141,6 +141,9 @@ ${section('Personal Records', prRows, 'No personal records yet.')}
     height: user?.height?.toString() || '',
     weight: user?.weight?.toString() || '',
     fitnessLevel: user?.fitnessLevel || 'beginner',
+    bloodType: user?.bloodType || '' as UserProfile['bloodType'] | '',
+    rhFactor: user?.rhFactor || '' as UserProfile['rhFactor'] | '',
+    genotype: user?.genotype || '' as UserProfile['genotype'] | '',
   });
 
   const handleSaveProfile = () => {
@@ -150,6 +153,9 @@ ${section('Personal Records', prRows, 'No personal records yet.')}
       height: parseInt(editForm.height) || user?.height || 0,
       weight: parseFloat(editForm.weight) || user?.weight || 0,
       fitnessLevel: editForm.fitnessLevel as UserProfile['fitnessLevel'],
+      bloodType: (editForm.bloodType || undefined) as UserProfile['bloodType'],
+      rhFactor: (editForm.rhFactor || undefined) as UserProfile['rhFactor'],
+      genotype: (editForm.genotype || undefined) as UserProfile['genotype'],
     });
     setEditingProfile(false);
   };
@@ -189,6 +195,9 @@ ${section('Personal Records', prRows, 'No personal records yet.')}
                       height: user?.height?.toString() || '',
                       weight: user?.weight?.toString() || '',
                       fitnessLevel: user?.fitnessLevel || 'beginner',
+                      bloodType: user?.bloodType || '',
+                      rhFactor: user?.rhFactor || '',
+                      genotype: user?.genotype || '',
                     });
                     setEditingProfile(true);
                   }}
@@ -265,6 +274,68 @@ ${section('Personal Records', prRows, 'No personal records yet.')}
                     </Select>
                   </div>
                 </div>
+
+                {/* Health Profile */}
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-semibold text-foreground mb-1">Health Profile <span className="font-normal text-muted-foreground">(optional — for food guidance)</span></p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label>Blood Type</Label>
+                      <Select
+                        value={editForm.bloodType || ''}
+                        onValueChange={v => setEditForm(p => ({ ...p, bloodType: v as UserProfile['bloodType'] | '' }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="A">A</SelectItem>
+                          <SelectItem value="B">B</SelectItem>
+                          <SelectItem value="AB">AB</SelectItem>
+                          <SelectItem value="O">O</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Rh Factor</Label>
+                      <Select
+                        value={editForm.rhFactor || ''}
+                        onValueChange={v => setEditForm(p => ({ ...p, rhFactor: v as UserProfile['rhFactor'] | '' }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="+">Positive (+)</SelectItem>
+                          <SelectItem value="-">Negative (−)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Genotype</Label>
+                      <Select
+                        value={editForm.genotype || ''}
+                        onValueChange={v => setEditForm(p => ({ ...p, genotype: v as UserProfile['genotype'] | '' }))}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="AA">AA</SelectItem>
+                          <SelectItem value="AS">AS</SelectItem>
+                          <SelectItem value="AC">AC</SelectItem>
+                          <SelectItem value="SS">SS</SelectItem>
+                          <SelectItem value="SC">SC</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">Guidance is based on peer-reviewed research (Harvard, NHLBI, ASH) — not the unvalidated "blood type diet".</p>
+                </div>
+
                 <Button className="w-full" onClick={handleSaveProfile} data-testid="button-save-profile">
                   <Check className="w-4 h-4 mr-2" />
                   Save Changes

@@ -18,6 +18,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 
+const BLOOD_TYPES = ["A", "B", "AB", "O"] as const;
+const RH_FACTORS = ["+", "-"] as const;
+const GENOTYPES = ["AA", "AS", "AC", "SS", "SC"] as const;
+
 const GOALS = [
   { id: "build_muscle", label: "Build Muscle" },
   { id: "lose_weight", label: "Lose Weight" },
@@ -46,6 +50,9 @@ export default function EditProfileScreen() {
   const [units, setUnits] = useState<"metric" | "imperial">(user?.units ?? "metric");
   const [location, setLocation] = useState("");
   const [locLoading, setLocLoading] = useState(false);
+  const [bloodType, setBloodType] = useState<"A" | "B" | "AB" | "O" | undefined>(user?.bloodType);
+  const [rhFactor, setRhFactor] = useState<"+" | "-" | undefined>(user?.rhFactor);
+  const [genotype, setGenotype] = useState<"AA" | "AS" | "AC" | "SS" | "SC" | undefined>(user?.genotype);
 
   function toggleGoal(id: string) {
     Haptics.selectionAsync();
@@ -85,6 +92,9 @@ export default function EditProfileScreen() {
       fitnessLevel,
       goals,
       units,
+      bloodType,
+      rhFactor,
+      genotype,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
@@ -267,6 +277,69 @@ export default function EditProfileScreen() {
           ))}
         </View>
 
+        {/* Health Profile */}
+        <SectionTitle title="Health Profile" colors={colors} />
+        <Text style={[styles.healthNote, { color: colors.mutedForeground }]}>
+          Used to generate evidence-based food guidance. Optional but recommended.
+        </Text>
+
+        <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Blood Type (ABO)</Text>
+        <View style={styles.chipRow}>
+          {BLOOD_TYPES.map((bt) => (
+            <TouchableOpacity
+              key={bt}
+              onPress={() => { Haptics.selectionAsync(); setBloodType(bt === bloodType ? undefined : bt); }}
+              style={[
+                styles.healthChip,
+                { backgroundColor: bloodType === bt ? colors.primary : colors.muted, borderColor: bloodType === bt ? colors.primary : colors.border },
+              ]}
+            >
+              <Text style={[styles.healthChipText, { color: bloodType === bt ? colors.primaryForeground : colors.mutedForeground, fontFamily: bloodType === bt ? "Inter_600SemiBold" : "Inter_400Regular" }]}>
+                {bt}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[styles.rowLabel, { color: colors.mutedForeground, marginTop: 8 }]}>Rh Factor</Text>
+        <View style={styles.chipRow}>
+          {RH_FACTORS.map((rh) => (
+            <TouchableOpacity
+              key={rh}
+              onPress={() => { Haptics.selectionAsync(); setRhFactor(rh === rhFactor ? undefined : rh); }}
+              style={[
+                styles.healthChip,
+                { backgroundColor: rhFactor === rh ? colors.primary : colors.muted, borderColor: rhFactor === rh ? colors.primary : colors.border },
+              ]}
+            >
+              <Text style={[styles.healthChipText, { color: rhFactor === rh ? colors.primaryForeground : colors.mutedForeground, fontFamily: rhFactor === rh ? "Inter_600SemiBold" : "Inter_400Regular" }]}>
+                {rh === "+" ? "Positive (+)" : "Negative (−)"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[styles.rowLabel, { color: colors.mutedForeground, marginTop: 8 }]}>Genotype (Haemoglobin)</Text>
+        <View style={styles.chipRow}>
+          {GENOTYPES.map((g) => (
+            <TouchableOpacity
+              key={g}
+              onPress={() => { Haptics.selectionAsync(); setGenotype(g === genotype ? undefined : g); }}
+              style={[
+                styles.healthChip,
+                {
+                  backgroundColor: genotype === g ? (g === "SS" || g === "SC" ? "#ef4444" : colors.primary) : colors.muted,
+                  borderColor: genotype === g ? (g === "SS" || g === "SC" ? "#ef4444" : colors.primary) : colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.healthChipText, { color: genotype === g ? "#fff" : colors.mutedForeground, fontFamily: genotype === g ? "Inter_600SemiBold" : "Inter_400Regular" }]}>
+                {g}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Goals */}
         <SectionTitle title="Fitness Goals" colors={colors} />
         <View style={styles.goalsGrid}>
@@ -419,6 +492,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   goalText: { fontSize: 13 },
+  healthNote: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: -4, marginBottom: 4 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  healthChip: {
+    paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, borderWidth: 1,
+  },
+  healthChipText: { fontSize: 13 },
   saveFullBtn: {
     height: 54,
     borderRadius: 14,
