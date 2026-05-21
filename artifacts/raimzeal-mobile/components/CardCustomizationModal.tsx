@@ -803,6 +803,7 @@ export default function CardCustomizationModal({
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const [confirmIcon, setConfirmIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
+  const [confirmRetryFn, setConfirmRetryFn] = useState<(() => void) | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
   // Undo-delete toast
@@ -810,11 +811,19 @@ export default function CardCustomizationModal({
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap) {
+  function dismissConfirmToast() {
+    confirmOpacity.stopAnimation();
+    confirmOpacity.setValue(0);
+    setConfirmMessage(null);
+    setConfirmRetryFn(null);
+  }
+
+  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap, retryFn?: () => void) {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
+    setConfirmRetryFn(retryFn ? () => retryFn : null);
     confirmOpacity.setValue(0);
     const holdDuration = variant === "error" ? 2200 : 1600;
     if (reduceMotionRef.current) {
@@ -1078,7 +1087,7 @@ export default function CardCustomizationModal({
           ? "Couldn't copy to clipboard"
           : "Couldn't save or share the card";
       const errMsg = err instanceof Error && err.message ? err.message : fallback;
-      showConfirmation(errMsg, "error");
+      showConfirmation(errMsg, "error", undefined, () => handleGenerate(action));
     }
   }
 
@@ -2251,6 +2260,19 @@ export default function CardCustomizationModal({
                 >
                   {confirmMessage}
                 </Text>
+                {confirmVariant === "error" && confirmRetryFn && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const fn = confirmRetryFn;
+                      dismissConfirmToast();
+                      fn();
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.confirmRetryBtn}
+                  >
+                    <Text style={styles.confirmRetryText}>Retry</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </Animated.View>
           )}
@@ -3258,6 +3280,17 @@ const styles = StyleSheet.create({
   confirmToastText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  confirmRetryBtn: {
+    marginLeft: 6,
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: "#ff443640",
+  },
+  confirmRetryText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#ff4436",
   },
   // Background photo section
   bgPhotoPickerBtn: {
