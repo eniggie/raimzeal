@@ -2375,6 +2375,20 @@ export default function CardCustomizationModal({
                 ))}
               </View>
             </View>
+            {thumbnailSize !== "m" && (
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontFamily: "Inter_400Regular",
+                  color: colors.mutedForeground,
+                  textAlign: "right",
+                  marginTop: -4,
+                  marginBottom: 6,
+                }}
+              >
+                Preview size: {thumbnailSize === "s" ? "Small" : "Large"}
+              </Text>
+            )}
             <View
               style={styles.themeThumbnailsWrapper}
               onLayout={(e) => {
