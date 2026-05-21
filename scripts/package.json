@@ -8,6 +8,7 @@
     "seed-products": "tsx ./src/seed-products.ts",
     "secure-community": "tsx ./src/secure-community.ts",
     "verify-community-security": "tsx ./src/verify-community-security.ts",
+    "generate-ebook": "tsx ./src/generate-ebook.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -6,6 +6,54 @@ uri = "file://attached_assets/generated_images/raimzeal-splash.png"
 type = "image"
 title = "raimzeal splash screen dark"
 
+[[generated]]
+id = "WQxtfhxBEapr_7QRiLRbC"
+uri = "file://generated/ebook/images/ch1-fitness-community.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QbOeZwQcfCCKh8AodxO_N"
+uri = "file://generated/ebook/images/ch2-food-therapy.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "BqBz3pNkFlU5pM8fnueGV"
+uri = "file://generated/ebook/images/ch3-progress-tracking.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "f7rflccJMQKnUWaVz6Cdt"
+uri = "file://generated/ebook/images/ch4-ovia-ai.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7EQpR-N4scZ3z96-zmNjt"
+uri = "file://generated/ebook/images/ch5-humanity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "tucZchm-55_ByxFKMGABh"
+uri = "file://generated/ebook/images/ch6-mobile-app.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "P43m-W5LxfEUahiafZDJ2"
+uri = "file://generated/ebook/images/ch7-future.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "AW94xEIhJUdfnZKDNWrZu"
+uri = "file://generated/ebook/images/ch8-donate-support.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"
@@ -17,3 +65,45 @@ id = "_4BHiTFS48SCPqWpmukH8"
 uri = "file://artifacts/raimzeal/public/images/logo.png"
 type = "image"
 title = "RAIMZEAL Logo (RZ)"
+
+[[outputs]]
+id = "5FP8HFGGGApMT_3THZq15"
+uri = "file://generated/RAIMZEAL-Complete-Guide.pdf"
+type = "pdf"
+title = "RAIMZEAL Complete Guide — Amazon KDP eBook PDF"
+
+[[outputs]]
+id = "Tt3SADWAgSHvlYSEStCZ0"
+uri = "file://generated/raimzeal-source-code.tar.gz"
+type = "unspecified"
+title = "RAIMZEAL Source Code Archive (.tar.gz)"
+
+[[outputs]]
+id = "VLMS9Yj3-5YJg1NzST20e"
+uri = "file://generated/screenshots/ios-home-390x844.jpg"
+type = "image"
+title = "Screenshot: iOS iPhone Welcome (390×844)"
+
+[[outputs]]
+id = "gvD5E1xC5vTgXSkXxyd8Q"
+uri = "file://generated/screenshots/ios-6.5inch-430x932.jpg"
+type = "image"
+title = "Screenshot: iOS 6.5\" (430×932)"
+
+[[outputs]]
+id = "lT2tyerEE6rDGOQUttusZ"
+uri = "file://generated/screenshots/ipad-pro-1024x1366.jpg"
+type = "image"
+title = "Screenshot: iPad Pro (1024×1366)"
+
+[[outputs]]
+id = "5BOiHUIIzQx1mQXAJcCkB"
+uri = "file://generated/screenshots/android-phone-360x800.jpg"
+type = "image"
+title = "Screenshot: Android Phone (360×800)"
+
+[[outputs]]
+id = "5XDjtrYLHq2HUXE0EkegU"
+uri = "file://generated/screenshots/android-tablet-600x960.jpg"
+type = "image"
+title = "Screenshot: Android Tablet (600×960)"
