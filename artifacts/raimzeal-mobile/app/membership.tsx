@@ -105,15 +105,20 @@ export default function MembershipScreen() {
             <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
           </TouchableOpacity>
           <Text style={[styles.donationLinksLabel, { color: colors.mutedForeground }]}>
-            Books, courses, music &amp; coaching from RAIMZY:
+            RAIMZY — Dr. Ephraim Oviawe{"\n"}Author · Music Artist · Strategist · The mind behind RAIMZEAL
           </Text>
-          <View style={styles.donationLinkRow}>
+          <View style={styles.donationLinkCol}>
             <TouchableOpacity onPress={() => Linking.openURL("https://linktr.ee/Raimzy")}>
-              <Text style={styles.donationLink}>linktr.ee/Raimzy</Text>
+              <Text style={styles.donationLink}>linktr.ee/Raimzy — all resources</Text>
             </TouchableOpacity>
-            <Text style={[styles.donationLinkSep, { color: colors.mutedForeground }]}> · </Text>
             <TouchableOpacity onPress={() => Linking.openURL("https://www.raimzy.com")}>
-              <Text style={styles.donationLink}>www.raimzy.com</Text>
+              <Text style={styles.donationLink}>www.raimzy.com — official site</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL("https://unitedmasters.com/raimzy")}>
+              <Text style={styles.donationLink}>unitedmasters.com/raimzy — music</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL("https://www.amazon.com/author/dr.ephraim-oviawe")}>
+              <Text style={styles.donationLink}>amazon.com — books by Dr. Oviawe</Text>
             </TouchableOpacity>
           </View>
           <Text style={[styles.donationAttrib, { color: colors.mutedForeground }]}>
@@ -189,9 +194,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   donateBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  donationLinksLabel: { fontSize: 11, marginTop: 4 },
-  donationLinkRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  donationLinksLabel: { fontSize: 11, marginTop: 4, lineHeight: 17 },
+  donationLinkCol: { flexDirection: "column", gap: 5, marginTop: 2 },
   donationLink:    { fontSize: 12, fontWeight: "700", color: "#2E8B57" },
-  donationLinkSep: { fontSize: 12 },
   donationAttrib:  { fontSize: 11, lineHeight: 17, marginTop: 4 },
 });

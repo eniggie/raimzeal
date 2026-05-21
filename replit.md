@@ -1,44 +1,123 @@
-# [Project name]
+# RAIMZEAL
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. All features are free forever — no subscriptions, no tiers, no ads.
+
+---
+
+## Founder — Dr. Ephraim Oviawe
+
+**Full name:** DR. EPHRAIM OVIAWE, PhDs, MBA, Master in Theology
+**Artist/brand name:** RAIMZY (his musician name — RAIMZY = Dr. Ephraim Oviawe)
+**Business:** ECONTEUR LLC (registered US business)
+**Platform:** RAIMZEAL (created to promote his books, music, courses, and coaching, and to serve as a free health/fitness community platform)
+
+### Bio
+Dr. Ephraim Oviawe is an author, strategist, technologist, creative entrepreneur, music artist, educator, and business builder focused on helping people turn intelligence into practical systems. His work connects leadership, AI, marketing, project management, creativity, spirituality, and business execution. Through books, music, brands, and business platforms, Dr. Oviawe teaches creators, entrepreneurs, professionals, and organizations how to combine vision with structure, technology with human wisdom, and creativity with disciplined action.
+
+### Education
+- PhD in Leadership & Business Development — Higher-Place Christian University (HPCU)
+- Master's in Theology — Higher-Place Christian University (HPCU)
+- MBA in Information Technology — Southern New Hampshire University (SNHU)
+- Bachelor of Science in Business Administration — Southern New Hampshire University (SNHU)
+- Bachelor of Science in Leadership — Higher-Place Christian University (HPCU)
+- Digital Marketing Diploma — Open University
+
+### Certifications & Professional Development
+- Certified Scrum Master (CSM) — Scrum Alliance
+- Certified Surgical Technologist (CST)
+- American Marketing Association (AMA)
+- Digital Marketing Institute (DMIPRO)
+- Project Management Professional (PMP) — PMI
+- Google Digital Marketing & E-Commerce
+- Google Project Management
+- HubSpot SEO, Inbound Marketing, Email Marketing, and Social Media Strategy
+- Google IT Support Professional Certificate
+- AI Content Creation & Automation
+- Adobe Creative Suite
+- Web & Mobile App Development
+- Data Analytics & Business Intelligence
+- Cybersecurity Fundamentals & Cloud Computing
+- Healthcare Compliance & Medical Coding and Billing
+
+### Links & Presence
+| Resource | URL |
+|----------|-----|
+| Official Website | https://www.raimzy.com |
+| Linktree (all resources) | https://linktr.ee/Raimzy |
+| Music | https://unitedmasters.com/raimzy |
+| Amazon Author Page | https://www.amazon.com/author/dr.ephraim-oviawe |
+| Business (ECONTEUR LLC) | https://www.econteur.com |
+| Innovation | https://www.v3edge.com |
+| Social | @raimzysocial |
+| Donate to RAIMZEAL | https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00 |
+| Email | support@raimzeal.com |
+
+---
+
+## RAIMZEAL Platform
+
+**Mission:** Free fitness, food therapy, and healthcare awareness for everyone — forever.
+**Legal entity:** ECONTEUR LLC (USA)
+**Domain:** raimzeal.com
+**Mobile:** Expo (iOS/Android)
+
+### Key copy rules
+- RAIMZY = Dr. Ephraim Oviawe (the person / artist name)
+- RAIMZEAL = the platform/app
+- "Non-profit organization · RAIMZEAL is free forever. We turned down ad deals and investor offers to keep it that way."
+- Disclaimer (standard): "RAIMZEAL does not replace any doctor, dietitian, or licensed healthcare professional. We exist to complement their work — not take their place."
+- Ovia AI should NOT be called "nutritionist" (protected title) — use "nutrition advisor" or "nutrition guide"
+- Always attribute: "Created and powered by ECONTEUR LLC · www.econteur.com"
+
+---
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- Web: React + Vite (`artifacts/raimzeal`)
+- Mobile: Expo React Native (`artifacts/raimzeal-mobile`)
+- API: Express 5 (`artifacts/api-server`)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Primary color: #2E8B57 (green) — mobile always dark theme
+- Stripe donation URL: https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
-
-## Architecture decisions
-
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+- `artifacts/raimzeal/src/pages/` — all web pages
+- `artifacts/raimzeal-mobile/app/` — all mobile screens
+- `artifacts/raimzeal-mobile/components/CardCustomizationModal.tsx` — progress card sharing modal (large, complex)
+- `artifacts/api-server/src/routes/` — API routes
+- `lib/db/src/schema.ts` — database schema (source of truth)
+- `lib/api-spec/` — OpenAPI spec + codegen
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- All features must remain free forever — never add paywalls or paid tiers
+- Primary green: #2E8B57
+- Mobile is always dark theme
+- Use "RAIMZEAL" for the app, "RAIMZY" for the creator/artist
+- Ovia AI = the in-app AI coach (powered by Claude/OpenAI via API server)
+- Never call Ovia AI a "nutritionist" (legally protected title in many jurisdictions)
+- Donation via Stripe; linktree + raimzy.com + unitedmasters for RAIMZY resources
+- support@raimzeal.com is the single contact email (consolidates privacy@ and support@)
+- ECONTEUR LLC is Dr. Oviawe's registered US business — always attribute correctly
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- CardCustomizationModal.tsx is ~3400+ lines — read in sections, never rewrite in full
+- `showConfirmation(msg, variant, icon, retryFn, actionFn, actionLabel)` — 6 params; retryFn and actionFn are separate; both must be `() => void`, not strings
+- Do not run `pnpm dev` at the workspace root — use `restart_workflow` instead
+- Mobile always uses `colors.mutedForeground` from `useColors()` hook — never hardcode grey
+- `holdDuration` in toast: 4500ms when retryFn OR actionFn is present
 
 ## Pointers
 

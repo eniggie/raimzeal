@@ -136,26 +136,22 @@ export function Membership() {
           transition={{ delay: 0.1 }}
           className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
         >
-          <p className="text-sm font-semibold mb-1">Books, Courses, Music &amp; Coaching — RAIMZY</p>
+          <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe</p>
           <p className="text-xs text-foreground/60 leading-relaxed mb-3">
-            Explore everything RAIMZY has created — books, music, online courses, and 1-on-1 coaching — built to complement your fitness and wellness journey. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
+            Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
           </p>
           <div className="flex flex-col gap-1.5">
-            <a
-              href={RAIMZY_LINKTREE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
-            >
-              linktr.ee/Raimzy <ExternalLink className="w-3 h-3" />
+            <a href={RAIMZY_LINKTREE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">
+              linktr.ee/Raimzy — all resources <ExternalLink className="w-3 h-3" />
             </a>
-            <a
-              href="https://www.raimzy.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
-            >
-              www.raimzy.com <ExternalLink className="w-3 h-3" />
+            <a href="https://www.raimzy.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">
+              www.raimzy.com — official site <ExternalLink className="w-3 h-3" />
+            </a>
+            <a href="https://unitedmasters.com/raimzy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">
+              unitedmasters.com/raimzy — music <ExternalLink className="w-3 h-3" />
+            </a>
+            <a href="https://www.amazon.com/author/dr.ephraim-oviawe" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">
+              amazon.com — books by Dr. Oviawe <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         </motion.div>

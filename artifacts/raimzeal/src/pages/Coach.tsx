@@ -93,7 +93,7 @@ function buildWelcomeMessage(state: AppState): string {
     ? `You are on a ${streak}-day streak and that kind of consistency is what separates people who talk about change from those who actually make it happen.`
     : 'Every great streak starts with a single day. Let this be yours.';
 
-  return `Welcome back, ${firstName}. I am Ovia AI, your personal fitness coach, nutritionist, and mindset mentor.\n\n${streakLine}\n\n${goalText} I have full access to your training history, nutrition data, and measurements. Every answer I give you is built around your real numbers, not generic advice.\n\nWhat can I help you with today?`;
+  return `Welcome back, ${firstName}. I am Ovia AI, your personal fitness coach, nutrition advisor, and mindset mentor.\n\n${streakLine}\n\n${goalText} I have full access to your training history, nutrition data, and measurements. Every answer I give you is built around your real numbers, not generic advice.\n\nWhat can I help you with today?`;
 }
 
 const SUGGESTIONS = [

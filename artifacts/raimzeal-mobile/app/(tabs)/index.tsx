@@ -408,7 +408,7 @@ export default function HomeScreen() {
           </Text>
         </AnimatedPressable>
       )}
-      <Text style={{ fontSize: 10, color: "#666", textAlign: "center", paddingHorizontal: 24, paddingVertical: 14, lineHeight: 15 }}>
+      <Text style={{ fontSize: 10, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 24, paddingVertical: 14, lineHeight: 15 }}>
         RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
       </Text>
     </ScrollView>
