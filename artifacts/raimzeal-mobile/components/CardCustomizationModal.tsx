@@ -1596,8 +1596,8 @@ export default function CardCustomizationModal({
     } else {
       Animated.spring(zoomAnim, {
         toValue: 0,
-        damping: 28,
-        stiffness: 380,
+        damping: 32,
+        stiffness: 400,
         mass: 0.6,
         useNativeDriver: true,
       }).start(({ finished }) => {
