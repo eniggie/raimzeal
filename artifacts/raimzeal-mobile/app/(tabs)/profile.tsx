@@ -721,9 +721,18 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
-          {/* App version */}
+          {/* App version / branding */}
           <Text style={[styles.version, { color: colors.mutedForeground }]}>
             RAIMZEAL v1.0.0
+          </Text>
+          <Text style={[styles.version, { color: colors.mutedForeground, marginTop: 2 }]}>
+            Created and powered by ECONTEUR LLC
+          </Text>
+          <Text
+            style={[styles.version, { color: colors.primary, marginTop: 1 }]}
+            onPress={() => Linking.openURL('https://www.econteur.com')}
+          >
+            www.econteur.com
           </Text>
         </ScrollView>
     </View>

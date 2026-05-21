@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink
+  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,6 +34,106 @@ interface SettingsProps {
 export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
   const [settingsDonationError, setSettingsDonationError] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  function handleExportData() {
+    if (exportLoading) return;
+    setExportLoading(true);
+    try {
+      const u = state.user;
+      const wUnit = state.settings.weightUnit ?? 'lbs';
+      const rows = (arr: unknown[]) => arr.length;
+
+      const tableRows = (items: { date: string; label: string; value: string }[]) =>
+        items.map(r => `<tr><td>${r.date}</td><td>${r.label}</td><td>${r.value}</td></tr>`).join('');
+
+      const workoutRows = state.workoutLogs.slice(0, 200).map(w => ({
+        date: w.date ?? '',
+        label: w.workoutName ?? '',
+        value: w.duration ? `${w.duration} min` : '',
+      }));
+
+      const mealRows = state.mealLogs.slice(0, 200).map(m => ({
+        date: m.date ?? '',
+        label: m.name ?? '',
+        value: `${m.calories ?? 0} kcal · P ${m.protein ?? 0}g · C ${m.carbs ?? 0}g · F ${m.fat ?? 0}g`,
+      }));
+
+      const bodyRows = state.bodyMeasurements.slice(0, 200).map(b => ({
+        date: b.date ?? '',
+        label: 'Body weight',
+        value: `${b.weight ?? ''} ${wUnit}`,
+      }));
+
+      const waterRows = state.waterIntake.slice(0, 200).map(w => ({
+        date: w.date ?? '',
+        label: 'Water intake',
+        value: `${w.glasses ?? 0} glasses`,
+      }));
+
+      const prRows = state.personalRecords.slice(0, 200).map(pr => ({
+        date: pr.date ?? '',
+        label: pr.exercise ?? '',
+        value: `${pr.weight ?? ''} ${wUnit}`,
+      }));
+
+      const section = (title: string, rows: { date: string; label: string; value: string }[], emptyMsg: string) =>
+        `<h2>${title}</h2>${rows.length
+          ? `<table><thead><tr><th>Date</th><th>Activity</th><th>Details</th></tr></thead><tbody>${tableRows(rows)}</tbody></table>`
+          : `<p class="empty">${emptyMsg}</p>`}`;
+
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<title>RAIMZEAL Data Export — ${u?.name ?? 'User'}</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#111;background:#fff}
+  h1{font-size:1.6rem;margin-bottom:4px}
+  .sub{color:#666;font-size:.85rem;margin-bottom:32px}
+  h2{font-size:1.1rem;margin:28px 0 10px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+  .pcard{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
+  .pcard .val{font-size:1.2rem;font-weight:700;color:#6d28d9}
+  .pcard .lbl{font-size:.75rem;color:#666;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:.875rem;margin-bottom:8px}
+  th{background:#f3f4f6;text-align:left;padding:8px 10px;font-weight:600}
+  td{padding:7px 10px;border-bottom:1px solid #f3f4f6}
+  tr:last-child td{border-bottom:none}
+  .empty{color:#9ca3af;font-size:.875rem;margin:0}
+  .footer{margin-top:48px;text-align:center;font-size:.75rem;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:16px}
+  @media print{body{margin:20px}}
+</style></head><body>
+<h1>RAIMZEAL — Data Export</h1>
+<p class="sub">Exported on ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} · ${u?.name ?? 'User'} · ${u?.email ?? ''}</p>
+
+<h2>Profile</h2>
+<div class="profile-grid">
+  <div class="pcard"><div class="val">${u?.age ?? '—'}</div><div class="lbl">Age (yrs)</div></div>
+  <div class="pcard"><div class="val">${u?.height ?? '—'}</div><div class="lbl">Height (cm)</div></div>
+  <div class="pcard"><div class="val">${u?.weight ?? '—'} ${wUnit}</div><div class="lbl">Weight</div></div>
+  <div class="pcard"><div class="val">${rows(state.workoutLogs)}</div><div class="lbl">Workouts logged</div></div>
+  <div class="pcard"><div class="val">${rows(state.mealLogs)}</div><div class="lbl">Meals logged</div></div>
+  <div class="pcard"><div class="val">${state.streak}</div><div class="lbl">Current streak</div></div>
+</div>
+
+${section('Workout History', workoutRows, 'No workouts logged yet.')}
+${section('Nutrition / Meals', mealRows, 'No meals logged yet.')}
+${section('Body Measurements', bodyRows, 'No measurements logged yet.')}
+${section('Water Intake', waterRows, 'No water intake logged yet.')}
+${section('Personal Records', prRows, 'No personal records yet.')}
+
+<div class="footer">Created and powered by ECONTEUR LLC · www.econteur.com</div>
+</body></html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `raimzeal-export-${new Date().toISOString().slice(0, 10)}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportLoading(false);
+    }
+  }
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({
     name: user?.name || '',
@@ -359,6 +459,29 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
           </Card>
         </motion.div>
 
+        {/* Export Data */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.29 }}>
+          <Card className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Export Your Records</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Download a full report of your workouts, meals, measurements, water intake, and personal records.
+                </p>
+              </div>
+              <button
+                onClick={handleExportData}
+                disabled={exportLoading}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
+                aria-label="Export your fitness data"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {exportLoading ? 'Generating…' : 'Export'}
+              </button>
+            </div>
+          </Card>
+        </motion.div>
+
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Button
             variant="destructive"
@@ -387,7 +510,18 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
             </Link>
           </div>
           <p>RAIMZEAL v1.2.0</p>
-          <p className="mt-1">Made with care for fitness enthusiasts</p>
+          <p className="mt-1">
+            Created and powered by{' '}
+            <a
+              href="https://www.econteur.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              ECONTEUR LLC
+            </a>
+            {' '}· www.econteur.com
+          </p>
         </motion.div>
       </div>
       <BottomNav />
