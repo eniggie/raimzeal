@@ -106,10 +106,12 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
               <motion.button
-                onClick={() => {
+                onClick={async () => {
                   try {
-                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
-                    if (!w) throw new Error('blocked');
+                    const r = await fetch('/api/stripe/donation-health');
+                    const { ok } = await r.json() as { ok: boolean };
+                    if (!ok) throw new Error('unhealthy');
+                    window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
                     setHomeDonationError(false);
                   } catch {
                     setHomeDonationError(true);
@@ -125,7 +127,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
                 Donate
               </motion.button>
               {homeDonationError && (
-                <p className="text-xs text-destructive whitespace-nowrap">Temporarily unavailable — try again shortly.</p>
+                <p className="text-xs text-destructive whitespace-nowrap">Donation link temporarily unavailable — please try again shortly.</p>
               )}
             </div>
           ) : (

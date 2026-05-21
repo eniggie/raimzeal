@@ -184,10 +184,12 @@ export function Community() {
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
               <motion.button
-                onClick={() => {
+                onClick={async () => {
                   try {
-                    const w = window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
-                    if (!w) throw new Error('blocked');
+                    const r = await fetch('/api/stripe/donation-health');
+                    const { ok } = await r.json() as { ok: boolean };
+                    if (!ok) throw new Error('unhealthy');
+                    window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
                     setCommunityDonationError(false);
                   } catch {
                     setCommunityDonationError(true);
@@ -203,7 +205,7 @@ export function Community() {
                 Donate
               </motion.button>
               {communityDonationError && (
-                <p className="text-xs text-destructive">Temporarily unavailable — try again shortly.</p>
+                <p className="text-xs text-destructive">Donation link temporarily unavailable — please try again shortly.</p>
               )}
             </div>
           ) : (

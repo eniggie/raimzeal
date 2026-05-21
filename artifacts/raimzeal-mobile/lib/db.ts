@@ -18,7 +18,7 @@ import type {
 
 // ─── API base URL (mirrors the pattern used in ovia.tsx / membership.tsx) ──
 
-function getApiBase(): string {
+export function getApiBase(): string {
   if (Platform.OS === "web") return "/api";
   const domain = process.env["EXPO_PUBLIC_DOMAIN"];
   if (domain) return `https://${domain}/api`;

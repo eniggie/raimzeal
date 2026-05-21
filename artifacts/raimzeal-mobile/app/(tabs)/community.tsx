@@ -29,6 +29,7 @@ import {
   createComment,
   toggleLike,
   checkUserLikes,
+  getApiBase,
 } from "@/lib/db";
 
 const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
@@ -727,12 +728,10 @@ export default function CommunityScreen() {
               onPress={async () => {
                 if (!DONATION_ACTIVE) return;
                 try {
-                  const canOpen = await Linking.canOpenURL(STRIPE_DONATION_URL);
-                  if (canOpen) {
-                    await Linking.openURL(STRIPE_DONATION_URL);
-                  } else {
-                    Alert.alert('Unavailable', 'Donation link temporarily unavailable — please try again shortly.');
-                  }
+                  const r = await fetch(`${getApiBase()}/stripe/donation-health`);
+                  const { ok } = await r.json() as { ok: boolean };
+                  if (!ok) throw new Error('unhealthy');
+                  await Linking.openURL(STRIPE_DONATION_URL);
                 } catch {
                   Alert.alert('Unavailable', 'Donation link temporarily unavailable — please try again shortly.');
                 }
