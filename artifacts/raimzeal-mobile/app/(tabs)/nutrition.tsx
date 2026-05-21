@@ -825,7 +825,7 @@ export default function NutritionScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start(() => setReorderHintVisible(false));
-    AsyncStorage.setItem(REORDER_HINT_STORAGE_KEY, "1").catch(() => {});
+    AsyncStorage.setItem(REORDER_HINT_STORAGE_KEY, String(Date.now())).catch(() => {});
   }
 
   function dismissHistoryFilterHint() {
@@ -849,8 +849,13 @@ export default function NutritionScreen() {
     reorderHintShownRef.current = true;
     AsyncStorage.getItem(REORDER_HINT_STORAGE_KEY).then((val) => {
       if (val) {
-        reorderHintDismissedRef.current = true;
-        return;
+        const dismissedAt = parseInt(val, 10);
+        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+        if (!isNaN(dismissedAt) && Date.now() - dismissedAt < thirtyDaysMs) {
+          reorderHintDismissedRef.current = true;
+          return;
+        }
+        reorderHintShownRef.current = false;
       }
       if (reorderHintDismissedRef.current) return;
       setReorderHintVisible(true);
