@@ -17,9 +17,13 @@ app.set("trust proxy", 1);
 app.post(
   "/api/billing/webhook",
   express.raw({ type: "application/json" }),
-  async (req, res) => {
-    const { handleBillingWebhook } = await import("./lib/billingWebhookHandler");
-    await handleBillingWebhook(req, res);
+  async (req, res, next) => {
+    try {
+      const { handleBillingWebhook } = await import("./lib/billingWebhookHandler");
+      await handleBillingWebhook(req, res);
+    } catch (err) {
+      next(err);
+    }
   }
 );
 app.post(

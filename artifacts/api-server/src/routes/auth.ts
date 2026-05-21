@@ -4,6 +4,7 @@ import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
+import { logger } from "../lib/logger";
 import {
   authSignupLoginRateLimit,
   authSendCodeRateLimit,
@@ -75,7 +76,7 @@ function createTransport() {
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const transport = createTransport();
   if (!transport) {
-    console.warn("[auth] SMTP not configured — email OTP:", subject, "to", to);
+    logger.warn({ subject, to }, "[auth] SMTP not configured — skipping email OTP");
     return;
   }
   const from = process.env["SMTP_FROM"] ?? process.env["SMTP_USER"] ?? "noreply@raimzeal.com";

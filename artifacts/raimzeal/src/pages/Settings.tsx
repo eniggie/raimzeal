@@ -777,7 +777,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
               Terms of Service
             </Link>
           </div>
-          <p>RAIMZEAL v1.2.0</p>
+          <p>© 2026 RAIMZEAL · ECONTEUR LLC</p>
           <p className="mt-1">
             Created and powered by{' '}
             <a

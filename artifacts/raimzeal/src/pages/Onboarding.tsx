@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'wouter';
 import { ChevronRight, ChevronLeft, Flame, Dumbbell, Wind, Sparkles, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
     age: '',
     height: '',
     weight: '',
+    units: 'imperial' as 'imperial' | 'metric',
     fitnessLevel: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
     goals: [] as string[],
     email: '',
@@ -233,25 +235,47 @@ export function Onboarding({ onLogin }: OnboardingProps) {
 
               {step === 2 && (
                 <div className="space-y-6">
+                  {/* Unit toggle */}
+                  <div className="flex items-center gap-1 p-1 bg-muted rounded-xl self-start w-fit mx-auto">
+                    {(['imperial', 'metric'] as const).map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, units: u, height: '', weight: '' })}
+                        className={cn(
+                          'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+                          formData.units === u
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {u === 'imperial' ? 'lbs / in' : 'kg / cm'}
+                      </button>
+                    ))}
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="height">Height (inches)</Label>
+                    <Label htmlFor="height">
+                      Height ({formData.units === 'metric' ? 'cm' : 'inches'})
+                    </Label>
                     <Input
                       id="height"
                       data-testid="input-height"
                       type="number"
-                      placeholder="e.g., 70"
+                      placeholder={formData.units === 'metric' ? 'e.g., 175' : 'e.g., 70'}
                       value={formData.height}
                       onChange={(e) => setFormData({ ...formData, height: e.target.value })}
                       className="h-12 text-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="weight">Weight (lbs)</Label>
+                    <Label htmlFor="weight">
+                      Weight ({formData.units === 'metric' ? 'kg' : 'lbs'})
+                    </Label>
                     <Input
                       id="weight"
                       data-testid="input-weight"
                       type="number"
-                      placeholder="e.g., 175"
+                      placeholder={formData.units === 'metric' ? 'e.g., 75' : 'e.g., 175'}
                       value={formData.weight}
                       onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                       className="h-12 text-lg"
@@ -364,9 +388,9 @@ export function Onboarding({ onLogin }: OnboardingProps) {
 
                   <p className="text-xs text-muted-foreground">
                     By creating an account you agree to our{' '}
-                    <a href="/terms" className="underline hover:text-foreground">Terms of Service</a>
+                    <Link href="/terms" className="underline hover:text-foreground">Terms of Service</Link>
                     {' '}and{' '}
-                    <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>.
+                    <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
                   </p>
                 </div>
               )}

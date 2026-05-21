@@ -25,6 +25,17 @@ const SUGGESTIONS = [
   "What are my next fitness goals?",
 ];
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/gs, "$1")
+    .replace(/\*(.+?)\*/gs, "$1")
+    .replace(/#{1,6}\s?/g, "")
+    .replace(/`(.+?)`/gs, "$1")
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+    .replace(/^\s*[-*+]\s/gm, "• ")
+    .trim();
+}
+
 function getApiBase(): string {
   if (Platform.OS === "web") return "/api";
   // EXPO_PUBLIC_DOMAIN is injected as $REPLIT_DEV_DOMAIN by the workflow
@@ -185,7 +196,7 @@ export default function OviaScreen() {
         addOviaMessage({
           role: "assistant",
           content:
-            fullContent ||
+            stripMarkdown(fullContent) ||
             `Welcome back, ${user?.name?.split(" ")[0] ?? "Champion"}! Here is your weekly Ovia AI check-in. Keep pushing — you are building something extraordinary.`,
         });
       } catch {
@@ -265,7 +276,7 @@ export default function OviaScreen() {
       }
       addOviaMessage({
         role: "assistant",
-        content: accumulated || "I could not generate a response. Please try again.",
+        content: stripMarkdown(accumulated) || "I could not generate a response. Please try again.",
       });
     } catch {
       addOviaMessage({

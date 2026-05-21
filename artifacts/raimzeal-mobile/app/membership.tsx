@@ -98,7 +98,11 @@ export default function MembershipScreen() {
           </Text>
           <TouchableOpacity
             style={styles.donateBtn}
-            onPress={() => Linking.openURL("https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00")}
+            onPress={() =>
+              Linking.openURL("https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00").catch(() => {
+                Linking.openURL("mailto:support@raimzeal.com?subject=Donation");
+              })
+            }
             activeOpacity={0.8}
           >
             <Ionicons name="heart" size={15} color="#fff" />
