@@ -547,10 +547,16 @@ export default function NutritionScreen() {
     if (willStar) {
       setHighlightedFavorite(food.name);
       highlightAnim.setValue(1);
+      pendingScrollFavoriteRef.current = food.name;
       if (starScrollTimerRef.current) clearTimeout(starScrollTimerRef.current);
       starScrollTimerRef.current = setTimeout(() => {
         starScrollTimerRef.current = null;
-        flatListRef.current?.scrollToOffset({ offset: favoritesYRef.current, animated: true });
+        const cardY = favoriteCardYsRef.current[food.name];
+        if (cardY != null) {
+          pendingScrollFavoriteRef.current = null;
+          flatListRef.current?.scrollToOffset({ offset: cardY, animated: true });
+        }
+        // else: card is new — onLayout will fire and handle the scroll
       }, 80);
       Animated.timing(highlightAnim, {
         toValue: 0,
@@ -795,6 +801,8 @@ export default function NutritionScreen() {
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const favoritesYRef = useRef<number>(0);
+  const favoriteCardYsRef = useRef<Record<string, number>>({});
+  const pendingScrollFavoriteRef = useRef<string | null>(null);
   const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
@@ -2371,6 +2379,14 @@ export default function NutritionScreen() {
                               styles.favHighlightWrapper,
                               { backgroundColor: highlightBg, borderRadius: 14 },
                             ]}
+                            onLayout={(e) => {
+                              const y = e.nativeEvent.layout.y;
+                              favoriteCardYsRef.current[food.name] = y;
+                              if (pendingScrollFavoriteRef.current === food.name) {
+                                pendingScrollFavoriteRef.current = null;
+                                flatListRef.current?.scrollToOffset({ offset: y, animated: true });
+                              }
+                            }}
                           >
                             <TouchableOpacity
                               activeOpacity={0.8}
