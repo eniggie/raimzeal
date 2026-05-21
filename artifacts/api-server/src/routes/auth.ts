@@ -89,8 +89,7 @@ async function sendSms(to: string, body: string): Promise<void> {
   const token = process.env["TWILIO_AUTH_TOKEN"];
   const from = process.env["TWILIO_FROM_NUMBER"];
   if (!sid || !token || !from) {
-    console.warn("[auth] Twilio not configured — SMS OTP would go to", to, ":", body);
-    return;
+    throw new Error("SMS is not available at this time. Please skip this step and verify later.");
   }
   const twilio = (await import("twilio")).default;
   const client = twilio(sid, token);
@@ -384,8 +383,10 @@ authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async
 
     try {
       await sendSms(phoneE164, `Your RAIMZEAL verification code: ${code}. Expires in 10 minutes.`);
-    } catch (err) {
+    } catch (err: any) {
       req.log?.warn({ err }, "Failed to send SMS OTP");
+      res.status(503).json({ error: err?.message ?? "SMS is not available at this time. Please skip this step and verify later." });
+      return;
     }
 
     res.json({ success: true });

@@ -160,19 +160,6 @@ function AppContent() {
     return <VerifyEmail email={user?.email} onSignOut={signOut} />;
   }
 
-  // Phone verification gate: shown when user has a phone on file but hasn't verified it
-  // (only applies to users created via the /signup OTP flow, who have phone_e164 in metadata)
-  const phoneE164 = user?.user_metadata?.phone_e164 as string | undefined;
-  const phoneVerified = user?.user_metadata?.phone_verified === true;
-  if (phoneE164 && !phoneVerified) {
-    const base = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
-    return (
-      <VerifyPhone
-        onVerified={() => { window.location.href = base || '/'; }}
-      />
-    );
-  }
-
   // Profile setup for users without fitness data:
   // - All OAuth users (Google/Apple)
   // - Email users created via /signup (quick form — no fitness data in metadata)

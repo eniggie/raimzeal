@@ -54,12 +54,12 @@ export default function VerifyPhone({ onVerified }: Props) {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Failed to send code.');
+        setError(data.error ?? 'Failed to send code. You can skip this step for now.');
       } else {
         setCooldown(60);
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError('Network error. You can skip this step for now.');
     } finally {
       setSending(false);
     }
@@ -199,6 +199,14 @@ export default function VerifyPhone({ onVerified }: Props) {
         <p className="text-xs text-muted-foreground">
           Phone verification helps secure your account. Standard SMS rates may apply.
         </p>
+
+        <button
+          type="button"
+          className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+          onClick={() => onVerified?.()}
+        >
+          Skip for now
+        </button>
       </motion.div>
     </div>
   );
