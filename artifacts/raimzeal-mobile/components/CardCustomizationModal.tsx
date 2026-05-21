@@ -199,6 +199,7 @@ interface SortablePresetItemProps {
   draggingIdx: SharedValue<number>;
   dragTranslateY: SharedValue<number>;
   hoveredIdx: SharedValue<number>;
+  reduceMotionShared: SharedValue<boolean>;
   isActive: boolean;
   onLoadPreset: (p: CardPreset) => void;
   onDeletePreset: (id: string) => void;
@@ -213,6 +214,7 @@ function SortablePresetItem({
   draggingIdx,
   dragTranslateY,
   hoveredIdx,
+  reduceMotionShared,
   isActive,
   onLoadPreset,
   onDeletePreset,
@@ -248,7 +250,9 @@ function SortablePresetItem({
     }
 
     return {
-      top: withSpring(targetSlot * PRESET_ITEM_H, { damping: 22, stiffness: 320 }),
+      top: reduceMotionShared.value
+        ? targetSlot * PRESET_ITEM_H
+        : withSpring(targetSlot * PRESET_ITEM_H, { damping: 22, stiffness: 320 }),
       zIndex: 1,
       elevation: 1,
       shadowOpacity: 0,
@@ -388,6 +392,12 @@ function SortablePresetList({
     setItems(presets);
   }, [presets]);
 
+  const reduceMotion = useReduceMotion();
+  const reduceMotionShared = useSharedValue(reduceMotion);
+  useEffect(() => {
+    reduceMotionShared.value = reduceMotion;
+  }, [reduceMotion]);
+
   const draggingIdx = useSharedValue(-1);
   const dragTranslateY = useSharedValue(0);
   const hoveredIdx = useSharedValue(-1);
@@ -422,6 +432,7 @@ function SortablePresetList({
             draggingIdx={draggingIdx}
             dragTranslateY={dragTranslateY}
             hoveredIdx={hoveredIdx}
+            reduceMotionShared={reduceMotionShared}
             isActive={preset.id === activePresetId}
             onLoadPreset={(p) => { onLoadPreset(p); onDone(); }}
             onDeletePreset={onDeletePreset}
