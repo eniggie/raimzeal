@@ -462,6 +462,10 @@ export async function insertOviaMessage(
 export interface UserPreferences {
   activeFilters?: string[];
   customPresets?: Array<{ id: string; name: string; filterKeys: string[] }>;
+  /** App-level settings synced to the cloud profile */
+  appSettings?: {
+    showRestoreBadge?: boolean;
+  };
 }
 
 export async function fetchUserPreferences(

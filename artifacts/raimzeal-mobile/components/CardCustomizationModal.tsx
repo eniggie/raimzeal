@@ -169,6 +169,14 @@ interface Props {
   onGenerate: (result: CardCustomizationResult) => Promise<void>;
   generating?: boolean;
   cardPreviewData: CardPreviewData;
+  /** Called when the user taps the ✕ on the restore badge inside the modal. */
+  onBadgeDismiss?: () => void;
+  /**
+   * Cloud-backed initial value of the badge-dismissed preference.
+   * When true, the badge is suppressed immediately (without waiting for
+   * AsyncStorage), ensuring cross-device consistency for authenticated users.
+   */
+  initialBadgeDismissed?: boolean;
 }
 
 
@@ -706,6 +714,8 @@ export default function CardCustomizationModal({
   onGenerate,
   generating,
   cardPreviewData,
+  onBadgeDismiss,
+  initialBadgeDismissed,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -1003,7 +1013,10 @@ export default function CardCustomizationModal({
         setDisplayedThemeId(effectiveTheme);
         setThumbnailSize(effectiveThumbSize);
         setRestoredFromStorage(hadSavedData);
-        setBadgeDismissed(dismissedFlag === "1");
+        // Badge is dismissed if AsyncStorage says so OR if the cloud-backed
+        // preference (initialBadgeDismissed) is true — the latter ensures a
+        // fresh device honours the user's cross-device setting immediately.
+        setBadgeDismissed(dismissedFlag === "1" || initialBadgeDismissed === true);
         const validActions: CardAction[] = ["share", "save", "both", "copy"];
         const resolvedAction = validActions.includes(savedAction as CardAction)
           ? (savedAction as CardAction)
@@ -1286,6 +1299,9 @@ export default function CardCustomizationModal({
       } catch {
         // ignore
       }
+      // Sync the preference to the cloud settings object so it persists
+      // across devices (authenticated users).
+      onBadgeDismiss?.();
     };
 
     if (reduceMotionRef.current) {

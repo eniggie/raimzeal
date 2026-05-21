@@ -29,6 +29,8 @@ import {
   insertMealLog,
   fetchOviaMessages,
   insertOviaMessage,
+  fetchUserPreferences,
+  upsertUserPreferences,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -118,6 +120,7 @@ export interface AppState {
     notifications: boolean;
     weightUnit: "lbs" | "kg";
     undoWindowSeconds: 3 | 5 | 10;
+    showRestoreBadge: boolean;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -270,6 +273,7 @@ const defaultState: AppState = {
     notifications: true,
     weightUnit: "kg",
     undoWindowSeconds: 3,
+    showRestoreBadge: true,
   },
   oviaMessages: INITIAL_OVIA_MESSAGES,
   favoriteFoods: [],
@@ -306,28 +310,43 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals, oviaRemote] = await Promise.all([
+        const [profile, workouts, meals, oviaRemote, prefs] = await Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
           fetchOviaMessages(userId),
+          fetchUserPreferences(userId),
         ]);
-        setState((prev) => ({
-          ...prev,
-          ...(profile
-            ? {
-                user: {
-                  ...(prev.user ?? DEMO_USER),
-                  ...profile,
-                  id: userId,
-                  email: session.user.email ?? prev.user?.email ?? "",
-                },
-              }
-            : {}),
-          workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
-          mealLogs: meals.length > 0 ? meals : prev.mealLogs,
-          oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
-        }));
+        setState((prev) => {
+          const remoteSettings = prefs?.appSettings;
+          return {
+            ...prev,
+            ...(profile
+              ? {
+                  user: {
+                    ...(prev.user ?? DEMO_USER),
+                    ...profile,
+                    id: userId,
+                    email: session.user.email ?? prev.user?.email ?? "",
+                  },
+                }
+              : {}),
+            workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
+            mealLogs: meals.length > 0 ? meals : prev.mealLogs,
+            oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
+            // Merge cloud-backed settings (remote wins over local for synced fields)
+            settings: {
+              ...prev.settings,
+              ...(remoteSettings != null
+                ? {
+                    ...(remoteSettings.showRestoreBadge != null
+                      ? { showRestoreBadge: remoteSettings.showRestoreBadge }
+                      : {}),
+                  }
+                : {}),
+            },
+          };
+        });
       } catch {
         // Non-fatal: keep local data if Supabase sync fails
       }
@@ -499,6 +518,27 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, settings: { ...prev.settings, ...updates } };
         persist(next);
+        // Push synced settings fields to Supabase so they persist across devices
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session?.user) return;
+            const appSettings: { showRestoreBadge?: boolean } = {};
+            if ("showRestoreBadge" in updates) {
+              appSettings.showRestoreBadge = updates.showRestoreBadge;
+            }
+            if (Object.keys(appSettings).length > 0) {
+              // Merge into existing preferences so other preference keys are preserved
+              fetchUserPreferences(session.user.id)
+                .then((existing) =>
+                  upsertUserPreferences(session.user.id, {
+                    ...existing,
+                    appSettings: { ...(existing?.appSettings ?? {}), ...appSettings },
+                  })
+                )
+                .catch(() => {});
+            }
+          });
+        }
         return next;
       });
     },

@@ -80,7 +80,6 @@ export default function ProfileScreen() {
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [cardBgPhotoUri, setCardBgPhotoUri] = useState<string | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
-  const [showRestoreBadge, setShowRestoreBadge] = useState(false);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
@@ -93,10 +92,9 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction, badgeDismissed] = await Promise.all([
+        const [savedTheme, savedAction] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
-          AsyncStorage.getItem(STORAGE_KEY_BADGE_DISMISSED),
         ]);
         if (!cancelled) {
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
@@ -105,7 +103,6 @@ export default function ProfileScreen() {
           if (savedAction && validActions.includes(savedAction as CardAction)) {
             setDefaultCardAction(savedAction as CardAction);
           }
-          setShowRestoreBadge(badgeDismissed !== "1");
         }
       } catch {
         // ignore read errors; defaults remain
@@ -114,6 +111,23 @@ export default function ProfileScreen() {
     loadSavedPreferences();
     return () => { cancelled = true; };
   }, []);
+
+  // Reconcile STORAGE_KEY_BADGE_DISMISSED with the cloud-backed setting.
+  // When Supabase hydration updates settings.showRestoreBadge (e.g. on a
+  // fresh device), write the authoritative value back to AsyncStorage so
+  // CardCustomizationModal's local load path stays consistent.
+  useEffect(() => {
+    const showBadge = settings.showRestoreBadge ?? true;
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        if (showBadge) {
+          AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED).catch(() => {});
+        } else {
+          AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1").catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [settings.showRestoreBadge]);
 
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
@@ -200,7 +214,9 @@ export default function ProfileScreen() {
   }
 
   async function handleToggleRestoreBadge(value: boolean) {
-    setShowRestoreBadge(value);
+    updateSettings({ showRestoreBadge: value });
+    // Keep STORAGE_KEY_BADGE_DISMISSED in sync so CardCustomizationModal reads
+    // the correct value from AsyncStorage (its local fallback).
     try {
       const AsyncStorage = (
         await import("@react-native-async-storage/async-storage")
@@ -399,6 +415,8 @@ export default function ProfileScreen() {
         onGenerate={handleGenerateCard}
         generating={shareLoading || saveLoading}
         cardPreviewData={cardProps}
+        onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
+        initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
       />
 
       {/* Theme color flash confirmation — appears above everything when generating */}
@@ -564,7 +582,7 @@ export default function ProfileScreen() {
               label="Show restore badge"
               sublabel="'Restored from last time' indicator"
               color={colors.primary}
-              value={showRestoreBadge}
+              value={settings.showRestoreBadge ?? true}
               onValueChange={handleToggleRestoreBadge}
               isLast
             />
