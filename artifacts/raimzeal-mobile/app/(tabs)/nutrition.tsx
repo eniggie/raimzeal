@@ -4494,9 +4494,21 @@ function HistoryMacroChip({
 }) {
   const colors = useColors();
   const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
+  const ratio = goal > 0 ? value / goal : 1;
+  const badge: "low" | "over" | null =
+    ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
+  const badgeColor = badge === "low" ? colors.warning : colors.accent;
+  const badgeLabel = badge === "low" ? "Low" : "Over";
   const inner = (
     <>
-      <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <View style={styles.historyMacroChipLabelRow}>
+        <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+        {badge !== null && (
+          <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
+            <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
+          </View>
+        )}
+      </View>
       <Text style={[styles.historyMacroChipValue, { color }]}>
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
       </Text>
@@ -5245,6 +5257,22 @@ const styles = StyleSheet.create({
   historyMacroChipBarFill: {
     height: 4,
     borderRadius: 2,
+  },
+  historyMacroChipLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  historyMacroBadge: {
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  historyMacroBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
   },
   historyMealSection: {
     gap: 0,
