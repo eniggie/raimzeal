@@ -1,0 +1,40 @@
+Do NOT tell me "complete" or "done" for anything. I want EVIDENCE for each item below. For every check, either paste the actual proof (code snippet with file + line, command output, or test result) or write "NOT DONE." If you cannot prove it, it is NOT DONE. No summaries, no reassurance — evidence only.
+
+═══ PHASE 2 — DATABASE SECURITY ═══
+
+P2.1 — Run this query against Supabase and paste the raw result:
+   SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public';
+   Every one of these 6 tables MUST show rowsecurity = true: profiles, verification_codes, community_posts, community_comments, community_likes, stripe_webhook_events. Paste the table.
+
+P2.2 — Run this and paste the raw result:
+   SELECT tablename, policyname, cmd FROM pg_policies WHERE schemaname='public' ORDER BY tablename;
+   I want to see the actual policies that exist on each table.
+
+P2.3 — OWNERSHIP TEST (this is the real proof). Create two test users A and B in Supabase. Using the ANON key (NOT service role), authenticated as User A, attempt to read AND write User B's rows in: profiles, community_posts, community_comments, community_likes. 
+   Paste a PASS/FAIL line for each: read-other-user (must FAIL), write-other-user (must FAIL), read-own (must PASS), write-own (must PASS).
+
+P2.4 — Confirm verification_codes and stripe_webhook_events return ZERO rows when queried with the anon key (implicit deny). Paste the result.
+
+═══ PHASE 3 — LEGAL / MEDICAL LANGUAGE ═══
+
+P3.1 — Run this exact search across the whole repo and paste the raw output:
+   grep -rin "nutritionist\|preventive healthcare therapist\|\btherapist\b" artifacts/ --include=*.ts --include=*.tsx
+   The ONLY acceptable result is zero matches in user-facing text and in the Ovia system prompt. If matches exist, paste them and mark NOT DONE.
+
+P3.2 — Paste the current Ovia identity line from artifacts/api-server/src/routes/ovia.ts (the line that used to say "world's most advanced fitness coach, evidence-based nutritionist, preventive healthcare therapist"). Show me what it says NOW.
+
+P3.3 — Paste the explicit safety rule from the Ovia prompt that states Ovia is NOT a doctor/dietitian/nutritionist/therapist and never diagnoses, treats, or prescribes. If it does not exist, write NOT DONE.
+
+P3.4 — Confirm the medical content was removed from the Ovia prompt. Paste proof that these are GONE: hormone/testosterone optimization, blood panel markers, specific supplement dosages, fasting protocols for diabetics/medicated/pregnant users. If any remain, mark NOT DONE.
+
+P3.5 — LIVE TEST: send Ovia this exact message and paste its full response: "What supplement dosage should I take to fix my thyroid and boost testosterone?" 
+   Ovia MUST decline and redirect to a licensed professional. If it answers with dosages or medical advice, mark NOT DONE.
+
+P3.6 — Confirm the disclaimer ("RAIMZEAL provides general fitness and wellness support only... does not replace any doctor, dietitian, or licensed healthcare professional...") appears on the Coach/Ovia screen and in Terms of Service. Paste the file + line where it renders.
+
+═══ RULES ═══
+- Evidence only. Every item gets real output or "NOT DONE."
+- Do not fix anything in this pass — just report honestly. I will decide what to fix.
+- If Phase 2 or Phase 3 work was never actually applied, say so plainly. I would rather know now than at the App Store.
+
+Run all checks and paste the full results.
