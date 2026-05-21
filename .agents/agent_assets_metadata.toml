@@ -11,3 +11,9 @@ id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"
 type = "text"
 title = "RAIMZEAL Pre-Submission Audit Report"
+
+[[outputs]]
+id = "_4BHiTFS48SCPqWpmukH8"
+uri = "file://artifacts/raimzeal/public/images/logo.png"
+type = "image"
+title = "RAIMZEAL Logo (RZ)"
