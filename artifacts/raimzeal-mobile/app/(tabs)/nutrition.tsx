@@ -760,6 +760,10 @@ export default function NutritionScreen() {
   const [undoCountdown, setUndoCountdown] = useState(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
 
+  const [restoredLabel, setRestoredLabel] = useState<string | null>(null);
+  const restoredAnim = useRef(new Animated.Value(0)).current;
+  const restoredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { toggleFavoriteWithToast, isFavorite, starToastElement } = useToggleFavorite({
     bottomOffset: undoMeal !== null ? insets.bottom + 72 : insets.bottom + 16,
   });
@@ -1036,11 +1040,37 @@ export default function NutritionScreen() {
     }
   }
 
+  function showRestoredToast(dateStr: string) {
+    if (restoredTimerRef.current) clearTimeout(restoredTimerRef.current);
+    const d = new Date(dateStr + "T12:00:00");
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 86400000);
+    let label: string;
+    if (d.toDateString() === today.toDateString()) {
+      label = "today";
+    } else if (d.toDateString() === yesterday.toDateString()) {
+      label = "yesterday";
+    } else {
+      label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+    setRestoredLabel(label);
+    restoredAnim.setValue(0);
+    Animated.spring(restoredAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    restoredTimerRef.current = setTimeout(() => {
+      Animated.timing(restoredAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setRestoredLabel(null);
+      });
+      restoredTimerRef.current = null;
+    }, 2500);
+  }
+
   function handleUndoDelete() {
     if (!undoMeal) return;
+    const dateStr = undoMeal.date;
     dismissUndoToast();
     addMealLog(undoMeal);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showRestoredToast(dateStr);
   }
 
   function handleMealDelete(meal: MealLog) {
@@ -3878,6 +3908,32 @@ export default function NutritionScreen() {
           >
             <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
           </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {restoredLabel !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: restoredAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: restoredAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Text style={[styles.undoToastText, { color: colors.foreground }]}>
+            Restored to {restoredLabel}
+          </Text>
         </Animated.View>
       )}
 
