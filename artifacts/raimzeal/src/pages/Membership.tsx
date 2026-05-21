@@ -91,18 +91,16 @@ export function Membership() {
             <p className="text-xs text-foreground/60 mt-0.5">Any amount helps keep RAIMZEAL free for everyone.</p>
           </div>
           {DONATION_ACTIVE ? (
-            <motion.a
+            <a
               href={STRIPE_DONATION_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
-              animate={{ scale: [1, 1.05, 1, 1.05, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80"
               aria-label="Make a donation"
             >
               <Heart className="w-4 h-4 fill-current" />
               Donate
-            </motion.a>
+            </a>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
           )}
