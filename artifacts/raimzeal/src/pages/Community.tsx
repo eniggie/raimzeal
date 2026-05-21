@@ -87,16 +87,31 @@ export function Community() {
     setNewPost('');
     setPosting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
       const displayName = (user.user_metadata?.name as string | undefined)?.split(' ')[0]
         || user.email?.split('@')[0]
         || 'Member';
-      const { data, error } = await supabase
-        .from('community_posts')
-        .insert({ content, post_type: 'post', user_id: user.id, user_name: displayName })
-        .select('id, user_name, content, post_type, likes_count, comments_count, created_at')
-        .single();
-      if (!error && data) {
-        setPosts(prev => [{ ...data, _localLiked: false, _localLikes: 0 }, ...prev]);
+      const res = await fetch('/api/community/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userName: displayName, content, postType: 'post' }),
+      });
+      if (res.ok) {
+        const json = await res.json() as { post: Record<string, unknown> };
+        const d = json.post;
+        setPosts(prev => [{
+          id: d.id as string,
+          user_name: d.user_name as string,
+          content: d.content as string,
+          post_type: d.post_type as string,
+          likes_count: 0,
+          comments_count: 0,
+          created_at: d.created_at as string,
+          _localLiked: false,
+          _localLikes: 0,
+        }, ...prev]);
       }
     } catch { }
     setPosting(false);
