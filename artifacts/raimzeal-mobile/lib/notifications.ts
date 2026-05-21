@@ -200,7 +200,7 @@ const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
     id: "ovia_dinner",
     title: "🥩 Evening Meal — Lean and Timed Right",
     body:
-      "Dinner time. Insulin sensitivity drops significantly in the evening, so minimise simple carbohydrates and starchy foods. Prioritise lean protein — chicken, fish, turkey, eggs, or legumes — with non-starchy vegetables and a small amount of healthy fat. Eat at least 2 to 3 hours before sleep so digestion completes before bed, growth hormone is released efficiently, and overnight fat burning is maximised." +
+      "Dinner time. Insulin sensitivity drops significantly in the evening, so minimise simple carbohydrates and starchy foods. Prioritise lean protein — chicken, fish, turkey, eggs, or legumes — with non-starchy vegetables and a small amount of healthy fat. Eating a few hours before sleep helps your body rest and recover overnight." +
       DISCLAIMER,
     hour: 19,
     minute: 0,
@@ -218,7 +218,7 @@ const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
     id: "ovia_sleep",
     title: "😴 Recovery Time — This is Non-Negotiable",
     body:
-      "Sleep is where the real work happens. During deep sleep your body releases 70% of its daily growth hormone, repairs muscle fibres torn during training, consolidates memory, detoxifies the brain through the glymphatic system, and resets every hormone in your body. Aim for 7 to 9 hours. Dim your lights now. Lower your room temperature to 18 to 20 degrees. Put the phone down. Your performance, your body composition, and your mental health tomorrow are all built tonight." +
+      "Sleep is where the real work happens. During deep sleep your body recovers and repairs muscle worked during training, consolidates memory, and detoxifies the brain. Aim for 7 to 9 hours. Dim your lights now. Lower your room temperature to 18 to 20 degrees. Put the phone down. Your performance, your body composition, and your mental health tomorrow are all built tonight." +
       DISCLAIMER,
     hour: 22,
     minute: 0,

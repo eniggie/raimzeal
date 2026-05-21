@@ -74,7 +74,7 @@ const MOTIVATION_MESSAGES = [
 
 const FITNESS_TIPS = [
   { tip: "Eating 1.6–2.2g of protein per kg of bodyweight daily optimises muscle protein synthesis.", link: "https://pubmed.ncbi.nlm.nih.gov/28642676/" },
-  { tip: "Aim for 7–9 hours of sleep — poor sleep increases hunger hormones by up to 24%.", link: "https://www.healthline.com/nutrition/sleep-and-weight-loss" },
+  { tip: "Aim for 7–9 hours of sleep — poor sleep can increase appetite and cravings the following day.", link: "https://www.healthline.com/nutrition/sleep-and-weight-loss" },
   { tip: "Drinking 500ml of water before meals reduces calorie intake by approximately 13%.", link: "https://www.healthline.com/nutrition/drinking-water-helps-with-weight-loss" },
   { tip: "Progressive overload — adding 2.5–5kg to your lifts each week — is the #1 driver of muscle growth.", link: "https://www.healthline.com/health/progressive-overload" },
   { tip: "Zone 2 cardio (conversational pace) 3× per week powerfully builds your aerobic base and fat metabolism.", link: "https://www.healthline.com/health/fitness/zone-2-cardio" },
