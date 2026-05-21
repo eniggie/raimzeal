@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, memo } from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 
 export const CARD_WIDTH = 360;
@@ -326,7 +326,7 @@ function getStyles(scale: number) {
   return styleCache.get(key)!;
 }
 
-const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
+const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
   (
     {
       userName,
@@ -536,5 +536,31 @@ const ShareProgressCard = forwardRef<View, ShareProgressCardProps>(
   }
 );
 
-ShareProgressCard.displayName = "ShareProgressCard";
+ShareProgressCardBase.displayName = "ShareProgressCard";
+
+function shareProgressCardPropsAreEqual(
+  prev: ShareProgressCardProps,
+  next: ShareProgressCardProps
+): boolean {
+  const keys = Object.keys(next) as (keyof ShareProgressCardProps)[];
+  for (const k of keys) {
+    if (k === "visibleStats" || k === "topPR") {
+      const a = prev[k] as Record<string, unknown> | null | undefined;
+      const b = next[k] as Record<string, unknown> | null | undefined;
+      if (a === b) continue;
+      if (!a || !b) return false;
+      const aKeys = Object.keys(a);
+      const bKeys = Object.keys(b);
+      if (aKeys.length !== bKeys.length) return false;
+      for (const sk of aKeys) {
+        if (a[sk] !== b[sk]) return false;
+      }
+    } else if (prev[k] !== next[k]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const ShareProgressCard = memo(ShareProgressCardBase, shareProgressCardPropsAreEqual);
 export default ShareProgressCard;

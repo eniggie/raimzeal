@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import {
   Animated,
   AppState,
@@ -631,7 +631,7 @@ interface ThemeSwatchItemProps {
   onSelect: (themeId: CardThemeId) => void;
 }
 
-function ThemeSwatchItem({
+const ThemeSwatchItem = memo(function ThemeSwatchItem({
   theme,
   isSelected,
   visibleStats,
@@ -719,7 +719,86 @@ function ThemeSwatchItem({
       </Reanimated.View>
     </TouchableOpacity>
   );
+});
+
+interface PresetChipItemProps {
+  preset: CardPreset;
+  isActive: boolean;
+  cardPreviewData: CardPreviewData;
+  colors: ReturnType<typeof useColors>;
+  onPress: (preset: CardPreset) => void;
+  onLongPress: () => void;
+  onDelete: (id: string) => void;
 }
+
+const PresetChipItem = memo(function PresetChipItem({
+  preset,
+  isActive,
+  cardPreviewData,
+  colors,
+  onPress,
+  onLongPress,
+  onDelete,
+}: PresetChipItemProps) {
+  const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
+  return (
+    <TouchableOpacity
+      onPress={() => onPress(preset)}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+      activeOpacity={0.75}
+      style={styles.presetChip}
+    >
+      <View
+        style={[
+          styles.presetThumbnailFrame,
+          {
+            borderColor: isActive ? colors.primary : colors.border,
+            borderWidth: isActive ? 2 : 1.5,
+          },
+        ]}
+      >
+        <View pointerEvents="none">
+          <ShareProgressCard
+            {...cardPreviewData}
+            visibleStats={preset.visibleStats}
+            customMessage={preset.customMessage}
+            themeId={preset.themeId}
+            renderScale={PRESET_THUMB_SCALE}
+          />
+        </View>
+        {isActive && (
+          <View style={[styles.presetThumbnailCheck, { backgroundColor: theme.accent }]}>
+            <Ionicons name="checkmark" size={8} color="#fff" />
+          </View>
+        )}
+        <TouchableOpacity
+          onPress={() => onDelete(preset.id)}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={styles.presetThumbnailDelete}
+        >
+          <Ionicons
+            name="close-circle"
+            size={16}
+            color={isActive ? colors.primary : colors.mutedForeground}
+          />
+        </TouchableOpacity>
+      </View>
+      <Text
+        style={[
+          styles.presetChipText,
+          {
+            color: isActive ? colors.primary : colors.foreground,
+            fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+          },
+        ]}
+        numberOfLines={1}
+      >
+        {preset.name}
+      </Text>
+    </TouchableOpacity>
+  );
+});
 
 export default function CardCustomizationModal({
   visible,
@@ -1720,6 +1799,10 @@ export default function CardCustomizationModal({
     showUndoToast(preset, index);
   }
 
+  function onPresetLongPress() {
+    setReorderMode(true);
+  }
+
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
 
@@ -1895,6 +1978,31 @@ export default function CardCustomizationModal({
     }
   }
 
+  // Stable callback wrappers via refs — give memoized child components stable function
+  // references while always invoking the latest closure, eliminating stale-closure hazards.
+  const handleDeletePresetRef = useRef(handleDeletePreset);
+  handleDeletePresetRef.current = handleDeletePreset;
+  const stableHandleDeletePreset = useCallback(
+    (id: string) => handleDeletePresetRef.current(id),
+    []
+  );
+
+  const openPresetPreviewRef = useRef(openPresetPreview);
+  openPresetPreviewRef.current = openPresetPreview;
+  const stableOpenPresetPreview = useCallback(
+    (preset: CardPreset) => openPresetPreviewRef.current(preset),
+    []
+  );
+
+  const stableOnPresetLongPress = useCallback(() => setReorderMode(true), []);
+
+  const handleThemeChangeRef = useRef(handleThemeChange);
+  handleThemeChangeRef.current = handleThemeChange;
+  const stableHandleThemeChange = useCallback(
+    (themeId: CardThemeId) => handleThemeChangeRef.current(themeId),
+    []
+  );
+
   const screenWidth = Dimensions.get("window").width;
   const previewContainerWidth = screenWidth - 40;
   const cardScale = previewContainerWidth / CARD_WIDTH;
@@ -2054,68 +2162,18 @@ export default function CardCustomizationModal({
                   }}
                   scrollEventThrottle={16}
                 >
-                  {presets.map((preset) => {
-                    const isActive = preset.id === activePresetId;
-                    const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
-                    return (
-                      <TouchableOpacity
-                        key={preset.id}
-                        onPress={() => openPresetPreview(preset)}
-                        onLongPress={() => setReorderMode(true)}
-                        delayLongPress={350}
-                        activeOpacity={0.75}
-                        style={styles.presetChip}
-                      >
-                        <View
-                          style={[
-                            styles.presetThumbnailFrame,
-                            {
-                              borderColor: isActive ? colors.primary : colors.border,
-                              borderWidth: isActive ? 2 : 1.5,
-                            },
-                          ]}
-                        >
-                          <View pointerEvents="none">
-                            <ShareProgressCard
-                              {...cardPreviewData}
-                              visibleStats={preset.visibleStats}
-                              customMessage={preset.customMessage}
-                              themeId={preset.themeId}
-                              renderScale={PRESET_THUMB_SCALE}
-                            />
-                          </View>
-                          {isActive && (
-                            <View style={[styles.presetThumbnailCheck, { backgroundColor: theme.accent }]}>
-                              <Ionicons name="checkmark" size={8} color="#fff" />
-                            </View>
-                          )}
-                          <TouchableOpacity
-                            onPress={() => handleDeletePreset(preset.id)}
-                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                            style={styles.presetThumbnailDelete}
-                          >
-                            <Ionicons
-                              name="close-circle"
-                              size={16}
-                              color={isActive ? colors.primary : colors.mutedForeground}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                        <Text
-                          style={[
-                            styles.presetChipText,
-                            {
-                              color: isActive ? colors.primary : colors.foreground,
-                              fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
-                            },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {preset.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {presets.map((preset) => (
+                    <PresetChipItem
+                      key={preset.id}
+                      preset={preset}
+                      isActive={preset.id === activePresetId}
+                      cardPreviewData={cardPreviewData}
+                      colors={colors}
+                      onPress={stableOpenPresetPreview}
+                      onLongPress={stableOnPresetLongPress}
+                      onDelete={stableHandleDeletePreset}
+                    />
+                  ))}
                   {presets.length < MAX_PRESETS && (
                     <Text style={[styles.presetsSlotHint, { color: colors.mutedForeground }]}>
                       {MAX_PRESETS - presets.length} slot{MAX_PRESETS - presets.length !== 1 ? "s" : ""} left
@@ -2348,7 +2406,7 @@ export default function CardCustomizationModal({
                     cardPreviewData={cardPreviewData}
                     estimatedHeight={estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0, thumbnailSize)}
                     colors={colors}
-                    onSelect={handleThemeChange}
+                    onSelect={stableHandleThemeChange}
                   />
                 ))}
               </ScrollView>
