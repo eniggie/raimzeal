@@ -149,7 +149,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             transition={{ delay: 0.1 }}
           >
             <Link href={`/workout/${scheduledWorkout.id}`}>
-              <Card className="overflow-hidden cursor-pointer group" data-testid="card-today-workout">
+              <Card className="overflow-hidden cursor-pointer group glass-card" data-testid="card-today-workout">
                 <div className="relative h-32 bg-gradient-to-br from-primary/30 via-secondary/20 to-accent/10">
                   <div className="absolute inset-0 bg-[url('data:image/svg+xml,...')] opacity-10" />
                   <div className="absolute inset-0 p-4 flex flex-col justify-between">
@@ -183,7 +183,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           transition={{ delay: 0.2 }}
           className="grid grid-cols-3 gap-3"
         >
-          <Card className="p-4 text-center" data-testid="card-calories">
+          <Card className="p-4 text-center glass-card" data-testid="card-calories">
             <StatRing value={todayCalories} max={caloriesGoal} size={64} strokeWidth={5}>
               <Flame className="w-5 h-5 text-primary" />
             </StatRing>
@@ -193,7 +193,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </div>
           </Card>
 
-          <Card className="p-4 text-center" data-testid="card-protein">
+          <Card className="p-4 text-center glass-card" data-testid="card-protein">
             <StatRing value={todayProtein} max={proteinGoal} size={64} strokeWidth={5} color="hsl(var(--secondary))">
               <Trophy className="w-5 h-5 text-secondary" />
             </StatRing>
@@ -203,7 +203,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </div>
           </Card>
 
-          <Card className="p-4 text-center" data-testid="card-water">
+          <Card className="p-4 text-center glass-card" data-testid="card-water">
             <StatRing value={todayWater} max={waterGoal} size={64} strokeWidth={5} color="hsl(186 100% 42%)">
               <Droplets className="w-5 h-5 text-secondary" />
             </StatRing>
@@ -242,7 +242,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             {quickActions.map((action, i) => (
               <Link key={action.label} href={action.href}>
                 <motion.div
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors cursor-pointer"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card border border-border hover:border-primary/30 cursor-pointer glass-hover"
                   whileTap={{ scale: 0.95 }}
                   data-testid={`action-${action.label.toLowerCase().replace(' ', '-')}`}
                 >
@@ -273,7 +273,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </div>
             <div className="space-y-2">
               {state.workoutLogs.slice(0, 3).map((log, i) => (
-                <Card key={log.id} className="p-3" data-testid={`card-activity-${i}`}>
+                <Card key={log.id} className="p-3 glass-hover" data-testid={`card-activity-${i}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Dumbbell className="w-5 h-5 text-primary" />
@@ -303,7 +303,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             <h2 className="text-lg font-semibold font-display mb-3">Personal Records</h2>
             <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
               {state.personalRecords.map((pr, i) => (
-                <Card key={i} className="p-3 min-w-[140px] shrink-0" data-testid={`card-pr-${i}`}>
+                <Card key={i} className="p-3 min-w-[140px] shrink-0 glass-hover" data-testid={`card-pr-${i}`}>
                   <Trophy className="w-5 h-5 text-warning mb-2" />
                   <div className="font-bold">{pr.weight} lbs</div>
                   <div className="text-sm text-muted-foreground">{pr.exercise}</div>

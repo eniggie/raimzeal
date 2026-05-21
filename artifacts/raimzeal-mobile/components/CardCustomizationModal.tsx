@@ -804,6 +804,7 @@ export default function CardCustomizationModal({
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const [confirmIcon, setConfirmIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const [confirmRetryFn, setConfirmRetryFn] = useState<(() => void) | null>(null);
+  const [confirmActionLabel, setConfirmActionLabel] = useState<string>("Retry");
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
   // Undo-delete toast
@@ -818,14 +819,15 @@ export default function CardCustomizationModal({
     setConfirmRetryFn(null);
   }
 
-  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap, retryFn?: () => void) {
+  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap, retryFn?: () => void, actionLabel = "Retry") {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
     setConfirmRetryFn(retryFn ? () => retryFn : null);
+    setConfirmActionLabel(actionLabel);
     confirmOpacity.setValue(0);
-    const holdDuration = variant === "error" ? 2200 : 1600;
+    const holdDuration = retryFn ? 4500 : variant === "error" ? 2200 : 1600;
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       setTimeout(() => {
@@ -1199,10 +1201,12 @@ export default function CardCustomizationModal({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Photo access needed",
-          "Allow photo access in Settings to set a background photo.",
-          [{ text: "OK" }]
+        showConfirmation(
+          "Photo access blocked — tap to open Settings",
+          "error",
+          "lock-closed-outline",
+          () => Linking.openSettings(),
+          "Settings"
         );
         return;
       }
@@ -2270,7 +2274,7 @@ export default function CardCustomizationModal({
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={styles.confirmRetryBtn}
                   >
-                    <Text style={styles.confirmRetryText}>Retry</Text>
+                    <Text style={styles.confirmRetryText}>{confirmActionLabel}</Text>
                   </TouchableOpacity>
                 )}
               </View>

@@ -185,7 +185,7 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
                 {filteredFoods.map((food, i) => (
                   <Card
                     key={i}
-                    className="p-3 cursor-pointer hover:border-primary/30 transition-colors"
+                    className="p-3 cursor-pointer hover:border-primary/30 glass-hover"
                     onClick={() => handleAddFood(food)}
                     data-testid={`food-${i}`}
                   >

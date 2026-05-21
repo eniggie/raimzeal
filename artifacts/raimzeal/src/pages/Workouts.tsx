@@ -103,7 +103,7 @@ export function Workouts() {
         </motion.div>
 
         <Link href="/exercises">
-          <Card className="p-4 cursor-pointer hover:border-primary/30 transition-colors" data-testid="card-exercise-library">
+          <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-exercise-library">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
                 <Search className="w-6 h-6 text-secondary" />
@@ -126,7 +126,7 @@ export function Workouts() {
             >
               <Link href={`/workout/${workout.id}`}>
                 <Card 
-                  className="overflow-hidden cursor-pointer group hover:border-primary/30 transition-colors"
+                  className="overflow-hidden cursor-pointer group hover:border-primary/30 glass-card"
                   data-testid={`card-workout-${workout.id}`}
                 >
                   <div className="relative h-24 bg-gradient-to-br from-primary/20 via-secondary/10 to-transparent">

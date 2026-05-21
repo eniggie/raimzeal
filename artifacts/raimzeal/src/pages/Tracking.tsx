@@ -269,7 +269,7 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="p-4 cursor-pointer hover:border-primary/30 transition-colors" data-testid="card-photos">
+          <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-photos">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
                 <Camera className="w-6 h-6 text-accent" />
@@ -282,7 +282,7 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
             </div>
           </Card>
 
-          <Card className="p-4 mt-3 cursor-pointer hover:border-primary/30 transition-colors" data-testid="card-measurements">
+          <Card className="p-4 mt-3 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-measurements">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
                 <Ruler className="w-6 h-6 text-secondary" />

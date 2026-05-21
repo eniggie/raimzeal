@@ -4,6 +4,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -102,8 +103,12 @@ export default function ProgressPhotosScreen() {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission Required",
-          "RAIMZEAL needs access to your photo library to add progress photos."
+          "Photo Access Blocked",
+          "RAIMZEAL needs access to your photo library to add progress photos. Please enable it in Settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
         );
         return;
       }
@@ -128,7 +133,14 @@ export default function ProgressPhotosScreen() {
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "RAIMZEAL needs camera access to take progress photos.");
+      Alert.alert(
+        "Camera Access Blocked",
+        "RAIMZEAL needs camera access to take progress photos. Please enable it in Settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => Linking.openSettings() },
+        ]
+      );
       return;
     }
 
