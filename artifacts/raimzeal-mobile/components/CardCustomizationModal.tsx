@@ -989,6 +989,8 @@ export default function CardCustomizationModal({
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
+  const defaultActionPulseAnim = useRef(new Animated.Value(1)).current;
+  const hasPulsedDefaultRef = useRef(false);
   const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const [longPressAndRun, setLongPressAndRun] = useState(true);
@@ -1224,6 +1226,9 @@ export default function CardCustomizationModal({
 
   useEffect(() => {
     if (!visible) {
+      // Reset pulse so next open can animate again
+      hasPulsedDefaultRef.current = false;
+      defaultActionPulseAnim.setValue(1);
       // Clean up any pending auto-trigger when the modal closes
       if (autoTriggerIntervalRef.current !== null) {
         clearInterval(autoTriggerIntervalRef.current);
@@ -1371,6 +1376,19 @@ export default function CardCustomizationModal({
     loadSaved();
     return () => { cancelled = true; };
   }, [visible]);
+
+  // Pulse the default action button once when the modal opens with a saved default.
+  useEffect(() => {
+    if (!visible || defaultAction === null) return;
+    if (hasPulsedDefaultRef.current) return;
+    hasPulsedDefaultRef.current = true;
+    if (reduceMotionRef.current) return;
+    defaultActionPulseAnim.setValue(1);
+    Animated.sequence([
+      Animated.timing(defaultActionPulseAnim, { toValue: 1.06, duration: 150, useNativeDriver: true }),
+      Animated.timing(defaultActionPulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  }, [defaultAction, visible]);
 
   // Persist the dim level to AsyncStorage (debounced) whenever the user moves the slider.
   useEffect(() => {
@@ -2914,9 +2932,16 @@ export default function CardCustomizationModal({
                   const isSelected = anyStatEnabled && selectedAction === action && !isPhotoBlocked;
                   const isAutoTarget = autoTriggerAction === action && autoTriggerCountdown !== null;
                   const isEnabled = anyStatEnabled && !isPhotoBlocked;
+                  const isDefault = defaultAction === action && !isPhotoBlocked;
                   return (
-                    <TouchableOpacity
+                    <Animated.View
                       key={action}
+                      style={[
+                        { flex: 1 },
+                        isDefault && { transform: [{ scale: defaultActionPulseAnim }] },
+                      ]}
+                    >
+                    <TouchableOpacity
                       onPress={() => {
                         if (!anyStatEnabled) {
                           showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
@@ -2986,6 +3011,7 @@ export default function CardCustomizationModal({
                         )}
                       </View>
                     </TouchableOpacity>
+                    </Animated.View>
                   );
                 })}
               </View>
