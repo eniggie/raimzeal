@@ -360,7 +360,10 @@ function SortablePresetItem({
           {preset.name}
         </Text>
         <TouchableOpacity
-          onPress={() => onLoadPreset(preset)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            onLoadPreset(preset);
+          }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ marginRight: 10 }}
         >
@@ -1942,6 +1945,7 @@ export default function CardCustomizationModal({
     }
 
     await savePresets(updatedPresets);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
     setSavingPreset(false);
     setShowInlineSave(false);
