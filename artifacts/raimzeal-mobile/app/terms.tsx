@@ -23,6 +23,16 @@ export default function TermsScreen() {
 
   const sections: Section[] = [
     {
+      heading: "About RAIMZEAL — Our Mission",
+      icon: "leaf-outline",
+      color: "#2E8B57",
+      paragraphs: [
+        "RAIMZEAL is a free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.",
+        "Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. RAIMZEAL is NOT here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility. We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.",
+        "We are sustained entirely by voluntary donations. No donation is ever required to access any feature.",
+      ],
+    },
+    {
       heading: "1. Acceptance of Terms",
       icon: "checkmark-circle-outline",
       color: "#2E8B57",
@@ -53,10 +63,12 @@ export default function TermsScreen() {
       icon: "medical-outline",
       color: "#ef4444",
       paragraphs: [
-        "RAIMZEAL IS NOT A MEDICAL DEVICE, MEDICAL SERVICE, OR SUBSTITUTE FOR PROFESSIONAL MEDICAL ADVICE, DIAGNOSIS, OR TREATMENT OF ANY KIND.",
-        "The content, AI coaching, workout plans, nutrition guides, and all other information within RAIMZEAL is provided for general educational and motivational purposes only. It is not intended to be used as a basis for any clinical or medical decision.",
-        "ALWAYS consult a qualified physician, registered dietitian, or licensed healthcare professional before starting any new exercise programme, dietary protocol, or supplementation regimen — especially if you have any pre-existing condition, take prescription medication, are pregnant, or have a history of eating disorders, cardiovascular disease, diabetes, or joint problems.",
-        "DO NOT delay or disregard professional medical advice because of anything you read or receive within this application.",
+        "RAIMZEAL IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE, DIAGNOSIS, OR TREATMENT OF ANY KIND.",
+        "All content, AI coaching (Ovia AI), workout plans, nutrition guides, food therapy information, and all other health-related material within RAIMZEAL is provided for general educational and informational purposes only. It is not intended to be, and must not be used as, a substitute for professional medical advice, clinical diagnosis, or medical treatment.",
+        "RAIMZEAL does not replace your doctor, physician, registered dietitian, licensed nutritionist, therapist, pharmacist, or any other licensed healthcare professional or healthcare facility. RAIMZEAL is here to complement and support qualified healthcare providers — not to take their place.",
+        "ALWAYS consult a qualified physician or licensed healthcare professional before starting any new exercise programme, dietary protocol, or supplementation regimen — especially if you have any pre-existing condition, take prescription medication, are pregnant, or have a history of eating disorders, cardiovascular disease, diabetes, or joint problems.",
+        "DO NOT delay or disregard professional medical advice because of anything you read, see, or receive within this application.",
+        "YOU ARE FULLY AND SOLELY RESPONSIBLE for every action, decision, and outcome that results from your use of this application or any information obtained from it. RAIMZEAL and ECONTEUR LLC accept no liability for any injury, illness, harm, loss, or adverse outcome arising from your use of or reliance on this platform.",
       ],
     },
     {
@@ -94,10 +106,10 @@ export default function TermsScreen() {
       icon: "alert-circle-outline",
       color: "#ef4444",
       paragraphs: [
-        "TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, RAIMZEAL AND ITS AFFILIATES, OFFICERS, EMPLOYEES, AGENTS, PARTNERS, AND LICENSORS SHALL NOT BE LIABLE FOR ANY CLAIM, LOSS, OR DAMAGE OF ANY KIND — INCLUDING BUT NOT LIMITED TO PERSONAL INJURY, BODILY HARM, DEATH, PROPERTY DAMAGE, LOSS OF DATA, LOSS OF REVENUE, ECONOMIC LOSS, OR EMOTIONAL DISTRESS — ARISING DIRECTLY OR INDIRECTLY FROM YOUR USE OF OR INABILITY TO USE THE RAIMZEAL PLATFORM.",
+        "TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, RAIMZEAL AND ECONTEUR LLC AND THEIR AFFILIATES, OFFICERS, EMPLOYEES, AGENTS, PARTNERS, AND LICENSORS SHALL NOT BE LIABLE FOR ANY CLAIM, LOSS, OR DAMAGE OF ANY KIND — INCLUDING BUT NOT LIMITED TO PERSONAL INJURY, BODILY HARM, DEATH, PROPERTY DAMAGE, LOSS OF DATA, LOSS OF REVENUE, ECONOMIC LOSS, OR EMOTIONAL DISTRESS — ARISING DIRECTLY OR INDIRECTLY FROM YOUR USE OF OR INABILITY TO USE THE RAIMZEAL PLATFORM.",
         "THIS LIMITATION APPLIES REGARDLESS OF THE LEGAL THEORY UNDER WHICH THE CLAIM IS BROUGHT (CONTRACT, TORT, NEGLIGENCE, STATUTE, OR OTHERWISE), EVEN IF RAIMZEAL HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.",
-        "Where applicable law does not allow the complete exclusion of liability, RAIMZEAL's total cumulative liability shall not exceed the total fees paid by you to RAIMZEAL in the 12 months preceding the claim, or £50 (GBP), whichever is greater.",
-        "By using this application you waive, to the fullest extent permitted by law, any and all claims against RAIMZEAL arising from your personal health, fitness, or lifestyle choices.",
+        "BY USING THIS APPLICATION YOU EXPRESSLY ACKNOWLEDGE THAT YOU ARE FULLY AND SOLELY RESPONSIBLE FOR ANY ACTION OR DECISION YOU MAKE BASED ON INFORMATION FROM RAIMZEAL, AND YOU WAIVE ANY AND ALL CLAIMS AGAINST RAIMZEAL OR ECONTEUR LLC ARISING FROM SUCH ACTIONS OR DECISIONS, TO THE FULLEST EXTENT PERMITTED BY LAW.",
+        "Where applicable law does not allow the complete exclusion of liability, RAIMZEAL's total cumulative liability shall not exceed USD $50 or the total amount you have voluntarily donated to RAIMZEAL in the 12 months preceding the claim, whichever is greater.",
       ],
     },
     {

@@ -13,22 +13,33 @@ export function TermsOfService() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold font-display">Terms of Service</h1>
-            <p className="text-sm text-muted-foreground">Last updated: May 19, 2026</p>
+            <h1 className="text-2xl font-bold font-display">Terms, Conditions &amp; Disclaimer</h1>
+            <p className="text-sm text-muted-foreground">Last updated: May 2026 · Please read in full before using RAIMZEAL</p>
           </div>
         </div>
 
         <div className="prose prose-invert prose-sm max-w-none space-y-8 text-sm text-muted-foreground leading-relaxed">
 
+          {/* Critical banner */}
           <section>
-            <p className="text-foreground font-medium p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-              ⚠️ IMPORTANT: By using RAIMZEAL you confirm you are at least 18 years of age and agree to these Terms of Service. If you do not agree, do not use the Service.
+            <p className="text-foreground font-medium p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+              ⚠️ <strong>IMPORTANT:</strong> By using RAIMZEAL you confirm you are at least 18 years of age, that you have read and fully understood these Terms, and that you agree to be bound by them. You accept full personal responsibility for all health, fitness, and lifestyle decisions you make using this application.
             </p>
+          </section>
+
+          {/* Mission statement */}
+          <section>
+            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
+              <p className="text-foreground font-semibold">🌱 About RAIMZEAL</p>
+              <p>RAIMZEAL is a <strong className="text-foreground">free, non-profit fitness, food therapy, and healthcare awareness platform</strong> operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.</p>
+              <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
+              <p>We are sustained entirely by voluntary donations from our community. No donation is ever required to access any feature.</p>
+            </div>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">1. Acceptance of Terms</h2>
-            <p>These Terms of Service ("Terms") govern your use of the RAIMZEAL fitness application and website at raimzeal.com (the "Service"), operated by RAIMZEAL ("we", "us", or "our"). By creating an account, downloading the app, or accessing any part of the Service, you agree to be bound by these Terms and our Privacy Policy. If you are accessing the Service on behalf of an organisation, you represent that you have authority to bind that organisation to these Terms.</p>
+            <p>These Terms of Service ("Terms") govern your use of the RAIMZEAL fitness application and website at raimzeal.com (the "Service"), operated by ECONTEUR LLC ("we", "us", or "our"). By creating an account, downloading the app, or accessing any part of the Service, you agree to be bound by these Terms and our Privacy Policy. If you are accessing the Service on behalf of an organisation, you represent that you have authority to bind that organisation to these Terms.</p>
           </section>
 
           <section>
@@ -37,17 +48,20 @@ export function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-foreground font-semibold text-base mb-2">3. Medical Disclaimer &amp; Personal Responsibility Waiver</h2>
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2">
-              <p><strong className="text-foreground">RAIMZEAL IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE.</strong></p>
-              <p>All content, AI coaching responses (Ovia AI), workout plans, nutrition guidance, and health information provided through RAIMZEAL are for informational and educational purposes only. They are <strong className="text-foreground">not a substitute for professional medical advice, diagnosis, or treatment.</strong></p>
-              <p>By using RAIMZEAL, you expressly acknowledge and agree that:</p>
+            <h2 className="text-foreground font-semibold text-base mb-2">3. Medical Disclaimer &amp; Personal Responsibility — Read Carefully</h2>
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-3">
+              <p><strong className="text-foreground">RAIMZEAL IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE, DIAGNOSIS, OR TREATMENT OF ANY KIND.</strong></p>
+              <p>All content, AI coaching responses (Ovia AI), workout plans, nutrition guidance, food therapy information, healthcare awareness content, and all other material provided through RAIMZEAL is for <strong className="text-foreground">general educational and informational purposes only.</strong> It is not intended to be, and must not be used as, a substitute for professional medical advice, clinical diagnosis, or medical treatment.</p>
+              <p><strong className="text-foreground">RAIMZEAL does not replace your doctor, physician, registered dietitian, licensed nutritionist, therapist, pharmacist, or any other licensed healthcare professional or healthcare facility.</strong> We are here to support and complement qualified healthcare providers — not to take their place.</p>
+              <p>By using RAIMZEAL, you expressly acknowledge, understand, and agree that:</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>You assume full personal responsibility for your physical activity, dietary choices, and health decisions.</li>
-                <li>Exercise carries inherent risk of injury. You participate in all workouts and physical activities at your own risk.</li>
-                <li>You should consult a qualified physician or healthcare professional before beginning any new exercise programme, diet, or supplement regime — especially if you have any pre-existing medical conditions.</li>
-                <li>Ovia AI responses are generated by artificial intelligence and may not be accurate or appropriate for your specific situation. Always verify AI-generated health advice with a qualified professional.</li>
-                <li>RAIMZEAL, its owners, employees, and affiliates shall not be liable for any injury, illness, loss, or damage arising from your use of the Service or reliance on any content therein.</li>
+                <li><strong className="text-foreground">You are fully and solely responsible</strong> for every action, decision, and outcome that results from your use of this application or any information obtained from it.</li>
+                <li>You assume full personal responsibility for your physical activity, dietary choices, food therapy practices, and all health-related decisions.</li>
+                <li>Exercise and dietary changes carry inherent risk of injury or adverse effects. You participate at your own risk.</li>
+                <li>You will <strong className="text-foreground">always consult a qualified physician or licensed healthcare professional</strong> before beginning any new exercise programme, diet, nutritional protocol, or supplement regime — especially if you have any pre-existing medical condition, take prescription medication, are pregnant or breastfeeding, or have a history of eating disorders, cardiovascular disease, diabetes, or joint problems.</li>
+                <li>You will <strong className="text-foreground">not delay or disregard professional medical advice</strong> because of anything you read, see, or receive through this application.</li>
+                <li>Ovia AI responses are generated by artificial intelligence and may contain errors, outdated information, or advice inappropriate for your specific situation. Always verify AI-generated guidance with a qualified professional.</li>
+                <li>RAIMZEAL, ECONTEUR LLC, and all affiliated persons shall not be liable for any injury, illness, harm, loss, or adverse outcome arising from your use of or reliance on this Service.</li>
               </ul>
             </div>
           </section>
@@ -64,41 +78,36 @@ export function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-foreground font-semibold text-base mb-2">5. Membership Plans &amp; Billing</h2>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><strong className="text-foreground">Foundation (Free):</strong> includes limited access to workout library, basic nutrition tracking, read-only community access, and limited Ovia AI coaching.</li>
-              <li><strong className="text-foreground">Athlete ($9.99/month):</strong> includes full workout library and programs, unlimited nutrition logging, body measurements, unlimited Ovia AI, community posting, progress PDF export, activity tracker, reminders, and calendar scheduling.</li>
-              <li><strong className="text-foreground">Elite ($19.99/month):</strong> includes all Athlete features plus priority AI responses, AI meal planning, custom workout builder, coaching digests, and Elite badge.</li>
-              <li>Annual plans are available at a discounted rate.</li>
-              <li>All payments are processed by Stripe, Inc. By subscribing, you authorise us to charge your payment method on a recurring basis.</li>
-              <li>Subscriptions automatically renew at the end of each billing period unless you cancel before the renewal date via Settings → Manage Subscription.</li>
-              <li><strong className="text-foreground">Cancellation:</strong> you may cancel at any time. Access continues until the end of the current billing period. No refunds are issued for partial billing periods except where required by law.</li>
-              <li>Prices may change with 30 days' advance notice. Continued use after a price change constitutes acceptance of the new price.</li>
-            </ul>
+            <h2 className="text-foreground font-semibold text-base mb-2">5. Free &amp; Non-Profit Service</h2>
+            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
+              <p><strong className="text-foreground">RAIMZEAL is 100% free — no paid tiers, no subscriptions, no premium features.</strong> Every feature in the application — AI coaching, nutrition tracking, workout logging, body analytics, food guidance, community, and exports — is available to all users at no cost, forever.</p>
+              <p>We accept voluntary donations to cover server costs, app maintenance, AI services, and team compensation. Donations are entirely optional and never affect access to any feature. To support our mission: <strong className="text-foreground">donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00</strong></p>
+            </div>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">6. Ovia AI — Artificial Intelligence Coaching</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Ovia AI is powered by OpenAI's GPT-4.1 language model and is designed exclusively for fitness, nutrition, and wellness guidance.</li>
-              <li>Ovia AI is <strong className="text-foreground">not a licensed medical professional, therapist, or dietitian.</strong></li>
-              <li>AI responses may occasionally contain errors, outdated information, or advice that is not appropriate for your individual circumstances. Always apply critical judgement and consult a professional where appropriate.</li>
+              <li>Ovia AI is an artificial intelligence assistant designed exclusively for fitness, nutrition, food therapy awareness, and general wellness guidance.</li>
+              <li>Ovia AI is <strong className="text-foreground">not a licensed medical professional, therapist, registered dietitian, or clinical nutritionist.</strong></li>
+              <li>Ovia AI does not have access to your medical records, laboratory results, clinical history, or any diagnostic data. It can make errors, provide outdated information, and misinterpret your situation.</li>
+              <li>AI responses may contain errors or advice that is not appropriate for your individual circumstances. Always apply critical judgement and consult a qualified professional where appropriate.</li>
               <li>You may not use Ovia AI to seek advice for medical emergencies. In an emergency, call your local emergency services immediately.</li>
-              <li>We may implement usage limits on Ovia AI based on your membership plan.</li>
+              <li>You must never rely solely on Ovia AI for any health, medical, psychiatric, or safety decision.</li>
               <li>We reserve the right to log AI conversations for safety, quality improvement, and compliance purposes, subject to our Privacy Policy.</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">7. Community Guidelines</h2>
-            <p>The RAIMZEAL community feed is a positive space for fitness motivation and support. You agree not to post content that:</p>
+            <p>The RAIMZEAL community feed is a positive space for fitness motivation and health awareness. You agree not to post content that:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Is abusive, harassing, defamatory, threatening, or hateful.</li>
               <li>Promotes dangerous or extreme dieting, disordered eating, or harmful fitness practices.</li>
               <li>Contains nudity, graphic content, or sexual material.</li>
               <li>Infringes any copyright, trademark, or intellectual property right.</li>
               <li>Constitutes spam, advertising, or unsolicited promotion of third-party products.</li>
-              <li>Contains false medical or health claims.</li>
+              <li>Contains false, unscientific, or misleading medical or health claims.</li>
               <li>Violates any applicable law or regulation.</li>
             </ul>
             <p className="mt-2">We reserve the right to remove content and suspend or terminate accounts that violate these guidelines without notice.</p>
@@ -107,7 +116,7 @@ export function TermsOfService() {
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">8. Intellectual Property</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>The RAIMZEAL name, logo, app design, workout content, and all related materials are the intellectual property of RAIMZEAL and are protected by copyright, trademark, and other applicable laws.</li>
+              <li>The RAIMZEAL name, logo, app design, workout content, and all related materials are the intellectual property of ECONTEUR LLC and are protected by copyright, trademark, and other applicable laws.</li>
               <li>You may not copy, modify, distribute, sell, or create derivative works from our content without express written permission.</li>
               <li>You retain ownership of content you create and post (progress photos, community posts). By posting, you grant us a non-exclusive, royalty-free, worldwide licence to display and distribute your content within the Service.</li>
               <li>You represent that you own or have the rights to any content you post.</li>
@@ -123,20 +132,20 @@ export function TermsOfService() {
               <li>Use automated bots or scripts to scrape data or abuse our API.</li>
               <li>Interfere with the security or integrity of the Service.</li>
               <li>Violate any applicable local, national, or international law or regulation.</li>
-              <li>Circumvent or bypass any subscription enforcement or access controls.</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">10. Disclaimers &amp; Limitation of Liability</h2>
             <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.</p>
-            <p className="mt-2">TO THE MAXIMUM EXTENT PERMITTED BY LAW, RAIMZEAL SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF DATA, PERSONAL INJURY, PROPERTY DAMAGE, OR LOST PROFITS, ARISING FROM YOUR USE OF OR INABILITY TO USE THE SERVICE.</p>
-            <p className="mt-2">OUR TOTAL LIABILITY TO YOU FOR ANY CLAIM ARISING FROM THESE TERMS OR YOUR USE OF THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID TO US IN THE 12 MONTHS PRECEDING THE CLAIM.</p>
+            <p className="mt-2">TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, RAIMZEAL AND ECONTEUR LLC SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES — INCLUDING BUT NOT LIMITED TO PERSONAL INJURY, BODILY HARM, DEATH, PROPERTY DAMAGE, LOSS OF DATA, OR LOST PROFITS — ARISING FROM YOUR USE OF OR INABILITY TO USE THE SERVICE, OR FROM YOUR RELIANCE ON ANY HEALTH, FITNESS, NUTRITION, OR FOOD THERAPY INFORMATION PROVIDED HEREIN.</p>
+            <p className="mt-2"><strong className="text-foreground">BY USING THIS APPLICATION, YOU ACKNOWLEDGE THAT YOU ARE FULLY AND SOLELY RESPONSIBLE FOR ANY ACTION OR DECISION YOU MAKE BASED ON INFORMATION FROM RAIMZEAL, AND YOU WAIVE ANY CLAIM AGAINST RAIMZEAL OR ECONTEUR LLC ARISING FROM SUCH ACTIONS OR DECISIONS.</strong></p>
+            <p className="mt-2">Our total liability to you for any claim shall not exceed the total amount you have voluntarily donated to RAIMZEAL in the 12 months preceding the claim, or USD $50, whichever is greater.</p>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">11. Indemnification</h2>
-            <p>You agree to indemnify, defend, and hold harmless RAIMZEAL and its officers, directors, employees, and agents from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising from: (a) your use of the Service; (b) your violation of these Terms; (c) your violation of any third-party right; or (d) any content you submit to the Service.</p>
+            <p>You agree to indemnify, defend, and hold harmless RAIMZEAL, ECONTEUR LLC, and their officers, directors, employees, and agents from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising from: (a) your use of the Service; (b) your violation of these Terms; (c) your violation of any third-party right; (d) any health or fitness outcome arising from your use of the application; or (e) any content you submit to the Service.</p>
           </section>
 
           <section>
@@ -146,21 +155,22 @@ export function TermsOfService() {
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">13. Governing Law &amp; Disputes</h2>
-            <p>These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved, disputes shall be submitted to the courts of competent jurisdiction in Nigeria.</p>
+            <p>These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to the courts of competent jurisdiction in Nigeria. You waive any right to participate in class-action proceedings against RAIMZEAL.</p>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">14. Changes to Terms</h2>
-            <p>We may modify these Terms at any time. Material changes will be notified via email or in-app notice at least 7 days before taking effect. Continued use of the Service after changes take effect constitutes acceptance. If you do not agree to updated Terms, you must stop using the Service and may delete your account.</p>
+            <p>We may modify these Terms at any time. Material changes will be notified via email or in-app notice at least 7 days before taking effect. Continued use of the Service after changes take effect constitutes acceptance. If you do not agree to updated Terms, you must stop using the Service.</p>
           </section>
 
           <section>
             <h2 className="text-foreground font-semibold text-base mb-2">15. Contact</h2>
             <div className="p-4 bg-card border border-border rounded-xl">
-              <p className="text-foreground font-semibold">RAIMZEAL</p>
+              <p className="text-foreground font-semibold">RAIMZEAL · operated by ECONTEUR LLC</p>
               <p>Email: <strong className="text-foreground">support@raimzeal.com</strong></p>
               <p>Privacy: <strong className="text-foreground">privacy@raimzeal.com</strong></p>
-              <p>Website: <a href="https://www.raimzeal.com" className="text-primary">www.raimzeal.com</a></p>
+              <p>Legal: <strong className="text-foreground">legal@raimzeal.com</strong></p>
+              <p>Website: <a href="https://www.raimzeal.com" className="text-primary">www.raimzeal.com</a> · <a href="https://www.econteur.com" className="text-primary">www.econteur.com</a></p>
             </div>
           </section>
 

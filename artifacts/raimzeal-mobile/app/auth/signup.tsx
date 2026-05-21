@@ -275,7 +275,7 @@ export default function SignupScreen() {
                 Personal Responsibility Waiver *
               </Text>
               <Text style={[styles.termsText, { color: colors.foreground }]}>
-                I accept FULL PERSONAL RESPONSIBILITY for all health and fitness decisions I make using RAIMZEAL. I understand RAIMZEAL is NOT a medical service and accepts NO LIABILITY for any injury, illness, or outcome resulting from my use of this app. I will consult a qualified professional before making significant health changes.
+                I accept FULL PERSONAL RESPONSIBILITY for every action, decision, and outcome resulting from my use of RAIMZEAL. I understand RAIMZEAL is a non-profit awareness platform — NOT a medical service — and does NOT replace any healthcare professional or facility. RAIMZEAL and ECONTEUR LLC accept NO LIABILITY for any injury, illness, or adverse outcome. I will always consult a qualified professional before making health changes.
               </Text>
             </View>
           </View>
@@ -317,7 +317,7 @@ export default function SignupScreen() {
                 >
                   Terms, Conditions & Full Disclaimer
                 </Text>
-                . I confirm I am 18+ years old. I understand RAIMZEAL is not a substitute for medical advice.
+                . I confirm I am 18+ years old. I understand RAIMZEAL is a free, non-profit platform and is not a substitute for professional medical advice, diagnosis, or treatment. I am solely responsible for any decisions or actions I take based on information in this app.
               </Text>
             </View>
           </View>

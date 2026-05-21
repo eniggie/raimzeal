@@ -508,7 +508,7 @@ export function Coach({ state }: CoachProps) {
           </Button>
         </div>
         <p className="text-center text-xs text-muted-foreground mt-2">
-          Ovia AI focuses on fitness and healthcare only. Always consult a doctor for medical decisions.
+          Ovia AI is for fitness, food therapy &amp; health awareness only. It does not replace any doctor, dietitian, or healthcare professional. Always consult a qualified professional for medical decisions. You are solely responsible for any action you take based on this app.
         </p>
       </div>
     </div>

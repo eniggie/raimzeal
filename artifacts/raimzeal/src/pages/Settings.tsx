@@ -214,8 +214,8 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
 <div class="mission-banner">
   <div class="mission-icon">🌱</div>
   <div>
-    <div class="mission-title">RAIMZEAL is a free, non-profit fitness platform — forever.</div>
-    <div class="mission-text">We have no membership plans, no paid tiers, and no hidden fees. Every feature in this report — AI coaching, nutrition tracking, workout logging, body analytics — is 100% free. RAIMZEAL is operated by ECONTEUR LLC as a non-profit community health initiative. We are sustained entirely by voluntary donations from users like you. No donation is ever required.</div>
+    <div class="mission-title">RAIMZEAL — Free, Non-Profit Fitness, Food Therapy &amp; Healthcare Awareness Platform</div>
+    <div class="mission-text">RAIMZEAL has no membership fees, no paid tiers, and no hidden charges — ever. Every feature is 100% free. We are operated by ECONTEUR LLC as a non-profit community health initiative. RAIMZEAL is <strong>not here to replace any doctor, healthcare professional, or medical facility</strong> — we exist to complement their work and help spread health awareness to more people. We are sustained entirely by voluntary donations. No donation is ever required.</div>
   </div>
 </div>
 
@@ -292,7 +292,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 
 <!-- ══ DISCLAIMER ══ -->
 <div class="disclaimer">
-  <strong>Medical disclaimer:</strong> This report is based on data you have personally logged in RAIMZEAL. It is provided for personal reference only and does not constitute medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional before making changes to your diet, exercise routine, or health management.
+  <strong>Important disclaimer:</strong> This report is based on data you have personally logged in RAIMZEAL. It is provided for personal reference only and does not constitute medical advice, diagnosis, or treatment of any kind. RAIMZEAL does not replace any doctor, physician, registered dietitian, therapist, or healthcare facility — we are here to complement and support qualified healthcare providers. Always consult a licensed healthcare professional before making any changes to your diet, exercise routine, or health management. <strong>You are fully and solely responsible for any action or decision you make based on information from this application.</strong> RAIMZEAL and ECONTEUR LLC accept no liability for any injury, illness, or adverse outcome arising from your use of this platform.
 </div>
 
 <!-- ══ DONATION CTA ══ -->
