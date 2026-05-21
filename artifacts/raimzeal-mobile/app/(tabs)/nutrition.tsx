@@ -787,6 +787,9 @@ export default function NutritionScreen() {
   const reorderHintDismissedRef = useRef(false);
   const reorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [resultCountVisible, setResultCountVisible] = useState(false);
+  const resultCountFadeAnim = useRef(new Animated.Value(0)).current;
+
   const [historyFilterHintVisible, setHistoryFilterHintVisible] = useState(false);
   const historyFilterHintFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
@@ -1471,6 +1474,26 @@ export default function NutritionScreen() {
       });
     }
   }, [shouldShowFilterSummary]);
+
+  useEffect(() => {
+    const isFiltered = historyDateRange !== "all" || historyMealFilter !== "all";
+    if (isFiltered) {
+      setResultCountVisible(true);
+      Animated.timing(resultCountFadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(resultCountFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setResultCountVisible(false);
+      });
+    }
+  }, [historyDateRange, historyMealFilter]);
 
   const prevFilterSummaryCountRef = useRef<number | null>(null);
   useEffect(() => {
@@ -2716,8 +2739,13 @@ export default function NutritionScreen() {
                   </View>
                 )}
 
-                {(historyDateRange !== "all" || historyMealFilter !== "all") && (
-                  <Text style={[styles.historyResultCount, { color: colors.mutedForeground }]}>
+                {resultCountVisible && (
+                  <Animated.Text
+                    style={[
+                      styles.historyResultCount,
+                      { color: colors.mutedForeground, opacity: resultCountFadeAnim },
+                    ]}
+                  >
                     {[
                       `${filteredHistoryDays.length} day${filteredHistoryDays.length !== 1 ? "s" : ""} found`,
                       historyDateRange !== "all" ? (historyDateRange === "7d" ? "Last 7 days" : "Last 30 days") : null,
@@ -2727,7 +2755,7 @@ export default function NutritionScreen() {
                     ]
                       .filter(Boolean)
                       .join(" · ")}
-                  </Text>
+                  </Animated.Text>
                 )}
 
                 {filteredHistoryDays.length >= 2 && weeklyAvgSummary && (
