@@ -756,6 +756,8 @@ export default function NutritionScreen() {
 
   const [undoMeal, setUndoMeal] = useState<MealLog | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [undoCountdown, setUndoCountdown] = useState(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
 
   const { toggleFavoriteWithToast, isFavorite, starToastElement } = useToggleFavorite({
@@ -768,6 +770,8 @@ export default function NutritionScreen() {
 
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [presetUndoCountdown, setPresetUndoCountdown] = useState(0);
   const presetUndoAnim = useRef(new Animated.Value(0)).current;
 
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
@@ -965,13 +969,18 @@ export default function NutritionScreen() {
 
   function showPresetDeletedToast(preset: CustomFilterPreset) {
     if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
+    if (presetUndoCountdownIntervalRef.current) clearInterval(presetUndoCountdownIntervalRef.current);
+    const durationSec = settings.undoWindowSeconds ?? 3;
     setDeletedPreset(preset);
+    setPresetUndoCountdown(durationSec);
     presetUndoAnim.setValue(0);
     Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    const durationMs = (settings.undoWindowSeconds ?? 3) * 1000;
+    presetUndoCountdownIntervalRef.current = setInterval(() => {
+      setPresetUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
     presetUndoTimerRef.current = setTimeout(() => {
       dismissPresetUndoToast();
-    }, durationMs);
+    }, durationSec * 1000);
   }
 
   function dismissPresetUndoToast() {
@@ -981,6 +990,10 @@ export default function NutritionScreen() {
     if (presetUndoTimerRef.current) {
       clearTimeout(presetUndoTimerRef.current);
       presetUndoTimerRef.current = null;
+    }
+    if (presetUndoCountdownIntervalRef.current) {
+      clearInterval(presetUndoCountdownIntervalRef.current);
+      presetUndoCountdownIntervalRef.current = null;
     }
   }
 
@@ -996,12 +1009,17 @@ export default function NutritionScreen() {
 
   function showUndoToast(meal: MealLog) {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    if (undoCountdownIntervalRef.current) clearInterval(undoCountdownIntervalRef.current);
+    const durationSec = settings.undoWindowSeconds ?? 3;
     setUndoMeal(meal);
+    setUndoCountdown(durationSec);
     Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    const durationMs = (settings.undoWindowSeconds ?? 3) * 1000;
+    undoCountdownIntervalRef.current = setInterval(() => {
+      setUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
     undoTimerRef.current = setTimeout(() => {
       dismissUndoToast();
-    }, durationMs);
+    }, durationSec * 1000);
   }
 
   function dismissUndoToast() {
@@ -1011,6 +1029,10 @@ export default function NutritionScreen() {
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
+    }
+    if (undoCountdownIntervalRef.current) {
+      clearInterval(undoCountdownIntervalRef.current);
+      undoCountdownIntervalRef.current = null;
     }
   }
 
@@ -3848,6 +3870,7 @@ export default function NutritionScreen() {
           <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
             "{undoMeal.name}" deleted
           </Text>
+          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{undoCountdown}</Text>
           <TouchableOpacity
             onPress={handleUndoDelete}
             activeOpacity={0.75}
@@ -3883,6 +3906,7 @@ export default function NutritionScreen() {
           <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
             Preset "{deletedPreset.name}" deleted
           </Text>
+          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{presetUndoCountdown}</Text>
           <TouchableOpacity
             onPress={handleUndoPresetDelete}
             activeOpacity={0.75}
@@ -5408,6 +5432,12 @@ const styles = StyleSheet.create({
   undoBtnText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  undoCountdownText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 16,
+    textAlign: "center",
   },
   starToast: {
     position: "absolute",
