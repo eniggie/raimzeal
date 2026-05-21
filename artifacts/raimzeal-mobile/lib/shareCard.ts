@@ -2,7 +2,6 @@ import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import * as Clipboard from "expo-clipboard";
 import { captureRef } from "react-native-view-shot";
-import { Alert, Linking } from "react-native";
 import type { RefObject } from "react";
 import type { View } from "react-native";
 import type { CameraRollPermissionStatus } from "@/contexts/PermissionsContext";
@@ -25,20 +24,9 @@ export interface PermissionOptions {
   requestPermission?: () => Promise<CameraRollPermissionStatus>;
 }
 
-function showPermissionDeniedAlert() {
-  Alert.alert(
-    "Permission Denied",
-    "RAIMZEAL cannot save to your camera roll. Please enable photo access in Settings.",
-    [
-      { text: "Cancel", style: "cancel" },
-      { text: "Open Settings", onPress: () => Linking.openSettings() },
-    ]
-  );
-}
-
 /**
  * Resolves camera roll permission using a cached value when available.
- * Returns true if permission is granted, false otherwise (alert already shown).
+ * Returns true if permission is granted, false otherwise (caller handles UI).
  */
 async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
   if (opts?.cachedStatus === "granted") {
@@ -46,7 +34,6 @@ async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
   }
 
   if (opts?.cachedStatus === "denied") {
-    showPermissionDeniedAlert();
     return false;
   }
 
@@ -63,11 +50,7 @@ async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
   }
   opts?.onStatusChange?.(resolved);
 
-  if (resolved !== "granted") {
-    showPermissionDeniedAlert();
-    return false;
-  }
-  return true;
+  return resolved === "granted";
 }
 
 /**

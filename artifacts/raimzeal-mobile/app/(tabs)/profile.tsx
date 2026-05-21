@@ -264,8 +264,8 @@ export default function ProfileScreen() {
             if (result.saved) {
               resolve();
             } else {
-              // Permission Alert already shown inside helper — reject with a
-              // sentinel so the modal suppresses the redundant inline toast.
+              // Reject with a sentinel so the modal shows an inline error toast
+              // with a tappable "Open Settings" link instead of a modal Alert.
               reject(new Error("PERMISSION_DENIED"));
             }
           } else if (action === "save") {
@@ -273,7 +273,7 @@ export default function ProfileScreen() {
             if (saved) {
               resolve();
             } else {
-              // Permission Alert already shown inside helper — sentinel reject.
+              // Reject with a sentinel — modal shows the inline "Open Settings" toast.
               reject(new Error("PERMISSION_DENIED"));
             }
           } else if (action === "copy") {

@@ -804,7 +804,8 @@ export default function CardCustomizationModal({
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const [confirmIcon, setConfirmIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const [confirmRetryFn, setConfirmRetryFn] = useState<(() => void) | null>(null);
-  const [confirmActionLabel, setConfirmActionLabel] = useState<string>("Retry");
+  const [confirmActionFn, setConfirmActionFn] = useState<(() => void) | null>(null);
+  const [confirmActionLabel, setConfirmActionLabel] = useState<string | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
 
   // Undo-delete toast
@@ -817,15 +818,25 @@ export default function CardCustomizationModal({
     confirmOpacity.setValue(0);
     setConfirmMessage(null);
     setConfirmRetryFn(null);
+    setConfirmActionFn(null);
+    setConfirmActionLabel(null);
   }
 
-  function showConfirmation(msg: string, variant: "success" | "error" = "success", icon?: keyof typeof Ionicons.glyphMap, retryFn?: () => void, actionLabel = "Retry") {
+  function showConfirmation(
+    msg: string,
+    variant: "success" | "error" = "success",
+    icon?: keyof typeof Ionicons.glyphMap,
+    retryFn?: () => void,
+    actionFn?: () => void,
+    actionLabel?: string,
+  ) {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
     setConfirmRetryFn(retryFn ? () => retryFn : null);
-    setConfirmActionLabel(actionLabel);
+    setConfirmActionFn(actionFn ? () => actionFn : null);
+    setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
     const holdDuration = retryFn ? 4500 : variant === "error" ? 2200 : 1600;
     if (reduceMotionRef.current) {
@@ -1076,9 +1087,19 @@ export default function CardCustomizationModal({
           : "layers-outline";
       showConfirmation(msg, "success", icon);
     } catch (err) {
-      // "PERMISSION_DENIED" is a sentinel from the parent — the permission Alert
-      // was already shown there. Skip the inline toast to avoid double feedback.
-      if (err instanceof Error && err.message === "PERMISSION_DENIED") return;
+      // "PERMISSION_DENIED" is a sentinel from the parent — show an inline error
+      // toast with a tappable "Open Settings" link instead of a modal Alert.
+      if (err instanceof Error && err.message === "PERMISSION_DENIED") {
+        showConfirmation(
+          "Photo access blocked — tap to open Settings",
+          "error",
+          "lock-closed-outline",
+          undefined,
+          () => Linking.openSettings(),
+          "Open Settings",
+        );
+        return;
+      }
 
       const fallback =
         action === "save"
@@ -2264,6 +2285,19 @@ export default function CardCustomizationModal({
                 >
                   {confirmMessage}
                 </Text>
+                {confirmVariant === "error" && confirmActionFn && confirmActionLabel && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const fn = confirmActionFn;
+                      dismissConfirmToast();
+                      fn();
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.confirmRetryBtn}
+                  >
+                    <Text style={styles.confirmRetryText}>{confirmActionLabel}</Text>
+                  </TouchableOpacity>
+                )}
                 {confirmVariant === "error" && confirmRetryFn && (
                   <TouchableOpacity
                     onPress={() => {
