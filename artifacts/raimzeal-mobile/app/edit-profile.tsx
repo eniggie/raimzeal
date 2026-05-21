@@ -137,7 +137,7 @@ export default function EditProfileScreen() {
             </Text>
           </View>
           <Text style={[styles.avatarHint, { color: colors.mutedForeground }]}>
-            Tap to change photo (available in full build)
+            Your initials are used as your avatar
           </Text>
         </View>
 

@@ -182,6 +182,12 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
               </div>
 
               <div className="flex-1 overflow-y-auto mt-4 space-y-2">
+                {filteredFoods.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <p className="text-sm font-medium">No foods match "{search}"</p>
+                    <p className="text-xs mt-1">Try a different name or clear the search.</p>
+                  </div>
+                )}
                 {filteredFoods.map((food, i) => (
                   <Card
                     key={i}

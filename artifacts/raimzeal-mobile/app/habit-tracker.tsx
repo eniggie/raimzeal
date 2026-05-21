@@ -278,7 +278,7 @@ export default function HabitTrackerScreen() {
                   style={[
                     styles.progressFill,
                     {
-                      backgroundColor: allDone ? "#10b981" : colors.primary,
+                      backgroundColor: colors.primary,
                       width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : "0%",
                     },
                   ]}

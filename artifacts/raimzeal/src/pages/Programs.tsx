@@ -94,6 +94,12 @@ export function Programs() {
         )}
 
         <div className="space-y-4">
+          {programs.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-sm font-medium">No programs available</p>
+              <p className="text-xs mt-1">Check back soon — new programs are added regularly.</p>
+            </div>
+          )}
           {programs.map((program, i) => {
             const enrolled = enrolledIds.has(program.id);
             return (
