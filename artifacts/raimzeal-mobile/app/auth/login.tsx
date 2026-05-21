@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
+import * as LocalAuthentication from "expo-local-authentication";
+import * as SecureStore from "expo-secure-store";
+
+const BIOMETRIC_EMAIL_KEY = "raimzeal_bio_email";
+const BIOMETRIC_PW_KEY = "raimzeal_bio_pw";
+const BIOMETRIC_ENABLED_KEY = "raimzeal_bio_enabled";
+
+function getBiometricLabel(type: LocalAuthentication.AuthenticationType[]): string {
+  if (type.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) return "Face ID";
+  if (type.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return "Touch ID";
+  return "Biometrics";
+}
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -27,6 +39,27 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [biometricLabel, setBiometricLabel] = useState<string | null>(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  useEffect(() => {
+    checkBiometric();
+  }, []);
+
+  async function checkBiometric() {
+    if (Platform.OS === "web") return;
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const isEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+      if (hasHardware && isEnrolled && isEnabled === "true") {
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        setBiometricLabel(getBiometricLabel(types));
+      }
+    } catch {
+      // biometric not available on this device — silent fallback
+    }
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -38,8 +71,69 @@ export default function LoginScreen() {
     setLoading(false);
     if (error) {
       Alert.alert("Sign in failed", error);
+      return;
+    }
+    // Offer to enable biometric on successful login (native only)
+    if (Platform.OS !== "web") {
+      try {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        const alreadyEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+        if (hasHardware && isEnrolled && alreadyEnabled !== "true") {
+          const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+          const label = getBiometricLabel(types);
+          Alert.alert(
+            `Enable ${label}?`,
+            `Sign in faster next time with ${label}.`,
+            [
+              { text: "Not now", style: "cancel" },
+              {
+                text: `Enable ${label}`,
+                onPress: async () => {
+                  await SecureStore.setItemAsync(BIOMETRIC_EMAIL_KEY, email.trim().toLowerCase());
+                  await SecureStore.setItemAsync(BIOMETRIC_PW_KEY, password);
+                  await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, "true");
+                },
+              },
+            ]
+          );
+        }
+      } catch {
+        // non-fatal
+      }
     }
     // On success, AuthContext updates session → _layout redirects to tabs
+  }
+
+  async function handleBiometricLogin() {
+    if (!biometricLabel) return;
+    setBiometricLoading(true);
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: `Sign in with ${biometricLabel}`,
+        cancelLabel: "Use password",
+        disableDeviceFallback: false,
+      });
+      if (!result.success) {
+        setBiometricLoading(false);
+        return;
+      }
+      const storedEmail = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
+      const storedPw = await SecureStore.getItemAsync(BIOMETRIC_PW_KEY);
+      if (!storedEmail || !storedPw) {
+        Alert.alert("Setup required", "Please sign in with your password first.");
+        setBiometricLoading(false);
+        return;
+      }
+      const { error } = await signIn(storedEmail, storedPw);
+      if (error) {
+        Alert.alert("Sign in failed", "Please sign in with your password instead.");
+      }
+    } catch {
+      Alert.alert("Biometric unavailable", "Please sign in with your password.");
+    } finally {
+      setBiometricLoading(false);
+    }
   }
 
   return (
@@ -156,6 +250,31 @@ export default function LoginScreen() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {/* Biometric sign-in */}
+          {biometricLabel && Platform.OS !== "web" && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.biometricBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+              onPress={handleBiometricLogin}
+              disabled={biometricLoading}
+            >
+              {biometricLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons
+                    name={biometricLabel === "Face ID" ? "scan-outline" : "finger-print-outline"}
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.biometricBtnText, { color: colors.primary }]}>
+                    Sign in with {biometricLabel}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -224,6 +343,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  biometricBtn: {
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  biometricBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   footer: {
     flexDirection: "row",
     justifyContent: "center",

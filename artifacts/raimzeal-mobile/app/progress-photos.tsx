@@ -54,6 +54,9 @@ export default function ProgressPhotosScreen() {
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ProgressPhoto["category"] | "all">("all");
   const [loading, setLoading] = useState(true);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelected, setCompareSelected] = useState<ProgressPhoto[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -208,24 +211,78 @@ export default function ProgressPhotosScreen() {
             {photos.length} photo{photos.length !== 1 ? "s" : ""} saved
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            Alert.alert(
-              "Add Photo",
-              "Choose a source",
-              [
-                { text: "Take Photo", onPress: handleTakePhoto },
-                { text: "Choose from Library", onPress: handleAddPhoto },
-                { text: "Cancel", style: "cancel" },
-              ]
-            );
-          }}
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-        >
-          <Ionicons name="add" size={20} color={colors.primaryForeground} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {photos.length >= 2 && (
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync();
+                if (compareMode) {
+                  setCompareMode(false);
+                  setCompareSelected([]);
+                } else {
+                  setCompareMode(true);
+                  setCompareSelected([]);
+                }
+              }}
+              style={[
+                styles.addBtn,
+                {
+                  backgroundColor: compareMode ? colors.secondary + "30" : colors.muted,
+                  borderWidth: compareMode ? 1 : 0,
+                  borderColor: colors.secondary,
+                },
+              ]}
+            >
+              <Ionicons
+                name="git-compare-outline"
+                size={18}
+                color={compareMode ? colors.secondary : colors.mutedForeground}
+              />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              Alert.alert(
+                "Add Photo",
+                "Choose a source",
+                [
+                  { text: "Take Photo", onPress: handleTakePhoto },
+                  { text: "Choose from Library", onPress: handleAddPhoto },
+                  { text: "Cancel", style: "cancel" },
+                ]
+              );
+            }}
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+          >
+            <Ionicons name="add" size={20} color={colors.primaryForeground} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Compare mode action bar */}
+      {compareMode && (
+        <View style={[styles.compareBanner, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <Text style={[styles.compareBannerText, { color: colors.foreground }]}>
+            {compareSelected.length === 0
+              ? "Tap 2 photos to compare"
+              : compareSelected.length === 1
+              ? "Select one more photo"
+              : "Ready to compare"}
+          </Text>
+          {compareSelected.length === 2 && (
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setShowCompare(true);
+              }}
+              style={[styles.compareBtn, { backgroundColor: colors.secondary }]}
+            >
+              <Text style={[styles.compareBtnText, { color: "#fff" }]}>Compare</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Category filter */}
       <ScrollView
@@ -315,37 +372,123 @@ export default function ProgressPhotosScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
           ]}
           columnWrapperStyle={styles.row}
-          renderItem={({ item }) => (
-            <View style={[styles.photoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Image source={{ uri: item.uri }} style={styles.photoImage} resizeMode="cover" />
-              <View style={[styles.photoCategoryBadge, { backgroundColor: "#8B31C7" + "CC" }]}>
-                <Text style={styles.photoCategoryText}>
-                  {CATEGORIES.find((c) => c.key === item.category)?.label ?? item.category}
-                </Text>
-              </View>
-              <View style={styles.photoFooter}>
-                <Text style={[styles.photoDate, { color: colors.mutedForeground }]}>
-                  {formatDate(item.date)}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => handleDeletePhoto(item.id)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const isSelected = compareSelected.some((p) => p.id === item.id);
+            return (
+              <TouchableOpacity
+                activeOpacity={compareMode ? 0.7 : 1}
+                onPress={() => {
+                  if (!compareMode) return;
+                  if (isSelected) {
+                    setCompareSelected((prev) => prev.filter((p) => p.id !== item.id));
+                  } else if (compareSelected.length < 2) {
+                    Haptics.selectionAsync();
+                    setCompareSelected((prev) => [...prev, item]);
+                  }
+                }}
+                onLongPress={() => {
+                  if (!compareMode) handleDeletePhoto(item.id);
+                }}
+                style={[styles.photoCard, { backgroundColor: colors.card, borderColor: isSelected ? colors.secondary : colors.border, borderWidth: isSelected ? 2 : 1 }]}
+              >
+                <Image source={{ uri: item.uri }} style={styles.photoImage} resizeMode="cover" />
+                {isSelected && (
+                  <View style={styles.selectedOverlay}>
+                    <Ionicons name="checkmark-circle" size={28} color={colors.secondary} />
+                  </View>
+                )}
+                <View style={[styles.photoCategoryBadge, { backgroundColor: "#8B31C7CC" }]}>
+                  <Text style={styles.photoCategoryText}>
+                    {CATEGORIES.find((c) => c.key === item.category)?.label ?? item.category}
+                  </Text>
+                </View>
+                <View style={styles.photoFooter}>
+                  <Text style={[styles.photoDate, { color: colors.mutedForeground }]}>
+                    {formatDate(item.date)}
+                  </Text>
+                  {!compareMode && (
+                    <TouchableOpacity
+                      onPress={() => handleDeletePhoto(item.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.destructive} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
 
       {/* Tips banner */}
-      {photos.length > 0 && (
+      {photos.length > 0 && !compareMode && (
         <View style={[styles.tipBanner, { backgroundColor: "#8B31C7" + "10", borderColor: "#8B31C7" + "30" }]}>
           <Ionicons name="bulb-outline" size={16} color="#8B31C7" />
           <Text style={[styles.tipText, { color: colors.mutedForeground }]}>
             Take photos every 2–4 weeks, same time of day, same lighting for best comparisons.
           </Text>
+        </View>
+      )}
+
+      {/* Before/After Comparison Modal */}
+      {showCompare && compareSelected.length === 2 && (
+        <View
+          style={[
+            styles.compareModal,
+            { backgroundColor: colors.background },
+          ]}
+        >
+          <View style={[styles.compareModalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.compareModalTitle, { color: colors.foreground }]}>
+              Before / After
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowCompare(false)}
+              hitSlop={10}
+              style={[styles.compareCloseBtn, { backgroundColor: colors.muted }]}
+            >
+              <Ionicons name="close" size={20} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.compareRow}>
+            {compareSelected.map((photo, i) => (
+              <View key={photo.id} style={styles.comparePhotoWrap}>
+                <View style={[styles.compareLabelBadge, { backgroundColor: i === 0 ? "#8B31C7CC" : "#C9A84CCC" }]}>
+                  <Text style={styles.compareLabelText}>{i === 0 ? "Before" : "After"}</Text>
+                </View>
+                <Image source={{ uri: photo.uri }} style={styles.comparePhoto} resizeMode="cover" />
+                <Text style={[styles.compareDate, { color: colors.mutedForeground }]}>
+                  {formatDate(photo.date)}
+                </Text>
+              </View>
+            ))}
+          </View>
+          {(() => {
+            const d1 = new Date(compareSelected[0].date);
+            const d2 = new Date(compareSelected[1].date);
+            const diffDays = Math.abs(Math.round((d2.getTime() - d1.getTime()) / 86400000));
+            const weeks = Math.floor(diffDays / 7);
+            const span = weeks > 0 ? `${weeks} week${weeks !== 1 ? "s" : ""}` : `${diffDays} day${diffDays !== 1 ? "s" : ""}`;
+            return (
+              <View style={[styles.compareSpan, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Ionicons name="time-outline" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.compareSpanText, { color: colors.mutedForeground }]}>
+                  {span} between photos
+                </Text>
+              </View>
+            );
+          })()}
+          <TouchableOpacity
+            onPress={() => {
+              setShowCompare(false);
+              setCompareMode(false);
+              setCompareSelected([]);
+            }}
+            style={[styles.compareDoneBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.compareDoneBtnText, { color: colors.primaryForeground }]}>Done</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -465,4 +608,54 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tipText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  compareBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  compareBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
+  compareBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20 },
+  compareBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  selectedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  compareModal: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  compareModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  compareModalTitle: { flex: 1, fontSize: 22, fontFamily: "SpaceGrotesk_700Bold" },
+  compareCloseBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  compareRow: { flex: 1, flexDirection: "row", gap: 8, padding: 12 },
+  comparePhotoWrap: { flex: 1, gap: 6, alignItems: "center" },
+  compareLabelBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, alignSelf: "stretch", alignItems: "center" },
+  compareLabelText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
+  comparePhoto: { width: "100%", flex: 1, borderRadius: 12 },
+  compareDate: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  compareSpan: { flexDirection: "row", alignItems: "center", gap: 6, margin: 12, padding: 10, borderRadius: 10, borderWidth: 1, justifyContent: "center" },
+  compareSpanText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  compareDoneBtn: { margin: 16, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  compareDoneBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
 });

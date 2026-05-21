@@ -15,12 +15,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import {
   DEFAULT_REMINDER_SETTINGS,
+  DEFAULT_WATER_REMINDER_CONFIG,
   REMINDER_META,
   ReminderSettings,
+  WaterReminderConfig,
   loadReminderSettings,
+  loadWaterReminderConfig,
   requestNotificationPermissions,
   saveReminderSettings,
+  saveWaterReminderConfig,
   scheduleReminders,
+  scheduleWaterIntervalReminders,
   sendTestNotification,
 } from "@/lib/notifications";
 
@@ -44,12 +49,16 @@ export default function RemindersScreen() {
   const [settings, setSettings] = useState<ReminderSettings>({
     ...DEFAULT_REMINDER_SETTINGS,
   });
+  const [waterConfig, setWaterConfig] = useState<WaterReminderConfig>({
+    ...DEFAULT_WATER_REMINDER_CONFIG,
+  });
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
 
   useEffect(() => {
     loadReminderSettings().then(setSettings);
+    loadWaterReminderConfig().then(setWaterConfig);
     if (Platform.OS !== "web") {
       import("expo-notifications").then((N) => {
         N.getPermissionsAsync().then(({ status }) =>
@@ -119,6 +128,32 @@ export default function RemindersScreen() {
     setSettings(next);
     await saveReminderSettings(next);
     await scheduleReminders(next);
+  };
+
+  const handleWaterToggle = async (enabled: boolean) => {
+    if (enabled && !hasPermission) {
+      const granted = await requestNotificationPermissions();
+      setHasPermission(granted);
+      if (!granted) {
+        Alert.alert(
+          "Notifications Disabled",
+          "Please enable notifications for RAIMZEAL in your device Settings.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+    }
+    const next: WaterReminderConfig = { ...waterConfig, enabled };
+    setWaterConfig(next);
+    await saveWaterReminderConfig(next);
+    await scheduleWaterIntervalReminders(next);
+  };
+
+  const handleWaterInterval = async (intervalHours: 1 | 2 | 3) => {
+    const next: WaterReminderConfig = { ...waterConfig, intervalHours };
+    setWaterConfig(next);
+    await saveWaterReminderConfig(next);
+    if (next.enabled) await scheduleWaterIntervalReminders(next);
   };
 
   const handleTest = async () => {
@@ -333,6 +368,75 @@ export default function RemindersScreen() {
           })}
         </View>
 
+        {/* Smart Water Reminders */}
+        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          SMART WATER REMINDERS
+        </Text>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Enable row */}
+          <View style={styles.reminderRow}>
+            <View style={[styles.reminderIcon, { backgroundColor: "#2E8B57" + "20" }]}>
+              <Ionicons name="water-outline" size={20} color="#2E8B57" />
+            </View>
+            <View style={styles.reminderInfo}>
+              <View style={styles.reminderTopRow}>
+                <Text style={[styles.reminderLabel, { color: colors.foreground }]}>
+                  Interval Water Reminders
+                </Text>
+              </View>
+              <Text style={[styles.reminderDesc, { color: colors.mutedForeground }]}>
+                {waterConfig.enabled
+                  ? `Every ${waterConfig.intervalHours}h from ${waterConfig.startHour}:00 – ${waterConfig.endHour}:00`
+                  : "Remind you to drink water at regular intervals throughout the day."}
+              </Text>
+            </View>
+            <Switch
+              value={waterConfig.enabled}
+              onValueChange={handleWaterToggle}
+              trackColor={{ false: colors.muted, true: "#2E8B5780" }}
+              thumbColor={waterConfig.enabled ? "#2E8B57" : colors.mutedForeground}
+              ios_backgroundColor={colors.muted}
+            />
+          </View>
+
+          {/* Interval picker */}
+          {waterConfig.enabled && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <View style={styles.intervalRow}>
+                <Text style={[styles.intervalLabel, { color: colors.mutedForeground }]}>
+                  Remind every
+                </Text>
+                <View style={styles.intervalBtns}>
+                  {([1, 2, 3] as const).map((h) => (
+                    <TouchableOpacity
+                      key={h}
+                      onPress={() => handleWaterInterval(h)}
+                      style={[
+                        styles.intervalBtn,
+                        {
+                          backgroundColor: waterConfig.intervalHours === h ? "#2E8B5720" : colors.muted,
+                          borderColor: waterConfig.intervalHours === h ? "#2E8B57" : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.intervalBtnText,
+                          { color: waterConfig.intervalHours === h ? "#2E8B57" : colors.mutedForeground },
+                        ]}
+                      >
+                        {h}h
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
         {/* Fasting safety note */}
         <View
           style={[
@@ -498,4 +602,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
   },
+  intervalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  intervalLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  intervalBtns: { flexDirection: "row", gap: 8 },
+  intervalBtn: {
+    width: 44,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  intervalBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });

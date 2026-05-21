@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,13 +12,15 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
+import type { WorkoutTemplate } from "@/constants/workoutTemplates";
 import { fetchPrograms, ProgramItem, ProgramWeek } from "@/lib/db";
+import { loadCustomWorkouts, deleteCustomWorkout } from "@/lib/customWorkouts";
 
 type ActiveTab = "library" | "programs" | "history";
 
@@ -149,8 +151,15 @@ export default function WorkoutsScreen() {
   const [programs, setPrograms] = useState<ProgramItem[]>([]);
   const [programsLoading, setProgramsLoading] = useState(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
+  const [customWorkouts, setCustomWorkouts] = useState<WorkoutTemplate[]>([]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomWorkouts().then(setCustomWorkouts);
+    }, [])
+  );
 
   useEffect(() => {
     if (activeTab === "programs" && programs.length === 0) {
@@ -233,74 +242,117 @@ export default function WorkoutsScreen() {
       </View>
 
       {activeTab === "library" && (
-        <FlatList
-          data={WORKOUT_TEMPLATES}
-          keyExtractor={(item) => item.workoutId}
+        <ScrollView
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
           ]}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
+        >
+          {/* Build Workout button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/workout-builder");
+            }}
+            style={[styles.buildBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}
+          >
+            <View style={[styles.buildBtnIcon, { backgroundColor: colors.primary + "20" }]}>
+              <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.buildBtnText}>
+              <Text style={[styles.templateName, { color: colors.primary }]}>Build Workout</Text>
+              <Text style={[styles.templateMeta, { color: colors.primary + "99" }]}>Create your own custom workout</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </TouchableOpacity>
+
+          {/* My Workouts */}
+          {customWorkouts.length > 0 && (
+            <>
+              <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>My Workouts</Text>
+              {customWorkouts.map((item) => (
+                <TouchableOpacity
+                  key={item.workoutId}
+                  activeOpacity={0.8}
+                  onPress={() => handleStartWorkout(item.workoutId)}
+                  style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <View style={[styles.templateIcon, { backgroundColor: "#10b981" + "20" }]}>
+                    <Ionicons name={item.icon} size={24} color="#10b981" />
+                  </View>
+                  <View style={styles.templateInfo}>
+                    <Text style={[styles.templateName, { color: colors.foreground }]}>{item.name}</Text>
+                    <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
+                      {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
+                      {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
+                    </Text>
+                    <View style={styles.templateStats}>
+                      <View style={styles.templateStat}>
+                        <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
+                        <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
+                      </View>
+                      <View style={styles.templateStat}>
+                        <Ionicons name="flame-outline" size={12} color={colors.warning} />
+                        <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={{ gap: 6, alignItems: "center" }}>
+                    <View style={[styles.startBtn, { backgroundColor: colors.primary }]}>
+                      <Ionicons name="play" size={16} color={colors.primaryForeground} />
+                    </View>
+                    <TouchableOpacity
+                      hitSlop={8}
+                      onPress={() => {
+                        Alert.alert("Delete Workout", `Delete "${item.name}"? This cannot be undone.`, [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: async () => {
+                              await deleteCustomWorkout(item.workoutId);
+                              setCustomWorkouts((prev) => prev.filter((w) => w.workoutId !== item.workoutId));
+                            },
+                          },
+                        ]);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={14} color={colors.destructive} />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
+          {/* Templates */}
+          <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>Templates</Text>
+          {WORKOUT_TEMPLATES.map((item) => (
             <TouchableOpacity
+              key={item.workoutId}
               activeOpacity={0.8}
               onPress={() => handleStartWorkout(item.workoutId)}
-              style={[
-                styles.templateCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
+              style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
-              <View
-                style={[
-                  styles.templateIcon,
-                  { backgroundColor: colors.primary + "20" },
-                ]}
-              >
+              <View style={[styles.templateIcon, { backgroundColor: colors.primary + "20" }]}>
                 <Ionicons name={item.icon} size={24} color={colors.primary} />
               </View>
               <View style={styles.templateInfo}>
-                <Text style={[styles.templateName, { color: colors.foreground }]}>
-                  {item.name}
-                </Text>
+                <Text style={[styles.templateName, { color: colors.foreground }]}>{item.name}</Text>
                 <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
-                  {item.exercises
-                    .slice(0, 3)
-                    .map((e) => e.name)
-                    .join(" · ")}
-                  {item.exercises.length > 3
-                    ? ` +${item.exercises.length - 3}`
-                    : ""}
+                  {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
+                  {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
                 </Text>
                 <View style={styles.templateStats}>
                   <View style={styles.templateStat}>
-                    <Ionicons
-                      name="time-outline"
-                      size={12}
-                      color={colors.mutedForeground}
-                    />
-                    <Text
-                      style={[
-                        styles.templateStatText,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      {item.duration}m
-                    </Text>
+                    <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
                   </View>
                   <View style={styles.templateStat}>
-                    <Ionicons
-                      name="flame-outline"
-                      size={12}
-                      color={colors.warning}
-                    />
-                    <Text
-                      style={[
-                        styles.templateStatText,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      ~{item.calories} kcal
-                    </Text>
+                    <Ionicons name="flame-outline" size={12} color={colors.warning} />
+                    <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
                   </View>
                 </View>
               </View>
@@ -308,8 +360,8 @@ export default function WorkoutsScreen() {
                 <Ionicons name="play" size={16} color={colors.primaryForeground} />
               </View>
             </TouchableOpacity>
-          )}
-        />
+          ))}
+        </ScrollView>
       )}
 
       {activeTab === "programs" && (
@@ -686,4 +738,31 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptySubtext: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  sectionHeader: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    paddingTop: 10,
+    paddingBottom: 6,
+    paddingHorizontal: 2,
+  },
+  buildBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    gap: 12,
+    marginBottom: 2,
+  },
+  buildBtnIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buildBtnText: { flex: 1, gap: 3 },
 });

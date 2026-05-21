@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, TrendingDown, Scale, Ruler, Camera, 
-  Plus, Trophy, Dumbbell, ChevronRight
+  Plus, Trophy, Dumbbell, ChevronRight, Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { BottomNav } from '@/components/BottomNav';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { AppState, BodyMeasurement } from '@/lib/store';
+import { ProgressShareCard } from '@/components/ProgressShareCard';
 
 interface TrackingProps {
   state: AppState;
@@ -22,6 +23,7 @@ interface TrackingProps {
 export function Tracking({ state, onAddMeasurement }: TrackingProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWeight, setNewWeight] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
 
   const weightData = state.bodyMeasurements
     .slice(0, 8)
@@ -68,6 +70,16 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
           className="flex items-center justify-between"
         >
           <h1 className="text-2xl font-bold font-display">Progress</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShareOpen(true)}
+              data-testid="button-share"
+            >
+              <Share2 className="w-4 h-4 mr-1" />
+              Share
+            </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" data-testid="button-log">
@@ -96,6 +108,7 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </motion.div>
 
         <motion.div
@@ -284,6 +297,7 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
         </motion.div>
       </div>
       <BottomNav />
+      <ProgressShareCard open={shareOpen} onClose={() => setShareOpen(false)} state={state} />
     </div>
   );
 }

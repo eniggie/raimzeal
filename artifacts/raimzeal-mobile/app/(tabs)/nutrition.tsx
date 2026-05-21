@@ -609,6 +609,8 @@ export default function NutritionScreen() {
 
   const [historyDateRange, setHistoryDateRange] = useState<HistoryDateRange>("all");
   const [historyMealFilter, setHistoryMealFilter] = useState<HistoryMealFilter>("all");
+  const [macroAlert, setMacroAlert] = useState<{ cal: number; prot: number; carb: number; fat: number } | null>(null);
+  const macroAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredHistoryDays = React.useMemo(() => {
     const todayStart = new Date();
@@ -1733,6 +1735,15 @@ export default function NutritionScreen() {
       ...(isGramsMode && parsedGrams > 0 ? { amountGrams: parsedGrams } : {}),
     };
     addMealLog(meal);
+
+    // Smart Macro Remaining Alert
+    const remCal = Math.round(CALORIE_GOAL - (calories + meal.calories));
+    const remProt = Math.round((PROTEIN_GOAL - (protein + meal.protein)) * 10) / 10;
+    const remCarb = Math.round((CARBS_GOAL - (carbs + meal.carbs)) * 10) / 10;
+    const remFat = Math.round((FAT_GOAL - (fat + meal.fat)) * 10) / 10;
+    setMacroAlert({ cal: remCal, prot: remProt, carb: remCarb, fat: remFat });
+    if (macroAlertTimer.current) clearTimeout(macroAlertTimer.current);
+    macroAlertTimer.current = setTimeout(() => setMacroAlert(null), 5000);
 
     if (isGramsMode && parsedGrams > 0) {
       AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
@@ -3874,6 +3885,33 @@ export default function NutritionScreen() {
           </Text>
         </Animated.View>
       )}
+
+      {macroAlert !== null && (
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.macroAlertToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              bottom: insets.bottom + 90,
+            },
+          ]}
+        >
+          <Ionicons name="nutrition-outline" size={16} color={colors.primary} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.macroAlertTitle, { color: colors.foreground }]}>
+              {macroAlert.cal > 0 ? `${macroAlert.cal} kcal remaining` : "Daily goal reached! 🎉"}
+            </Text>
+            <Text style={[styles.macroAlertSub, { color: colors.mutedForeground }]}>
+              {`P: ${macroAlert.prot}g · C: ${macroAlert.carb}g · F: ${macroAlert.fat}g left`}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setMacroAlert(null)} hitSlop={8}>
+            <Ionicons name="close" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -5370,4 +5408,23 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     marginBottom: 6,
   },
+  macroAlertToast: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
+  },
+  macroAlertTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  macroAlertSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });

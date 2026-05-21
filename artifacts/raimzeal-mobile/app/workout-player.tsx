@@ -1,10 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, WorkoutLog } from "@/contexts/FitnessContext";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
+import type { WorkoutTemplate } from "@/constants/workoutTemplates";
+import { loadCustomWorkouts } from "@/lib/customWorkouts";
 
 const REST_SECONDS_DEFAULT = 60;
 const REST_SECONDS_MIN = 15;
@@ -31,10 +38,25 @@ export default function WorkoutPlayerScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { addWorkoutLog } = useFitness();
+  const { addWorkoutLog, personalRecords } = useFitness();
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
 
-  const template = WORKOUT_TEMPLATES.find((t) => t.workoutId === workoutId);
+  const builtInTemplate = WORKOUT_TEMPLATES.find((t) => t.workoutId === workoutId);
+  const [customTemplate, setCustomTemplate] = useState<WorkoutTemplate | null>(null);
+  const [templateLoading, setTemplateLoading] = useState(!builtInTemplate);
+  const template = builtInTemplate ?? customTemplate;
+
+  useEffect(() => {
+    if (!builtInTemplate && workoutId) {
+      setTemplateLoading(true);
+      loadCustomWorkouts()
+        .then((workouts) => {
+          const found = workouts.find((w) => w.workoutId === workoutId) ?? null;
+          setCustomTemplate(found);
+        })
+        .finally(() => setTemplateLoading(false));
+    }
+  }, [workoutId]);
 
   const [exerciseIdx, setExerciseIdx] = useState(0);
   const [setIdx, setSetIdx] = useState(0);
@@ -43,6 +65,11 @@ export default function WorkoutPlayerScreen() {
   const [restSecsLeft, setRestSecsLeft] = useState(REST_SECONDS_DEFAULT);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [logged, setLogged] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [rpeValue, setRpeValue] = useState(6);
+  const [noteText, setNoteText] = useState("");
+  const [newPRExercises, setNewPRExercises] = useState<string[]>([]);
+  const [workoutLogId, setWorkoutLogId] = useState("");
 
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -99,8 +126,10 @@ export default function WorkoutPlayerScreen() {
     setLogged(true);
     if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current);
     triggerHaptic("finish");
+    const logId = Date.now().toString();
+    setWorkoutLogId(logId);
     const log: WorkoutLog = {
-      id: Date.now().toString(),
+      id: logId,
       workoutId: template.workoutId,
       workoutName: template.name,
       date: new Date().toISOString().split("T")[0],
@@ -109,7 +138,17 @@ export default function WorkoutPlayerScreen() {
       exercises: template.exercises,
     };
     addWorkoutLog(log);
-  }, [template, logged, elapsedSecs, triggerHaptic, addWorkoutLog]);
+    // Detect potential new PRs from template exercises that have weights
+    const prMap = new Map(personalRecords.map((pr) => [pr.exercise.toLowerCase(), pr.weight]));
+    const newPRs = template.exercises
+      .filter((ex) => ex.weight != null && ex.weight > 0)
+      .filter((ex) => {
+        const existing = prMap.get(ex.name.toLowerCase());
+        return existing == null || ex.weight! > existing;
+      })
+      .map((ex) => ex.name);
+    setNewPRExercises(newPRs);
+  }, [template, logged, elapsedSecs, triggerHaptic, addWorkoutLog, personalRecords]);
 
   function advanceFromRest() {
     const nextSet = setIdx + 1;
@@ -167,7 +206,29 @@ export default function WorkoutPlayerScreen() {
   }
 
   function handleFinish() {
+    setShowNotes(true);
+  }
+
+  async function handleSaveNote(skip: boolean) {
+    if (!skip && workoutLogId && (rpeValue > 0 || noteText.trim())) {
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        await AsyncStorage.setItem(
+          `@raimzeal_workout_note_${workoutLogId}`,
+          JSON.stringify({ rpe: rpeValue, note: noteText.trim(), date: new Date().toISOString() })
+        );
+      } catch {}
+    }
+    setShowNotes(false);
     router.back();
+  }
+
+  if (templateLoading) {
+    return (
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
 
   if (!template) {
@@ -240,6 +301,18 @@ export default function WorkoutPlayerScreen() {
             </View>
           </View>
 
+          {newPRExercises.length > 0 && (
+            <View style={[styles.prBanner, { backgroundColor: "#eab308" + "20", borderColor: "#eab308" + "50" }]}>
+              <Text style={styles.prBannerEmoji}>🏆</Text>
+              <View style={styles.prBannerText}>
+                <Text style={[styles.prBannerTitle, { color: "#eab308" }]}>New Personal Records!</Text>
+                <Text style={[styles.prBannerSub, { color: colors.mutedForeground }]} numberOfLines={2}>
+                  {newPRExercises.join(" · ")}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <Pressable
             onPress={handleFinish}
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
@@ -249,6 +322,72 @@ export default function WorkoutPlayerScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Notes / RPE modal */}
+        <Modal visible={showNotes} animationType="slide" transparent>
+          <View style={styles.notesOverlay}>
+            <View style={[styles.notesSheet, { backgroundColor: colors.background }]}>
+              <View style={[styles.notesHandle, { backgroundColor: colors.border }]} />
+              <Text style={[styles.notesTitle, { color: colors.foreground }]}>
+                How was that? 💪
+              </Text>
+              <Text style={[styles.notesLabel, { color: colors.mutedForeground }]}>
+                Effort level (RPE)
+              </Text>
+              <View style={styles.rpeRow}>
+                {[1,2,3,4,5,6,7,8,9,10].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    onPress={() => {
+                      setRpeValue(n);
+                      if (Platform.OS !== "web") Haptics.selectionAsync();
+                    }}
+                    style={[
+                      styles.rpeBtn,
+                      {
+                        backgroundColor: rpeValue === n ? colors.primary : colors.muted,
+                        borderColor: rpeValue === n ? colors.primary : "transparent",
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.rpeBtnText, { color: rpeValue === n ? colors.primaryForeground : colors.mutedForeground }]}>
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.rpeHint, { color: colors.mutedForeground }]}>
+                {rpeValue <= 3 ? "Very easy" : rpeValue <= 5 ? "Moderate" : rpeValue <= 7 ? "Hard" : rpeValue <= 9 ? "Very hard" : "Maximum effort"}
+              </Text>
+              <Text style={[styles.notesLabel, { color: colors.mutedForeground }]}>
+                Notes (optional)
+              </Text>
+              <TextInput
+                value={noteText}
+                onChangeText={setNoteText}
+                placeholder="How did you feel? Any PRs? Notes for next time..."
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                maxLength={300}
+                style={[styles.noteInput, { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border }]}
+              />
+              <View style={styles.notesActions}>
+                <Pressable
+                  onPress={() => handleSaveNote(true)}
+                  style={[styles.notesSkip, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.notesSkipText, { color: colors.mutedForeground }]}>Skip</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => handleSaveNote(false)}
+                  style={[styles.notesSave, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.notesSaveText, { color: colors.primaryForeground }]}>Save Note</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
@@ -596,6 +735,76 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",
   },
+
+  prBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    width: "100%",
+  },
+  prBannerEmoji: { fontSize: 28 },
+  prBannerText: { flex: 1 },
+  prBannerTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  prBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+
+  notesOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" },
+  notesSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingTop: 12,
+    gap: 14,
+  },
+  notesHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  notesTitle: { fontSize: 22, fontFamily: "SpaceGrotesk_700Bold", textAlign: "center" },
+  notesLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  rpeRow: { flexDirection: "row", gap: 6 },
+  rpeBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+  },
+  rpeBtnText: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  rpeHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -8 },
+  noteInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  notesActions: { flexDirection: "row", gap: 12 },
+  notesSkip: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notesSkipText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  notesSave: {
+    flex: 2,
+    height: 50,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notesSaveText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   restProgressTrack: {
     height: 4,
     borderRadius: 2,

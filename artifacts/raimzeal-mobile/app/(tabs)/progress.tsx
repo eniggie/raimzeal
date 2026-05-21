@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Dimensions,
   Platform,
@@ -75,6 +75,33 @@ export default function ProgressScreen() {
       (Date.now() - new Date(w.date).getTime()) / 86400000;
     return diff <= 7;
   }).length;
+
+  // BMI
+  const bmi = user && user.weight > 0 && user.height > 0
+    ? user.weight / Math.pow(user.height / 100, 2)
+    : null;
+  const bmiCategory = bmi == null ? "" : bmi < 18.5 ? "Underweight" : bmi < 25 ? "Healthy" : bmi < 30 ? "Overweight" : "Obese";
+  const bmiColor = bmi == null ? "#6b7280" : bmi >= 18.5 && bmi < 25 ? "#10b981" : bmi < 18.5 ? "#3b82f6" : bmi < 30 ? "#f59e0b" : "#ef4444";
+
+  // Heatmap — 12 weeks of dates
+  const workoutDateCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const w of workoutLogs) {
+      counts[w.date] = (counts[w.date] ?? 0) + 1;
+    }
+    return counts;
+  }, [workoutLogs]);
+
+  const heatmapDays = useMemo(() => {
+    const days: string[] = [];
+    const today = new Date();
+    for (let i = 83; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      days.push(d.toISOString().split("T")[0]);
+    }
+    return days;
+  }, []);
 
   const currentWeight =
     bodyMeasurements.length > 0
@@ -271,6 +298,89 @@ export default function ProgressScreen() {
         </View>
       </GlassCard>
 
+      {/* BMI Card */}
+      {bmi != null && (
+        <GlassCard style={styles.chartCard}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: colors.foreground }]}>Body Mass Index</Text>
+            <View style={[styles.bmiTag, { backgroundColor: bmiColor + "20" }]}>
+              <Text style={[styles.bmiTagText, { color: bmiColor }]}>{bmiCategory}</Text>
+            </View>
+          </View>
+          <View style={styles.bmiRow}>
+            <Text style={[styles.bmiValue, { color: bmiColor }]}>{bmi.toFixed(1)}</Text>
+            <Text style={[styles.bmiUnit, { color: colors.mutedForeground }]}>BMI</Text>
+          </View>
+          <View style={[styles.bmiScale, { backgroundColor: colors.muted }]}>
+            {[
+              { label: "Under", end: 18.5, color: "#3b82f6" },
+              { label: "Healthy", end: 25, color: "#10b981" },
+              { label: "Over", end: 30, color: "#f59e0b" },
+              { label: "Obese", end: 40, color: "#ef4444" },
+            ].map((seg, i) => {
+              const start = i === 0 ? 10 : [10, 18.5, 25, 30][i];
+              const width = ((seg.end - start) / 30) * 100;
+              return (
+                <View key={seg.label} style={[styles.bmiSegment, { width: `${width}%`, backgroundColor: seg.color }]} />
+              );
+            })}
+          </View>
+          <Text style={[styles.bmiNote, { color: colors.mutedForeground }]}>
+            Based on your profile: {user?.weight ?? "—"}kg · {user?.height ?? "—"}cm
+          </Text>
+        </GlassCard>
+      )}
+
+      {/* Workout Heatmap */}
+      {workoutLogs.length > 0 && (
+        <GlassCard style={styles.chartCard}>
+          <Text style={[styles.chartTitle, { color: colors.foreground }]}>12-Week Activity</Text>
+          <View style={styles.heatmapGrid}>
+            {Array.from({ length: 12 }, (_, weekIdx) => (
+              <View key={weekIdx} style={styles.heatmapCol}>
+                {Array.from({ length: 7 }, (_, dayIdx) => {
+                  const dateStr = heatmapDays[weekIdx * 7 + dayIdx];
+                  const count = dateStr ? (workoutDateCounts[dateStr] ?? 0) : 0;
+                  const isToday = dateStr === new Date().toISOString().split("T")[0];
+                  return (
+                    <View
+                      key={dayIdx}
+                      style={[
+                        styles.heatCell,
+                        {
+                          backgroundColor: count === 0
+                            ? colors.muted
+                            : count === 1
+                            ? colors.primary + "80"
+                            : colors.primary,
+                          borderColor: isToday ? colors.primary : "transparent",
+                          borderWidth: isToday ? 1.5 : 0,
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+          <View style={styles.heatmapLegend}>
+            <Text style={[styles.heatLegendText, { color: colors.mutedForeground }]}>Less</Text>
+            {[0, 1, 2].map((v) => (
+              <View
+                key={v}
+                style={[
+                  styles.heatLegendCell,
+                  {
+                    backgroundColor: v === 0 ? colors.muted : v === 1 ? colors.primary + "80" : colors.primary,
+                  },
+                ]}
+              />
+            ))}
+            <Text style={[styles.heatLegendText, { color: colors.mutedForeground }]}>More</Text>
+          </View>
+        </GlassCard>
+      )}
+
       {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
         Track Your Transformation
@@ -311,20 +421,61 @@ export default function ProgressScreen() {
         <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
       </TouchableOpacity>
 
-      {/* Achievements */}
+      {/* Achievements & More */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-        Achievements
+        Insights
       </Text>
-      <View style={styles.achievements}>
-        {[
-          { icon: "flame" as const, label: "7-Day Streak", unlocked: streak >= 7, color: colors.warning },
-          { icon: "barbell-outline" as const, label: "10 Workouts", unlocked: totalWorkouts >= 10, color: colors.primary },
-          { icon: "trophy-outline" as const, label: "First PR", unlocked: true, color: colors.secondary },
-          { icon: "body-outline" as const, label: "Consistency King", unlocked: streak >= 14, color: colors.accent },
-        ].map((a) => (
-          <AchievementBadge key={a.label} {...a} />
-        ))}
-      </View>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/achievements");
+        }}
+        style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: "#eab308" + "20" }]}>
+          <Ionicons name="trophy-outline" size={24} color="#eab308" />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Achievements & Badges</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Milestones · Unlocked rewards</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/workout-stats");
+        }}
+        style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: "#3b82f6" + "20" }]}>
+          <Ionicons name="stats-chart-outline" size={24} color="#3b82f6" />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Workout Statistics</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Total time · PRs · Active days</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/sleep-tracker");
+        }}
+        style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: "#8b5cf6" + "20" }]}>
+          <Ionicons name="moon-outline" size={24} color="#8b5cf6" />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Sleep Tracker</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Log duration · Quality · 7-day view</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -359,46 +510,6 @@ function StatBadge({
   );
 }
 
-function AchievementBadge({
-  icon,
-  label,
-  unlocked,
-  color,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  unlocked: boolean;
-  color: string;
-}) {
-  const colors = useColors();
-  return (
-    <View
-      style={[
-        styles.achievement,
-        {
-          backgroundColor: unlocked ? color + "15" : colors.muted,
-          borderColor: unlocked ? color + "40" : colors.border,
-          opacity: unlocked ? 1 : 0.5,
-        },
-      ]}
-    >
-      <Ionicons
-        name={icon}
-        size={24}
-        color={unlocked ? color : colors.mutedForeground}
-      />
-      <Text
-        style={[
-          styles.achievementLabel,
-          { color: unlocked ? colors.foreground : colors.mutedForeground },
-        ]}
-        numberOfLines={2}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -487,18 +598,19 @@ const styles = StyleSheet.create({
   navCardText: { flex: 1, gap: 3 },
   navCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   navCardSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  achievements: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  achievement: {
-    width: "47%",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    gap: 8,
-  },
-  achievementLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-  },
+  bmiTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  bmiTagText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  bmiRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
+  bmiValue: { fontSize: 42, fontFamily: "SpaceGrotesk_700Bold" },
+  bmiUnit: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  bmiScale: { height: 8, borderRadius: 4, flexDirection: "row", overflow: "hidden" },
+  bmiSegment: { height: "100%" },
+  bmiNote: { fontSize: 11, fontFamily: "Inter_400Regular" },
+
+  heatmapGrid: { flexDirection: "row", gap: 3 },
+  heatmapCol: { gap: 3 },
+  heatCell: { width: 14, height: 14, borderRadius: 3 },
+  heatmapLegend: { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "flex-end" },
+  heatLegendText: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  heatLegendCell: { width: 10, height: 10, borderRadius: 2 },
 });

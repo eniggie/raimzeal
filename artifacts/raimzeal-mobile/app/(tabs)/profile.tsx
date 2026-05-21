@@ -576,6 +576,40 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Training & Stats */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Training & Stats</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="trophy-outline"
+              label="Achievements & Badges"
+              sublabel="Milestones · Unlocked rewards"
+              color="#eab308"
+              onPress={() => router.push("/achievements")}
+            />
+            <ActionRow
+              icon="stats-chart-outline"
+              label="Workout Statistics"
+              sublabel="Total time · PRs · Active days"
+              color="#3b82f6"
+              onPress={() => router.push("/workout-stats")}
+            />
+            <ActionRow
+              icon="moon-outline"
+              label="Sleep Tracker"
+              sublabel="Duration · Quality · 7-day chart"
+              color="#8b5cf6"
+              onPress={() => router.push("/sleep-tracker")}
+            />
+            <ActionRow
+              icon="restaurant-outline"
+              label="Recipe Book"
+              sublabel="20 recipes · Tap to log macros"
+              color="#10b981"
+              onPress={() => router.push("/recipes")}
+              isLast
+            />
+          </GlassCard>
+
           {/* Membership */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>
           <GlassCard style={styles.actionsCard}>

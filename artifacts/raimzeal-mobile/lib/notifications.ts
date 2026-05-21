@@ -307,3 +307,80 @@ export async function getActiveReminderCount(): Promise<number> {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   return scheduled.filter((n) => n.identifier.startsWith("ovia_")).length;
 }
+
+// ─── Smart Water Reminders ────────────────────────────────────────────────────
+
+const WATER_REMINDER_KEY = "raimzeal_water_reminder_config";
+const WATER_NOTIF_PREFIX = "water_interval_";
+
+export interface WaterReminderConfig {
+  enabled: boolean;
+  intervalHours: 1 | 2 | 3;
+  startHour: number;
+  endHour: number;
+}
+
+export const DEFAULT_WATER_REMINDER_CONFIG: WaterReminderConfig = {
+  enabled: false,
+  intervalHours: 2,
+  startHour: 8,
+  endHour: 20,
+};
+
+export async function loadWaterReminderConfig(): Promise<WaterReminderConfig> {
+  try {
+    const raw = await AsyncStorage.getItem(WATER_REMINDER_KEY);
+    if (!raw) return { ...DEFAULT_WATER_REMINDER_CONFIG };
+    return { ...DEFAULT_WATER_REMINDER_CONFIG, ...(JSON.parse(raw) as Partial<WaterReminderConfig>) };
+  } catch {
+    return { ...DEFAULT_WATER_REMINDER_CONFIG };
+  }
+}
+
+export async function saveWaterReminderConfig(config: WaterReminderConfig): Promise<void> {
+  await AsyncStorage.setItem(WATER_REMINDER_KEY, JSON.stringify(config));
+}
+
+const WATER_MESSAGES = [
+  { title: "💧 Hydration Check", body: "Time to drink a glass of water. Staying hydrated keeps energy levels high and reduces false hunger." },
+  { title: "💧 Water Break", body: "Sip some water now. Your muscles, brain, and metabolism all depend on consistent hydration throughout the day." },
+  { title: "💧 Stay Hydrated", body: "Pause and drink a full glass of water. Consistent hydration is one of the simplest habits with the biggest returns." },
+  { title: "💧 Drink Up", body: "Another hydration reminder. Most people are dehydrated by afternoon — you're staying ahead of the curve." },
+  { title: "💧 Water First", body: "A glass of water before your next meal reduces calorie intake and improves digestion. Drink it now." },
+];
+
+export async function scheduleWaterIntervalReminders(config: WaterReminderConfig): Promise<number> {
+  if (Platform.OS === "web") return 0;
+
+  // Cancel existing water reminders first
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of all) {
+    if (n.identifier.startsWith(WATER_NOTIF_PREFIX)) {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
+
+  if (!config.enabled) return 0;
+
+  let count = 0;
+  let msgIdx = 0;
+  for (let hour = config.startHour; hour <= config.endHour; hour += config.intervalHours) {
+    const msg = WATER_MESSAGES[msgIdx % WATER_MESSAGES.length];
+    msgIdx++;
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${WATER_NOTIF_PREFIX}${hour}`,
+        content: { title: msg.title, body: msg.body, sound: true },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour,
+          minute: 0,
+        } as Notifications.DailyTriggerInput,
+      });
+      count++;
+    } catch {
+      // skip
+    }
+  }
+  return count;
+}
