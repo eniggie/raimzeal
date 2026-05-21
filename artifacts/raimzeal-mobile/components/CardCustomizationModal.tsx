@@ -1097,6 +1097,7 @@ export default function CardCustomizationModal({
   }
 
   function toggleStat(key: keyof CardVisibleStats) {
+    if (showInlineSave) setShowInlineSave(false);
     Haptics.selectionAsync();
     setVisibleStats((prev) => {
       const next = { ...prev, [key]: !prev[key] };
@@ -1127,6 +1128,7 @@ export default function CardCustomizationModal({
   }
 
   function handleThemeChange(themeId: CardThemeId) {
+    if (showInlineSave) setShowInlineSave(false);
     setSelectedThemeId(themeId);
     setActivePresetId(null);
     setRestoredFromStorage(false);
@@ -1397,6 +1399,7 @@ export default function CardCustomizationModal({
   }
 
   async function handlePickBackgroundPhoto() {
+    if (showInlineSave) setShowInlineSave(false);
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
@@ -1429,6 +1432,7 @@ export default function CardCustomizationModal({
   }
 
   function handleRemoveBackgroundPhoto() {
+    if (showInlineSave) setShowInlineSave(false);
     setBackgroundPhotoUri(null);
     setActivePresetId(null);
     setRestoredFromStorage(false);
@@ -1872,7 +1876,12 @@ export default function CardCustomizationModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={!reorderMode}
+            onScrollBeginDrag={() => { if (showInlineSave) setShowInlineSave(false); }}
           >
+            <View
+              onStartShouldSetResponder={() => showInlineSave}
+              onResponderRelease={() => setShowInlineSave(false)}
+            >
             {/* ── Presets section ── */}
             <View style={styles.presetsHeader}>
               <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
@@ -2328,6 +2337,7 @@ export default function CardCustomizationModal({
               <TextInput
                 value={customMessage}
                 onChangeText={handleMessageChange}
+                onFocus={() => { if (showInlineSave) setShowInlineSave(false); }}
                 placeholder="Add a motivational quote or personal note…"
                 placeholderTextColor={colors.mutedForeground}
                 maxLength={120}
@@ -2394,6 +2404,7 @@ export default function CardCustomizationModal({
                 <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
               </TouchableOpacity>
             )}
+            </View>
           </ScrollView>
 
           {/* Auto-trigger countdown banner */}
