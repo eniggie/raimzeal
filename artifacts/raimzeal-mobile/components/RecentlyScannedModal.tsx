@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
   getRecentScans,
   removeRecentScan,
   updateRecentScan,
+  clearAllRecentScans,
   RecentScan,
   ScannedFood,
 } from "@/components/BarcodeScannerModal";
@@ -92,6 +94,25 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     setEditTarget(null);
   }
 
+  function handleClearAll() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Clear all scans?",
+      "This will remove all recently scanned products. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear all",
+          style: "destructive",
+          onPress: async () => {
+            await clearAllRecentScans();
+            setScans([]);
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <Modal
       visible={visible}
@@ -124,9 +145,22 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                 Recently Scanned
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={22} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              {scans.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleClearAll}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.clearAllBtn}
+                >
+                  <Text style={[styles.clearAllText, { color: colors.destructive ?? "#ef4444" }]}>
+                    Clear all
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScanEditSheet
@@ -270,6 +304,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  clearAllBtn: {
+    paddingVertical: 2,
+  },
+  clearAllText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
   },
   title: {
     fontSize: 17,

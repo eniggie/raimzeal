@@ -56,6 +56,14 @@ export async function removeRecentScan(barcode: string): Promise<void> {
   }
 }
 
+export async function clearAllRecentScans(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(RECENT_SCANS_KEY);
+  } catch {
+    // Non-fatal
+  }
+}
+
 export async function updateRecentScan(barcode: string, food: ScannedFood): Promise<void> {
   try {
     const scans = await getRecentScans();
