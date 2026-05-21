@@ -324,13 +324,20 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
                 <div className="shrink-0 flex flex-col items-end gap-1">
                   <button
                     onClick={async () => {
+                      const popup = window.open('about:blank', '_blank');
+                      if (!popup) {
+                        setSettingsDonationError(true);
+                        setTimeout(() => setSettingsDonationError(false), 5000);
+                        return;
+                      }
                       try {
                         const r = await fetch('/api/stripe/donation-health');
                         const { ok } = await r.json() as { ok: boolean };
                         if (!ok) throw new Error('unhealthy');
-                        window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                        popup.location.href = STRIPE_DONATION_URL;
                         setSettingsDonationError(false);
                       } catch {
+                        popup.close();
                         setSettingsDonationError(true);
                         setTimeout(() => setSettingsDonationError(false), 5000);
                       }

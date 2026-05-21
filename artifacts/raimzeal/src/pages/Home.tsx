@@ -107,13 +107,20 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             <div className="shrink-0 flex flex-col items-end gap-1">
               <motion.button
                 onClick={async () => {
+                  const popup = window.open('about:blank', '_blank');
+                  if (!popup) {
+                    setHomeDonationError(true);
+                    setTimeout(() => setHomeDonationError(false), 5000);
+                    return;
+                  }
                   try {
                     const r = await fetch('/api/stripe/donation-health');
                     const { ok } = await r.json() as { ok: boolean };
                     if (!ok) throw new Error('unhealthy');
-                    window.open(STRIPE_DONATION_URL, '_blank', 'noopener,noreferrer');
+                    popup.location.href = STRIPE_DONATION_URL;
                     setHomeDonationError(false);
                   } catch {
+                    popup.close();
                     setHomeDonationError(true);
                     setTimeout(() => setHomeDonationError(false), 5000);
                   }
