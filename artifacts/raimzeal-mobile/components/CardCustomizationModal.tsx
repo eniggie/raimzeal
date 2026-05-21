@@ -492,6 +492,8 @@ function ZoomableCard({
   savedTranslateY,
   reduceMotionShared,
   onFirstGesture,
+  onSwipeLeft,
+  onSwipeRight,
 }: {
   children: React.ReactNode;
   cardWidth: number;
@@ -504,6 +506,8 @@ function ZoomableCard({
   savedTranslateY: SharedValue<number>;
   reduceMotionShared: SharedValue<boolean>;
   onFirstGesture?: () => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
@@ -548,10 +552,18 @@ function ZoomableCard({
       translateX.value = Math.min(maxX, Math.max(-maxX, savedTranslateX.value + e.translationX));
       translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       "worklet";
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
+      if (
+        scale.value === 1 &&
+        Math.abs(e.translationX) > 60 &&
+        Math.abs(e.translationX) > Math.abs(e.translationY) * 1.5
+      ) {
+        if (e.translationX < 0 && onSwipeLeft) runOnJS(onSwipeLeft)();
+        if (e.translationX > 0 && onSwipeRight) runOnJS(onSwipeRight)();
+      }
     });
 
   const doubleTapGesture = Gesture.Tap()
@@ -804,8 +816,12 @@ export default function CardCustomizationModal({
 
   // Preset thumbnail preview
   const [presetPreviewTarget, setPresetPreviewTarget] = useState<CardPreset | null>(null);
+  const [presetPreviewIndex, setPresetPreviewIndex] = useState(0);
+  const presetPreviewIndexRef = useRef(0);
+  const presetPreviewPresetsRef = useRef<CardPreset[]>([]);
   const [presetPreviewVisible, setPresetPreviewVisible] = useState(false);
   const presetPreviewAnim = useRef(new Animated.Value(0)).current;
+  const presetCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Badge fade-in + slide-in animation
   const badgeFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1496,12 +1512,18 @@ export default function CardCustomizationModal({
   }
 
   function openPresetPreview(preset: CardPreset) {
+    const idx = presets.findIndex((p) => p.id === preset.id);
+    const safeIdx = idx >= 0 ? idx : 0;
+    presetPreviewIndexRef.current = safeIdx;
+    presetPreviewPresetsRef.current = presets;
+    setPresetPreviewIndex(safeIdx);
     pinchScale.value = 1;
     pinchSavedScale.value = 1;
     pinchTranslateX.value = 0;
     pinchTranslateY.value = 0;
     pinchSavedTranslateX.value = 0;
     pinchSavedTranslateY.value = 0;
+    presetCardOpacity.setValue(1);
     setPresetPreviewTarget(preset);
     setPresetPreviewVisible(true);
     if (reduceMotionRef.current) {
@@ -1533,6 +1555,40 @@ export default function CardCustomizationModal({
           setPresetPreviewVisible(false);
           setPresetPreviewTarget(null);
         }
+      });
+    }
+  }
+
+  function navigatePresetPreview(dir: 1 | -1) {
+    const currentPresets = presetPreviewPresetsRef.current;
+    const newIdx = presetPreviewIndexRef.current + dir;
+    if (newIdx < 0 || newIdx >= currentPresets.length) return;
+    const nextPreset = currentPresets[newIdx];
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    pinchScale.value = 1;
+    pinchSavedScale.value = 1;
+    pinchTranslateX.value = 0;
+    pinchTranslateY.value = 0;
+    pinchSavedTranslateX.value = 0;
+    pinchSavedTranslateY.value = 0;
+    if (reduceMotionRef.current) {
+      presetPreviewIndexRef.current = newIdx;
+      setPresetPreviewIndex(newIdx);
+      setPresetPreviewTarget(nextPreset);
+    } else {
+      Animated.timing(presetCardOpacity, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: true,
+      }).start(() => {
+        presetPreviewIndexRef.current = newIdx;
+        setPresetPreviewIndex(newIdx);
+        setPresetPreviewTarget(nextPreset);
+        Animated.timing(presetCardOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }).start();
       });
     }
   }
@@ -2889,6 +2945,7 @@ export default function CardCustomizationModal({
             <>
               <Animated.View
                 style={{
+                  opacity: presetCardOpacity,
                   transform: [
                     {
                       scale: presetPreviewAnim.interpolate({
@@ -2909,6 +2966,8 @@ export default function CardCustomizationModal({
                   savedTranslateX={pinchSavedTranslateX}
                   savedTranslateY={pinchSavedTranslateY}
                   reduceMotionShared={reduceMotionShared}
+                  onSwipeLeft={() => navigatePresetPreview(1)}
+                  onSwipeRight={() => navigatePresetPreview(-1)}
                 >
                   {zoomIsOneToOne ? (
                     <ShareProgressCard
@@ -2983,11 +3042,55 @@ export default function CardCustomizationModal({
                 ]}
                 pointerEvents="box-none"
               >
-                <View style={styles.presetPreviewNameBadge} pointerEvents="none">
-                  <Text style={styles.presetPreviewNameText} numberOfLines={1}>
-                    {presetPreviewTarget.name}
-                  </Text>
-                </View>
+                {presetPreviewPresetsRef.current.length > 1 && (
+                  <View style={styles.presetPreviewNavRow} pointerEvents="box-none">
+                    <TouchableOpacity
+                      style={[
+                        styles.presetPreviewNavBtn,
+                        presetPreviewIndex === 0 && styles.presetPreviewNavBtnDisabled,
+                      ]}
+                      onPress={() => navigatePresetPreview(-1)}
+                      disabled={presetPreviewIndex === 0}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons
+                        name="chevron-back"
+                        size={20}
+                        color={presetPreviewIndex === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)"}
+                      />
+                    </TouchableOpacity>
+                    <View style={styles.presetPreviewNameBadge} pointerEvents="none">
+                      <Text style={styles.presetPreviewNameText} numberOfLines={1}>
+                        {presetPreviewTarget.name}
+                      </Text>
+                      <Text style={styles.presetPreviewNavCounter}>
+                        {presetPreviewIndex + 1} / {presetPreviewPresetsRef.current.length}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.presetPreviewNavBtn,
+                        presetPreviewIndex === presetPreviewPresetsRef.current.length - 1 && styles.presetPreviewNavBtnDisabled,
+                      ]}
+                      onPress={() => navigatePresetPreview(1)}
+                      disabled={presetPreviewIndex === presetPreviewPresetsRef.current.length - 1}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color={presetPreviewIndex === presetPreviewPresetsRef.current.length - 1 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)"}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {presetPreviewPresetsRef.current.length === 1 && (
+                  <View style={styles.presetPreviewNameBadge} pointerEvents="none">
+                    <Text style={styles.presetPreviewNameText} numberOfLines={1}>
+                      {presetPreviewTarget.name}
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity
                   style={styles.presetPreviewLoadBtn}
                   activeOpacity={0.85}
@@ -3692,6 +3795,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     color: "#fff",
+  },
+  presetPreviewNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  presetPreviewNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  presetPreviewNavBtnDisabled: {
+    opacity: 0.4,
+  },
+  presetPreviewNavCounter: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    marginTop: 2,
   },
   // Confirmation toast
   confirmToastWrap: {
