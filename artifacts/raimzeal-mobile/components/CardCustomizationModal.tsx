@@ -1674,7 +1674,7 @@ export default function CardCustomizationModal({
               // Re-show set-as-preferred alert for this action
               Alert.alert(
                 "Set as preferred",
-                `Always open with ${label}?`,
+                `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
                 [
                   { text: "Cancel", style: "cancel" },
                   {
@@ -1717,7 +1717,7 @@ export default function CardCustomizationModal({
       // "Set-only" mode: show confirmation alert before setting default
       Alert.alert(
         "Set as preferred",
-        `Always open with ${label}?`,
+        `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
         [
           { text: "Cancel", style: "cancel" },
           {
