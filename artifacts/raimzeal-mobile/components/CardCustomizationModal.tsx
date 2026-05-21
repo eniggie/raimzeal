@@ -470,6 +470,7 @@ function ZoomableCard({
   translateY,
   savedTranslateX,
   savedTranslateY,
+  onFirstGesture,
 }: {
   children: React.ReactNode;
   cardWidth: number;
@@ -480,11 +481,16 @@ function ZoomableCard({
   translateY: SharedValue<number>;
   savedTranslateX: SharedValue<number>;
   savedTranslateY: SharedValue<number>;
+  onFirstGesture?: () => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
 
   const pinchGesture = Gesture.Pinch()
+    .onBegin(() => {
+      "worklet";
+      if (onFirstGesture) runOnJS(onFirstGesture)();
+    })
     .onUpdate((e) => {
       "worklet";
       scale.value = Math.min(4, Math.max(1, savedScale.value * e.scale));
@@ -504,6 +510,10 @@ function ZoomableCard({
 
   const panGesture = Gesture.Pan()
     .averageTouches(true)
+    .onBegin(() => {
+      "worklet";
+      if (onFirstGesture) runOnJS(onFirstGesture)();
+    })
     .onUpdate((e) => {
       "worklet";
       const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
@@ -519,6 +529,10 @@ function ZoomableCard({
 
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
+    .onBegin(() => {
+      "worklet";
+      if (onFirstGesture) runOnJS(onFirstGesture)();
+    })
     .onEnd(() => {
       "worklet";
       scale.value = withSpring(1, { damping: 15, stiffness: 200 });
@@ -1536,6 +1550,21 @@ export default function CardCustomizationModal({
     }
   }
 
+  function dismissPinchHintEarly() {
+    if (!showPinchHint) return;
+    pinchHintAnim.stopAnimation();
+    Animated.timing(pinchHintAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowPinchHint(false);
+        AsyncStorage.setItem(STORAGE_KEY_PINCH_HINT_SEEN, "1").catch(() => {});
+      }
+    });
+  }
+
   async function openZoom() {
     setZoomVisible(true);
     if (reduceMotionRef.current) {
@@ -2468,6 +2497,7 @@ export default function CardCustomizationModal({
               translateY={pinchTranslateY}
               savedTranslateX={pinchSavedTranslateX}
               savedTranslateY={pinchSavedTranslateY}
+              onFirstGesture={dismissPinchHintEarly}
             >
               {zoomIsOneToOne ? (
                 // True 1:1 render — no scaling transform applied.
