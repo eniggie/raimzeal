@@ -709,6 +709,8 @@ export default function NutritionScreen() {
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
+  const [selectedFoodNutrients100g, setSelectedFoodNutrients100g] = useState<{ calories: number; protein: number; carbs: number; fat: number } | undefined>(undefined);
+  const [modalShowPer100g, setModalShowPer100g] = useState(false);
   const [servings, setServings] = useState(1);
   const [servingsText, setServingsText] = useState("1");
   const [grams, setGrams] = useState("100");
@@ -1607,6 +1609,8 @@ export default function NutritionScreen() {
     setSelectedFood(food);
     setSelectedFoodServingLabel(undefined);
     setSelectedFoodIsApiResult(false);
+    setSelectedFoodNutrients100g(undefined);
+    setModalShowPer100g(false);
     setServings(1);
     setServingsText("1");
 
@@ -1630,6 +1634,8 @@ export default function NutritionScreen() {
     setSelectedFood({ ...food, mealType: "snack" });
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
+    setSelectedFoodNutrients100g(food.nutrients100g);
+    setModalShowPer100g(false);
     setServings(1);
     setServingsText("1");
 
@@ -1676,10 +1682,12 @@ export default function NutritionScreen() {
   function handleConfirmLog() {
     if (!selectedFood) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const { name, calories, protein, carbs, fat } = selectedFood;
-    const isGramsMode = selectedFoodIsApiResult && !selectedFoodServingLabel;
+    const { name } = selectedFood;
+    const isGramsMode = (selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g;
     const parsedGrams = parseFloat(grams) || 0;
     const factor = isGramsMode ? parsedGrams / 100 : servings;
+    const base = modalShowPer100g && selectedFoodNutrients100g ? selectedFoodNutrients100g : selectedFood;
+    const { calories, protein, carbs, fat } = base;
     const meal: MealLog = {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
@@ -1713,6 +1721,8 @@ export default function NutritionScreen() {
 
     setShowModal(false);
     setGramsPreFillHint(null);
+    setModalShowPer100g(false);
+    setSelectedFoodNutrients100g(undefined);
   }
 
   function handleConfirmManual() {
@@ -3251,7 +3261,7 @@ export default function NutritionScreen() {
         visible={showModal}
         transparent
         animationType="slide"
-        onRequestClose={() => { setShowModal(false); setGramsPreFillHint(null); }}
+        onRequestClose={() => { setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -3262,17 +3272,64 @@ export default function NutritionScreen() {
               {selectedFood?.name}
             </Text>
             {selectedFood && (() => {
-              const isGramsMode = selectedFoodIsApiResult && !selectedFoodServingLabel;
+              const canToggleServing = !!(selectedFoodServingLabel && selectedFoodNutrients100g);
+              const isGramsMode = (selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g;
+              const displayBase = modalShowPer100g && selectedFoodNutrients100g ? selectedFoodNutrients100g : selectedFood;
               const factor = isGramsMode ? (parseFloat(grams) || 0) / 100 : servings;
               return (
                 <>
-                  <Text style={[styles.servingBadge, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
-                    {selectedFoodServingLabel
-                      ? `per ${selectedFoodServingLabel}`
-                      : selectedFoodIsApiResult
-                      ? "per 100g"
-                      : "per serving"}
-                  </Text>
+                  {canToggleServing ? (
+                    <View style={styles.servingToggleRow}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (modalShowPer100g) {
+                            setModalShowPer100g(false);
+                            setServings(1);
+                            setServingsText("1");
+                          }
+                        }}
+                        style={[
+                          styles.servingToggleOption,
+                          !modalShowPer100g && { backgroundColor: colors.primary },
+                        ]}
+                      >
+                        <Text style={[
+                          styles.servingToggleText,
+                          { color: !modalShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                        ]}>
+                          {`per ${selectedFoodServingLabel}`}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          if (!modalShowPer100g) {
+                            setModalShowPer100g(true);
+                            setGrams("100");
+                            setGramsPreFillHint(null);
+                          }
+                        }}
+                        style={[
+                          styles.servingToggleOption,
+                          modalShowPer100g && { backgroundColor: colors.primary },
+                        ]}
+                      >
+                        <Text style={[
+                          styles.servingToggleText,
+                          { color: modalShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                        ]}>
+                          per 100g
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text style={[styles.servingBadge, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
+                      {selectedFoodServingLabel
+                        ? `per ${selectedFoodServingLabel}`
+                        : selectedFoodIsApiResult
+                        ? "per 100g"
+                        : "per serving"}
+                    </Text>
+                  )}
                   {isGramsMode ? (
                     <>
                     <Text style={[styles.gramsHintCentered, { color: colors.mutedForeground }]}>
@@ -3378,22 +3435,22 @@ export default function NutritionScreen() {
                   <View style={styles.modalNutrients}>
                     <NutrientChip
                       label="Calories"
-                      value={`${Math.round(selectedFood.calories * factor)}`}
+                      value={`${Math.round(displayBase.calories * factor)}`}
                       color={colors.primary}
                     />
                     <NutrientChip
                       label="Protein"
-                      value={`${Math.round(selectedFood.protein * factor * 10) / 10}g`}
+                      value={`${Math.round(displayBase.protein * factor * 10) / 10}g`}
                       color={colors.secondary}
                     />
                     <NutrientChip
                       label="Carbs"
-                      value={`${Math.round(selectedFood.carbs * factor * 10) / 10}g`}
+                      value={`${Math.round(displayBase.carbs * factor * 10) / 10}g`}
                       color={colors.warning}
                     />
                     <NutrientChip
                       label="Fat"
-                      value={`${Math.round(selectedFood.fat * factor * 10) / 10}g`}
+                      value={`${Math.round(displayBase.fat * factor * 10) / 10}g`}
                       color={colors.accent}
                     />
                   </View>
@@ -3440,7 +3497,7 @@ export default function NutritionScreen() {
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => { setShowModal(false); setGramsPreFillHint(null); }}
+                onPress={() => { setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -3449,12 +3506,12 @@ export default function NutritionScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleConfirmLog}
-                disabled={selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)}
+                disabled={((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)}
                 style={[
                   styles.modalConfirmBtn,
                   {
                     backgroundColor:
-                      selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)
+                      ((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)
                         ? colors.muted
                         : colors.primary,
                   },
@@ -3465,7 +3522,7 @@ export default function NutritionScreen() {
                     styles.modalConfirmText,
                     {
                       color:
-                        selectedFoodIsApiResult && !selectedFoodServingLabel && !(parseFloat(grams) > 0)
+                        ((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)
                           ? colors.mutedForeground
                           : colors.primaryForeground,
                     },
@@ -4531,6 +4588,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     overflow: "hidden",
+  },
+  servingToggleRow: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+  },
+  servingToggleOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  servingToggleText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   servingsRow: {
     flexDirection: "row",
