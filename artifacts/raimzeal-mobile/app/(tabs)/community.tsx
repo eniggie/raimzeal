@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   RefreshControl,
@@ -29,6 +30,8 @@ import {
   toggleLike,
   checkUserLikes,
 } from "@/lib/db";
+
+const STRIPE_DONATION_URL = 'https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00';
 
 type FeedTab = "feed" | "questions";
 
@@ -713,6 +716,22 @@ export default function CommunityScreen() {
             />
           }
           renderItem={renderPost}
+          ListHeaderComponent={
+            <TouchableOpacity
+              style={[styles.donateBanner, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => Linking.openURL(STRIPE_DONATION_URL)}
+              activeOpacity={0.75}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.donateTitle, { color: colors.foreground }]}>Enjoying RAIMZEAL?</Text>
+                <Text style={[styles.donateSubtitle, { color: colors.mutedForeground }]}>We are free forever. Donations keep the lights on for everyone.</Text>
+              </View>
+              <View style={[styles.donateBtn, { backgroundColor: colors.primary }]}>
+                <Ionicons name="heart" size={13} color={colors.primaryForeground} />
+                <Text style={[styles.donateBtnText, { color: colors.primaryForeground }]}>Donate</Text>
+              </View>
+            </TouchableOpacity>
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons
@@ -1111,4 +1130,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   noMediaText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  donateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  donateTitle: { fontSize: 13, fontFamily: "SpaceGrotesk_700Bold", marginBottom: 2 },
+  donateSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  donateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  donateBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
