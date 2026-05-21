@@ -32,7 +32,7 @@ export function TermsOfService() {
             <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
               <p className="text-foreground font-semibold">🌱 About RAIMZEAL</p>
               <p>RAIMZEAL is a <strong className="text-foreground">free, non-profit fitness, food therapy, and healthcare awareness platform</strong> operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.</p>
-              <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, food therapy, and healthcare awareness information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
+              <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, food therapy, and healthcare awareness information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
               <p>We are sustained entirely by voluntary donations from our community. No donation is ever required to access any feature.</p>
             </div>
           </section>
@@ -52,7 +52,7 @@ export function TermsOfService() {
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-3">
               <p><strong className="text-foreground">RAIMZEAL IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE, DIAGNOSIS, OR TREATMENT OF ANY KIND.</strong></p>
               <p>All content, AI coaching responses (Ovia AI), workout plans, nutrition guidance, food therapy information, healthcare awareness content, and all other material provided through RAIMZEAL is for <strong className="text-foreground">general educational and informational purposes only.</strong> It is not intended to be, and must not be used as, a substitute for professional medical advice, clinical diagnosis, or medical treatment.</p>
-              <p><strong className="text-foreground">RAIMZEAL does not replace your doctor, physician, registered dietitian, licensed nutritionist, therapist, pharmacist, or any other licensed healthcare professional or healthcare facility.</strong> We are here to support and complement qualified healthcare providers — not to take their place.</p>
+              <p><strong className="text-foreground">RAIMZEAL does not replace your doctor, physician, registered dietitian, pharmacist, or any other licensed healthcare professional or healthcare facility.</strong> We are here to support and complement qualified healthcare providers — not to take their place.</p>
               <p>By using RAIMZEAL, you expressly acknowledge, understand, and agree that:</p>
               <ul className="list-disc pl-5 space-y-1">
                 <li><strong className="text-foreground">You are fully and solely responsible</strong> for every action, decision, and outcome that results from your use of this application or any information obtained from it.</li>
@@ -89,7 +89,7 @@ export function TermsOfService() {
             <h2 className="text-foreground font-semibold text-base mb-2">6. Ovia AI — Artificial Intelligence Coaching</h2>
             <ul className="list-disc pl-5 space-y-1">
               <li>Ovia AI is an artificial intelligence assistant designed exclusively for fitness, nutrition, food therapy awareness, and general wellness guidance.</li>
-              <li>Ovia AI is <strong className="text-foreground">not a licensed medical professional, therapist, registered dietitian, or clinical nutritionist.</strong></li>
+              <li>Ovia AI is <strong className="text-foreground">not a licensed medical professional, registered dietitian, or any other licensed healthcare professional.</strong></li>
               <li>Ovia AI does not have access to your medical records, laboratory results, clinical history, or any diagnostic data. It can make errors, provide outdated information, and misinterpret your situation.</li>
               <li>AI responses may contain errors or advice that is not appropriate for your individual circumstances. Always apply critical judgement and consult a qualified professional where appropriate.</li>
               <li>You may not use Ovia AI to seek advice for medical emergencies. In an emergency, call your local emergency services immediately.</li>

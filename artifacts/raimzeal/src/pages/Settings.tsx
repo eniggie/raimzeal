@@ -286,7 +286,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 
 <!-- ══ DISCLAIMER ══ -->
 <div class="disclaimer">
-  <strong>Important disclaimer:</strong> This report is based on data you have personally logged in RAIMZEAL. It is provided for personal reference only and does not constitute medical advice, diagnosis, or treatment of any kind. RAIMZEAL does not replace any doctor, physician, registered dietitian, therapist, or healthcare facility — we are here to complement and support qualified healthcare providers. Always consult a licensed healthcare professional before making any changes to your diet, exercise routine, or health management. <strong>You are fully and solely responsible for any action or decision you make based on information from this application.</strong> RAIMZEAL and ECONTEUR LLC accept no liability for any injury, illness, or adverse outcome arising from your use of this platform.
+  <strong>Important disclaimer:</strong> This report is based on data you have personally logged in RAIMZEAL. It is provided for personal reference only and does not constitute medical advice, diagnosis, or treatment of any kind. RAIMZEAL does not replace any doctor, physician, registered dietitian, or healthcare facility — we are here to complement and support qualified healthcare providers. Always consult a licensed healthcare professional before making any changes to your diet, exercise routine, or health management. <strong>You are fully and solely responsible for any action or decision you make based on information from this application.</strong> RAIMZEAL and ECONTEUR LLC accept no liability for any injury, illness, or adverse outcome arising from your use of this platform.
 </div>
 
 <!-- ══ DONATION CTA ══ -->

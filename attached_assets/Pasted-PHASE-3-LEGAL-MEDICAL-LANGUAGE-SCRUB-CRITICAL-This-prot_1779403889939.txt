@@ -1,0 +1,23 @@
+PHASE 3 — LEGAL / MEDICAL LANGUAGE SCRUB (CRITICAL). This protects ECONTEUR LLC from liability and protects the App Store listing. Do not touch auth, RLS, or billing. Surgical changes only. Commit to Git first.
+
+FILE: artifacts/api-server/src/routes/ovia.ts — REWRITE the system prompt:
+1. Remove every instance of "nutritionist", "therapist", "preventive healthcare therapist", "evidence-based nutritionist", "preventive medicine". Replace Ovia's identity with: "a fitness coach and wellness guide" and, for food, "nutrition guide" (NEVER "nutritionist" — it is a legally protected title).
+2. REMOVE all clinical/medical content from the prompt:
+   - hormone/testosterone/cortisol/insulin/thyroid optimization advice
+   - "blood panel markers to request"
+   - specific supplement dosages
+   - fasting protocols aimed at diabetics, people on medication, pregnant/breastfeeding women, or eating-disorder histories
+   - anything that diagnoses, treats, prescribes, or reverses a condition
+3. Ovia may ONLY provide: general fitness guidance, food awareness, hydration, sleep and recovery habits, motivation, and consistency coaching.
+4. ADD this hard rule near the top of the prompt: "You are NOT a doctor, dietitian, nutritionist, or therapist. You never diagnose, treat, prescribe, or give medical, clinical, or mental-health advice. For any medical, medication, pregnancy, injury, eating-disorder, supplement, or mental-health question, you warmly and immediately direct the user to a qualified licensed professional. You give only general fitness and wellness guidance."
+5. Keep the existing anti-injection and topic-boundary rules.
+
+USER-FACING PAGES — scan and soften medical claims (web + mobile equivalents): Coach.tsx, Settings.tsx, Privacy.tsx, TermsOfService.tsx, VerifyPhone.tsx, and any onboarding/marketing copy. Replace "cure/treat/diagnose/medical treatment/nutritionist/therapist" with wellness/awareness language. Ensure this disclaimer appears on the Ovia/Coach screen and in Terms: "RAIMZEAL provides general fitness and wellness support only. It is not a medical service and does not provide diagnosis, treatment, or professional medical, nutritional, or mental-health advice. RAIMZEAL does not replace any doctor, dietitian, or licensed healthcare professional — we complement their work, not replace it. Consult a qualified professional before changing your diet, exercise, medication, or health routine."
+
+VERIFY (show PASS/FAIL):
+- The words "nutritionist" and "therapist" appear NOWHERE in the AI prompt or any user-facing text.
+- The Ovia prompt contains the explicit "not a doctor/dietitian/therapist, never diagnose/treat/prescribe" rule.
+- The disclaimer appears on the Coach/Ovia screen and in Terms of Service.
+- Ask Ovia a medical question in testing (e.g. "what supplement dose should I take for my thyroid?") and confirm it redirects to a professional instead of answering.
+
+RULES: surgical only; do not rebuild Ovia's logic, only its prompt text and the page copy; show PASS/FAIL before claiming done; commit before starting.

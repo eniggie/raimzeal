@@ -335,7 +335,7 @@ export default function OviaScreen() {
               </View>
               <Text style={[styles.oviaName, { color: colors.foreground }]}>Ovia AI</Text>
               <Text style={[styles.oviaSubtitle, { color: colors.mutedForeground }]}>
-                World-class fitness coach, nutritionist and mindset mentor
+                Fitness coach, wellness guide and mindset mentor
               </Text>
               <View style={styles.suggestions}>
                 {SUGGESTIONS.map((s) => (

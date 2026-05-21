@@ -28,7 +28,7 @@ export default function TermsScreen() {
       color: "#2E8B57",
       paragraphs: [
         "RAIMZEAL is a free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.",
-        "Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. RAIMZEAL is NOT here to replace any medical professional, licensed practitioner, therapist, dietitian, or healthcare facility. We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.",
+        "Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. RAIMZEAL is NOT here to replace any medical professional, licensed practitioner, or healthcare facility. We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.",
         "We are sustained entirely by voluntary donations. No donation is ever required to access any feature.",
       ],
     },
@@ -65,7 +65,7 @@ export default function TermsScreen() {
       paragraphs: [
         "RAIMZEAL IS NOT A MEDICAL DEVICE AND DOES NOT PROVIDE MEDICAL ADVICE, DIAGNOSIS, OR TREATMENT OF ANY KIND.",
         "All content, AI coaching (Ovia AI), workout plans, nutrition guides, food therapy information, and all other health-related material within RAIMZEAL is provided for general educational and informational purposes only. It is not intended to be, and must not be used as, a substitute for professional medical advice, clinical diagnosis, or medical treatment.",
-        "RAIMZEAL does not replace your doctor, physician, registered dietitian, licensed nutritionist, therapist, pharmacist, or any other licensed healthcare professional or healthcare facility. RAIMZEAL is here to complement and support qualified healthcare providers — not to take their place.",
+        "RAIMZEAL does not replace your doctor, physician, registered dietitian, pharmacist, or any other licensed healthcare professional or healthcare facility. RAIMZEAL is here to complement and support qualified healthcare providers — not to take their place.",
         "ALWAYS consult a qualified physician or licensed healthcare professional before starting any new exercise programme, dietary protocol, or supplementation regimen — especially if you have any pre-existing condition, take prescription medication, are pregnant, or have a history of eating disorders, cardiovascular disease, diabetes, or joint problems.",
         "DO NOT delay or disregard professional medical advice because of anything you read, see, or receive within this application.",
         "YOU ARE FULLY AND SOLELY RESPONSIBLE for every action, decision, and outcome that results from your use of this application or any information obtained from it. RAIMZEAL and ECONTEUR LLC accept no liability for any injury, illness, harm, loss, or adverse outcome arising from your use of or reliance on this platform.",

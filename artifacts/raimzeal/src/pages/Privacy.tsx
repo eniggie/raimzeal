@@ -113,7 +113,7 @@ export function Privacy() {
               <li>Your account and associated data are retained for as long as your account is active.</li>
               <li>If you delete your account, we will delete your personal data within 30 days, except where retention is required by law (e.g., financial records related to Stripe transactions, which Stripe retains per its own policies).</li>
               <li>Anonymised aggregate analytics data may be retained indefinitely.</li>
-              <li>Ovia AI conversation history stored in our database is retained for 12 months of inactivity, then automatically purged.</li>
+              <li>Ovia AI conversation history is stored locally on your device and is not retained on our servers.</li>
             </ul>
           </section>
 
