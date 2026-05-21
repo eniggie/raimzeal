@@ -817,6 +817,7 @@ export default function NutritionScreen() {
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
   const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historyCardYsRef = useRef<Record<string, number>>({});
 
   function dismissFilterHint() {
     if (filterHintTimerRef.current) {
@@ -1777,7 +1778,16 @@ export default function NutritionScreen() {
 
   function handleChartBarPress(date: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setHighlightedDate((prev) => (prev === date ? null : date));
+    setHighlightedDate((prev) => {
+      if (prev === date) return null;
+      const cardY = historyCardYsRef.current[date];
+      if (cardY != null) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: cardY, animated: true });
+        }, 50);
+      }
+      return date;
+    });
   }
 
   return (
@@ -2820,6 +2830,9 @@ export default function NutritionScreen() {
                     return (
                       <View
                         key={date}
+                        onLayout={(e) => {
+                          historyCardYsRef.current[date] = e.nativeEvent.layout.y;
+                        }}
                         style={[
                           styles.historyDay,
                           isHighlighted && {
