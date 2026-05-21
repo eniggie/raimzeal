@@ -283,6 +283,7 @@ function SortablePresetItem({
       draggingIdx.value = itemIndex;
       hoveredIdx.value = itemIndex;
       dragTranslateY.value = 0;
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
     })
     .onUpdate((e) => {
       "worklet";
@@ -303,6 +304,7 @@ function SortablePresetItem({
       draggingIdx.value = -1;
       hoveredIdx.value = -1;
       dragTranslateY.value = 0;
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
       runOnJS(onPanEnd)(fromSlot, finalSlot);
     });
 
