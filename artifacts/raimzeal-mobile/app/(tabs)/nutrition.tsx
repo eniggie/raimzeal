@@ -266,7 +266,7 @@ type FoodListItem = QuickItem | SearchItem;
 
 const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
 
-const DRAG_ITEM_HEIGHT = 68;
+const DRAG_ITEM_HEIGHT = 80;
 
 const SPRING_CONFIG = { damping: 22, stiffness: 220, mass: 0.8 };
 
