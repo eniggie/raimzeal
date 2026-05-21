@@ -1289,6 +1289,7 @@ export default function CardCustomizationModal({
     if (reduceMotionRef.current) {
       setBadgeDismissed(true);
       persist();
+      dismissCardChip();
     } else {
       badgeFadeAnim.stopAnimation();
       Animated.timing(badgeFadeAnim, {
@@ -1301,6 +1302,7 @@ export default function CardCustomizationModal({
           persist();
         }
       });
+      dismissCardChip();
     }
   }
 
