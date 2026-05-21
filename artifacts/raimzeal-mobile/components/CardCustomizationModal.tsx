@@ -481,6 +481,7 @@ function ZoomableCard({
   translateY,
   savedTranslateX,
   savedTranslateY,
+  reduceMotionShared,
   onFirstGesture,
 }: {
   children: React.ReactNode;
@@ -492,6 +493,7 @@ function ZoomableCard({
   translateY: SharedValue<number>;
   savedTranslateX: SharedValue<number>;
   savedTranslateY: SharedValue<number>;
+  reduceMotionShared: SharedValue<boolean>;
   onFirstGesture?: () => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
@@ -513,8 +515,13 @@ function ZoomableCard({
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
       const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
-      translateX.value = withSpring(clampedX);
-      translateY.value = withSpring(clampedY);
+      if (reduceMotionShared.value) {
+        translateX.value = clampedX;
+        translateY.value = clampedY;
+      } else {
+        translateX.value = withSpring(clampedX);
+        translateY.value = withSpring(clampedY);
+      }
       savedTranslateX.value = clampedX;
       savedTranslateY.value = clampedY;
     });
@@ -546,10 +553,16 @@ function ZoomableCard({
     })
     .onEnd(() => {
       "worklet";
-      scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+      if (reduceMotionShared.value) {
+        scale.value = 1;
+        translateX.value = 0;
+        translateY.value = 0;
+      } else {
+        scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+        translateX.value = withSpring(0, { damping: 15, stiffness: 200 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 200 });
+      }
       savedScale.value = 1;
-      translateX.value = withSpring(0, { damping: 15, stiffness: 200 });
-      translateY.value = withSpring(0, { damping: 15, stiffness: 200 });
       savedTranslateX.value = 0;
       savedTranslateY.value = 0;
     });
@@ -699,8 +712,10 @@ export default function CardCustomizationModal({
   const reduceMotion = useReduceMotion();
   const { cameraRollStatus } = usePermissions();
   const reduceMotionRef = useRef(false);
+  const reduceMotionShared = useSharedValue(reduceMotion);
   useEffect(() => {
     reduceMotionRef.current = reduceMotion;
+    reduceMotionShared.value = reduceMotion;
   }, [reduceMotion]);
 
   const [visibleStats, setVisibleStats] = useState<CardVisibleStats>({
@@ -1515,10 +1530,16 @@ export default function CardCustomizationModal({
   const pinchSavedTranslateY = useSharedValue(0);
 
   function resetZoomPosition() {
-    pinchScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    if (reduceMotionShared.value) {
+      pinchScale.value = 1;
+      pinchTranslateX.value = 0;
+      pinchTranslateY.value = 0;
+    } else {
+      pinchScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+      pinchTranslateX.value = withSpring(0, { damping: 15, stiffness: 200 });
+      pinchTranslateY.value = withSpring(0, { damping: 15, stiffness: 200 });
+    }
     pinchSavedScale.value = 1;
-    pinchTranslateX.value = withSpring(0, { damping: 15, stiffness: 200 });
-    pinchTranslateY.value = withSpring(0, { damping: 15, stiffness: 200 });
     pinchSavedTranslateX.value = 0;
     pinchSavedTranslateY.value = 0;
   }
@@ -2563,6 +2584,7 @@ export default function CardCustomizationModal({
               translateY={pinchTranslateY}
               savedTranslateX={pinchSavedTranslateX}
               savedTranslateY={pinchSavedTranslateY}
+              reduceMotionShared={reduceMotionShared}
               onFirstGesture={dismissPinchHintEarly}
             >
               {zoomIsOneToOne ? (
@@ -2707,6 +2729,7 @@ export default function CardCustomizationModal({
                   translateY={pinchTranslateY}
                   savedTranslateX={pinchSavedTranslateX}
                   savedTranslateY={pinchSavedTranslateY}
+                  reduceMotionShared={reduceMotionShared}
                 >
                   {zoomIsOneToOne ? (
                     <ShareProgressCard
