@@ -1911,6 +1911,7 @@ export default function CardCustomizationModal({
                 onLoadPreset={loadPreset}
                 onDeletePreset={(id) => {
                   handleDeletePreset(id);
+                  showConfirmation("Preset deleted");
                   if (presets.length <= 1) setReorderMode(false);
                 }}
                 colors={colors}
