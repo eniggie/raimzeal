@@ -450,7 +450,7 @@ ${mealLogs.length > 0 ? `<table>
 </table>` : '<p style="color:#6b7280">No meals logged yet.</p>'}
 
 <div class="notice">
-  This report contains your actual recorded fitness data from the RAIMZEAL app. All figures reflect activities you have logged yourself. For medical decisions, always consult a qualified healthcare professional.
+  This report contains your personal fitness data as logged by you in the RAIMZEAL app. It is for personal reference only and does not constitute medical advice, diagnosis, or treatment of any kind. RAIMZEAL is a free, non-profit fitness, food therapy, and healthcare awareness platform — it does not replace any doctor, dietitian, therapist, or healthcare facility. Always consult a qualified healthcare professional before making changes to your diet, exercise, or health management. You are fully and solely responsible for any action or decision you make based on this information. RAIMZEAL and ECONTEUR LLC accept no liability for any injury or adverse outcome arising from your use of this platform.
 </div>
 </body>
 </html>`;

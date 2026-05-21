@@ -89,7 +89,7 @@ export default function PrivacyScreen() {
           <Bullet>Provide, maintain, and improve the RAIMZEAL app.</Bullet>
           <Bullet>Power Ovia AI with your fitness context to generate personalised coaching responses.</Bullet>
           <Bullet>Track your fitness progress, generate charts, and calculate goal metrics.</Bullet>
-          <Bullet>Process subscription payments and manage your membership through Stripe.</Bullet>
+          <Bullet>Process voluntary donations through Stripe (RAIMZEAL is 100% free — no subscriptions or membership tiers exist).</Bullet>
           <Bullet>Send transactional emails: verification OTPs, welcome messages, and weekly wellness digests (if opted in).</Bullet>
           <Bullet>Enable community features: posts, comments, and likes attributed to your username.</Bullet>
         </Section>
