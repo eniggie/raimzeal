@@ -279,7 +279,7 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
     const userId = (req as any).userId as string;
     if (!consumeUserDailyQuota(userId)) {
-      res.status(429).json({ error: "Daily Ovia AI limit reached. Upgrade to Athlete or Elite for unlimited coaching." });
+      res.status(429).json({ error: "Daily Ovia AI limit reached. Please try again tomorrow." });
       return;
     }
 

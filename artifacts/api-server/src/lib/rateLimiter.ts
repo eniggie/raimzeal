@@ -46,7 +46,7 @@ export const oviaDailyRateLimit = rateLimit({
   max: 100,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { error: "Daily Ovia AI limit reached. Upgrade to Athlete or Elite for unlimited coaching." },
+  message: { error: "Daily Ovia AI limit reached. Please try again tomorrow." },
   skipFailedRequests: false,
 });
 

@@ -19,60 +19,6 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const RAIMZEAL_PRODUCTS = [
-  {
-    name: "RAIMZEAL Athlete",
-    description: "Full workout library, unlimited Ovia AI, nutrition tracking, community posting, and more.",
-    tier: "athlete",
-    monthly: 999,
-  },
-  {
-    name: "RAIMZEAL Elite",
-    description: "Everything in Athlete plus priority Ovia AI, AI meal plans, coaching reports, and early access.",
-    tier: "elite",
-    monthly: 1999,
-  },
-] as const;
-
-async function seedProducts() {
-  try {
-    const stripe = await getUncachableStripeClient();
-    for (const plan of RAIMZEAL_PRODUCTS) {
-      const existing = await stripe.products.search({
-        query: `metadata['tier']:'${plan.tier}' AND active:'true'`,
-      });
-      let productId: string;
-      if (existing.data.length > 0) {
-        productId = existing.data[0].id;
-      } else {
-        const product = await stripe.products.create({
-          name: plan.name,
-          description: plan.description,
-          metadata: { tier: plan.tier, app: "raimzeal" },
-        });
-        productId = product.id;
-        logger.info({ productId, tier: plan.tier }, "Created Stripe product");
-      }
-      const prices = await stripe.prices.list({ product: productId, active: true });
-      const hasMonthly = prices.data.some(
-        (p) => p.recurring?.interval === "month" && p.unit_amount === plan.monthly
-      );
-      if (!hasMonthly) {
-        await stripe.prices.create({
-          product: productId,
-          unit_amount: plan.monthly,
-          currency: "usd",
-          recurring: { interval: "month" },
-          metadata: { tier: plan.tier },
-        });
-        logger.info({ tier: plan.tier }, "Created monthly Stripe price");
-      }
-    }
-    logger.info("Stripe products seeded");
-  } catch (err) {
-    logger.warn({ err }, "Stripe product seeding skipped — non-fatal");
-  }
-}
 
 async function initStripe() {
   const databaseUrl = process.env["DATABASE_URL"];
@@ -103,7 +49,6 @@ async function initStripe() {
 }
 
 await initStripe();
-await seedProducts();
 
 app.listen(port, (err) => {
   if (err) {
