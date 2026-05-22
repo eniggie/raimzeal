@@ -20,7 +20,7 @@ const FOUNDATION_FEATURES = [
   'Macro target calculator',
 ];
 
-const RISE_FEATURES = [
+const ATHLETE_FEATURES = [
   'Everything in Foundation',
   'Ovia AI coaching — 50 messages/day',
   'Priority community badge',
@@ -29,13 +29,13 @@ const RISE_FEATURES = [
   'Weekly Ovia AI coaching digest email',
 ];
 
-const LEGACY_FEATURES = [
-  'Everything in Rise',
+const ELITE_FEATURES = [
+  'Everything in Athlete',
   'Ovia AI coaching — unlimited messages',
   'AI-powered meal plan suggestions',
   'Advanced body composition analytics',
   'Custom macro goal recommendations',
-  'Lifetime Legacy supporter badge',
+  'Elite supporter badge',
   'Early access to all new features',
   '1-on-1 coaching session access',
   'RAIMZEAL Hall of Fame listing',
@@ -43,8 +43,8 @@ const LEGACY_FEATURES = [
 
 const PAID_PLANS = [
   {
-    key: 'rise',
-    name: 'Rise',
+    key: 'athlete',
+    name: 'Athlete',
     icon: Zap,
     color: 'text-blue-400',
     border: 'border-blue-400/30',
@@ -53,11 +53,11 @@ const PAID_PLANS = [
     monthly: 9.99,
     yearly: 95.99,
     popular: false,
-    features: RISE_FEATURES,
+    features: ATHLETE_FEATURES,
   },
   {
-    key: 'legacy',
-    name: 'Legacy',
+    key: 'elite',
+    name: 'Elite',
     icon: Crown,
     color: 'text-yellow-400',
     border: 'border-yellow-400/30',
@@ -66,7 +66,7 @@ const PAID_PLANS = [
     monthly: 19.99,
     yearly: 191.99,
     popular: true,
-    features: LEGACY_FEATURES,
+    features: ELITE_FEATURES,
   },
 ] as const;
 
@@ -188,8 +188,9 @@ export function Membership() {
                 <button
                   disabled
                   className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-foreground/40 cursor-not-allowed"
+                  title="Subscription coming soon"
                 >
-                  Coming Soon
+                  Subscribe — Coming Soon
                 </button>
               </motion.div>
             );
