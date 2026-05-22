@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
-const ALL_FEATURES = [
+const FOUNDATION_FEATURES = [
   'Full workout library & custom workouts',
   'Ovia AI coaching — 15 messages/day',
   'Full community: post, comment, like',
@@ -20,8 +20,78 @@ const ALL_FEATURES = [
   'Macro target calculator',
 ];
 
+const RISE_FEATURES = [
+  'Everything in Foundation',
+  'Ovia AI coaching — 50 messages/day',
+  'Priority community badge',
+  'Advanced nutrition analytics',
+  'Extended workout history (unlimited)',
+  'Weekly Ovia AI coaching digest email',
+];
+
+const REIGN_FEATURES = [
+  'Everything in Rise',
+  'Ovia AI coaching — unlimited messages',
+  'AI-powered meal plan suggestions',
+  'Advanced body composition analytics',
+  'Custom macro goal recommendations',
+  'Reign supporter badge',
+];
+
+const LEGACY_FEATURES = [
+  'Everything in Reign',
+  'Lifetime Legacy supporter badge',
+  'Early access to all new features',
+  '1-on-1 coaching session access',
+  'Dedicated support channel',
+  'RAIMZEAL Hall of Fame listing',
+];
+
+const PAID_PLANS = [
+  {
+    key: 'rise',
+    name: 'Rise',
+    icon: Zap,
+    color: 'text-blue-400',
+    border: 'border-blue-400/30',
+    bg: 'bg-blue-400/5',
+    badge: 'bg-blue-400/20 text-blue-400',
+    monthly: 9.99,
+    yearly: 95.99,
+    popular: false,
+    features: RISE_FEATURES,
+  },
+  {
+    key: 'reign',
+    name: 'Reign',
+    icon: Star,
+    color: 'text-purple-400',
+    border: 'border-purple-400/30',
+    bg: 'bg-purple-400/5',
+    badge: 'bg-purple-400/20 text-purple-400',
+    monthly: 14.99,
+    yearly: 143.99,
+    popular: true,
+    features: REIGN_FEATURES,
+  },
+  {
+    key: 'legacy',
+    name: 'Legacy',
+    icon: Crown,
+    color: 'text-yellow-400',
+    border: 'border-yellow-400/30',
+    bg: 'bg-yellow-400/5',
+    badge: 'bg-yellow-400/20 text-yellow-400',
+    monthly: 19.99,
+    yearly: 191.99,
+    popular: false,
+    features: LEGACY_FEATURES,
+  },
+] as const;
+
 export function Membership() {
   const [donationError, setDonationError] = useState(false);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -56,7 +126,7 @@ export function Membership() {
             Everything below is included at no cost. Your health data belongs to you, not to advertisers or investors.
           </p>
           <ul className="space-y-1.5">
-            {ALL_FEATURES.map((f) => (
+            {FOUNDATION_FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
                 <Check className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
                 {f}
@@ -65,11 +135,91 @@ export function Membership() {
           </ul>
         </motion.div>
 
+        {/* Paid plans billing toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="flex items-center justify-center mb-4"
+        >
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+            <button
+              onClick={() => setBilling('monthly')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${billing === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-foreground/60 hover:text-foreground'}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBilling('yearly')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${billing === 'yearly' ? 'bg-primary text-primary-foreground' : 'text-foreground/60 hover:text-foreground'}`}
+            >
+              Yearly
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${billing === 'yearly' ? 'bg-white/20 text-primary-foreground' : 'bg-primary/20 text-primary'}`}>
+                Save 20%
+              </span>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Paid plan cards */}
+        <div className="space-y-3 mb-6">
+          {PAID_PLANS.map((plan, i) => {
+            const Icon = plan.icon;
+            const price = billing === 'monthly' ? plan.monthly : plan.yearly;
+            const period = billing === 'monthly' ? '/mo' : '/yr';
+            return (
+              <motion.div
+                key={plan.key}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06 + i * 0.04 }}
+                className={`relative rounded-2xl border ${plan.border} ${plan.bg} p-5`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500 text-white shadow-lg">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon className={`h-5 w-5 ${plan.color}`} />
+                  <p className={`font-bold text-foreground`}>{plan.name}</p>
+                  <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${plan.badge}`}>
+                    Coming Soon
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <span className={`text-2xl font-extrabold ${plan.color}`}>${price.toFixed(2)}</span>
+                  <span className="text-sm text-foreground/50 ml-1">{period}</span>
+                  {billing === 'yearly' && (
+                    <span className="ml-2 text-xs text-foreground/40">(${plan.monthly.toFixed(2)}/mo equivalent)</span>
+                  )}
+                </div>
+                <ul className="space-y-1.5 mb-4">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
+                      <Check className={`h-4 w-4 mt-0.5 shrink-0 ${plan.color}`} />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  disabled
+                  className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-foreground/40 cursor-not-allowed"
+                >
+                  Coming Soon
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+
         {/* Donation CTA */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
+          transition={{ delay: 0.18 }}
           className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
@@ -121,7 +271,7 @@ export function Membership() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.22 }}
           className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
         >
           <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe</p>

@@ -323,8 +323,25 @@ export function useAppState(userId?: string | null) {
     URL.revokeObjectURL(url);
   };
 
-  const exportPdfReport = () => {
+  const exportPdfReport = async () => {
     const { user, workoutLogs, bodyMeasurements, mealLogs, personalRecords, streak } = state;
+
+    // Embed logo as base64 so the blob-URL report window can display it
+    let logoDataUrl = '';
+    try {
+      const resp = await fetch('/images/logo.png');
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch {
+      // logo failed to load — fall back to text heading
+    }
     const generatedAt = new Date().toLocaleString();
     const unit = state.settings.weightUnit;
 
@@ -402,7 +419,10 @@ export function useAppState(userId?: string | null) {
 </style>
 </head>
 <body>
-<h1>RAIMZEAL Health and Fitness Report</h1>
+${logoDataUrl
+  ? `<img src="${logoDataUrl}" alt="RAIMZEAL" style="height:60px;margin-bottom:8px;display:block;" />`
+  : `<h1 style="color:#7c3aed;margin-bottom:4px;font-size:28px;">RAIMZEAL</h1>`}
+<p style="font-size:20px;font-weight:bold;color:#7c3aed;margin:0 0 4px 0;">Health and Fitness Report</p>
 <p class="meta">Generated: ${generatedAt} &nbsp;|&nbsp; Member since: ${user ? new Date(user.createdAt).toLocaleDateString() : '—'}</p>
 
 <h2>Member Profile</h2>
