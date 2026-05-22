@@ -140,6 +140,7 @@ const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
+const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
@@ -1957,7 +1958,6 @@ export default function NutritionScreen() {
     setSelectedFoodIsApiResult(true);
     setSelectedFoodNutrients100g(food.nutrients100g);
     setSelectedFoodUnit(food.unit ?? "g");
-    setModalShowPer100g(false);
     setServings(1);
     setServingsText("1");
 
@@ -1991,6 +1991,20 @@ export default function NutritionScreen() {
       // ignore
     }
     setSelectedMeal(lastMeal);
+
+    let restoredPer100g = false;
+    if (food.servingLabel && food.nutrients100g) {
+      try {
+        const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+        if (raw) {
+          const map: Record<string, boolean> = JSON.parse(raw);
+          if (map[food.name] !== undefined) restoredPer100g = map[food.name];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setModalShowPer100g(restoredPer100g);
 
     setShowModal(true);
   }
@@ -2054,6 +2068,16 @@ export default function NutritionScreen() {
         return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
       })
       .catch(() => {});
+
+    if (canToggleServing) {
+      AsyncStorage.getItem(LAST_USED_VIEW_KEY)
+        .then((raw) => {
+          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+          map[name] = modalShowPer100g;
+          return AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(map));
+        })
+        .catch(() => {});
+    }
 
     setShowModal(false);
     setGramsPreFillHint(null);
