@@ -751,6 +751,7 @@ export default function NutritionScreen() {
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
+  const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
@@ -3400,6 +3401,11 @@ export default function NutritionScreen() {
                     handleScannedFood(item);
                   }
                 }}
+                onLongPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setPreviewSheetFood(item);
+                }}
+                delayLongPress={400}
                 style={[
                   styles.foodCard,
                   { backgroundColor: colors.card, borderColor: colors.border },
@@ -4075,6 +4081,126 @@ export default function NutritionScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* Search Result Preview Sheet */}
+      <Modal
+        visible={previewSheetFood !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreviewSheetFood(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, styles.previewSheetCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            {previewSheetFood && (() => {
+              const item = previewSheetFood;
+              const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack", servingLabel: item.servingLabel };
+              const starred = isFavorite(item.name);
+              const servingText = item.servingLabel ? `per ${item.servingLabel}` : "per 100g";
+              return (
+                <>
+                  <View style={styles.previewSheetHandle} />
+                  <View style={styles.previewSheetHeader}>
+                    <View style={styles.previewSheetTitleRow}>
+                      <Text style={[styles.previewSheetName, { color: colors.foreground }]} numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setPreviewSheetFood(null)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
+                      >
+                        <Ionicons name="close" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.previewSheetServingBadge, { backgroundColor: colors.primary + "18" }]}>
+                      <Text style={[styles.previewSheetServingText, { color: colors.primary }]}>
+                        {servingText}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.previewSheetCalRow}>
+                    <Text style={[styles.previewSheetCalValue, { color: colors.foreground }]}>
+                      {item.calories}
+                    </Text>
+                    <Text style={[styles.previewSheetCalLabel, { color: colors.mutedForeground }]}>
+                      kcal
+                    </Text>
+                  </View>
+
+                  <View style={[styles.previewSheetMacroGrid, { backgroundColor: colors.muted }]}>
+                    <View style={styles.previewSheetMacroCell}>
+                      <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
+                        {item.protein}g
+                      </Text>
+                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                        Protein
+                      </Text>
+                    </View>
+                    <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
+                    <View style={styles.previewSheetMacroCell}>
+                      <Text style={[styles.previewSheetMacroValue, { color: "#f97316" }]}>
+                        {item.carbs}g
+                      </Text>
+                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                        Carbs
+                      </Text>
+                    </View>
+                    <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
+                    <View style={styles.previewSheetMacroCell}>
+                      <Text style={[styles.previewSheetMacroValue, { color: "#ec4899" }]}>
+                        {item.fat}g
+                      </Text>
+                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                        Fat
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.previewSheetActions}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        handleToggleFavorite(favFood);
+                      }}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.previewSheetStarBtn,
+                        { backgroundColor: starred ? "#f59f0a18" : colors.muted, borderColor: starred ? "#f59f0a" : colors.border },
+                      ]}
+                    >
+                      <Ionicons
+                        name={starred ? "star" : "star-outline"}
+                        size={20}
+                        color={starred ? "#f59f0a" : colors.mutedForeground}
+                      />
+                      <Text style={[styles.previewSheetStarLabel, { color: starred ? "#f59f0a" : colors.mutedForeground }]}>
+                        {starred ? "Starred" : "Star"}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setPreviewSheetFood(null);
+                        handleScannedFood(item);
+                      }}
+                      activeOpacity={0.8}
+                      style={[styles.previewSheetLogBtn, { backgroundColor: colors.primary }]}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={colors.primaryForeground} />
+                      <Text style={[styles.previewSheetLogLabel, { color: colors.primaryForeground }]}>
+                        Log Food
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
           </GlassCard>
         </View>
       </Modal>
@@ -6369,4 +6495,114 @@ const styles = StyleSheet.create({
   },
   macroAlertTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   macroAlertSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  previewSheetCard: {
+    gap: 0,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+  },
+  previewSheetHandle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#88888855",
+    marginBottom: 16,
+  },
+  previewSheetHeader: {
+    gap: 8,
+    marginBottom: 4,
+  },
+  previewSheetTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  previewSheetName: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_700Bold",
+    lineHeight: 24,
+  },
+  previewSheetServingBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  previewSheetServingText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  previewSheetCalRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+    marginVertical: 16,
+    justifyContent: "center",
+  },
+  previewSheetCalValue: {
+    fontSize: 48,
+    fontFamily: "SpaceGrotesk_700Bold",
+    lineHeight: 52,
+  },
+  previewSheetCalLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    paddingBottom: 4,
+  },
+  previewSheetMacroGrid: {
+    flexDirection: "row",
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 20,
+  },
+  previewSheetMacroCell: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  previewSheetMacroDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    marginVertical: 4,
+  },
+  previewSheetMacroValue: {
+    fontSize: 20,
+    fontFamily: "Inter_600SemiBold",
+  },
+  previewSheetMacroLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  previewSheetActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  previewSheetStarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  previewSheetStarLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  previewSheetLogBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 14,
+  },
+  previewSheetLogLabel: {
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
 });
