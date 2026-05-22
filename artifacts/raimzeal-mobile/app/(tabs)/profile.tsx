@@ -596,6 +596,13 @@ export default function ProfileScreen() {
             <SettingPickerRow
               icon="images-outline"
               label="Photo Library Access"
+              sublabel={
+                cameraRollStatus === "granted"
+                  ? "Tap to confirm — needed to save progress cards"
+                  : cameraRollStatus === "denied"
+                  ? "Tap to open iOS/Android Settings and enable access"
+                  : "Tap to enable saving cards to your photo library"
+              }
               value={
                 cameraRollStatus === "granted"
                   ? "Active"
@@ -845,10 +852,11 @@ function InfoRow({ label, value, icon }: { label: string; value: string; icon: k
 }
 
 function SettingPickerRow({
-  icon, label, value, color, onPress, isLast,
+  icon, label, sublabel, value, color, onPress, isLast,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  sublabel?: string;
   value: string;
   color: string;
   onPress: () => void;
@@ -867,7 +875,14 @@ function SettingPickerRow({
       <View style={[styles.actionIconWrap, { backgroundColor: color + "20" }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.actionLabel, { color: colors.foreground, flex: 0 }]}>{label}</Text>
+        {sublabel ? (
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+            {sublabel}
+          </Text>
+        ) : null}
+      </View>
       <Text style={[styles.settingPickerValue, { color: colors.mutedForeground }]}>{value}</Text>
       <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
     </TouchableOpacity>
