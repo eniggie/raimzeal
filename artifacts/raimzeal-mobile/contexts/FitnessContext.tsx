@@ -125,6 +125,7 @@ export interface AppState {
     weightUnit: "lbs" | "kg";
     undoWindowSeconds: 3 | 5 | 10;
     showRestoreBadge: boolean;
+    reorderHintFrequency: "never" | "monthly" | "weekly";
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -185,6 +186,7 @@ const defaultState: AppState = {
     weightUnit: "kg",
     undoWindowSeconds: 3,
     showRestoreBadge: true,
+    reorderHintFrequency: "monthly",
   },
   oviaMessages: INITIAL_OVIA_MESSAGES,
   favoriteFoods: [],

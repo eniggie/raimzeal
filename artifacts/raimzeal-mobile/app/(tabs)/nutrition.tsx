@@ -920,12 +920,20 @@ export default function NutritionScreen() {
     if (favoriteFoods.length < 2) return;
     if (reorderHintShownRef.current) return;
     if (reorderHintDismissedRef.current) return;
+    const frequency = settings.reorderHintFrequency ?? "monthly";
+    if (frequency === "never") {
+      reorderHintDismissedRef.current = true;
+      return;
+    }
     reorderHintShownRef.current = true;
+    const windowMs =
+      frequency === "weekly"
+        ? 7 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
     AsyncStorage.getItem(REORDER_HINT_STORAGE_KEY).then((val) => {
       if (val) {
         const dismissedAt = parseInt(val, 10);
-        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-        if (!isNaN(dismissedAt) && Date.now() - dismissedAt < thirtyDaysMs) {
+        if (!isNaN(dismissedAt) && Date.now() - dismissedAt < windowMs) {
           reorderHintDismissedRef.current = true;
           return;
         }
@@ -942,7 +950,7 @@ export default function NutritionScreen() {
         dismissReorderHint();
       }, 4000);
     }).catch(() => {});
-  }, [favoriteFoods.length]);
+  }, [favoriteFoods.length, settings.reorderHintFrequency]);
 
   useEffect(() => {
     return () => {

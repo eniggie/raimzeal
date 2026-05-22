@@ -291,6 +291,19 @@ export default function ProfileScreen() {
     );
   }
 
+  function handlePickReorderHintFrequency() {
+    Alert.alert(
+      "Reorder Hint Frequency",
+      "How often should the 'hold to reorder favorites' reminder appear?",
+      [
+        { text: "Weekly", onPress: () => updateSettings({ reorderHintFrequency: "weekly" }) },
+        { text: "Monthly (default)", onPress: () => updateSettings({ reorderHintFrequency: "monthly" }) },
+        { text: "Never", onPress: () => updateSettings({ reorderHintFrequency: "never" }) },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
   async function handleToggleRestoreBadge(value: boolean) {
     updateSettings({ showRestoreBadge: value });
     // Keep STORAGE_KEY_BADGE_DISMISSED in sync so CardCustomizationModal reads
@@ -637,6 +650,20 @@ export default function ProfileScreen() {
               value={`${settings.undoWindowSeconds ?? 3}s`}
               color={colors.secondary}
               onPress={handlePickUndoWindow}
+            />
+            <SettingPickerRow
+              icon="refresh-outline"
+              label="Reorder hint frequency"
+              sublabel="'Hold to reorder favorites' reminder"
+              value={
+                (settings.reorderHintFrequency ?? "monthly") === "never"
+                  ? "Never"
+                  : (settings.reorderHintFrequency ?? "monthly") === "weekly"
+                  ? "Weekly"
+                  : "Monthly"
+              }
+              color={colors.accent}
+              onPress={handlePickReorderHintFrequency}
             />
             <SettingPickerRow
               icon="images-outline"
