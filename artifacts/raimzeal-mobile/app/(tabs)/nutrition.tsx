@@ -5154,6 +5154,29 @@ function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood:
               />
             </View>
 
+            {(() => {
+              const macroKcal = Math.round(
+                editBase.protein * editServings * 4 +
+                editBase.carbs * editServings * 4 +
+                editBase.fat * editServings * 9
+              );
+              const statedKcal = Math.round(editBase.calories * editServings);
+              const mismatch =
+                statedKcal > 0 &&
+                Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              return (
+                <Text
+                  style={[
+                    styles.macroCalHint,
+                    { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                  ]}
+                >
+                  ~{macroKcal} kcal from macros
+                  {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                </Text>
+              );
+            })()}
+
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Meal type
             </Text>
@@ -5644,6 +5667,29 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
               />
             </View>
 
+            {(() => {
+              const macroKcal = Math.round(
+                editBase.protein * editServings * 4 +
+                editBase.carbs * editServings * 4 +
+                editBase.fat * editServings * 9
+              );
+              const statedKcal = Math.round(editBase.calories * editServings);
+              const mismatch =
+                statedKcal > 0 &&
+                Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              return (
+                <Text
+                  style={[
+                    styles.macroCalHint,
+                    { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                  ]}
+                >
+                  ~{macroKcal} kcal from macros
+                  {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                </Text>
+              );
+            })()}
+
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Meal type
             </Text>
@@ -6029,6 +6075,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginBottom: 4,
+  },
+  macroCalHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 6,
+    marginBottom: 2,
   },
   servingsLabel: {
     fontSize: 14,
