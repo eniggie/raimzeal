@@ -502,8 +502,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       const logged = state.mealLogs
         .filter((m) => m.date === dateStr)
         .reduce((s, m) => s + m.calories, 0);
-      // Show logged data or the fixed sample value for days in sample range
-      const calories = logged > 0 ? logged : (FIXED_WEEK_CALORIES[i] ?? 0);
+      const calories = logged > 0 ? logged : 0;
       return { day: days[d.getDay()], calories };
     });
   }, [state.mealLogs]);

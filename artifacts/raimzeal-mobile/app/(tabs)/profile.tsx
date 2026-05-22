@@ -794,8 +794,8 @@ export default function ProfileScreen() {
           <GlassCard style={styles.actionsCard}>
             <ActionRow
               icon="star-outline"
-              label="RAIMZEAL · Free Forever"
-              sublabel="All features included, no subscription"
+              label="RAIMZEAL · Foundation Plan"
+              sublabel="All features included, free forever"
               color="#2E8B57"
               onPress={() => router.push("/membership")}
               isLast
