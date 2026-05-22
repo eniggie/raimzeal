@@ -292,6 +292,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
+  const [notFoundBanner, setNotFoundBanner] = useState(false);
 
   const loadRecentScans = useCallback(async () => {
     setRecentLoading(true);
@@ -310,6 +311,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setRefreshing(false);
       setRefreshFailed(false);
       setActiveTab("scan");
+      setNotFoundBanner(false);
       loadRecentScans();
     }
   }, [visible, loadRecentScans]);
@@ -339,11 +341,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
           onClose();
         }
       } else {
-        setError("Product not found in our database.");
-        setScanning(false);
+        setNotFoundBanner(true);
+        setActiveTab("recent");
+        loadRecentScans();
       }
     },
-    [scanning, loading, onFoodFound, onClose]
+    [scanning, loading, onFoodFound, onClose, loadRecentScans]
   );
 
   async function handleRefresh() {
@@ -430,6 +433,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setScanning(true);
       setError(null);
       setCachedResult(null);
+      setNotFoundBanner(false);
     }
   }
 
@@ -686,6 +690,14 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
               {/* Recent tab content */}
               {activeTab === "recent" && (
                 <View style={[styles.recentPanel, { paddingBottom: insets.bottom + 16 }]}>
+                  {notFoundBanner && (
+                    <View style={styles.notFoundBanner}>
+                      <Ionicons name="alert-circle-outline" size={16} color="#fbbf24" />
+                      <Text style={styles.notFoundBannerText}>
+                        Not found — try a recent product instead
+                      </Text>
+                    </View>
+                  )}
                   {recentLoading ? (
                     <View style={styles.recentCenter}>
                       <ActivityIndicator color="#fff" size="large" />
@@ -1112,6 +1124,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  notFoundBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(251,191,36,0.15)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(251,191,36,0.25)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  notFoundBannerText: {
+    color: "#fbbf24",
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
   // Recent tab styles
   recentPanel: {
     flex: 1,
