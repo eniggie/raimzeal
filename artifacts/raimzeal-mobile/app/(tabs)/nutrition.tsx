@@ -1564,7 +1564,6 @@ export default function NutritionScreen() {
 
     if (!trimmed) {
       setSearchResults([]);
-      setPer100gItems(new Set());
       setSearchDone(false);
       setSearchLoading(false);
       return;
@@ -1593,12 +1592,10 @@ export default function NutritionScreen() {
         if (food) items.push({ ...food, _kind: "search" });
       }
       setSearchResults(items);
-      setPer100gItems(new Set());
       setSearchDone(true);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;
       setSearchResults([]);
-      setPer100gItems(new Set());
       setSearchDone(true);
     } finally {
       if (abortRef.current === controller) {
@@ -2223,7 +2220,6 @@ export default function NutritionScreen() {
                   onPress={() => {
                     setSearchQuery("");
                     setSearchResults([]);
-                    setPer100gItems(new Set());
                     setSearchDone(false);
                   }}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
