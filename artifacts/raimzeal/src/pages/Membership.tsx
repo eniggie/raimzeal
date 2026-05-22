@@ -1,62 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Crown } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
-
-const NGN_CACHE_KEY = 'raimzeal_ngn_rate_v1';
-const NGN_CACHE_TTL = 24 * 60 * 60 * 1000;
-
-function useNgnRate(): number | null {
-  const [rate, setRate] = useState<number | null>(() => {
-    try {
-      const raw = localStorage.getItem(NGN_CACHE_KEY);
-      if (!raw) return null;
-      const { value, ts } = JSON.parse(raw) as { value: number; ts: number };
-      if (Date.now() - ts < NGN_CACHE_TTL) return value;
-    } catch {
-      // ignore
-    }
-    return null;
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchRate() {
-      try {
-        const raw = localStorage.getItem(NGN_CACHE_KEY);
-        if (raw) {
-          const { value, ts } = JSON.parse(raw) as { value: number; ts: number };
-          if (Date.now() - ts < NGN_CACHE_TTL) {
-            if (!cancelled) setRate(value);
-            return;
-          }
-        }
-        const res = await fetch('https://open.er-api.com/v6/latest/USD');
-        if (!res.ok) return;
-        const data = await res.json() as { rates: Record<string, number> };
-        const ngn = data.rates['NGN'];
-        if (!ngn || typeof ngn !== 'number') return;
-        localStorage.setItem(NGN_CACHE_KEY, JSON.stringify({ value: ngn, ts: Date.now() }));
-        if (!cancelled) setRate(ngn);
-      } catch {
-        // network failure — stay null, USD only
-      }
-    }
-    void fetchRate();
-    return () => { cancelled = true; };
-  }, []);
-
-  return rate;
-}
-
-function toNgn(usdAmount: number, rate: number): string {
-  const raw = usdAmount * rate;
-  const rounded = Math.round(raw / 500) * 500;
-  return `₦${rounded.toLocaleString('en-NG')}`;
-}
 
 const FOUNDATION_FEATURES = [
   'Full workout library & custom workouts',
@@ -125,8 +73,6 @@ const PAID_PLANS = [
 export function Membership() {
   const [donationError, setDonationError] = useState(false);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
-  const ngnRate = useNgnRate();
-
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="max-w-2xl mx-auto px-4 pt-6">
@@ -224,17 +170,10 @@ export function Membership() {
                   </span>
                 </div>
                 <div className="mb-3">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
-                    <span className={`text-2xl font-extrabold ${plan.color}`}>${price.toFixed(2)}</span>
-                    <span className="text-sm text-foreground/50">{period}</span>
-                    {billing === 'yearly' && (
-                      <span className="text-xs text-foreground/40">(${plan.monthly.toFixed(2)}/mo equivalent)</span>
-                    )}
-                  </div>
-                  {ngnRate !== null && (
-                    <p className="text-xs text-foreground/40 mt-0.5">
-                      ≈ {toNgn(price, ngnRate)}{period} at today's rate
-                    </p>
+                  <span className={`text-2xl font-extrabold ${plan.color}`}>${price.toFixed(2)}</span>
+                  <span className="text-sm text-foreground/50 ml-1">{period}</span>
+                  {billing === 'yearly' && (
+                    <span className="ml-2 text-xs text-foreground/40">(${plan.monthly.toFixed(2)}/mo equivalent)</span>
                   )}
                 </div>
                 <ul className="space-y-1.5 mb-4">
