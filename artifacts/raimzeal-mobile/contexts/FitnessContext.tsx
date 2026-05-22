@@ -317,6 +317,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           fetchOviaMessages(userId),
           fetchUserPreferences(userId),
         ]);
+        // Restore the camera-roll rationale flag to AsyncStorage so
+        // PermissionsContext picks it up on this fresh install.
+        if (prefs?.appSettings?.cameraRollRationaleDismissed != null) {
+          const value = prefs.appSettings.cameraRollRationaleDismissed ? "true" : null;
+          if (value) {
+            AsyncStorage.setItem("camera_roll_rationale_dismissed", value).catch(() => {});
+          } else {
+            AsyncStorage.removeItem("camera_roll_rationale_dismissed").catch(() => {});
+          }
+        }
         setState((prev) => {
           const remoteSettings = prefs?.appSettings;
           return {

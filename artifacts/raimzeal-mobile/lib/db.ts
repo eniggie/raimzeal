@@ -465,6 +465,12 @@ export interface UserPreferences {
   /** App-level settings synced to the cloud profile */
   appSettings?: {
     showRestoreBadge?: boolean;
+    /**
+     * Whether the user previously dismissed the in-app camera-roll rationale
+     * sheet. Stored here so a returning user on a fresh install still skips
+     * the pre-prompt they already declined.
+     */
+    cameraRollRationaleDismissed?: boolean;
   };
 }
 

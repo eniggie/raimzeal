@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import * as MediaLibrary from "expo-media-library";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 
 export type CameraRollPermissionStatus = "granted" | "denied" | "undetermined";
 
@@ -58,26 +60,71 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const [hasSeenRationale, setHasSeenRationale] = useState(false);
   const [permissionsBootstrapped, setPermissionsBootstrapped] = useState(false);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  // Kept in sync with cameraRollStatus state so the auth-change callback can
+  // read the latest value without being re-subscribed on every status change.
+  const cameraRollStatusRef = useRef<CameraRollPermissionStatus | null>(null);
+  cameraRollStatusRef.current = cameraRollStatus;
 
   useEffect(() => {
-    // Load the persisted "dismissed" flag alongside the permission check.
-    // Both must resolve before we signal that bootstrapping is done, so that
-    // consumers never make rationale-visibility decisions with stale state.
-    Promise.all([
-      checkPermission(),
-      AsyncStorage.getItem(RATIONALE_DISMISSED_KEY),
-    ]).then(([status, dismissed]) => {
+    /**
+     * Bootstrap order (all must resolve before permissionsBootstrapped = true):
+     *  1. OS permission status check
+     *  2. Local AsyncStorage flag (fast, works offline)
+     *  3. Remote Supabase preference (for signed-in returning users on a fresh
+     *     install whose local AsyncStorage was wiped by the uninstall)
+     *
+     * Remote wins over local when both are present, so a user who dismissed
+     * the rationale before reinstalling will not see the sheet again.
+     */
+    async function bootstrap() {
+      const [status, localDismissed] = await Promise.all([
+        checkPermission(),
+        AsyncStorage.getItem(RATIONALE_DISMISSED_KEY),
+      ]);
+
       setCameraRollStatus(status);
-      // Only treat the flag as active when permission is still undetermined.
-      // If permission was already resolved, clear any stale flag.
-      if (status !== "undetermined" && dismissed) {
-        AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
+
+      // If permission is already resolved the flag is irrelevant; clear it.
+      if (status !== "undetermined") {
+        if (localDismissed) {
+          AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
+        }
         setHasSeenRationale(false);
-      } else {
-        setHasSeenRationale(dismissed === "true");
+        setPermissionsBootstrapped(true);
+        return;
       }
+
+      // Permission is still undetermined — determine the effective flag value.
+      let effectiveDismissed = localDismissed === "true";
+
+      // For signed-in users, the cloud value is the source of truth on fresh
+      // installs (local AsyncStorage was wiped by the uninstall).
+      if (isSupabaseConfigured) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const prefs = await fetchUserPreferences(session.user.id);
+            const remote = prefs?.appSettings?.cameraRollRationaleDismissed;
+            if (remote != null) {
+              effectiveDismissed = remote;
+              // Seed AsyncStorage so subsequent cold starts don't need a network call.
+              if (remote) {
+                AsyncStorage.setItem(RATIONALE_DISMISSED_KEY, "true").catch(() => {});
+              } else {
+                AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
+              }
+            }
+          }
+        } catch {
+          // Non-fatal: keep the local value if the network call fails.
+        }
+      }
+
+      setHasSeenRationale(effectiveDismissed);
       setPermissionsBootstrapped(true);
-    });
+    }
+
+    bootstrap();
 
     // Re-check whenever the app returns to the foreground so a stale "denied"
     // cache is refreshed if the user enabled access in Settings and came back.
@@ -98,14 +145,82 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     return () => subscription.remove();
   }, []);
 
+  /**
+   * Post-login hydration: if the user was not signed in during the initial
+   * bootstrap (common on a fresh install), apply their cloud preference as
+   * soon as they log in — within the same app session.
+   */
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event !== "SIGNED_IN" || !session?.user) return;
+        // Only relevant while permission is still undetermined.
+        if (cameraRollStatusRef.current !== "undetermined") return;
+
+        try {
+          const prefs = await fetchUserPreferences(session.user.id);
+          const remote = prefs?.appSettings?.cameraRollRationaleDismissed;
+          if (remote != null) {
+            setHasSeenRationale(remote);
+            if (remote) {
+              AsyncStorage.setItem(RATIONALE_DISMISSED_KEY, "true").catch(() => {});
+            } else {
+              AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
+            }
+          }
+        } catch {
+          // Non-fatal: local state is already correct from bootstrap.
+        }
+      }
+    );
+
+    return () => authSub.unsubscribe();
+  }, []);
+
   const markRationaleDismissed = useCallback(async () => {
     await AsyncStorage.setItem(RATIONALE_DISMISSED_KEY, "true");
     setHasSeenRationale(true);
+    // Persist to Supabase so the preference survives a reinstall for signed-in users.
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: {
+                ...(existing?.appSettings ?? {}),
+                cameraRollRationaleDismissed: true,
+              },
+            })
+          )
+          .catch(() => {});
+      });
+    }
   }, []);
 
   const resetRationale = useCallback(async () => {
     await AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY);
     setHasSeenRationale(false);
+    // Clear from Supabase so the pre-prompt re-appears on other devices too.
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: {
+                ...(existing?.appSettings ?? {}),
+                cameraRollRationaleDismissed: false,
+              },
+            })
+          )
+          .catch(() => {});
+      });
+    }
   }, []);
 
   const updateCameraRollStatus = useCallback((status: CameraRollPermissionStatus) => {
