@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,6 +48,199 @@ function formatScannedDate(ts: number): string {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+interface ScanRowProps {
+  scan: RecentScan;
+  showing100g: boolean;
+  canToggle: boolean;
+  colors: ReturnType<typeof useColors>;
+  onSelect: () => void;
+  onLongPress: () => void;
+  onRemove: () => void;
+  onToggle100g: () => void;
+}
+
+function ScanRow({
+  scan,
+  showing100g,
+  canToggle,
+  colors,
+  onSelect,
+  onLongPress,
+  onRemove,
+  onToggle100g,
+}: ScanRowProps) {
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const displayCalories = showing100g
+    ? scan.food.nutrients100g!.calories
+    : scan.food.calories;
+  const displayProtein = showing100g
+    ? scan.food.nutrients100g!.protein
+    : scan.food.protein;
+  const displayCarbs = showing100g
+    ? scan.food.nutrients100g!.carbs
+    : scan.food.carbs;
+  const displayFat = showing100g
+    ? scan.food.nutrients100g!.fat
+    : scan.food.fat;
+  const pillLabel = showing100g
+    ? "per 100g"
+    : scan.food.servingLabel
+    ? `per ${scan.food.servingLabel}`
+    : "per 100g";
+
+  function renderRightActions(
+    _progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) {
+    const scale = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [1, 0.7],
+      extrapolate: "clamp",
+    });
+
+    return (
+      <TouchableOpacity
+        style={styles.deleteAction}
+        activeOpacity={0.8}
+        onPress={() => {
+          swipeableRef.current?.close();
+          onRemove();
+        }}
+      >
+        <Animated.View style={{ transform: [{ scale }], alignItems: "center" }}>
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.deleteActionText}>Delete</Text>
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      rightThreshold={40}
+      overshootRight={false}
+      containerStyle={styles.swipeContainer}
+      childrenContainerStyle={[
+        styles.item,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={onSelect}
+        onLongPress={onLongPress}
+        delayLongPress={400}
+        activeOpacity={0.75}
+        style={styles.itemInner}
+      >
+        <View
+          style={[
+            styles.iconBox,
+            { backgroundColor: colors.primary + "18" },
+          ]}
+        >
+          <Ionicons
+            name="barcode-outline"
+            size={20}
+            color={colors.primary}
+          />
+        </View>
+        <View style={styles.itemInfo}>
+          <Text
+            style={[styles.itemName, { color: colors.foreground }]}
+            numberOfLines={1}
+          >
+            {scan.food.name}
+          </Text>
+          <View style={styles.itemMeta}>
+            <Text style={[styles.itemCal, { color: colors.primary }]}>
+              {displayCalories} kcal
+            </Text>
+            <Text style={[styles.itemDot, { color: colors.mutedForeground }]}>
+              ·
+            </Text>
+            <Text
+              style={[styles.itemMacros, { color: colors.mutedForeground }]}
+            >
+              P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
+            </Text>
+          </View>
+          <View style={styles.itemBottom}>
+            <TouchableOpacity
+              activeOpacity={canToggle ? 0.7 : 1}
+              onPress={
+                canToggle
+                  ? (e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onToggle100g();
+                    }
+                  : undefined
+              }
+              style={[
+                styles.servingPill,
+                { backgroundColor: colors.primary + "18" },
+                canToggle && { paddingRight: 6 },
+              ]}
+            >
+              <Text
+                style={[styles.servingPillText, { color: colors.primary }]}
+              >
+                {pillLabel}
+              </Text>
+              {canToggle && (
+                <Ionicons
+                  name="swap-horizontal-outline"
+                  size={11}
+                  color={colors.primary}
+                  style={{ marginLeft: 3 }}
+                />
+              )}
+            </TouchableOpacity>
+            <Text
+              style={[styles.itemDate, { color: colors.mutedForeground }]}
+            >
+              {formatScannedDate(scan.scannedAt)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.itemActions}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onLongPress();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.actionBtn}
+          >
+            <Ionicons
+              name="pencil-outline"
+              size={17}
+              color={colors.mutedForeground}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.actionBtn}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={17}
+              color={colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Swipeable>
+  );
+}
+
 export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -70,7 +265,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   }, [visible, loadScans]);
 
   async function handleRemove(barcode: string) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await removeRecentScan(barcode);
     setScans((prev) => prev.filter((s) => s.barcode !== barcode));
     setPer100gScans((prev) => {
@@ -185,13 +380,25 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={styles.clearAllBtn}
                 >
-                  <Text style={[styles.clearAllText, { color: colors.destructive ?? "#ef4444" }]}>
+                  <Text
+                    style={[
+                      styles.clearAllText,
+                      { color: colors.destructive ?? "#ef4444" },
+                    ]}
+                  >
                     Clear all
                   </Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              <TouchableOpacity
+                onPress={onClose}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name="close"
+                  size={22}
+                  color={colors.mutedForeground}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -219,8 +426,11 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
                 No recent scans
               </Text>
-              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-                Products you scan will appear here so you can quickly add them again.
+              <Text
+                style={[styles.emptySub, { color: colors.mutedForeground }]}
+              >
+                Products you scan will appear here so you can quickly add them
+                again.
               </Text>
             </View>
           ) : (
@@ -230,135 +440,33 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Tap to add · Pencil to edit
+                Tap to add · Swipe left to delete · Pencil to edit
               </Text>
               {scans.map((scan) => {
-                const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+                const canToggle = !!(
+                  scan.food.servingLabel && scan.food.nutrients100g
+                );
                 const showing100g = canToggle && per100gScans.has(scan.barcode);
-                const displayCalories = showing100g ? scan.food.nutrients100g!.calories : scan.food.calories;
-                const displayProtein = showing100g ? scan.food.nutrients100g!.protein : scan.food.protein;
-                const displayCarbs = showing100g ? scan.food.nutrients100g!.carbs : scan.food.carbs;
-                const displayFat = showing100g ? scan.food.nutrients100g!.fat : scan.food.fat;
-                const pillLabel = showing100g
-                  ? "per 100g"
-                  : scan.food.servingLabel
-                  ? `per ${scan.food.servingLabel}`
-                  : "per 100g";
 
                 return (
-                  <TouchableOpacity
+                  <ScanRow
                     key={scan.barcode}
-                    onPress={() => handleSelect(scan, showing100g)}
+                    scan={scan}
+                    showing100g={showing100g}
+                    canToggle={canToggle}
+                    colors={colors}
+                    onSelect={() => handleSelect(scan, showing100g)}
                     onLongPress={() => handleLongPress(scan)}
-                    delayLongPress={400}
-                    activeOpacity={0.75}
-                    style={[
-                      styles.item,
-                      { backgroundColor: colors.card, borderColor: colors.border },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.iconBox,
-                        { backgroundColor: colors.primary + "18" },
-                      ]}
-                    >
-                      <Ionicons
-                        name="barcode-outline"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </View>
-                    <View style={styles.itemInfo}>
-                      <Text
-                        style={[styles.itemName, { color: colors.foreground }]}
-                        numberOfLines={1}
-                      >
-                        {scan.food.name}
-                      </Text>
-                      <View style={styles.itemMeta}>
-                        <Text
-                          style={[styles.itemCal, { color: colors.primary }]}
-                        >
-                          {displayCalories} kcal
-                        </Text>
-                        <Text
-                          style={[styles.itemDot, { color: colors.mutedForeground }]}
-                        >
-                          ·
-                        </Text>
-                        <Text
-                          style={[styles.itemMacros, { color: colors.mutedForeground }]}
-                        >
-                          P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
-                        </Text>
-                      </View>
-                      <View style={styles.itemBottom}>
-                        <TouchableOpacity
-                          activeOpacity={canToggle ? 0.7 : 1}
-                          onPress={canToggle ? (e) => {
-                            e.stopPropagation();
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setPer100gScans((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(scan.barcode)) next.delete(scan.barcode);
-                              else next.add(scan.barcode);
-                              return next;
-                            });
-                          } : undefined}
-                          style={[
-                            styles.servingPill,
-                            { backgroundColor: colors.primary + "18" },
-                            canToggle && { paddingRight: 6 },
-                          ]}
-                        >
-                          <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                            {pillLabel}
-                          </Text>
-                          {canToggle && (
-                            <Ionicons
-                              name="swap-horizontal-outline"
-                              size={11}
-                              color={colors.primary}
-                              style={{ marginLeft: 3 }}
-                            />
-                          )}
-                        </TouchableOpacity>
-                        <Text
-                          style={[styles.itemDate, { color: colors.mutedForeground }]}
-                        >
-                          {formatScannedDate(scan.scannedAt)}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleLongPress(scan);
-                        }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={styles.actionBtn}
-                      >
-                        <Ionicons
-                          name="pencil-outline"
-                          size={17}
-                          color={colors.mutedForeground}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleRemove(scan.barcode)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={styles.actionBtn}
-                      >
-                        <Ionicons
-                          name="trash-outline"
-                          size={17}
-                          color={colors.mutedForeground}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
+                    onRemove={() => handleRemove(scan.barcode)}
+                    onToggle100g={() =>
+                      setPer100gScans((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(scan.barcode)) next.delete(scan.barcode);
+                        else next.add(scan.barcode);
+                        return next;
+                      })
+                    }
+                  />
                 );
               })}
             </ScrollView>
@@ -449,13 +557,31 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginBottom: 4,
   },
+  swipeContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
   item: {
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  itemInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+  },
+  deleteAction: {
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+  },
+  deleteActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 3,
   },
   iconBox: {
     width: 40,
