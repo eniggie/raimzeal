@@ -600,7 +600,7 @@ export default function ProfileScreen() {
                 cameraRollStatus === "granted"
                   ? "Tap to confirm — needed to save progress cards"
                   : cameraRollStatus === "denied"
-                  ? "Tap to open iOS/Android Settings and enable access"
+                  ? "Permanently blocked — tap to open Settings"
                   : "Tap to enable saving cards to your photo library"
               }
               value={
@@ -617,6 +617,14 @@ export default function ProfileScreen() {
               }
               onPress={handlePhotoAccessPress}
             />
+            {cameraRollStatus === "denied" && (
+              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
+                  Access was permanently denied — the reset option is unavailable. Open Settings above to re-enable it.
+                </Text>
+              </View>
+            )}
             {hasSeenRationale && cameraRollStatus === "undetermined" && (
               <ActionRow
                 icon="refresh-outline"
@@ -992,6 +1000,8 @@ const styles = StyleSheet.create({
   infoLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },
   sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold" },
+  deniedInfoRow: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: 16, paddingVertical: 10, gap: 6, borderTopWidth: StyleSheet.hairlineWidth },
+  deniedInfoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   actionsCard: { padding: 0, overflow: "hidden" },
   actionRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   actionIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
