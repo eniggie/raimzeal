@@ -5,6 +5,37 @@ import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "./logger";
 import { normaliseTier, tierFromPriceId } from "./tier";
 
+/**
+ * Derive the current billing period end from a Stripe Subscription object.
+ *
+ * Stripe API 2025-08-27.basil removed `current_period_end` and
+ * `current_period_start` from subscription objects. The anchor-based approach
+ * below computes the next period boundary by walking the billing interval
+ * forward from `billing_cycle_anchor` until it is strictly after now.
+ */
+function derivePeriodEnd(sub: Stripe.Subscription): number | undefined {
+  const anchor = (sub as any).billing_cycle_anchor as number | undefined;
+  if (!anchor) return undefined;
+  const price   = sub.items.data[0]?.price;
+  const interval = price?.recurring?.interval as string | undefined;
+  const count    = price?.recurring?.interval_count ?? 1;
+  if (!interval) return undefined;
+
+  const now    = Math.floor(Date.now() / 1000);
+  const cursor = new Date(anchor * 1000);
+
+  // Advance cursor by billing interval until it is strictly after now
+  let safety = 0;
+  while (Math.floor(cursor.getTime() / 1000) <= now && safety++ < 1500) {
+    if (interval === "month")      cursor.setMonth(cursor.getMonth() + count);
+    else if (interval === "year")  cursor.setFullYear(cursor.getFullYear() + count);
+    else if (interval === "week")  cursor.setDate(cursor.getDate() + 7 * count);
+    else if (interval === "day")   cursor.setDate(cursor.getDate() + count);
+    else break;
+  }
+  return Math.floor(cursor.getTime() / 1000);
+}
+
 // ─── Idempotency ─────────────────────────────────────────────────────────────
 // Every incoming Stripe event is recorded in stripe_webhook_events by its
 // event.id (e.g. "evt_1Abc..."). If the same event arrives twice (Stripe
@@ -41,7 +72,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
       const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
       // Price ID lookup (explicit env-var mapping) takes priority over price metadata
       const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
-      const periodEnd = (sub as any).current_period_end as number | undefined;
+      const periodEnd = derivePeriodEnd(sub);
 
       await supabaseAdmin.from("profiles").update({
         stripe_customer_id: session.customer as string,
@@ -58,7 +89,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const periodEnd = (sub as any).current_period_end as number | undefined;
+      const periodEnd = derivePeriodEnd(sub);
 
       if (sub.status === "active" || sub.status === "trialing") {
         // Payment succeeded — upgrade to the paid tier
