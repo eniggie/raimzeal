@@ -52,6 +52,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [scans, setScans] = useState<RecentScan[]>([]);
   const [loading, setLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
+  const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
 
   const loadScans = useCallback(async () => {
     setLoading(true);
@@ -63,6 +64,8 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   React.useEffect(() => {
     if (visible) {
       loadScans();
+    } else {
+      setPer100gScans(new Set());
     }
   }, [visible, loadScans]);
 
@@ -70,11 +73,27 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await removeRecentScan(barcode);
     setScans((prev) => prev.filter((s) => s.barcode !== barcode));
+    setPer100gScans((prev) => {
+      const next = new Set(prev);
+      next.delete(barcode);
+      return next;
+    });
   }
 
-  function handleSelect(food: ScannedFood) {
+  function handleSelect(scan: RecentScan, showing100g: boolean) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onFoodFound(food);
+    if (showing100g && scan.food.nutrients100g) {
+      onFoodFound({
+        ...scan.food,
+        calories: scan.food.nutrients100g.calories,
+        protein: scan.food.nutrients100g.protein,
+        carbs: scan.food.nutrients100g.carbs,
+        fat: scan.food.nutrients100g.fat,
+        servingLabel: undefined,
+      });
+    } else {
+      onFoodFound(scan.food);
+    }
     onClose();
   }
 
@@ -107,6 +126,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
           onPress: async () => {
             await clearAllRecentScans();
             setScans([]);
+            setPer100gScans(new Set());
           },
         },
       ]
@@ -198,73 +218,119 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
                 Tap to add · Long-press to edit
               </Text>
-              {scans.map((scan) => (
-                <TouchableOpacity
-                  key={scan.barcode}
-                  onPress={() => handleSelect(scan.food)}
-                  onLongPress={() => handleLongPress(scan)}
-                  delayLongPress={400}
-                  activeOpacity={0.75}
-                  style={[
-                    styles.item,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                >
-                  <View
+              {scans.map((scan) => {
+                const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+                const showing100g = canToggle && per100gScans.has(scan.barcode);
+                const displayCalories = showing100g ? scan.food.nutrients100g!.calories : scan.food.calories;
+                const displayProtein = showing100g ? scan.food.nutrients100g!.protein : scan.food.protein;
+                const displayCarbs = showing100g ? scan.food.nutrients100g!.carbs : scan.food.carbs;
+                const displayFat = showing100g ? scan.food.nutrients100g!.fat : scan.food.fat;
+                const pillLabel = showing100g
+                  ? "per 100g"
+                  : scan.food.servingLabel
+                  ? `per ${scan.food.servingLabel}`
+                  : "per 100g";
+
+                return (
+                  <TouchableOpacity
+                    key={scan.barcode}
+                    onPress={() => handleSelect(scan, showing100g)}
+                    onLongPress={() => handleLongPress(scan)}
+                    delayLongPress={400}
+                    activeOpacity={0.75}
                     style={[
-                      styles.iconBox,
-                      { backgroundColor: colors.primary + "18" },
+                      styles.item,
+                      { backgroundColor: colors.card, borderColor: colors.border },
                     ]}
                   >
-                    <Ionicons
-                      name="barcode-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  </View>
-                  <View style={styles.itemInfo}>
-                    <Text
-                      style={[styles.itemName, { color: colors.foreground }]}
-                      numberOfLines={1}
+                    <View
+                      style={[
+                        styles.iconBox,
+                        { backgroundColor: colors.primary + "18" },
+                      ]}
                     >
-                      {scan.food.name}
-                    </Text>
-                    <View style={styles.itemMeta}>
-                      <Text
-                        style={[styles.itemCal, { color: colors.primary }]}
-                      >
-                        {scan.food.calories} kcal
-                      </Text>
-                      <Text
-                        style={[styles.itemDot, { color: colors.mutedForeground }]}
-                      >
-                        ·
-                      </Text>
-                      <Text
-                        style={[styles.itemMacros, { color: colors.mutedForeground }]}
-                      >
-                        P {scan.food.protein}g · C {scan.food.carbs}g · F {scan.food.fat}g
-                      </Text>
+                      <Ionicons
+                        name="barcode-outline"
+                        size={20}
+                        color={colors.primary}
+                      />
                     </View>
-                    <Text
-                      style={[styles.itemDate, { color: colors.mutedForeground }]}
+                    <View style={styles.itemInfo}>
+                      <Text
+                        style={[styles.itemName, { color: colors.foreground }]}
+                        numberOfLines={1}
+                      >
+                        {scan.food.name}
+                      </Text>
+                      <View style={styles.itemMeta}>
+                        <Text
+                          style={[styles.itemCal, { color: colors.primary }]}
+                        >
+                          {displayCalories} kcal
+                        </Text>
+                        <Text
+                          style={[styles.itemDot, { color: colors.mutedForeground }]}
+                        >
+                          ·
+                        </Text>
+                        <Text
+                          style={[styles.itemMacros, { color: colors.mutedForeground }]}
+                        >
+                          P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
+                        </Text>
+                      </View>
+                      <View style={styles.itemBottom}>
+                        <TouchableOpacity
+                          activeOpacity={canToggle ? 0.7 : 1}
+                          onPress={canToggle ? (e) => {
+                            e.stopPropagation();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setPer100gScans((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(scan.barcode)) next.delete(scan.barcode);
+                              else next.add(scan.barcode);
+                              return next;
+                            });
+                          } : undefined}
+                          style={[
+                            styles.servingPill,
+                            { backgroundColor: colors.primary + "18" },
+                            canToggle && { paddingRight: 6 },
+                          ]}
+                        >
+                          <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                            {pillLabel}
+                          </Text>
+                          {canToggle && (
+                            <Ionicons
+                              name="swap-horizontal-outline"
+                              size={11}
+                              color={colors.primary}
+                              style={{ marginLeft: 3 }}
+                            />
+                          )}
+                        </TouchableOpacity>
+                        <Text
+                          style={[styles.itemDate, { color: colors.mutedForeground }]}
+                        >
+                          {formatScannedDate(scan.scannedAt)}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemove(scan.barcode)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={styles.removeBtn}
                     >
-                      {formatScannedDate(scan.scannedAt)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleRemove(scan.barcode)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.removeBtn}
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={17}
-                      color={colors.mutedForeground}
-                    />
+                      <Ionicons
+                        name="trash-outline"
+                        size={17}
+                        color={colors.mutedForeground}
+                      />
+                    </TouchableOpacity>
                   </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
+                );
+              })}
             </ScrollView>
           )}
         </View>
@@ -393,10 +459,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
+  itemBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 1,
+  },
   itemDate: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    marginTop: 1,
+  },
+  servingPill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  servingPillText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   },
   removeBtn: {
     padding: 4,
