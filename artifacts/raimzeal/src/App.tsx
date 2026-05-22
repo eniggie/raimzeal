@@ -33,8 +33,14 @@ import { Coach } from '@/pages/Coach';
 import { Community } from '@/pages/Community';
 import { Settings } from '@/pages/Settings';
 import { Membership } from '@/pages/Membership';
-import { Pricing } from '@/pages/Pricing';
-import { Billing } from '@/pages/Billing';
+import { WorkoutCreator } from '@/pages/WorkoutCreator';
+import { ProgressPhotos } from '@/pages/ProgressPhotos';
+import { MacroTargets } from '@/pages/MacroTargets';
+import { DeleteAccount } from '@/pages/DeleteAccount';
+import { SleepTracking } from '@/pages/SleepTracking';
+import { PersonalRecords } from '@/pages/PersonalRecords';
+import { PublicProfile } from '@/pages/PublicProfile';
+import { PublicProfileSettings } from '@/pages/PublicProfileSettings';
 import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
@@ -213,11 +219,29 @@ function AppContent() {
       <Route path="/membership">
         <Membership />
       </Route>
-      <Route path="/pricing">
-        <Pricing />
+      <Route path="/workouts/create">
+        <WorkoutCreator />
       </Route>
-      <Route path="/billing">
-        <Billing />
+      <Route path="/progress/photos">
+        <ProgressPhotos />
+      </Route>
+      <Route path="/sleep">
+        <SleepTracking />
+      </Route>
+      <Route path="/progress/prs">
+        <PersonalRecords />
+      </Route>
+      <Route path="/settings/macros">
+        <MacroTargets />
+      </Route>
+      <Route path="/settings/delete-account">
+        <DeleteAccount />
+      </Route>
+      <Route path="/settings/public-profile">
+        <PublicProfileSettings />
+      </Route>
+      <Route path="/u/:handle">
+        <PublicProfile />
       </Route>
       <Route component={NotFound} />
     </Switch>
@@ -240,8 +264,7 @@ function App() {
               <Route path="/login"><LoginRoute /></Route>
               <Route path="/verify-email"><VerifyEmailOTP /></Route>
               <Route path="/verify-phone"><VerifyPhoneRoute /></Route>
-              {/* Public commerce pages */}
-              <Route path="/pricing"><Pricing /></Route>
+              {/* Support / membership page */}
               <Route path="/membership"><MembershipRoute /></Route>
               {/* Static pages */}
               <Route path="/privacy"><Privacy /></Route>

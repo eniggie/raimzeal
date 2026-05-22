@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   ChevronLeft, Plus, Search, Scan, Utensils, 
-  Beef, Wheat, Droplets, X
+  Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,55 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState('');
+  const [analyzedMeal, setAnalyzedMeal] = useState<{
+    name: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; confidence: string; notes?: string | null;
+  } | null>(null);
+
+  async function handlePhotoScan(file: File) {
+    setAnalyzeError('');
+    setAnalyzedMeal(null);
+    setIsAnalyzing(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).split(',')[1] ?? '');
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+      const res = await fetch('/api/user/meal-photo/analyze', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      const d = await res.json() as { name?: string; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number; confidence?: string; notes?: string | null; error?: string };
+      if (!res.ok || d.error) { setAnalyzeError(d.error ?? 'Could not analyze photo.'); return; }
+      setAnalyzedMeal({ name: d.name!, calories: d.calories!, protein_g: d.protein_g!, carbs_g: d.carbs_g!, fat_g: d.fat_g!, confidence: d.confidence!, notes: d.notes });
+    } catch { setAnalyzeError('Could not analyze photo.'); }
+    setIsAnalyzing(false);
+  }
+
+  function logAnalyzedMeal() {
+    if (!analyzedMeal) return;
+    const meal: MealLog = {
+      id: crypto.randomUUID(),
+      date: today,
+      name: analyzedMeal.name,
+      calories: analyzedMeal.calories,
+      protein: analyzedMeal.protein_g,
+      carbs: analyzedMeal.carbs_g,
+      fat: analyzedMeal.fat_g,
+      mealType: selectedMealType,
+    };
+    onAddMeal(meal);
+    setAnalyzedMeal(null);
+    setIsDialogOpen(false);
+  }
 
   const today = new Date().toISOString().split('T')[0];
   const todayMeals = state.mealLogs.filter(m => m.date === today);
@@ -169,6 +219,46 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
                   <TabsTrigger value="snack" className="flex-1">Snack</TabsTrigger>
                 </TabsList>
               </Tabs>
+
+              {/* Photo Scan */}
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) { handlePhotoScan(f); e.target.value = ''; } }}
+              />
+              <button
+                onClick={() => { setAnalyzedMeal(null); setAnalyzeError(''); photoInputRef.current?.click(); }}
+                disabled={isAnalyzing}
+                className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 py-2.5 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                {isAnalyzing ? <><Loader2 className="w-4 h-4 animate-spin" />Analyzing photo…</> : <><Camera className="w-4 h-4" />Scan Food Photo (AI)</>}
+              </button>
+              {analyzeError && (
+                <div className="flex items-center gap-2 text-xs text-destructive mt-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />{analyzeError}
+                </div>
+              )}
+              {analyzedMeal && (
+                <div className="mt-2 rounded-xl bg-success/10 border border-success/20 p-3 space-y-1.5">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-success">
+                    <CheckCircle2 className="w-4 h-4" />{analyzedMeal.name}
+                    <span className="ml-auto text-xs text-muted-foreground capitalize">{analyzedMeal.confidence} confidence</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-xs text-center">
+                    <div className="bg-background/60 rounded-lg py-1.5"><span className="font-bold text-foreground">{analyzedMeal.calories}</span><br />kcal</div>
+                    <div className="bg-background/60 rounded-lg py-1.5"><span className="font-bold text-foreground">{analyzedMeal.protein_g}g</span><br />protein</div>
+                    <div className="bg-background/60 rounded-lg py-1.5"><span className="font-bold text-foreground">{analyzedMeal.carbs_g}g</span><br />carbs</div>
+                    <div className="bg-background/60 rounded-lg py-1.5"><span className="font-bold text-foreground">{analyzedMeal.fat_g}g</span><br />fat</div>
+                  </div>
+                  {analyzedMeal.notes && <p className="text-xs text-muted-foreground">{analyzedMeal.notes}</p>}
+                  <button onClick={logAnalyzedMeal} className="w-full mt-1 rounded-lg bg-success/20 text-success text-sm font-medium py-2 hover:bg-success/30 transition-colors">
+                    Log this meal →
+                  </button>
+                </div>
+              )}
 
               <div className="relative mt-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

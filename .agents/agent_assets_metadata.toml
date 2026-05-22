@@ -77,9 +77,3 @@ id = "Tt3SADWAgSHvlYSEStCZ0"
 uri = "file://generated/raimzeal-source-code.tar.gz"
 type = "unspecified"
 title = "RAIMZEAL Source Code Archive (.tar.gz)"
-
-[[outputs]]
-id = "gvD5E1xC5vTgXSkXxyd8Q"
-uri = "file://generated/screenshots/ios-6.5inch-430x932.jpg"
-type = "image"
-title = "Screenshot: iOS 6.5\" (430×932)"

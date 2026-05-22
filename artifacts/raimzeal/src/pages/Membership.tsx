@@ -1,56 +1,27 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Star, Zap, Crown, Shield, ArrowRight } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
-import { useTier } from '@/hooks/useTier';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
-const TIER_META: Record<string, { label: string; icon: React.ReactNode; color: string; tagline: string }> = {
-  foundation: {
-    label: 'Foundation',
-    icon: <Shield className="h-5 w-5" />,
-    color: 'text-foreground/70',
-    tagline: 'Free Forever',
-  },
-  rise: {
-    label: 'Rise',
-    icon: <Star className="h-5 w-5" />,
-    color: 'text-primary',
-    tagline: 'Unlimited Ovia · Full Community',
-  },
-  reign: {
-    label: 'Reign',
-    icon: <Zap className="h-5 w-5" />,
-    color: 'text-[#C9A84C]',
-    tagline: 'AI Meal Plans · Custom Workouts',
-  },
-  legacy: {
-    label: 'Legacy',
-    icon: <Crown className="h-5 w-5" />,
-    color: 'text-purple-400',
-    tagline: "Founder's Circle · Adaptive Programs",
-  },
-};
-
-const FOUNDATION_FEATURES = [
-  'Basic workout library',
-  'Ovia AI coaching (15 messages/day)',
-  'Community: view & like posts',
-  'Nutrition & meal logging',
+const ALL_FEATURES = [
+  'Full workout library & custom workouts',
+  'Ovia AI coaching — unlimited',
+  'Full community: post, comment, like',
+  'Nutrition & meal logging with macros',
   'Body measurements & weight tracking',
-  'Progress charts',
-  'Calendar scheduling',
+  'Progress charts & personal records',
+  'Sleep tracking & streak tracking',
+  'Workout calendar scheduling',
+  'Data export (JSON / CSV)',
+  'Public profile with shareable link',
+  'Macro target calculator',
 ];
 
 export function Membership() {
   const [donationError, setDonationError] = useState(false);
-  const { tier, status, currentPeriodEnd, loading: tierLoading } = useTier();
-
-  const meta = TIER_META[tier] ?? TIER_META['foundation']!;
-  const isPaid = status === 'active';
-  const isPastDue = status === 'past_due';
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -64,77 +35,35 @@ export function Membership() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Membership</h1>
-            <p className="text-sm text-foreground/60">Your RAIMZEAL plan.</p>
+            <p className="text-sm text-foreground/60">Free forever. No subscription. No catch.</p>
           </div>
         </div>
 
-        {/* Current plan card */}
-        {!tierLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-5"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className={`${meta.color}`}>{meta.icon}</div>
-                <div>
-                  <p className="font-bold text-foreground">{meta.label}</p>
-                  <p className="text-xs text-foreground/50">{meta.tagline}</p>
-                </div>
-              </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isPaid ? 'bg-primary/20 text-primary' : isPastDue ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/10 text-foreground/50'}`}>
-                {isPaid ? 'Active' : isPastDue ? 'Past Due' : 'Free'}
-              </span>
-            </div>
-
-            {isPaid && currentPeriodEnd && (
-              <p className="text-xs text-foreground/40 mt-1">
-                Renews {new Date(currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
-            )}
-
-            <div className="mt-3 flex gap-2">
-              <Link href="/pricing">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-                  {isPaid ? 'Manage Plan' : 'Upgrade'} <ArrowRight className="h-3 w-3" />
-                </button>
-              </Link>
-              {isPaid && (
-                <Link href="/billing">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-foreground/60 text-xs font-semibold transition-colors">
-                    Billing
-                  </button>
-                </Link>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Foundation features card */}
-        {(tier === 'foundation' || tierLoading) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.03 }}
-            className="mb-4 rounded-2xl border border-border/40 bg-card/50 p-5"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-foreground">Included with Foundation</p>
-              <Link href="/pricing">
-                <span className="text-xs font-semibold text-primary hover:underline cursor-pointer">See all plans →</span>
-              </Link>
-            </div>
-            <ul className="space-y-1.5">
-              {FOUNDATION_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
-                  <Check className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
+        {/* Free Forever card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-5"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="h-5 w-5 text-primary" />
+            <p className="font-bold text-foreground">RAIMZEAL — Foundation Plan</p>
+            <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-primary/20 text-primary">
+              Free Forever
+            </span>
+          </div>
+          <p className="text-xs text-foreground/60 mb-3">
+            Everything below is included at no cost. Your health data belongs to you, not to advertisers or investors.
+          </p>
+          <ul className="space-y-1.5">
+            {ALL_FEATURES.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
+                <Check className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                {f}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
 
         {/* Donation CTA */}
         <motion.div
@@ -146,7 +75,7 @@ export function Membership() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
             <p className="text-xs text-foreground/60 mt-1 leading-relaxed">
-              No ads. No investors. No subscription required for core features — your health was never up for sale. A donation supports the team keeping this alive for everyone. Books · Music · Courses · Coaching at <span className="font-semibold">linktr.ee/Raimzy</span>
+              No ads. No investors. No subscription required — your health was never up for sale. A donation supports the team keeping this alive for everyone.
             </p>
           </div>
           {DONATION_ACTIVE ? (
@@ -197,7 +126,8 @@ export function Membership() {
         >
           <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe</p>
           <p className="text-xs text-foreground/60 leading-relaxed mb-3">
-            Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> · <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
+            Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> ·{' '}
+            <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>
           </p>
           <div className="flex flex-col gap-1.5">
             <a href={RAIMZY_LINKTREE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline">

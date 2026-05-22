@@ -159,95 +159,6 @@ const todayStr = () => new Date().toISOString().split("T")[0];
 const dateOffset = (daysAgo: number) =>
   new Date(Date.now() - daysAgo * 86400000).toISOString().split("T")[0];
 
-const DEMO_USER: UserProfile = {
-  id: "demo",
-  name: "Athlete",
-  email: "demo@raimzeal.com",
-  age: 28,
-  height: 178,
-  weight: 80,
-  fitnessLevel: "intermediate",
-  goals: ["build_muscle", "improve_fitness"],
-  units: "metric",
-  createdAt: dateOffset(30),
-};
-
-/** Deterministic sample data — no Math.random() */
-const SAMPLE_WORKOUT_LOGS: WorkoutLog[] = [
-  {
-    id: "wl1",
-    workoutId: "w1",
-    workoutName: "Full Body Strength",
-    date: todayStr(),
-    duration: 45,
-    caloriesBurned: 320,
-    exercises: [
-      { name: "Squats", sets: 4, reps: 12, weight: 60 },
-      { name: "Bench Press", sets: 4, reps: 10, weight: 70 },
-      { name: "Deadlifts", sets: 3, reps: 8, weight: 85 },
-    ],
-  },
-  {
-    id: "wl2",
-    workoutId: "w2",
-    workoutName: "HIIT Cardio Blast",
-    date: dateOffset(2),
-    duration: 30,
-    caloriesBurned: 280,
-    exercises: [
-      { name: "Burpees", sets: 4, reps: 15 },
-      { name: "Mountain Climbers", sets: 4, reps: 20 },
-      { name: "Jump Squats", sets: 4, reps: 15 },
-    ],
-  },
-  {
-    id: "wl3",
-    workoutId: "w3",
-    workoutName: "Upper Body Power",
-    date: dateOffset(4),
-    duration: 50,
-    caloriesBurned: 290,
-    exercises: [
-      { name: "Pull-ups", sets: 4, reps: 8 },
-      { name: "Shoulder Press", sets: 4, reps: 10, weight: 45 },
-      { name: "Bicep Curls", sets: 3, reps: 12, weight: 16 },
-    ],
-  },
-];
-
-const SAMPLE_MEAL_LOGS: MealLog[] = [
-  { id: "ml1", date: todayStr(), name: "Protein Oatmeal", calories: 450, protein: 30, carbs: 55, fat: 12, mealType: "breakfast" },
-  { id: "ml2", date: todayStr(), name: "Grilled Chicken Salad", calories: 520, protein: 45, carbs: 25, fat: 22, mealType: "lunch" },
-  { id: "ml3", date: todayStr(), name: "Greek Yogurt", calories: 180, protein: 18, carbs: 12, fat: 6, mealType: "snack" },
-  { id: "ml4", date: dateOffset(1), name: "Protein Oatmeal", calories: 450, protein: 30, carbs: 55, fat: 12, mealType: "breakfast" },
-  { id: "ml5", date: dateOffset(1), name: "Salmon with Quinoa", calories: 620, protein: 42, carbs: 45, fat: 28, mealType: "dinner" },
-  { id: "ml6", date: dateOffset(2), name: "Chicken Rice Bowl", calories: 580, protein: 48, carbs: 50, fat: 14, mealType: "lunch" },
-];
-
-/** Fixed weekly calorie values (deterministic, represents a realistic week) */
-const FIXED_WEEK_CALORIES = [1750, 2100, 1950, 2200, 1850, 2050, 1680];
-
-const SAMPLE_BODY_MEASUREMENTS: BodyMeasurement[] = Array.from(
-  { length: 12 },
-  (_, i) => ({
-    id: `bm${i}`,
-    date: dateOffset((11 - i) * 7),
-    weight: 83 - i * 0.25,
-    chest: 100 - i * 0.1,
-    waist: 85 - i * 0.2,
-  })
-);
-
-const SAMPLE_WATER_INTAKE: AppState["waterIntake"] = [
-  { date: todayStr(), glasses: 6 },
-  { date: dateOffset(1), glasses: 8 },
-  { date: dateOffset(2), glasses: 7 },
-  { date: dateOffset(3), glasses: 9 },
-  { date: dateOffset(4), glasses: 6 },
-  { date: dateOffset(5), glasses: 8 },
-  { date: dateOffset(6), glasses: 7 },
-];
-
 const INITIAL_OVIA_MESSAGES: OviaMessage[] = [
   {
     id: "ov1",
@@ -259,19 +170,15 @@ const INITIAL_OVIA_MESSAGES: OviaMessage[] = [
 ];
 
 const defaultState: AppState = {
-  isOnboarded: true,
-  isLoggedIn: true,
-  user: DEMO_USER,
-  workoutLogs: SAMPLE_WORKOUT_LOGS,
-  bodyMeasurements: SAMPLE_BODY_MEASUREMENTS,
-  mealLogs: SAMPLE_MEAL_LOGS,
-  waterIntake: SAMPLE_WATER_INTAKE,
-  streak: 7,
-  personalRecords: [
-    { exercise: "Bench Press", weight: 90, date: dateOffset(5) },
-    { exercise: "Squat", weight: 100, date: dateOffset(10) },
-    { exercise: "Deadlift", weight: 120, date: dateOffset(15) },
-  ],
+  isOnboarded: false,
+  isLoggedIn: false,
+  user: null,
+  workoutLogs: [],
+  bodyMeasurements: [],
+  mealLogs: [],
+  waterIntake: [],
+  streak: 0,
+  personalRecords: [],
   settings: {
     darkMode: true,
     notifications: true,
@@ -338,7 +245,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             ...(profile
               ? {
                   user: {
-                    ...(prev.user ?? DEMO_USER),
+                    ...(prev.user ?? {} as UserProfile),
                     ...profile,
                     id: userId,
                     email: session.user.email ?? prev.user?.email ?? "",

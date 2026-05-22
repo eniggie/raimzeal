@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRoute, Link } from 'wouter';
-import { ChevronLeft, Target, Wrench, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Target, Wrench, CheckCircle, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,17 @@ export function ExerciseDetail() {
   const [, params] = useRoute('/exercise/:name');
   const exerciseName = decodeURIComponent(params?.name || '');
   const exercise = exercises.find(e => e.name.toLowerCase() === exerciseName);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!exerciseName) return;
+    fetch(`/api/exercises/${encodeURIComponent(exerciseName)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { exercise: { video_url: string | null } } | null) => {
+        if (d?.exercise?.video_url) setVideoUrl(d.exercise.video_url);
+      })
+      .catch(() => {});
+  }, [exerciseName]);
 
   if (!exercise) {
     return (
@@ -96,6 +108,24 @@ export function ExerciseDetail() {
               ))}
             </ul>
           </Card>
+
+          {videoUrl && (
+            <Card className="p-4 overflow-hidden">
+              <div className="flex items-center gap-3 mb-3">
+                <PlayCircle className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold">Form Demo</h2>
+              </div>
+              <div className="relative w-full rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                <iframe
+                  src={videoUrl}
+                  title={`${exercise?.name} form video`}
+                  className="absolute inset-0 w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </Card>
+          )}
         </motion.div>
       </div>
     </div>

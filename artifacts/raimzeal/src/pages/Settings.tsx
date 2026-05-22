@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download
+  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download,
+  Target, Trophy, Globe, Trash2, Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -575,6 +576,61 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
           </Link>
         </motion.div>
 
+        {/* Health Tools */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Health Tools</h3>
+          <Card className="divide-y divide-border">
+            <Link href="/settings/macros">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Macro Targets</div>
+                  <div className="text-sm text-muted-foreground">Auto-calculated from your profile</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/sleep">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <Moon className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Sleep Tracking</div>
+                  <div className="text-sm text-muted-foreground">Log nightly sleep and quality</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/progress/prs">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Personal Records</div>
+                  <div className="text-sm text-muted-foreground">Your all-time bests, tracked</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/progress/photos">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-pink-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Progress Photos</div>
+                  <div className="text-sm text-muted-foreground">Visual transformation timeline</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+          </Card>
+        </motion.div>
+
         {/* Preferences */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Preferences</h3>
@@ -743,6 +799,37 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 {exportLoading ? 'Generating…' : 'Export'}
               </button>
             </div>
+          </Card>
+        </motion.div>
+
+        {/* Profile & Account */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.295 }}>
+          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Profile & Account</h3>
+          <Card className="divide-y divide-border">
+            <Link href="/settings/public-profile">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Public Profile</div>
+                  <div className="text-sm text-muted-foreground">Share your handle and fitness journey</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/settings/delete-account">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-destructive/70" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-destructive/80">Delete Account</div>
+                  <div className="text-sm text-muted-foreground">Permanently remove all your data</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
           </Card>
         </motion.div>
 

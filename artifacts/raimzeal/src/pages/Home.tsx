@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
-  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart
+  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart, Snowflake
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatRing } from '@/components/StatRing';
@@ -39,7 +40,42 @@ function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; protein
 
 export function Home({ state, onUpdateWater }: HomeProps) {
   const [homeDonationError, setHomeDonationError] = useState(false);
+  const [streakFreezes, setStreakFreezes] = useState(0);
+  const [freezeLoading, setFreezeLoading] = useState(false);
+  const [freezeMsg, setFreezeMsg] = useState('');
   const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch('/api/user/streak', { headers: { Authorization: `Bearer ${session.access_token}` } });
+        if (res.ok) {
+          const d = await res.json() as { streak_freezes_available: number };
+          setStreakFreezes(d.streak_freezes_available ?? 0);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  async function handleUseFreeze() {
+    setFreezeLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch('/api/user/streak/freeze', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } });
+      const d = await res.json() as { success?: boolean; streak_freezes_available?: number; message?: string; error?: string };
+      if (d.success) {
+        setStreakFreezes(d.streak_freezes_available ?? 0);
+        setFreezeMsg(d.message ?? 'Streak protected!');
+      } else {
+        setFreezeMsg(d.error ?? 'No freezes available.');
+      }
+    } catch { setFreezeMsg('Could not apply freeze.'); }
+    setFreezeLoading(false);
+    setTimeout(() => setFreezeMsg(''), 3500);
+  }
   const todayWater = state.waterIntake.find(w => w.date === today)?.glasses || 0;
   const todayMeals = state.mealLogs.filter(m => m.date === today);
   const todayCalories = todayMeals.reduce((sum, m) => sum + m.calories, 0);
@@ -75,15 +111,44 @@ export function Home({ state, onUpdateWater }: HomeProps) {
               {(state.user?.name?.split(' ')[0] || 'Athlete').slice(0, 20)}
             </h1>
           </div>
-          <motion.div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"
-            whileHover={{ scale: 1.05 }}
-          >
-            <Flame className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-primary" data-testid="text-streak">{state.streak}</span>
-            <span className="text-xs text-muted-foreground">day streak</span>
-          </motion.div>
+          <div className="flex flex-col items-end gap-1">
+            <motion.div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"
+              whileHover={{ scale: 1.05 }}
+            >
+              <Flame className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-primary" data-testid="text-streak">{state.streak}</span>
+              <span className="text-xs text-muted-foreground">day streak</span>
+            </motion.div>
+            {streakFreezes > 0 && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={handleUseFreeze}
+                disabled={freezeLoading}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                title="Use a streak freeze to protect your streak for one missed day"
+              >
+                <Snowflake className="w-3 h-3" />
+                {streakFreezes} freeze{streakFreezes !== 1 ? 's' : ''}
+              </motion.button>
+            )}
+          </div>
         </motion.div>
+
+        <AnimatePresence>
+          {freezeMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-2 text-sm text-blue-300 text-center font-medium"
+            >
+              <Snowflake className="w-4 h-4 inline mr-1.5 align-middle" />
+              {freezeMsg}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Free Forever Banner */}
         <motion.div

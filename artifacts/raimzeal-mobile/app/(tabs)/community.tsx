@@ -33,7 +33,6 @@ import {
 } from "@/lib/db";
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
-import { useTier } from "@/hooks/useTier";
 
 type FeedTab = "feed" | "questions";
 
@@ -46,58 +45,6 @@ interface PostState extends CommunityPost {
   submittingComment: boolean;
 }
 
-const DEMO_POSTS: CommunityPost[] = [
-  {
-    id: "demo-1",
-    userId: "demo-user-1",
-    userName: "Sarah K.",
-    content: "Just hit a new personal record on deadlifts today — 120 kg! Six months ago I could barely do 60 kg. Consistency really is everything. Keep going everyone!",
-    postType: "post",
-    likesCount: 34,
-    commentsCount: 7,
-    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-  },
-  {
-    id: "demo-2",
-    userId: "demo-user-2",
-    userName: "Mohammed A.",
-    content: "Best pre-workout meal for someone training at 6 AM? I currently just have black coffee but I feel like I'm running on empty by the time I get to my third set.",
-    postType: "question",
-    likesCount: 18,
-    commentsCount: 12,
-    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-  },
-  {
-    id: "demo-3",
-    userId: "demo-user-3",
-    userName: "Priya S.",
-    content: "Week 3 of the 8-week beginner program and already noticing my jeans feel looser. The nutrition tracking in RAIMZEAL has completely changed how I eat — I had no idea I was barely hitting 60g protein per day before.",
-    postType: "post",
-    likesCount: 51,
-    commentsCount: 9,
-    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-  },
-  {
-    id: "demo-4",
-    userId: "demo-user-4",
-    userName: "James T.",
-    content: "How do you all handle training during Ramadan? I find my energy really drops in the afternoon before Iftar but I still want to maintain my muscle. Any tips?",
-    postType: "question",
-    likesCount: 27,
-    commentsCount: 19,
-    createdAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
-  },
-  {
-    id: "demo-5",
-    userId: "demo-user-5",
-    userName: "Aisha M.",
-    content: "30-day check in — down 4.2 kg and up on every single lift. The combination of RAIMZEAL tracking and Ovia AI coaching is genuinely different from anything I have tried before.",
-    postType: "post",
-    likesCount: 89,
-    commentsCount: 23,
-    createdAt: new Date(Date.now() - 3 * 24 * 3600000).toISOString(),
-  },
-];
 
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime();
@@ -128,8 +75,6 @@ export default function CommunityScreen() {
   const [newPostType, setNewPostType] = useState<"post" | "question">("post");
   const [newPostContent, setNewPostContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { canWrite } = useTier(userId);
-
   useEffect(() => {
     if (isSupabaseConfigured) {
       supabase.auth.getSession().then(({ data }) => {
@@ -145,9 +90,7 @@ export default function CommunityScreen() {
         let fetched: CommunityPost[] = await fetchCommunityPosts(filter);
 
         if (!isSupabaseConfigured) {
-          fetched = tab === "questions"
-            ? DEMO_POSTS.filter((p) => p.postType === "question")
-            : DEMO_POSTS;
+          fetched = [];
         }
 
         let likedSet = new Set<string>();
@@ -167,20 +110,7 @@ export default function CommunityScreen() {
           }))
         );
       } catch {
-        const fallback = tab === "questions"
-          ? DEMO_POSTS.filter((p) => p.postType === "question")
-          : DEMO_POSTS;
-        setPosts(
-          fallback.map((p) => ({
-            ...p,
-            liked: false,
-            expanded: false,
-            comments: [],
-            loadingComments: false,
-            commentInput: "",
-            submittingComment: false,
-          }))
-        );
+        setPosts([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -208,18 +138,6 @@ export default function CommunityScreen() {
   async function handleLike(postId: string) {
     if (!userId) {
       Alert.alert("Sign in required", "Please sign in to like posts.");
-      return;
-    }
-    const isDemoPost = postId.startsWith("demo-");
-    if (isDemoPost) {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? { ...p, liked: !p.liked, likesCount: p.liked ? p.likesCount - 1 : p.likesCount + 1 }
-            : p
-        )
-      );
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       return;
     }
     setPosts((prev) =>
@@ -256,7 +174,7 @@ export default function CommunityScreen() {
     setPosts((prev) =>
       prev.map((p) => (p.id === postId ? { ...p, expanded: isExpanding } : p))
     );
-    if (isExpanding && post.comments.length === 0 && !postId.startsWith("demo-")) {
+    if (isExpanding && post.comments.length === 0) {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, loadingComments: true } : p))
       );
@@ -282,14 +200,6 @@ export default function CommunityScreen() {
       Alert.alert("Sign in required", "Please sign in to comment.");
       return;
     }
-    if (!canWrite && isSupabaseConfigured) {
-      Alert.alert(
-        "Rise Membership Required",
-        "Commenting requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
-        [{ text: "Got it" }]
-      );
-      return;
-    }
     const content = post.commentInput.trim();
     const userName = user?.name ?? "Anonymous";
     const optimisticComment: CommunityComment = {
@@ -313,36 +223,30 @@ export default function CommunityScreen() {
           : p
       )
     );
-    if (!postId.startsWith("demo-")) {
-      try {
-        const saved = await createComment(postId, userId, userName, content);
-        if (saved) {
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    submittingComment: false,
-                    comments: p.comments.map((c) =>
-                      c.id === optimisticComment.id ? saved : c
-                    ),
-                  }
-                : p
-            )
-          );
-        } else {
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === postId ? { ...p, submittingComment: false } : p
-            )
-          );
-        }
-      } catch {
+    try {
+      const saved = await createComment(postId, userId, userName, content);
+      if (saved) {
         setPosts((prev) =>
-          prev.map((p) => (p.id === postId ? { ...p, submittingComment: false } : p))
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  submittingComment: false,
+                  comments: p.comments.map((c) =>
+                    c.id === optimisticComment.id ? saved : c
+                  ),
+                }
+              : p
+          )
+        );
+      } else {
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId ? { ...p, submittingComment: false } : p
+          )
         );
       }
-    } else {
+    } catch {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, submittingComment: false } : p))
       );
@@ -353,14 +257,6 @@ export default function CommunityScreen() {
     if (!newPostContent.trim()) return;
     if (!userId && isSupabaseConfigured) {
       Alert.alert("Sign in required", "Please sign in to post.");
-      return;
-    }
-    if (!canWrite && isSupabaseConfigured) {
-      Alert.alert(
-        "Rise Membership Required",
-        "Creating posts requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
-        [{ text: "Got it" }]
-      );
       return;
     }
     setSubmitting(true);
@@ -578,8 +474,7 @@ export default function CommunityScreen() {
                   </Text>
                 )}
 
-                {canWrite ? (
-                  <View
+                <View
                     style={[
                       styles.commentInputRow,
                       { borderTopColor: colors.border },
@@ -635,26 +530,6 @@ export default function CommunityScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
-                ) : (
-                  <TouchableOpacity
-                    style={[
-                      styles.upgradeCommentRow,
-                      { borderTopColor: colors.border, backgroundColor: colors.muted + "60" },
-                    ]}
-                    onPress={() =>
-                      Alert.alert(
-                        "Rise Membership Required",
-                        "Commenting requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
-                        [{ text: "Got it" }]
-                      )
-                    }
-                  >
-                    <Ionicons name="lock-closed-outline" size={13} color={colors.primary} />
-                    <Text style={[styles.upgradeCommentText, { color: colors.primary }]}>
-                      Upgrade to Rise to join the conversation
-                    </Text>
-                  </TouchableOpacity>
-                )}
               </>
             )}
           </View>
@@ -680,14 +555,6 @@ export default function CommunityScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => {
-            if (!canWrite && isSupabaseConfigured) {
-              Alert.alert(
-                "Rise Membership Required",
-                "Creating posts requires a Rise, Reign, or Legacy membership. Foundation members can view and like posts.",
-                [{ text: "Got it" }]
-              );
-              return;
-            }
             setNewPostContent("");
             setNewPostType("post");
             setShowNewPost(true);

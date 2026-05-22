@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, Send, User, Globe, Sparkles } from 'lucide-react';
+import { ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -137,8 +137,38 @@ export function Coach({ state }: CoachProps) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [searchingFor, setSearchingFor] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const recognitionRef = useRef<unknown>(null);
+
+  function startVoice() {
+    type AnyRec = Record<string, unknown>;
+    const w = window as unknown as AnyRec;
+    const SR = (w['SpeechRecognition'] ?? w['webkitSpeechRecognition']) as (new () => AnyRec) | undefined;
+    if (!SR) return;
+    if (isListening) {
+      const rec = recognitionRef.current as AnyRec | null;
+      if (rec) (rec['stop'] as () => void)();
+      setIsListening(false);
+      return;
+    }
+    const rec: AnyRec = new SR();
+    rec['continuous'] = false;
+    rec['interimResults'] = false;
+    rec['lang'] = 'en-US';
+    rec['onresult'] = (e: unknown) => {
+      const results = ((e as AnyRec)['results'] as AnyRec[][])[0];
+      const transcript = String((results?.[0] as AnyRec | undefined)?.['transcript'] ?? '');
+      if (transcript) setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+      setIsListening(false);
+    };
+    rec['onerror'] = () => setIsListening(false);
+    rec['onend'] = () => setIsListening(false);
+    recognitionRef.current = rec;
+    (rec['start'] as () => void)();
+    setIsListening(true);
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -498,6 +528,15 @@ export function Coach({ state }: CoachProps) {
             className="resize-none min-h-[42px] max-h-32 text-sm"
             style={{ height: 'auto' }}
           />
+          <Button
+            onClick={startVoice}
+            size="icon"
+            variant={isListening ? 'destructive' : 'outline'}
+            className="shrink-0 h-[42px] w-[42px]"
+            title={isListening ? 'Stop listening' : 'Speak to Ovia'}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </Button>
           <Button
             onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}

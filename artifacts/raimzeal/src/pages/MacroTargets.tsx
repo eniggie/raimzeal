@@ -1,0 +1,200 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { ChevronLeft, Target, RotateCcw, Save, Loader2 } from 'lucide-react';
+import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { BottomNav } from '@/components/BottomNav';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+
+interface MacroData {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  auto: boolean;
+  source: 'computed' | 'manual';
+}
+
+const MACRO_COLORS = {
+  calories: 'bg-primary/20 text-primary border-primary/30',
+  protein: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  carbs: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  fat: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+};
+
+export function MacroTargets() {
+  const { toast } = useToast();
+  const [macros, setMacros] = useState<MacroData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isManual, setIsManual] = useState(false);
+  const [form, setForm] = useState({ calories: '', protein: '', carbs: '', fat: '' });
+
+  useEffect(() => {
+    loadMacros();
+  }, []);
+
+  async function loadMacros() {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch('/api/user/macros', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json() as MacroData;
+      setMacros(data);
+      setIsManual(data.auto === false);
+      setForm({
+        calories: String(data.calories),
+        protein: String(data.protein),
+        carbs: String(data.carbs),
+        fat: String(data.fat),
+      });
+    } catch {
+      toast({ title: 'Could not load macro targets', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const body = {
+        calories: Number(form.calories),
+        protein: Number(form.protein),
+        carbs: Number(form.carbs),
+        fat: Number(form.fat),
+        auto: false,
+      };
+      const res = await fetch('/api/user/macros', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      const data = await res.json() as MacroData;
+      setMacros(data);
+      setIsManual(true);
+      toast({ title: 'Macro targets saved' });
+    } catch {
+      toast({ title: 'Could not save targets', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReset() {
+    setSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetch('/api/user/macros', { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } });
+      setIsManual(false);
+      await loadMacros();
+      toast({ title: 'Reverted to auto-computed targets' });
+    } catch {
+      toast({ title: 'Could not reset', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const macroList = macros ? [
+    { key: 'calories', label: 'Calories', value: macros.calories, unit: 'kcal', color: MACRO_COLORS.calories },
+    { key: 'protein', label: 'Protein', value: macros.protein, unit: 'g', color: MACRO_COLORS.protein },
+    { key: 'carbs', label: 'Carbs', value: macros.carbs, unit: 'g', color: MACRO_COLORS.carbs },
+    { key: 'fat', label: 'Fat', value: macros.fat, unit: 'g', color: MACRO_COLORS.fat },
+  ] : [];
+
+  return (
+    <div className="min-h-screen bg-background pb-24">
+      <div className="max-w-lg mx-auto px-4 pt-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/settings">
+            <button className="p-2 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+              <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold">Macro Targets</h1>
+            <p className="text-sm text-muted-foreground">Auto-calculated from your profile</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <>
+            {/* Current target cards */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {macroList.map(m => (
+                <motion.div key={m.key} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+                  <Card className={`p-4 border ${m.color}`}>
+                    <div className="text-xs font-medium mb-1 opacity-70">{m.label}</div>
+                    <div className="text-2xl font-bold">{m.value}</div>
+                    <div className="text-xs opacity-60">{m.unit} / day</div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {macros && (
+              <Card className="p-4 mb-4 border-muted/30 bg-muted/10">
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold">
+                    {macros.source === 'computed' ? 'Auto-calculated' : 'Manually set'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {macros.source === 'computed'
+                    ? 'These targets are calculated using the Mifflin-St Jeor formula based on your profile height, weight, age, activity level, and goals.'
+                    : 'You have manually set these targets. Reset to auto-compute from your profile.'}
+                </p>
+              </Card>
+            )}
+
+            {/* Manual override form */}
+            <Card className="p-4 mb-4">
+              <h3 className="font-semibold mb-3">Override Targets</h3>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {(['calories', 'protein', 'carbs', 'fat'] as const).map(key => (
+                  <div key={key}>
+                    <Label className="text-xs capitalize mb-1">{key} {key === 'calories' ? '(kcal)' : '(g)'}</Label>
+                    <Input
+                      type="number"
+                      value={form[key]}
+                      onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSave} disabled={saving} className="flex-1">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                  Save
+                </Button>
+                {isManual && (
+                  <Button variant="outline" onClick={handleReset} disabled={saving}>
+                    <RotateCcw className="w-4 h-4 mr-1" /> Auto
+                  </Button>
+                )}
+              </div>
+            </Card>
+          </>
+        )}
+      </div>
+      <BottomNav />
+    </div>
+  );
+}

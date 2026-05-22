@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
-import { Search, Clock, Flame, Filter, Dumbbell, Zap, Heart, Wind, X } from 'lucide-react';
+import { Search, Clock, Flame, Filter, Dumbbell, Zap, Heart, Wind, X, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -102,19 +102,34 @@ export function Workouts() {
           ))}
         </motion.div>
 
-        <Link href="/exercises">
-          <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-exercise-library">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
-                <Search className="w-6 h-6 text-secondary" />
+        <div className="grid grid-cols-2 gap-3">
+          <Link href="/exercises">
+            <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover h-full" data-testid="card-exercise-library">
+              <div className="flex flex-col items-start gap-2">
+                <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
+                  <Search className="w-5 h-5 text-secondary" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Exercise Library</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Browse all with form tips</div>
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">Exercise Library</div>
-                <div className="text-sm text-muted-foreground">Browse all exercises with form tips</div>
+            </Card>
+          </Link>
+          <Link href="/workouts/create">
+            <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover h-full" data-testid="card-create-workout">
+              <div className="flex flex-col items-start gap-2">
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Create Workout</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Build your own routine</div>
+                </div>
               </div>
-            </div>
-          </Card>
-        </Link>
+            </Card>
+          </Link>
+        </div>
 
         <div className="space-y-3">
           {filteredWorkouts.map((workout, i) => (
