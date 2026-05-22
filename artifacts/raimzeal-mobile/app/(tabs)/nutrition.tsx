@@ -1934,6 +1934,7 @@ export default function NutritionScreen() {
     reorderItemsRef.current = next;
     setReorderItems(next);
     reorderFavoriteFoods(next);
+    favoriteCardYsRef.current = {};
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
