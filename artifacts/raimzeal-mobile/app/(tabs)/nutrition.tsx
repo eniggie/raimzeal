@@ -2810,6 +2810,8 @@ export default function NutritionScreen() {
                         <TouchableOpacity
                           key={preset.id}
                           onPress={() => applyPreset(preset)}
+                          onLongPress={() => openEditPresetModal(preset)}
+                          delayLongPress={500}
                           activeOpacity={0.75}
                           style={[
                             styles.presetChip,
