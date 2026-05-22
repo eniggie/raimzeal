@@ -4692,8 +4692,31 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
         setEditServings(1);
         setEditServingsText("1");
       }
+      // If perGramRef.current is null (no stored amountGrams), wait for onBlur
+      // to finalize the gram value before locking the per-gram ratio.
     } else if (normalized === "" || normalized === "0") {
       setEditGrams(undefined);
+      perGramRef.current = null;
+    }
+  }
+
+  function commitGramsBaseline(gramsText: string) {
+    const n = parseFloat(gramsText);
+    if (!isNaN(n) && n > 0 && !perGramRef.current) {
+      perGramRef.current = {
+        calories: log.calories / n,
+        protein: log.protein / n,
+        carbs: log.carbs / n,
+        fat: log.fat / n,
+      };
+      setEditBase({
+        calories: perGramRef.current.calories * n,
+        protein: perGramRef.current.protein * n,
+        carbs: perGramRef.current.carbs * n,
+        fat: perGramRef.current.fat * n,
+      });
+      setEditServings(1);
+      setEditServingsText("1");
     }
   }
 
@@ -4822,6 +4845,8 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
                   const n = parseFloat(editGramsText);
                   if (isNaN(n) || n <= 0) {
                     setEditGramsText(editGrams !== undefined ? String(editGrams) : "");
+                  } else {
+                    commitGramsBaseline(editGramsText);
                   }
                 }}
                 keyboardType="decimal-pad"
