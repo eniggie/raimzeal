@@ -45,6 +45,7 @@ export function Community() {
   const [fetchError, setFetchError] = useState('');
   const [newPost, setNewPost] = useState('');
   const [posting, setPosting] = useState(false);
+  const [postType, setPostType] = useState<'post' | 'win' | 'question' | 'tip' | 'challenge'>('post');
 
   const loadPosts = useCallback(async () => {
     if (!supabaseConfigured) { setLoading(false); return; }
@@ -90,7 +91,7 @@ export function Community() {
       const res = await fetch('/api/community/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userName: displayName, content, postType: 'post' }),
+        body: JSON.stringify({ userName: displayName, content, postType }),
       });
       if (res.ok) {
         const json = await res.json() as { post: Record<string, unknown> };
@@ -168,10 +169,58 @@ export function Community() {
           </Card>
         </div>
 
+        {/* Curated Daily Content */}
+        {(() => {
+          const day = new Date().getDay();
+          const foodTherapyTips = [
+            "Ginger and turmeric tea reduces inflammation markers and supports joint health. Try a cup before bed tonight.",
+            "Fermented foods like kefir, kimchi, and natural yoghurt seed your gut microbiome — the foundation of immunity and mood.",
+            "Eating oily fish twice a week provides EPA and DHA that reduce systemic inflammation and feed your brain.",
+            "Leafy greens are rich in folate and magnesium, which support serotonin production and reduce anxiety.",
+            "Bone broth is packed with collagen, glycine, and minerals that heal the gut lining and support joint recovery.",
+            "Berries are among the highest antioxidant foods on earth. A handful daily fights oxidative stress from training.",
+            "Dark chocolate (70%+) raises endorphins and provides magnesium. One or two squares is therapeutic, not a treat.",
+          ];
+          const healthQuestions = [
+            "What is one food you eat daily that you are unsure about? Drop it below — the community has answers.",
+            "How many glasses of water did you drink yesterday? Share your hydration goal for today.",
+            "What does your pre-workout meal look like? Let the community see what fuels you.",
+            "What is the biggest nutrition myth you believed that turned out to be wrong?",
+            "Which recovery habit has made the most difference in your training: sleep, nutrition, or rest days?",
+            "What is one small lifestyle change that made a big difference to your energy levels?",
+            "How do you handle cravings while staying on track? Share your strategy below.",
+          ];
+          const challenges = [
+            "This week: add one extra serving of leafy greens to every meal. Who is in?",
+            "Challenge: 10 minutes of morning movement before screens. Start tomorrow and report back.",
+            "Try replacing one processed snack with a whole food this week. Share what you swapped.",
+            "Drink 8 glasses of water every day this week. Drop a check-in comment to stay accountable.",
+            "Go for a 20-minute walk after dinner every day this week. Tag a friend to join you.",
+            "Meal prep at least two healthy meals this week. Post a photo when you do.",
+            "No added sugar for 3 days. Start today — who is joining?",
+          ];
+          return (
+            <div className="space-y-2">
+              <Card className="p-3 border-secondary/20 bg-secondary/5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-1">Food Therapy Tip of the Day</p>
+                <p className="text-xs text-foreground/80 leading-relaxed">{foodTherapyTips[day]}</p>
+              </Card>
+              <Card className="p-3 border-accent/20 bg-accent/5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Daily Health Question</p>
+                <p className="text-xs text-foreground/80 leading-relaxed">{healthQuestions[day]}</p>
+              </Card>
+              <Card className="p-3 border-primary/20 bg-primary/5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Weekly Fitness Challenge</p>
+                <p className="text-xs text-foreground/80 leading-relaxed">{challenges[day]}</p>
+              </Card>
+            </div>
+          );
+        })()}
+
         {/* Donation Prompt */}
         <Card className="p-3 border-primary/20 flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
+            <p className="text-xs font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
             <p className="text-xs text-muted-foreground mt-0.5">We turned down deals to keep it that way. Please support the team — a donation supports the team. Books · Music · Courses · Coaching at <span className="font-semibold">linktr.ee/Raimzy</span></p>
           </div>
           {DONATION_ACTIVE ? (
@@ -218,6 +267,23 @@ export function Community() {
       {user && supabaseConfigured && (
         <div className="px-4 py-4 border-b border-border">
           <div className="max-w-lg mx-auto">
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {(['post', 'win', 'question', 'tip', 'challenge'] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setPostType(t)}
+                  className={cn(
+                    'text-xs px-2.5 py-1 rounded-full font-medium transition-colors border',
+                    postType === t
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/50'
+                  )}
+                >
+                  {t === 'win' ? '🏆 Win' : t === 'question' ? '❓ Question' : t === 'tip' ? '💡 Tip' : t === 'challenge' ? '🔥 Challenge' : '💬 Post'}
+                </button>
+              ))}
+            </div>
             <div className="flex gap-3">
                 <Avatar>
                   <AvatarFallback>
@@ -226,7 +292,7 @@ export function Community() {
                 </Avatar>
                 <div className="flex-1 flex gap-2">
                   <Input
-                    placeholder="Share your progress..."
+                    placeholder={postType === 'win' ? 'Share your win or milestone...' : postType === 'question' ? 'Ask the community a health question...' : postType === 'tip' ? 'Share a food therapy or fitness tip...' : postType === 'challenge' ? 'Post a challenge for the community...' : 'Share your progress...'}
                     value={newPost}
                     onChange={e => setNewPost(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
@@ -298,11 +364,21 @@ export function Community() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-semibold text-sm truncate max-w-[140px]">{post.user_name}</span>
-                      {post.post_type?.toLowerCase() === 'question' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary/20 text-secondary font-medium shrink-0">
-                          Q&amp;A
-                        </span>
-                      )}
+                      {post.post_type && post.post_type !== 'post' && (() => {
+                        const t = post.post_type.toLowerCase();
+                        const map: Record<string, { label: string; cls: string }> = {
+                          win:      { label: '🏆 Win',       cls: 'bg-primary/15 text-primary' },
+                          question: { label: '❓ Q&A',       cls: 'bg-secondary/20 text-secondary' },
+                          tip:      { label: '💡 Tip',       cls: 'bg-accent/20 text-accent' },
+                          challenge:{ label: '🔥 Challenge', cls: 'bg-destructive/15 text-destructive' },
+                        };
+                        const entry = map[t];
+                        return entry ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${entry.cls}`}>
+                            {entry.label}
+                          </span>
+                        ) : null;
+                      })()}
                       <span className="text-xs text-muted-foreground ml-auto shrink-0">
                         {formatTime(post.created_at)}
                       </span>

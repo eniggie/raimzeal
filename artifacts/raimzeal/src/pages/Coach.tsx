@@ -119,6 +119,7 @@ function stripMarkdown(text: string): string {
     .replace(/`{1,3}[^`]*`{1,3}/g, (m) => m.replace(/`/g, '')) // `code`
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url)
     .replace(/\n{3,}/g, '\n\n')              // collapse excess blank lines
+    .replace(/\*/g, '')                       // catch-all: remove any remaining asterisks
     .trim();
 }
 
@@ -404,7 +405,7 @@ export function Coach({ state }: CoachProps) {
             </div>
             <div>
               <h1 className="font-semibold text-sm">Ovia AI</h1>
-              <p className="text-xs text-primary">Online — fitness and health expert</p>
+              <p className="text-xs text-primary">Fitness · Food Therapy · Wellness — not a medical substitute</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

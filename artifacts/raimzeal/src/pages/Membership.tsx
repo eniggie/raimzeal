@@ -35,7 +35,7 @@ export function Membership() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Membership</h1>
-            <p className="text-sm text-foreground/60">Free forever. No subscription. No catch.</p>
+            <p className="text-sm text-foreground/60">The Foundation Plan is free forever. No subscription. No catch.</p>
           </div>
         </div>
 
@@ -73,9 +73,9 @@ export function Membership() {
           className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
+            <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
             <p className="text-xs text-foreground/60 mt-1 leading-relaxed">
-              No ads. No investors. No subscription required — your health was never up for sale. A donation supports the team keeping this alive for everyone.
+              RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations keep the staff and platform running for everyone.
             </p>
           </div>
           {DONATION_ACTIVE ? (

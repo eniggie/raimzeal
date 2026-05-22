@@ -567,7 +567,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                   <Heart className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">RAIMZEAL · Free Forever</div>
+                  <div className="font-medium">RAIMZEAL · Foundation Plan</div>
                   <div className="text-sm text-muted-foreground">All features included, no subscription</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -724,9 +724,9 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
           <Card className="p-4 border-primary/20 bg-primary/5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">We turned down deals. RAIMZEAL is free forever.</p>
+                <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  We turned down deals to keep it that way. Please support the team — a donation supports the team.
+                  RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Donations keep the staff and platform running for everyone.
                 </p>
                 <a
                   href={RAIMZY_LINKTREE}

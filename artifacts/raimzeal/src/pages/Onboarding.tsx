@@ -183,16 +183,41 @@ export function Onboarding({ onLogin }: OnboardingProps) {
 
             <div className="flex-1">
               {step === 0 && (
-                <div className="space-y-5">
-                  <div className="w-28 h-28 mx-auto rounded-3xl overflow-hidden">
+                <div className="space-y-4">
+                  <div className="w-20 h-20 mx-auto rounded-2xl overflow-hidden">
                     <img src="/favicon.png" alt="RAIMZEAL" className="w-full h-full object-cover" />
                   </div>
-                  <div className="text-center space-y-2">
+                  <div className="text-center space-y-1.5">
                     <h2 className="text-xl font-semibold">Welcome to RAIMZEAL</h2>
-                    <p className="text-muted-foreground text-sm">
-                      Fitness · Food Therapy · Health Awareness — free, forever.
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      AI-powered fitness, food therapy, and health awareness — free forever, for everyone.
                     </p>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { icon: '🏋️', label: 'Track Workouts' },
+                      { icon: '🥗', label: 'Food Therapy & Nutrition' },
+                      { icon: '🤖', label: 'Ovia AI Coach' },
+                      { icon: '👥', label: 'Community' },
+                    ].map(({ icon, label }) => (
+                      <div key={label} className="flex items-center gap-2 bg-muted/40 rounded-xl px-3 py-2.5">
+                        <span className="text-base">{icon}</span>
+                        <span className="text-xs font-medium leading-tight">{label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center space-y-1">
+                    <p className="text-xs font-semibold text-primary">Foundation Plan — Free Forever</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      No subscription required. Donations keep the platform running — you never have to pay.
+                    </p>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground/60 text-center leading-relaxed px-2">
+                    RAIMZEAL supports your wellness journey and does not replace a doctor, emergency care, or licensed medical diagnosis.
+                  </p>
 
                   <Button
                     variant="ghost"
