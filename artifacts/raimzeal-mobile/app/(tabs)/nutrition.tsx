@@ -4745,7 +4745,130 @@ function MacroBar({
 
 function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void }) {
   const colors = useColors();
+  const { updateMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
+
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [editForm, setEditForm] = useState<ManualForm>({
+    name: log.name,
+    calories: String(log.calories),
+    protein: String(log.protein),
+    carbs: String(log.carbs),
+    fat: String(log.fat),
+  });
+  const [editMealType, setEditMealType] = useState<MealType>(log.mealType);
+  const [editServings, setEditServings] = useState(1);
+  const [editServingsText, setEditServingsText] = useState("1");
+  const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+  const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
+  const [editGramsText, setEditGramsText] = useState(
+    log.amountGrams !== undefined
+      ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
+      : ""
+  );
+  const [editShowPer100g, setEditShowPer100g] = useState(false);
+  const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+
+  function openEditSheet() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setEditForm({
+      name: log.name,
+      calories: String(log.calories),
+      protein: String(log.protein),
+      carbs: String(log.carbs),
+      fat: String(log.fat),
+    });
+    setEditMealType(log.mealType);
+    setEditServings(1);
+    setEditServingsText("1");
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    const g = log.amountGrams;
+    setEditGrams(g);
+    setEditGramsText(
+      g !== undefined
+        ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
+        : ""
+    );
+    if (log.nutrients100g) {
+      perGramRef.current = {
+        calories: log.nutrients100g.calories / 100,
+        protein: log.nutrients100g.protein / 100,
+        carbs: log.nutrients100g.carbs / 100,
+        fat: log.nutrients100g.fat / 100,
+      };
+    } else if (g !== undefined && g > 0) {
+      perGramRef.current = {
+        calories: log.calories / g,
+        protein: log.protein / g,
+        carbs: log.carbs / g,
+        fat: log.fat / g,
+      };
+    } else {
+      perGramRef.current = null;
+    }
+    setEditShowPer100g(false);
+    setShowEditSheet(true);
+  }
+
+  function handleGramsChange(text: string) {
+    const stripped = text.replace(/[^0-9.]/g, "");
+    const parts = stripped.split(".");
+    const normalized = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : stripped;
+    setEditGramsText(normalized);
+    const n = parseFloat(normalized);
+    if (!isNaN(n) && n > 0) {
+      setEditGrams(n);
+      if (perGramRef.current) {
+        setEditBase({
+          calories: perGramRef.current.calories * n,
+          protein: perGramRef.current.protein * n,
+          carbs: perGramRef.current.carbs * n,
+          fat: perGramRef.current.fat * n,
+        });
+        setEditServings(1);
+        setEditServingsText("1");
+      }
+    } else if (normalized === "" || normalized === "0") {
+      setEditGrams(undefined);
+      perGramRef.current = null;
+    }
+  }
+
+  function commitGramsBaseline(gramsText: string) {
+    const n = parseFloat(gramsText);
+    if (!isNaN(n) && n > 0 && !perGramRef.current) {
+      perGramRef.current = {
+        calories: log.calories / n,
+        protein: log.protein / n,
+        carbs: log.carbs / n,
+        fat: log.fat / n,
+      };
+      setEditBase({
+        calories: perGramRef.current.calories * n,
+        protein: perGramRef.current.protein * n,
+        carbs: perGramRef.current.carbs * n,
+        fat: perGramRef.current.fat * n,
+      });
+      setEditServings(1);
+      setEditServingsText("1");
+    }
+  }
+
+  function handleSaveEdit() {
+    const name = editForm.name.trim();
+    if (!name) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    updateMealLog(log.id, {
+      name,
+      calories: Math.round(editBase.calories * editServings),
+      protein: Math.round(editBase.protein * editServings * 10) / 10,
+      carbs: Math.round(editBase.carbs * editServings * 10) / 10,
+      fat: Math.round(editBase.fat * editServings * 10) / 10,
+      mealType: editMealType,
+      amountGrams: editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined,
+    });
+    setShowEditSheet(false);
+  }
 
   function handleDelete() {
     swipeableRef.current?.close();
@@ -4766,40 +4889,332 @@ function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood:
   }
 
   return (
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={renderRightActions}
-      rightThreshold={60}
-      overshootRight={false}
-    >
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={onAddFood}
-        style={[styles.historyFoodRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+    <>
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        rightThreshold={60}
+        overshootRight={false}
       >
-        <View style={styles.historyFoodInfo}>
-          <View style={styles.nutritionNameRow}>
-            <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
-              {log.name}
-            </Text>
-            {log.amountGrams !== undefined && (
-              <Text style={[styles.nutritionAmountBadge, { color: colors.mutedForeground }]}>
-                {Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)} g
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={openEditSheet}
+          style={[styles.historyFoodRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+        >
+          <View style={styles.historyFoodInfo}>
+            <View style={styles.nutritionNameRow}>
+              <Text style={[styles.historyFoodName, { color: colors.foreground }]} numberOfLines={1}>
+                {log.name}
               </Text>
-            )}
+              {log.amountGrams !== undefined && (
+                <Text style={[styles.nutritionAmountBadge, { color: colors.mutedForeground }]}>
+                  {Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)} g
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
+              P {log.protein}g · C {log.carbs}g · F {log.fat}g
+            </Text>
           </View>
-          <Text style={[styles.historyFoodMacros, { color: colors.mutedForeground }]}>
-            P {log.protein}g · C {log.carbs}g · F {log.fat}g
-          </Text>
+          <View style={styles.historyFoodRight}>
+            <Text style={[styles.historyFoodCal, { color: colors.primary }]}>
+              {log.calories}
+            </Text>
+            <View style={styles.historyFoodActions}>
+              <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} />
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation(); onAddFood(); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.historyFoodAddBtn}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Swipeable>
+
+      <Modal
+        visible={showEditSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditSheet(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card }]}
+            variant="elevated"
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Edit Meal
+            </Text>
+
+            <Text
+              numberOfLines={2}
+              style={[
+                styles.editFoodNameLabel,
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+              ]}
+            >
+              {editForm.name}
+            </Text>
+
+            {log.nutrients100g !== undefined && (
+              <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (editShowPer100g) {
+                      setEditShowPer100g(false);
+                      if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
+                        const g = log.amountGrams;
+                        const gText = Number.isInteger(g) ? String(g) : g.toFixed(1);
+                        setEditGramsText(gText);
+                        setEditGrams(g);
+                        setEditBase({
+                          calories: perGramRef.current.calories * g,
+                          protein: perGramRef.current.protein * g,
+                          carbs: perGramRef.current.carbs * g,
+                          fat: perGramRef.current.fat * g,
+                        });
+                      } else {
+                        setEditGramsText("");
+                        setEditGrams(undefined);
+                        setEditBase({
+                          calories: log.calories,
+                          protein: log.protein,
+                          carbs: log.carbs,
+                          fat: log.fat,
+                        });
+                      }
+                      setEditServings(1);
+                      setEditServingsText("1");
+                    }
+                  }}
+                  style={[
+                    styles.servingToggleOption,
+                    !editShowPer100g && { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={[
+                    styles.servingToggleText,
+                    { color: !editShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                  ]}>
+                    {log.servingLabel ? `per ${log.servingLabel}` : "per serving"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!editShowPer100g && perGramRef.current) {
+                      setEditShowPer100g(true);
+                      setEditGramsText("100");
+                      setEditGrams(100);
+                      setEditBase({
+                        calories: perGramRef.current.calories * 100,
+                        protein: perGramRef.current.protein * 100,
+                        carbs: perGramRef.current.carbs * 100,
+                        fat: perGramRef.current.fat * 100,
+                      });
+                      setEditServings(1);
+                      setEditServingsText("1");
+                    }
+                  }}
+                  style={[
+                    styles.servingToggleOption,
+                    editShowPer100g && { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={[
+                    styles.servingToggleText,
+                    { color: editShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                  ]}>
+                    per 100g
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={styles.gramsRow}>
+              <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount (g)</Text>
+              <TextInput
+                placeholder="—"
+                placeholderTextColor={colors.mutedForeground}
+                value={editGramsText}
+                onChangeText={handleGramsChange}
+                onBlur={() => {
+                  const n = parseFloat(editGramsText);
+                  if (isNaN(n) || n <= 0) {
+                    setEditGramsText(editGrams !== undefined ? String(editGrams) : "");
+                  } else {
+                    commitGramsBaseline(editGramsText);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                returnKeyType="done"
+                maxLength={7}
+                style={[
+                  styles.gramsInput,
+                  { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+                ]}
+              />
+              <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
+              {perGramRef.current !== null && (
+                <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
+                  · macros scale
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.servingsRow}>
+              <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
+              <View style={styles.servingsControl}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (editServings > 0.5) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setEditServings((s) => {
+                        const steps = Math.round(s * 200) / 100;
+                        const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
+                        setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                        return next;
+                      });
+                    }
+                  }}
+                  style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="remove" size={16} color={editServings <= 0.5 ? colors.mutedForeground : colors.foreground} />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.servingsValue, { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 4 }]}
+                  value={editServingsText}
+                  onChangeText={(v) => {
+                    const stripped = v.replace(/[^0-9.]/g, "");
+                    const parts = stripped.split(".");
+                    const normalized = parts.length > 2
+                      ? parts[0] + "." + parts.slice(1).join("")
+                      : stripped;
+                    setEditServingsText(normalized);
+                    const n = parseFloat(normalized);
+                    if (!isNaN(n) && n > 0) setEditServings(n);
+                  }}
+                  onBlur={() => {
+                    const n = parseFloat(editServingsText);
+                    const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
+                    setEditServings(valid);
+                    setEditServingsText(String(valid));
+                  }}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                  returnKeyType="done"
+                  maxLength={7}
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setEditServings((s) => {
+                      const steps = Math.round(s * 200) / 100;
+                      const next = Math.floor(steps + 1) * 0.5;
+                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                      return next;
+                    });
+                  }}
+                  style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="add" size={16} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
+              Per serving: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+            </Text>
+
+            <View style={styles.modalNutrients}>
+              <NutrientChip
+                label="Calories"
+                value={`${Math.round(editBase.calories * editServings)}`}
+                color={colors.primary}
+              />
+              <NutrientChip
+                label="Protein"
+                value={`${Math.round(editBase.protein * editServings * 10) / 10}g`}
+                color={colors.secondary}
+              />
+              <NutrientChip
+                label="Carbs"
+                value={`${Math.round(editBase.carbs * editServings * 10) / 10}g`}
+                color={colors.warning}
+              />
+              <NutrientChip
+                label="Fat"
+                value={`${Math.round(editBase.fat * editServings * 10) / 10}g`}
+                color="#ef4444"
+              />
+            </View>
+
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Meal type
+            </Text>
+            <View style={styles.mealPicker}>
+              {MEALS.map((meal) => (
+                <TouchableOpacity
+                  key={meal}
+                  onPress={() => setEditMealType(meal)}
+                  style={[
+                    styles.mealPickerBtn,
+                    {
+                      backgroundColor:
+                        editMealType === meal ? MEAL_COLORS[meal] + "30" : colors.muted,
+                      borderColor:
+                        editMealType === meal ? MEAL_COLORS[meal] : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.mealPickerText,
+                      {
+                        color:
+                          editMealType === meal
+                            ? MEAL_COLORS[meal]
+                            : colors.mutedForeground,
+                        fontFamily:
+                          editMealType === meal
+                            ? "Inter_600SemiBold"
+                            : "Inter_400Regular",
+                      },
+                    ]}
+                  >
+                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                onPress={() => setShowEditSheet(false)}
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveEdit}
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
+              >
+                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
+                  Save Changes
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
         </View>
-        <View style={styles.historyFoodRight}>
-          <Text style={[styles.historyFoodCal, { color: colors.primary }]}>
-            {log.calories}
-          </Text>
-          <Ionicons name="add-circle-outline" size={18} color={colors.mutedForeground} />
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
+      </Modal>
+    </>
   );
 }
 
@@ -6296,6 +6711,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  historyFoodActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  historyFoodAddBtn: {
+    padding: 2,
   },
   historyFoodCal: {
     fontSize: 13,
