@@ -1,0 +1,59 @@
+PHASE 4 — IMPLEMENT 4 TIERS + COMMUNITY GATING + BRAND/WORDING CLEANUP. The billing/webhook/premium infrastructure already exists and works — extend it, do not rebuild. Commit to Git first. Show evidence, not summaries.
+
+═══ PART A — BRAND & WORDING CLEANUP (do this first) ═══
+
+A1. Remove ALL underlying tech/vendor names from USER-FACING text (pages, components, tier descriptions, feature lists, marketing copy, emails, notifications). Users must NEVER see: "gpt-4o", "gpt-4o-mini", "GPT", "OpenAI", "Claude", "Replit", "Supabase", "Stripe" (except where legally required like a checkout "powered by Stripe" if Stripe requires it), "Twilio", "Expo".
+   - Example: "Unlimited Ovia AI (gpt-4o)" → "Unlimited Ovia AI"
+   - Example: "Priority Ovia AI (gpt-4o)" → "Priority Ovia AI"
+   - The ONLY brand names allowed to appear in user-facing text are: Ovia AI, RAIMZEAL, RAIMZY, V3EDGE, ECONTEUR LLC.
+
+A2. CRITICAL — do NOT remove model names from BACKEND CODE. The strings "gpt-4o" and "gpt-4o-mini" MUST remain in artifacts/api-server/src/routes/ovia.ts as the actual API model parameters — they are required for the app to function and are invisible to users. Only remove model names from text that RENDERS to users. Same for config files (.replit etc.) — leave them; only clean user-facing UI text.
+
+A3. Fix the free-tier wording everywhere: the FOUNDATION tier is described as "Foundation — Free Forever". Ensure this exact framing appears on the pricing page and anywhere tiers are listed. "Free Forever" applies specifically to the Foundation tier.
+
+A4. After cleanup, run this and paste raw output (should show matches ONLY in backend ovia.ts and config, NOT in any user-facing page/component):
+grep -rin "gpt-4o\|gpt-4\|openai\|replit\|supabase\|claude\|twilio\|expo" artifacts/raimzeal/src artifacts/raimzeal-mobile/app artifacts/raimzeal-mobile/components --include=*.ts --include=*.tsx
+
+═══ PART B — 4 TIERS (extend existing billing, don't rebuild) ═══
+
+Tiers (locked prices — do not change):
+- FOUNDATION — $0, "Free Forever". Core features free. Ovia capped at 15 messages/day. Community: READ-ONLY (view feed + posts, can like, CANNOT post/comment/reply).
+- RISE — $9.99/mo or $99/yr. Unlimited Ovia, full library/programs/macros, FULL community participation.
+- REIGN — $19.99/mo or $199/yr. Everything in Rise + priority Ovia + AI meal plans + custom workout builder + weekly digest.
+- LEGACY — $49.99/mo or $499/yr. Everything in Reign + adaptive programs + wearable integration + quarterly photo body-comp + founder's circle. Any Legacy feature not built yet = label "Coming Soon", do NOT charge for non-functional features.
+
+B1. Map these env-var Stripe price IDs to tiers in billingWebhookHandler.ts: STRIPE_PRICE_RISE_MONTHLY, STRIPE_PRICE_RISE_YEARLY, STRIPE_PRICE_REIGN_MONTHLY, STRIPE_PRICE_REIGN_YEARLY, STRIPE_PRICE_LEGACY_MONTHLY, STRIPE_PRICE_LEGACY_YEARLY. Foundation has no Stripe product — it is the default tier when subscription_status is not active.
+B2. Extend feature-gating to check TIER (foundation/rise/reign/legacy), not just active/inactive. ONE central function — do not scatter checks.
+B3. Update replit.md to remove "free forever — never add paid tiers" and document this 4-tier model.
+
+═══ PART C — COMMUNITY GATING (enforce in BOTH places) ═══
+
+C1. UI: Foundation users see the feed but post/comment/reply inputs are hidden or disabled, with an "Upgrade to Rise to join the conversation" prompt.
+C2. SERVER (critical): community.ts MUST reject post/comment/reply writes from Foundation-tier users. Check tier server-side before accepting any community write. Never trust the client.
+
+═══ PART D — PRICING & BILLING UI ═══
+D1. Pricing.tsx: comparison table of all 4 tiers. "Most Popular" badge on RISE. REIGN emphasized as best value. Annual shown as per-month equivalent. NO model/vendor names anywhere.
+D2. Billing/account page: show current tier; upgrade/downgrade/cancel via Stripe Customer Portal. On cancel, keep access until period end, then downgrade to Foundation. Never delete data.
+
+═══ MANDATORY PROOF — produce a single block I can copy and paste, with raw evidence for each ═══
+
+Format every item as: [PASS] or [NOT DONE] followed by the raw proof (grep output, code snippet with file:line, or test result). No summaries.
+
+PROOF 1 — Run the A4 grep above; paste raw output. Confirm no model/vendor names in user-facing files (matches only in backend ovia.ts/config are acceptable — note them).
+PROOF 2 — Confirm "gpt-4o" and "gpt-4o-mini" STILL EXIST in artifacts/api-server/src/routes/ovia.ts (paste the model: lines) so I know the backend wasn't broken.
+PROOF 3 — Paste the Pricing page tier data showing all 4 tiers with correct names (Foundation/Rise/Reign/Legacy), prices ($0/$9.99/$19.99/$49.99), and "Free Forever" on Foundation — with NO model names.
+PROOF 4 — Paste the billingWebhookHandler.ts section mapping the 6 price-ID env vars to tier names.
+PROOF 5 — COMMUNITY SERVER BLOCK: paste the code in community.ts that rejects Foundation-tier post/comment/reply. Then show a LIVE test result: as a Foundation user, call the post endpoint directly (not via UI) and paste the rejection response. As a Rise user, paste the success.
+PROOF 6 — SUBSCRIPTION TEST: subscribe a test user to Rise with test card 4242 4242 4242 4242. Paste the profiles row showing subscription_tier = "rise" and subscription_status = "active" after the webhook fires.
+PROOF 7 — CANCEL TEST: cancel that subscription. Confirm access remains until period end, then tier returns to "foundation". Paste evidence.
+PROOF 8 — Confirm auth, RLS, and Ovia still work (run one login + one Ovia message). Paste results.
+
+RULES:
+1. Extend existing billing — do not rebuild auth, Stripe webhook, or RLS.
+2. Remove model/vendor names from USER-FACING TEXT ONLY — never from backend API calls or the build will break.
+3. Gate community server-side, not just UI.
+4. Every proof item = raw evidence or "NOT DONE". No reassurance.
+5. Use Stripe TEST mode price IDs and test cards.
+6. Do not touch CardCustomizationModal.tsx.
+
+Begin with Part A. Show me Proof 1 and Proof 2 before continuing to the rest.</parameter>

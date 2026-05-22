@@ -63,7 +63,7 @@ const TIERS: TierDef[] = [
     btnStyle: 'bg-primary text-primary-foreground hover:bg-primary/90',
     features: [
       { text: 'Everything in Foundation' },
-      { text: 'Unlimited Ovia AI (gpt-4o)' },
+      { text: 'Unlimited Ovia AI' },
       { text: 'Full community: post, comment & reply' },
       { text: 'Full workout library & all programs' },
       { text: 'Macro tracking' },

@@ -64,3 +64,30 @@ export function getPriceId(
   const key = `STRIPE_PRICE_${tier.toUpperCase()}_${interval.toUpperCase()}`;
   return process.env[key] ?? null;
 }
+
+/**
+ * Resolves a canonical Tier from a Stripe price ID by matching against the
+ * 6 configured price-ID env vars. Returns null when the price ID is unknown
+ * or no env vars are set yet.
+ *
+ * Env vars checked (in order):
+ *   STRIPE_PRICE_RISE_MONTHLY, STRIPE_PRICE_RISE_YEARLY
+ *   STRIPE_PRICE_REIGN_MONTHLY, STRIPE_PRICE_REIGN_YEARLY
+ *   STRIPE_PRICE_LEGACY_MONTHLY, STRIPE_PRICE_LEGACY_YEARLY
+ */
+export function tierFromPriceId(priceId: string | null | undefined): Tier | null {
+  if (!priceId) return null;
+  const candidates: Array<[string, Tier]> = [
+    ["STRIPE_PRICE_RISE_MONTHLY",   "rise"],
+    ["STRIPE_PRICE_RISE_YEARLY",    "rise"],
+    ["STRIPE_PRICE_REIGN_MONTHLY",  "reign"],
+    ["STRIPE_PRICE_REIGN_YEARLY",   "reign"],
+    ["STRIPE_PRICE_LEGACY_MONTHLY", "legacy"],
+    ["STRIPE_PRICE_LEGACY_YEARLY",  "legacy"],
+  ];
+  for (const [envKey, tier] of candidates) {
+    const configured = process.env[envKey];
+    if (configured && configured === priceId) return tier;
+  }
+  return null;
+}

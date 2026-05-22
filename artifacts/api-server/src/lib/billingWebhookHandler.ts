@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { getUncachableStripeClient } from "../stripeClient";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "./logger";
-import { normaliseTier } from "./tier";
+import { normaliseTier, tierFromPriceId } from "./tier";
 
 // ─── Idempotency ─────────────────────────────────────────────────────────────
 // Every incoming Stripe event is recorded in stripe_webhook_events by its
@@ -37,8 +37,10 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
 
       const stripe = await getUncachableStripeClient();
       const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-      const rawTier = sub.items.data[0]?.price?.metadata?.["tier"];
-      const tier = normaliseTier(rawTier);
+      const priceId = sub.items.data[0]?.price?.id;
+      const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
+      // Price ID lookup (explicit env-var mapping) takes priority over price metadata
+      const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
       const periodEnd = (sub as any).current_period_end as number | undefined;
 
       await supabaseAdmin.from("profiles").update({
@@ -55,8 +57,10 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const rawTier = sub.items.data[0]?.price?.metadata?.["tier"];
-      const tier = normaliseTier(rawTier);
+      const priceId = sub.items.data[0]?.price?.id;
+      const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
+      // Price ID lookup (explicit env-var mapping) takes priority over price metadata
+      const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
       const periodEnd = (sub as any).current_period_end as number | undefined;
 
       await supabaseAdmin.from("profiles").update({
