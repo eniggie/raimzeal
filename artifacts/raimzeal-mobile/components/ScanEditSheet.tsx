@@ -21,6 +21,7 @@ interface Props {
   food: ScannedFood | null;
   onSave: (updated: ScannedFood) => void;
   onClose: () => void;
+  onSaveAndAdd?: (updated: ScannedFood) => void;
 }
 
 function parseNum(raw: string, allowDecimal = true): number {
@@ -29,7 +30,7 @@ function parseNum(raw: string, allowDecimal = true): number {
   return isNaN(n) ? 0 : n;
 }
 
-export function ScanEditSheet({ visible, food, onSave, onClose }: Props) {
+export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -49,10 +50,8 @@ export function ScanEditSheet({ visible, food, onSave, onClose }: Props) {
     }
   }, [food, visible]);
 
-  function handleSave() {
-    if (!name.trim()) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const updated: ScannedFood = {
+  function buildUpdated(): ScannedFood {
+    return {
       ...(food ?? {}),
       name: name.trim(),
       calories: parseNum(calories, false),
@@ -60,7 +59,18 @@ export function ScanEditSheet({ visible, food, onSave, onClose }: Props) {
       carbs: parseNum(carbs),
       fat: parseNum(fat),
     };
-    onSave(updated);
+  }
+
+  function handleSave() {
+    if (!name.trim()) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSave(buildUpdated());
+  }
+
+  function handleSaveAndAdd() {
+    if (!name.trim() || !onSaveAndAdd) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSaveAndAdd(buildUpdated());
   }
 
   const canSave = name.trim().length > 0;
@@ -227,10 +237,41 @@ export function ScanEditSheet({ visible, food, onSave, onClose }: Props) {
               </View>
             </View>
 
+            {onSaveAndAdd && (
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  { backgroundColor: canSave ? colors.primary : colors.muted },
+                ]}
+                onPress={handleSaveAndAdd}
+                disabled={!canSave}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={18}
+                  color={canSave ? colors.primaryForeground : colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.saveBtnText,
+                    {
+                      color: canSave
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Save & Add
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[
                 styles.saveBtn,
-                { backgroundColor: canSave ? colors.primary : colors.muted },
+                onSaveAndAdd
+                  ? { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }
+                  : { backgroundColor: canSave ? colors.primary : colors.muted },
               ]}
               onPress={handleSave}
               disabled={!canSave}
@@ -239,15 +280,19 @@ export function ScanEditSheet({ visible, food, onSave, onClose }: Props) {
               <Ionicons
                 name="checkmark"
                 size={18}
-                color={canSave ? colors.primaryForeground : colors.mutedForeground}
+                color={
+                  onSaveAndAdd
+                    ? canSave ? colors.foreground : colors.mutedForeground
+                    : canSave ? colors.primaryForeground : colors.mutedForeground
+                }
               />
               <Text
                 style={[
                   styles.saveBtnText,
                   {
-                    color: canSave
-                      ? colors.primaryForeground
-                      : colors.mutedForeground,
+                    color: onSaveAndAdd
+                      ? canSave ? colors.foreground : colors.mutedForeground
+                      : canSave ? colors.primaryForeground : colors.mutedForeground,
                   },
                 ]}
               >

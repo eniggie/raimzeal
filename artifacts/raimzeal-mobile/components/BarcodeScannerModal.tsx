@@ -427,6 +427,19 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setEditTarget(null);
   }
 
+  async function handleSaveAndAdd(updated: ScannedFood) {
+    if (!editTarget) return;
+    await updateRecentScan(editTarget.barcode, updated);
+    setRecentScans((prev) =>
+      prev.map((s) =>
+        s.barcode === editTarget.barcode ? { ...s, food: updated } : s
+      )
+    );
+    setEditTarget(null);
+    onFoodFound(updated);
+    handleClose();
+  }
+
   function handleSwitchTab(tab: ActiveTab) {
     setActiveTab(tab);
     if (tab === "scan") {
@@ -781,6 +794,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         visible={editTarget !== null}
         food={editTarget?.food ?? null}
         onSave={handleSaveEdit}
+        onSaveAndAdd={handleSaveAndAdd}
         onClose={() => setEditTarget(null)}
       />
     </Modal>

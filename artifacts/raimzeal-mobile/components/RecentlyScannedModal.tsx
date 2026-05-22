@@ -113,6 +113,19 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     setEditTarget(null);
   }
 
+  async function handleSaveAndAdd(updated: ScannedFood) {
+    if (!editTarget) return;
+    await updateRecentScan(editTarget.barcode, updated);
+    setScans((prev) =>
+      prev.map((s) =>
+        s.barcode === editTarget.barcode ? { ...s, food: updated } : s
+      )
+    );
+    setEditTarget(null);
+    onFoodFound(updated);
+    onClose();
+  }
+
   function handleClearAll() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
@@ -187,6 +200,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             visible={editTarget !== null}
             food={editTarget?.food ?? null}
             onSave={handleSaveEdit}
+            onSaveAndAdd={handleSaveAndAdd}
             onClose={() => setEditTarget(null)}
           />
 
