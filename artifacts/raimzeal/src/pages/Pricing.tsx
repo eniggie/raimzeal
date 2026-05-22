@@ -11,8 +11,8 @@ type PaidTier = 'rise' | 'reign' | 'legacy';
 
 const PRICES: Record<PaidTier, { monthly: number; yearly: number; yearlyPerMonth: number }> = {
   rise:   { monthly: 9.99,  yearly: 99,  yearlyPerMonth: 8.25  },
-  reign:  { monthly: 19.99, yearly: 199.99, yearlyPerMonth: 16.67 },
-  legacy: { monthly: 49.99, yearly: 499.99, yearlyPerMonth: 41.67 },
+  reign:  { monthly: 19.99, yearly: 199, yearlyPerMonth: 16.58 },
+  legacy: { monthly: 49.99, yearly: 499, yearlyPerMonth: 41.58 },
 };
 
 const TIER_ORDER = ['foundation', 'rise', 'reign', 'legacy'] as const;
