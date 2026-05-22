@@ -92,10 +92,10 @@ export default function MembershipScreen() {
         {/* Donation card */}
         <View style={[styles.donationCard, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
           <Text style={[styles.donationHeadline, { color: colors.foreground }]}>
-            We turned down deals. RAIMZEAL is free forever.
+            The Foundation Plan is free forever — no subscription, no catch.
           </Text>
           <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
-            We turned down deals to keep it that way.{"\n\n"}No ads. No investors. No subscriptions — your health was never up for sale.{"\n\n"}Please support the team. A donation supports the team keeping this alive for everyone who needs it.
+            RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale.{"\n\n"}A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.
           </Text>
           <TouchableOpacity
             style={styles.donateBtn}

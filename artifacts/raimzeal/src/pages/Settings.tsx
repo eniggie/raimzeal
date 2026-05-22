@@ -190,7 +190,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
     </div>
     <div>
       <div class="logo-text">RAIMZEAL</div>
-      <div class="logo-sub">AI-Powered Fitness &amp; Health Platform</div>
+      <div class="logo-sub">Fitness · Food Therapy · Health Awareness</div>
     </div>
   </div>
   <div class="report-title">Health &amp; Fitness Report</div>

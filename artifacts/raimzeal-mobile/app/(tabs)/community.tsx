@@ -648,11 +648,11 @@ export default function CommunityScreen() {
               activeOpacity={DONATION_ACTIVE ? 0.75 : 1}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.donateTitle, { color: colors.foreground }]}>We turned down deals. RAIMZEAL is free forever.</Text>
+                <Text style={[styles.donateTitle, { color: colors.foreground }]}>The Foundation Plan is free forever — no subscription, no catch.</Text>
                 <Text style={[styles.donateSubtitle, { color: colors.mutedForeground }]}>
                   {DONATION_ACTIVE
-                    ? 'We turned down deals to keep it that way. Please support the team.'
-                    : 'We turned down deals to keep it that way. RAIMZEAL remains free forever.'}
+                    ? 'RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone.'
+                    : 'RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support.'}
                 </Text>
               </View>
               {DONATION_ACTIVE && (
@@ -1083,19 +1083,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   donateBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  upgradeCommentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginTop: 4,
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: 4,
-    borderTopWidth: 1,
-    borderRadius: 8,
-  },
-  upgradeCommentText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
 });
