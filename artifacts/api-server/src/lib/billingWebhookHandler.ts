@@ -6,25 +6,36 @@ import { logger } from "./logger";
 import { normaliseTier, tierFromPriceId } from "./tier";
 
 /**
- * Derive the current billing period end from a Stripe Subscription object.
+ * Extract the current billing period end from a Stripe Subscription object.
  *
- * Stripe API 2025-08-27.basil removed `current_period_end` and
- * `current_period_start` from subscription objects. The anchor-based approach
- * below computes the next period boundary by walking the billing interval
- * forward from `billing_cycle_anchor` until it is strictly after now.
+ * Stripe API 2025-08-27.basil moved `current_period_end` from the subscription
+ * root to the subscription item (`items.data[0].current_period_end`). We read
+ * the item field first (always present), and fall back to computing from
+ * `billing_cycle_anchor + price.recurring.interval` for edge cases where the
+ * item list is empty or the field is missing.
+ *
+ * Returns a Unix timestamp (seconds) or undefined if neither source is usable.
  */
 function derivePeriodEnd(sub: Stripe.Subscription): number | undefined {
-  const anchor = (sub as any).billing_cycle_anchor as number | undefined;
-  if (!anchor) return undefined;
-  const price   = sub.items.data[0]?.price;
+  // Primary: item-level field (Stripe 2025-08-27.basil and later)
+  const itemPeriodEnd = (sub.items?.data?.[0] as any)?.current_period_end as number | undefined;
+  if (itemPeriodEnd && itemPeriodEnd > 0) {
+    logger.debug({ itemPeriodEnd, iso: new Date(itemPeriodEnd * 1000).toISOString() }, "derivePeriodEnd: using item.current_period_end");
+    return itemPeriodEnd;
+  }
+
+  // Fallback: compute from billing_cycle_anchor + billing interval
+  const anchor   = (sub as any).billing_cycle_anchor as number | undefined;
+  const price    = sub.items?.data?.[0]?.price;
   const interval = price?.recurring?.interval as string | undefined;
   const count    = price?.recurring?.interval_count ?? 1;
-  if (!interval) return undefined;
+
+  logger.debug({ anchor, interval, count, itemPeriodEnd }, "derivePeriodEnd: item field absent — falling back to anchor computation");
+
+  if (!anchor || !interval) return undefined;
 
   const now    = Math.floor(Date.now() / 1000);
   const cursor = new Date(anchor * 1000);
-
-  // Advance cursor by billing interval until it is strictly after now
   let safety = 0;
   while (Math.floor(cursor.getTime() / 1000) <= now && safety++ < 1500) {
     if (interval === "month")      cursor.setMonth(cursor.getMonth() + count);
@@ -33,7 +44,9 @@ function derivePeriodEnd(sub: Stripe.Subscription): number | undefined {
     else if (interval === "day")   cursor.setDate(cursor.getDate() + count);
     else break;
   }
-  return Math.floor(cursor.getTime() / 1000);
+  const computed = Math.floor(cursor.getTime() / 1000);
+  logger.debug({ computed, iso: new Date(computed * 1000).toISOString() }, "derivePeriodEnd: anchor computation result");
+  return computed;
 }
 
 // ─── Idempotency ─────────────────────────────────────────────────────────────
@@ -97,11 +110,17 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
         const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
         // Price ID lookup (explicit env-var mapping) takes priority over price metadata
         const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
+        const periodEndIso = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
+
+        logger.info(
+          { customerId, tier, status: sub.status, periodEnd, periodEndIso },
+          "Subscription created/updated — writing tier upgrade"
+        );
 
         await supabaseAdmin.from("profiles").update({
           subscription_status: sub.status,
           subscription_tier: tier,
-          current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          current_period_end: periodEndIso,
         }).eq("stripe_customer_id", customerId);
 
         logger.info({ customerId, tier, status: sub.status }, "Subscription created/updated — tier upgraded");
