@@ -57,7 +57,7 @@ export function Privacy() {
               <li>Provide, maintain, and improve the RAIMZEAL Service.</li>
               <li>Power Ovia AI — your personal fitness coach — by sending relevant profile data, workout history, nutrition logs, and body measurements to our AI system to generate personalised responses.</li>
               <li>Track your fitness progress, generate charts, and calculate goal metrics.</li>
-              <li>Process voluntary donations through Stripe (RAIMZEAL is free — no membership tiers or subscriptions exist).</li>
+              <li>Process voluntary donations through Stripe (RAIMZEAL is free forever — all features are available at no cost, no subscription required).</li>
               <li>Send transactional emails: account verification OTPs, password reset links, and welcome messages.</li>
               <li>Deliver the weekly Ovia AI wellness digest if you have subscribed.</li>
               <li>Enable community features: displaying posts, comments, and likes attributed to your username.</li>

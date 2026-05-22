@@ -221,7 +221,7 @@ export function Community() {
         <Card className="p-3 border-primary/20 flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
-            <p className="text-xs text-muted-foreground mt-0.5">We turned down deals to keep it that way. Please support the team — a donation supports the team. Books · Music · Courses · Coaching at <span className="font-semibold">linktr.ee/Raimzy</span></p>
+            <p className="text-xs text-muted-foreground mt-0.5">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. Books · Music · Courses · Coaching: <span className="font-semibold">linktr.ee/Raimzy</span></p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
@@ -263,7 +263,7 @@ export function Community() {
         </Card>
       </div>
 
-      {/* Post composer — full access for Rise/Reign/Legacy; upgrade prompt for Foundation */}
+      {/* Post composer */}
       {user && supabaseConfigured && (
         <div className="px-4 py-4 border-b border-border">
           <div className="max-w-lg mx-auto">
