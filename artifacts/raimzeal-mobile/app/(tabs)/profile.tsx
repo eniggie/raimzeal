@@ -32,6 +32,9 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
+const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
+const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
+
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
   weight_loss: "Lose Weight",
@@ -240,6 +243,38 @@ export default function ProfileScreen() {
     Alert.alert(
       "Hints Reset",
       "All one-time tips will reappear the next time you visit those sections."
+    );
+  }
+
+  function handleClearMealDefaults() {
+    Alert.alert(
+      "Clear Remembered Defaults",
+      "This will reset the remembered grams amount and meal type for every food. The next time you open a food, it will show the original defaults.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { default: AsyncStorage } = await import(
+                "@react-native-async-storage/async-storage"
+              );
+              await Promise.all([
+                AsyncStorage.removeItem(LAST_USED_GRAMS_KEY),
+                AsyncStorage.removeItem(LAST_USED_MEAL_KEY),
+              ]);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                "Defaults Cleared",
+                "All remembered grams amounts and meal types have been reset."
+              );
+            } catch {
+              Alert.alert("Error", "Could not clear defaults. Please try again.");
+            }
+          },
+        },
+      ]
     );
   }
 
@@ -650,6 +685,13 @@ export default function ProfileScreen() {
               sublabel="Re-show one-time tips for filters and reordering"
               color={colors.accent}
               onPress={handleResetHints}
+            />
+            <ActionRow
+              icon="refresh-circle-outline"
+              label="Clear remembered meal defaults"
+              sublabel="Reset saved grams & meal type for all foods"
+              color={colors.warning}
+              onPress={handleClearMealDefaults}
             />
             <SettingToggleRow
               icon="refresh-circle-outline"
