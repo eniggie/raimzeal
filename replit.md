@@ -6,7 +6,7 @@ Free, non-profit fitness, food therapy, and healthcare awareness platform operat
 
 ## Founder — Dr. Ephraim Oviawe
 
-**Full name:** DR. EPHRAIM OVIAWE, PhDs, MBA, Master in Theology
+**Full name:** DR. EPHRAIM OVIAWE PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP
 **Title:** Doctor of Philosophy (PhD) — NOT a medical doctor, physician, or healthcare practitioner
 **Artist/brand name:** RAIMZY (his musician name — RAIMZY = Dr. Ephraim Oviawe)
 **Business:** ECONTEUR LLC (registered US business)
