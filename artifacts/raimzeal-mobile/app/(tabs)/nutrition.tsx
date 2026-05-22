@@ -823,6 +823,7 @@ export default function NutritionScreen() {
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyFilterScrollRef = useRef<ScrollView>(null);
   const historyChipHighlightAnim = useRef(new Animated.Value(0)).current;
+  const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
 
@@ -1606,6 +1607,25 @@ export default function NutritionScreen() {
 
   function toggleFilter(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!chipScaleAnims.current[key]) {
+      chipScaleAnims.current[key] = new Animated.Value(1);
+    }
+    const scaleAnim = chipScaleAnims.current[key];
+    scaleAnim.setValue(1);
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1.15,
+        speed: 40,
+        bounciness: 6,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        speed: 30,
+        bounciness: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
     if (filterHintVisible && !filterHintDismissedRef.current) {
       if (filterHintTimerRef.current) {
         clearTimeout(filterHintTimerRef.current);
@@ -2138,7 +2158,15 @@ export default function NutritionScreen() {
                       const active = activeFilters.has(filter.key);
                       const countForFilter = filterResultCounts[filter.key];
                       const isZeroCount = !active && countForFilter !== undefined && countForFilter === 0;
+                      if (!chipScaleAnims.current[filter.key]) {
+                        chipScaleAnims.current[filter.key] = new Animated.Value(1);
+                      }
+                      const chipScale = chipScaleAnims.current[filter.key];
                       return (
+                        <Animated.View
+                          key={filter.key}
+                          style={{ transform: [{ scale: chipScale }] }}
+                        >
                         <TouchableOpacity
                           key={filter.key}
                           onPress={() => {
@@ -2227,6 +2255,7 @@ export default function NutritionScreen() {
                             />
                           </TouchableOpacity>
                         </TouchableOpacity>
+                        </Animated.View>
                       );
                     })}
                   </ScrollView>
