@@ -79,31 +79,7 @@ type = "unspecified"
 title = "RAIMZEAL Source Code Archive (.tar.gz)"
 
 [[outputs]]
-id = "VLMS9Yj3-5YJg1NzST20e"
-uri = "file://generated/screenshots/ios-home-390x844.jpg"
-type = "image"
-title = "Screenshot: iOS iPhone Welcome (390×844)"
-
-[[outputs]]
 id = "gvD5E1xC5vTgXSkXxyd8Q"
 uri = "file://generated/screenshots/ios-6.5inch-430x932.jpg"
 type = "image"
 title = "Screenshot: iOS 6.5\" (430×932)"
-
-[[outputs]]
-id = "lT2tyerEE6rDGOQUttusZ"
-uri = "file://generated/screenshots/ipad-pro-1024x1366.jpg"
-type = "image"
-title = "Screenshot: iPad Pro (1024×1366)"
-
-[[outputs]]
-id = "5BOiHUIIzQx1mQXAJcCkB"
-uri = "file://generated/screenshots/android-phone-360x800.jpg"
-type = "image"
-title = "Screenshot: Android Phone (360×800)"
-
-[[outputs]]
-id = "5XDjtrYLHq2HUXE0EkegU"
-uri = "file://generated/screenshots/android-tablet-600x960.jpg"
-type = "image"
-title = "Screenshot: Android Tablet (600×960)"
