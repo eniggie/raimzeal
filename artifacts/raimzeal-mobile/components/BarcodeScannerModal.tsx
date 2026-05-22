@@ -737,7 +737,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       showsVerticalScrollIndicator={false}
                     >
                       <Text style={styles.recentHint}>
-                        Tap to add · Long-press to edit
+                        Tap to add · Pencil to edit
                       </Text>
                       {recentScans.map((scan) => (
                         <TouchableOpacity
@@ -768,17 +768,33 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                               {formatScannedDate(scan.scannedAt)}
                             </Text>
                           </View>
-                          <TouchableOpacity
-                            onPress={() => handleRemoveRecent(scan.barcode)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={styles.recentRemoveBtn}
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={17}
-                              color="rgba(255,255,255,0.4)"
-                            />
-                          </TouchableOpacity>
+                          <View style={styles.recentItemActions}>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleLongPressRecent(scan);
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={styles.recentActionBtn}
+                            >
+                              <Ionicons
+                                name="pencil-outline"
+                                size={17}
+                                color="rgba(255,255,255,0.4)"
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleRemoveRecent(scan.barcode)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={styles.recentActionBtn}
+                            >
+                              <Ionicons
+                                name="trash-outline"
+                                size={17}
+                                color="rgba(255,255,255,0.4)"
+                              />
+                            </TouchableOpacity>
+                          </View>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -1262,7 +1278,12 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 1,
   },
-  recentRemoveBtn: {
+  recentItemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  recentActionBtn: {
     padding: 4,
   },
 });

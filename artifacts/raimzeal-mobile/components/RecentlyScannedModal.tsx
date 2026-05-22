@@ -230,7 +230,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Tap to add · Long-press to edit
+                Tap to add · Pencil to edit
               </Text>
               {scans.map((scan) => {
                 const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
@@ -331,17 +331,33 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                         </Text>
                       </View>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleRemove(scan.barcode)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={styles.removeBtn}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={17}
-                        color={colors.mutedForeground}
-                      />
-                    </TouchableOpacity>
+                    <View style={styles.itemActions}>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleLongPress(scan);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.actionBtn}
+                      >
+                        <Ionicons
+                          name="pencil-outline"
+                          size={17}
+                          color={colors.mutedForeground}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleRemove(scan.barcode)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.actionBtn}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={17}
+                          color={colors.mutedForeground}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -495,7 +511,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_500Medium",
   },
-  removeBtn: {
+  itemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionBtn: {
     padding: 4,
   },
 });
