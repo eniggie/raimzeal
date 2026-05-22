@@ -1525,7 +1525,7 @@ export default function NutritionScreen() {
   }, [activeTab, isSearching]);
 
   const shouldShowFilterSummary =
-    activeTab === "today" && isSearching && !searchLoading && searchDone &&
+    activeTab === "today" && isSearching && searchDone &&
     (activeFilters.size >= 2 || (activeFilters.size >= 1 && previewFilterKey !== null));
 
   useEffect(() => {
@@ -1585,7 +1585,7 @@ export default function NutritionScreen() {
 
   const prevFilterSummaryCountRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!shouldShowFilterSummary) return;
+    if (!shouldShowFilterSummary || searchLoading) return;
     const count = filteredSearchResults.length;
     if (prevFilterSummaryCountRef.current !== null && prevFilterSummaryCountRef.current !== count) {
       filterSummaryScaleAnim.setValue(1);
@@ -1603,7 +1603,7 @@ export default function NutritionScreen() {
       ]).start();
     }
     prevFilterSummaryCountRef.current = count;
-  }, [filteredSearchResults.length, shouldShowFilterSummary]);
+  }, [filteredSearchResults.length, shouldShowFilterSummary, searchLoading]);
 
   function toggleFilter(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -2325,6 +2325,7 @@ export default function NutritionScreen() {
                     {
                       color: previewFilterKey ? colors.secondary : colors.primary,
                       transform: [{ scale: filterSummaryScaleAnim }],
+                      opacity: searchLoading ? 0.45 : 1,
                     },
                   ]}
                 >
@@ -2342,7 +2343,9 @@ export default function NutritionScreen() {
                           : `all ${allLabels.length} filters`;
                       return `${previewCount} ${previewCount === 1 ? "result" : "results"} would match ${labelText}`;
                     }
-                    const count = filteredSearchResults.length;
+                    const count = searchLoading
+                      ? (prevFilterSummaryCountRef.current ?? 0)
+                      : filteredSearchResults.length;
                     const labels = nutritionFilters
                       .filter((f) => activeFilters.has(f.key))
                       .map((f) => f.label);
