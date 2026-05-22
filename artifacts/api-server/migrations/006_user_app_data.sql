@@ -1,6 +1,7 @@
 -- Migration 006: User app data tables
 -- Adds workout_logs, meal_logs, body_measurements, water_intake, and scheduled_workouts
--- Also adds app_settings and streak columns to profiles
+-- Also adds app_settings, streak, blood_type, rh_factor, genotype columns to profiles
+-- NOTE: CREATE POLICY IF NOT EXISTS requires PG16+; use DROP/CREATE pattern for PG15 (Supabase).
 
 -- ─── workout_logs ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS workout_logs (
@@ -19,7 +20,8 @@ CREATE INDEX IF NOT EXISTS workout_logs_user_date_idx ON workout_logs (user_id, 
 
 ALTER TABLE workout_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "workout_logs: owner access"
+DROP POLICY IF EXISTS "workout_logs: owner access" ON workout_logs;
+CREATE POLICY "workout_logs: owner access"
   ON workout_logs FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -42,7 +44,8 @@ CREATE INDEX IF NOT EXISTS meal_logs_user_date_idx ON meal_logs (user_id, date D
 
 ALTER TABLE meal_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "meal_logs: owner access"
+DROP POLICY IF EXISTS "meal_logs: owner access" ON meal_logs;
+CREATE POLICY "meal_logs: owner access"
   ON meal_logs FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -66,7 +69,8 @@ CREATE INDEX IF NOT EXISTS body_measurements_user_date_idx ON body_measurements 
 
 ALTER TABLE body_measurements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "body_measurements: owner access"
+DROP POLICY IF EXISTS "body_measurements: owner access" ON body_measurements;
+CREATE POLICY "body_measurements: owner access"
   ON body_measurements FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -85,7 +89,8 @@ CREATE INDEX IF NOT EXISTS water_intake_user_date_idx ON water_intake (user_id, 
 
 ALTER TABLE water_intake ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "water_intake: owner access"
+DROP POLICY IF EXISTS "water_intake: owner access" ON water_intake;
+CREATE POLICY "water_intake: owner access"
   ON water_intake FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -105,12 +110,13 @@ CREATE INDEX IF NOT EXISTS scheduled_workouts_user_date_idx ON scheduled_workout
 
 ALTER TABLE scheduled_workouts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "scheduled_workouts: owner access"
+DROP POLICY IF EXISTS "scheduled_workouts: owner access" ON scheduled_workouts;
+CREATE POLICY "scheduled_workouts: owner access"
   ON scheduled_workouts FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- ─── profiles: add app_settings and streak ────────────────────────────────────
+-- ─── profiles: add app_settings, streak, and health profile columns ───────────
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS app_settings jsonb,
   ADD COLUMN IF NOT EXISTS streak integer NOT NULL DEFAULT 0,

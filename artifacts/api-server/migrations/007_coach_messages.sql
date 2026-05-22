@@ -1,5 +1,5 @@
--- coach_messages: Ovia AI conversation history per user
--- Run this in the Supabase SQL editor for your project.
+-- Migration 007: Ovia AI conversation history per user
+-- NOTE: CREATE POLICY IF NOT EXISTS requires PG16+; use DROP/CREATE pattern for PG15 (Supabase).
 
 CREATE TABLE IF NOT EXISTS coach_messages (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS coach_messages (
 
 ALTER TABLE coach_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can manage own coach messages" ON coach_messages;
 CREATE POLICY "Users can manage own coach messages"
   ON coach_messages FOR ALL
   USING  (auth.uid() = user_id)
