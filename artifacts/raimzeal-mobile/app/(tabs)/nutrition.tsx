@@ -780,6 +780,12 @@ export default function NutritionScreen() {
   const [presetUndoCountdown, setPresetUndoCountdown] = useState(0);
   const presetUndoAnim = useRef(new Animated.Value(0)).current;
 
+  const [renamedPreset, setRenamedPreset] = useState<{ old: CustomFilterPreset; newName: string } | null>(null);
+  const presetRenameUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetRenameUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [presetRenameUndoCountdown, setPresetRenameUndoCountdown] = useState(0);
+  const presetRenameUndoAnim = useRef(new Animated.Value(0)).current;
+
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
@@ -1023,6 +1029,48 @@ export default function NutritionScreen() {
     const restored = deletedPreset;
     dismissPresetUndoToast();
     const next = [...customPresets, restored];
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function dismissPresetRenameUndoToast() {
+    Animated.timing(presetRenameUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      setRenamedPreset(null);
+    });
+    if (presetRenameUndoTimerRef.current) {
+      clearTimeout(presetRenameUndoTimerRef.current);
+      presetRenameUndoTimerRef.current = null;
+    }
+    if (presetRenameUndoCountdownIntervalRef.current) {
+      clearInterval(presetRenameUndoCountdownIntervalRef.current);
+      presetRenameUndoCountdownIntervalRef.current = null;
+    }
+  }
+
+  function showPresetRenamedToast(oldPreset: CustomFilterPreset, newName: string) {
+    if (presetRenameUndoTimerRef.current) clearTimeout(presetRenameUndoTimerRef.current);
+    if (presetRenameUndoCountdownIntervalRef.current) clearInterval(presetRenameUndoCountdownIntervalRef.current);
+    const durationSec = settings.undoWindowSeconds ?? 3;
+    setRenamedPreset({ old: oldPreset, newName });
+    setPresetRenameUndoCountdown(durationSec);
+    presetRenameUndoAnim.setValue(0);
+    Animated.spring(presetRenameUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    presetRenameUndoCountdownIntervalRef.current = setInterval(() => {
+      setPresetRenameUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    presetRenameUndoTimerRef.current = setTimeout(() => {
+      dismissPresetRenameUndoToast();
+    }, durationSec * 1000);
+  }
+
+  function handleUndoPresetRename() {
+    if (!renamedPreset) return;
+    const { old: oldPreset } = renamedPreset;
+    dismissPresetRenameUndoToast();
+    const next = customPresets.map((p) =>
+      p.id === oldPreset.id ? { ...p, name: oldPreset.name } : p
+    );
     setCustomPresets(next);
     AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1391,13 +1439,14 @@ export default function NutritionScreen() {
     const name = editPresetName.trim();
     if (!name) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const oldPreset = editingPreset;
     const next = customPresets.map((p) =>
       p.id === editingPreset.id ? { ...p, name } : p
     );
     setCustomPresets(next);
     AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     setEditingPreset(null);
-    showPresetSavedToast(name, `Preset "${name}" renamed`);
+    showPresetRenamedToast(oldPreset, name);
   }
 
   function computePresetDisplacement(idx: number, active: number, hover: number): number {
@@ -4289,6 +4338,40 @@ export default function NutritionScreen() {
         </Animated.View>
       )}
 
+      {renamedPreset !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: presetRenameUndoAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: presetRenameUndoAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+            Preset renamed to "{renamedPreset.newName}"
+          </Text>
+          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{presetRenameUndoCountdown}</Text>
+          <TouchableOpacity
+            onPress={handleUndoPresetRename}
+            activeOpacity={0.75}
+            style={[styles.undoBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
       {presetSavedMessage !== null && (
         <Animated.View
           pointerEvents="none"
@@ -4306,7 +4389,7 @@ export default function NutritionScreen() {
                 },
               ],
               opacity: presetSavedAnim,
-              bottom: deletedPreset !== null ? insets.bottom + 72 : insets.bottom + 16,
+              bottom: (deletedPreset !== null || renamedPreset !== null) ? insets.bottom + 72 : insets.bottom + 16,
             },
           ]}
         >
