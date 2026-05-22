@@ -274,7 +274,8 @@ type FoodListItem = QuickItem | SearchItem;
 
 const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
 
-const DRAG_ITEM_HEIGHT = 80;
+const DRAG_FAV_ITEM_HEIGHT = 80;
+const DRAG_PRESET_ITEM_HEIGHT = 58;
 
 const SPRING_CONFIG = { damping: 22, stiffness: 220, mass: 0.8 };
 
@@ -339,14 +340,14 @@ function DraggableFavItem({
         currentDy.current = dy;
         const from = indexRef.current;
         const total = listRef.current.length;
-        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_FAV_ITEM_HEIGHT;
         const to = Math.max(0, Math.min(total - 1, from + Math.round(dy / slotHeight)));
         onHoverRef.current(to);
       },
       onPanResponderRelease: () => {
         const from = indexRef.current;
         const total = listRef.current.length;
-        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_FAV_ITEM_HEIGHT;
         const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDy.current / slotHeight)));
         dragY.value = withSpring(0, SPRING_CONFIG);
         onDropRef.current(from, to);
@@ -467,14 +468,14 @@ function DraggablePresetItem({
         currentDy.current = dy;
         const from = indexRef.current;
         const total = listRef.current.length;
-        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_PRESET_ITEM_HEIGHT;
         const to = Math.max(0, Math.min(total - 1, from + Math.round(dy / slotHeight)));
         onHoverRef.current(to);
       },
       onPanResponderRelease: () => {
         const from = indexRef.current;
         const total = listRef.current.length;
-        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+        const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_PRESET_ITEM_HEIGHT;
         const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDy.current / slotHeight)));
         dragY.value = withSpring(0, SPRING_CONFIG);
         onDropRef.current(from, to);
@@ -758,7 +759,7 @@ export default function NutritionScreen() {
   const [activeReorderIdx, setActiveReorderIdx] = useState(-1);
   const [hoverReorderIdx, setHoverReorderIdx] = useState(-1);
   const indexRefsRef = useRef<React.MutableRefObject<number>[]>([]);
-  const itemHeightRef = useRef(DRAG_ITEM_HEIGHT);
+  const itemHeightRef = useRef(DRAG_FAV_ITEM_HEIGHT);
 
   const [undoMeal, setUndoMeal] = useState<MealLog | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -803,7 +804,7 @@ export default function NutritionScreen() {
   const [activeReorderPresetIdx, setActiveReorderPresetIdx] = useState(-1);
   const [hoverReorderPresetIdx, setHoverReorderPresetIdx] = useState(-1);
   const indexRefsPresetRef = useRef<React.MutableRefObject<number>[]>([]);
-  const presetItemHeightRef = useRef(DRAG_ITEM_HEIGHT);
+  const presetItemHeightRef = useRef(DRAG_PRESET_ITEM_HEIGHT);
 
   const [filterSummaryVisible, setFilterSummaryVisible] = useState(false);
   const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1471,7 +1472,7 @@ export default function NutritionScreen() {
 
   function computePresetDisplacement(idx: number, active: number, hover: number): number {
     if (active === -1 || hover === -1 || idx === active) return 0;
-    const slotHeight = presetItemHeightRef.current > 0 ? presetItemHeightRef.current : DRAG_ITEM_HEIGHT;
+    const slotHeight = presetItemHeightRef.current > 0 ? presetItemHeightRef.current : DRAG_PRESET_ITEM_HEIGHT;
     if (active < hover) {
       if (idx > active && idx <= hover) return -slotHeight;
     } else if (active > hover) {
@@ -1877,7 +1878,7 @@ export default function NutritionScreen() {
 
   function computeDisplacement(idx: number, active: number, hover: number): number {
     if (active === -1 || hover === -1 || idx === active) return 0;
-    const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_ITEM_HEIGHT;
+    const slotHeight = itemHeightRef.current > 0 ? itemHeightRef.current : DRAG_FAV_ITEM_HEIGHT;
     if (active < hover) {
       if (idx > active && idx <= hover) return -slotHeight;
     } else if (active > hover) {
