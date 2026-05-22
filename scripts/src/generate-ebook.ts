@@ -528,7 +528,7 @@ quote(
 // ════════════════════════════════════════════════════════════════════════════
 //  CHAPTER 2 — MEET YOUR GUIDE: DR. EPHRAIM OVIAWE
 // ════════════════════════════════════════════════════════════════════════════
-chapterOpener('TWO', 'Meet Your Guide', 'Dr. Ephraim Oviawe — Scholar. Visionary. Artist. Healer.',
+chapterOpener('TWO', 'Meet Your Guide', 'Dr. Ephraim Oviawe — Scholar. Visionary. Artist. Leader.',
   img('BFF9F726-FFA2-4159-AEE8-5F88B35A1CC4_1779388174602.png'),
   'Dr. Ephraim Oviawe — author, strategist, technologist, and founder of RAIMZEAL'
 );

@@ -201,7 +201,7 @@ function buildHtmlEmail(subject: string, bodyHtml: string): string {
               </table>
               <div style="background:#0d0d10;border-radius:10px;padding:16px 20px;margin-bottom:20px;text-align:center;">
                 <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Books · Music · Courses · Coaching</p>
-                <p style="margin:0 0 10px;font-size:13px;color:#9ca3af;">by Dr. Ephraim Oviawe (RAIMZY) · Founder &amp; Medical Director</p>
+                <p style="margin:0 0 10px;font-size:13px;color:#9ca3af;">by Dr. Ephraim Oviawe (RAIMZY) · Founder &amp; CEO, ECONTEUR LLC</p>
                 <a href="https://linktr.ee/Raimzy" style="display:inline-block;background:#8B31C7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 20px;border-radius:6px;margin-right:6px;">linktr.ee/Raimzy</a>
                 <a href="https://www.econteur.com" style="display:inline-block;background:#1e293b;color:#94a3b8;text-decoration:none;font-size:12px;font-weight:600;padding:8px 14px;border-radius:6px;">ECONTEUR LLC</a>
               </div>
