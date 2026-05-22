@@ -372,6 +372,20 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Recently Scanned
               </Text>
+              {scans.length > 0 && (
+                <View
+                  style={[
+                    styles.countBadge,
+                    { backgroundColor: colors.primary + "1A" },
+                  ]}
+                >
+                  <Text
+                    style={[styles.countBadgeText, { color: colors.primary }]}
+                  >
+                    {scans.length}
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.headerRight}>
               {scans.length > 0 && (
@@ -523,6 +537,18 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+  },
+  countBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countBadgeText: {
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
   center: {
