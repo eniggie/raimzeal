@@ -60,6 +60,7 @@ SMTP_HOST = "smtp.gmail.com"
 SMTP_USER = "eniggie@gmail.com"
 SMTP_FROM = "eniggie@gmail.com"
 TWILIO_FROM_NUMBER = "+19127583865"
+SUPABASE_URL = "https://druogyuqjytmkwihinhg.supabase.co"
 
 [nix]
 channel = "stable-25_05"

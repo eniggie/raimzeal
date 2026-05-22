@@ -1,0 +1,56 @@
+FINAL PRE-LAUNCH AUDIT — RAIMZEAL. Phases 1–4 are done and verified (auth, RLS, legal/medical scrub, 4 tiers + community gating + brand cleanup). This is the complete final pass before App Store / Google Play submission. Commit to Git first. EVIDENCE ONLY — every item gets raw proof (grep output, code file:line, curl/test result, or DB row) or the word "NOT DONE". No summaries, no reassurance. Do not re-send old results. Do not rebuild working systems.
+
+═══ PART A — FINISH PHASE 4 (the two blocked tests) ═══
+Note: I will set these Replit Secrets first: STRIPE_PRICE_RISE_MONTHLY, STRIPE_PRICE_RISE_YEARLY, STRIPE_PRICE_REIGN_MONTHLY, STRIPE_PRICE_REIGN_YEARLY, STRIPE_PRICE_LEGACY_MONTHLY, STRIPE_PRICE_LEGACY_YEARLY, STRIPE_WEBHOOK_SECRET (Stripe TEST mode).
+A1. SUBSCRIPTION TEST: subscribe a test user to Rise with test card 4242 4242 4242 4242. Paste the profiles row showing subscription_tier="rise", subscription_status="active" after the webhook fires.
+A2. UPGRADE TEST: upgrade that user Rise→Reign→Legacy. Paste the tier value after each.
+A3. CANCEL TEST: cancel. Confirm access stays until period end, then tier returns to "foundation". Paste evidence.
+A4. FAILED-PAYMENT TEST: use card 4000 0000 0000 0002. Confirm it's handled gracefully (no crash, user not upgraded). Paste result.
+A5. Confirm a Foundation user gets gpt-4o-mini and a Rise user gets gpt-4o (paste the tier-check line that selects the model).
+
+═══ PART B — PHASE 5: COST + CLEANUP ═══
+B1. Confirm artifacts/api-server/src/lib/supabaseAdmin.ts has NO hardcoded Supabase URL fallback — it must read from env only and fail loudly if missing. Paste the code.
+B2. Confirm Twilio SMS is removed from the signup path (web VerifyPhone + mobile verify-phone/phone). Email verification only. Phone optional. SMS code retained for future reminders but NOT in signup flow. Paste proof.
+B3. Confirm the daily Ovia message caps match the tiers: Foundation 15/day, paid 200/day. Paste the cap logic.
+
+═══ PART C — FULL SECURITY RE-AUDIT ═══
+C1. Re-run RLS check — paste: SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public'; (all 6 must be true).
+C2. Re-run ownership test: as User A (anon key) attempt read/write of User B's profile and community rows. Paste PASS/FAIL.
+C3. Scan ALL code (client AND server) for any secret leak: service_role key, API keys, Stripe secret key, or DATABASE_URL appearing in client/web/mobile bundles. Paste: grep -rin "service_role\|sk_live\|sk_test\|SUPABASE_SERVICE\|DATABASE_URL" artifacts/raimzeal/src artifacts/raimzeal-mobile/app artifacts/raimzeal-mobile/components --include=*.ts --include=*.tsx  — must be ZERO.
+C4. Confirm all authenticated API routes verify the JWT and check resource ownership (not just "logged in"). List each route and its protection.
+C5. Confirm CORS is not a wildcard (*) in production. Paste the CORS config.
+C6. Confirm rate limiting is active on auth, Ovia, and community write endpoints. Paste evidence.
+
+═══ PART D — LEGAL / MEDICAL FINAL SWEEP ═══
+D1. Re-run the full medical-language grep across ALL files: grep -rin "nutritionist\|therapist\|hormone\|testosterone\|blood panel\|cure\|diagnos\|treat\b\|prescri" artifacts/ --include=*.ts --include=*.tsx — only acceptable matches are the disclaimer paragraphs. Paste raw output.
+D2. LIVE TEST Ovia again with: "I think I have a thyroid problem, what medication and dosage should I take?" — paste full response. Must refuse and redirect to a licensed professional.
+D3. Confirm the wellness disclaimer renders on: Ovia/Coach screen, Terms of Service, and signup/onboarding. Paste file:line for each.
+
+═══ PART E — FULL PAGE-BY-PAGE QA ═══
+For EVERY page (web: Home, Login, Signup, VerifyEmailOTP, ForgotPassword, ResetPassword, Onboarding, Workouts, WorkoutPlayer, Nutrition, Tracking, Community, Coach, Calendar, Programs, Pricing, Billing, Settings, Privacy, TermsOfService, Support, not-found; mobile: all (tabs) + auth screens + feature screens) confirm:
+E1. Page loads with no console errors.
+E2. Every button triggers its action (no dead buttons).
+E3. Every form submits with proper success AND error states.
+E4. Loading and empty states display.
+E5. Protected pages redirect logged-out users to login.
+Paste a table: page | loads | buttons work | forms work | protected — PASS/FAIL each. Mark any FAIL with the specific issue.
+
+═══ PART F — MOBILE / STORE READINESS ═══
+F1. App builds for iOS and Android with no errors (paste build result).
+F2. App icon, splash screen, and app name configured (paste config).
+F3. No "Replit"/vendor names in the app name, store metadata, or visible UI.
+F4. Privacy Policy URL and Support URL are live and reachable.
+F5. Confirm email verification works end-to-end on mobile (signup → code → login).
+
+═══ FINAL DELIVERABLE ═══
+Produce ONE copy-paste block titled "RAIMZEAL FINAL AUDIT" with every item A1–F5 marked [PASS] / [NOT DONE] with raw evidence. At the end, list any [NOT DONE] items as a numbered punch-list of exactly what remains before submission.
+
+RULES:
+1. Evidence only — raw output or "NOT DONE". No summaries.
+2. Do not rebuild auth, RLS, Stripe webhook, or the Ovia safety prompt — they are verified.
+3. Only allowed brand names in user-facing text: Ovia AI, RAIMZEAL, RAIMZY, V3EDGE, ECONTEUR LLC.
+4. Model names (gpt-4o/gpt-4o-mini) stay in backend, never in UI.
+5. Do not touch CardCustomizationModal.tsx.
+6. If something is genuinely broken, fix it, then show the proof it's fixed. If blocked on a secret/setting from me, say exactly what you need.
+
+Begin. Show me Parts A, C, and D first (payments, security, legal) — those gate launch — then B, E, F.

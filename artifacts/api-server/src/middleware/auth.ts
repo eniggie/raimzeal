@@ -1,15 +1,19 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { createClient } from "@supabase/supabase-js";
 
-// EXPO_PUBLIC_SUPABASE_URL may be set to a key value instead of the URL.
-// Fall back to the known project URL so server-side auth always works.
-const rawSupabaseUrl = process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
-const supabaseUrl = rawSupabaseUrl.startsWith("https://")
-  ? rawSupabaseUrl
-  : "https://druogyuqjytmkwihinhg.supabase.co";
+// Read Supabase URL from env — fail loudly at request time if missing or invalid.
+// SUPABASE_URL is the canonical server-side variable.
+// EXPO_PUBLIC_SUPABASE_URL is kept as a fallback for legacy env setups.
+const supabaseUrl = process.env["SUPABASE_URL"] ?? process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
 const supabaseAnonKey = process.env["EXPO_PUBLIC_SUPABASE_ANON_KEY"] ?? "";
 
 function getSupabaseClient() {
+  if (!supabaseUrl || !supabaseUrl.startsWith("https://")) {
+    throw new Error(
+      "[requireAuth] SUPABASE_URL is not configured or invalid. " +
+      "Set the SUPABASE_URL environment variable to your Supabase project URL."
+    );
+  }
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: { persistSession: false },
   });

@@ -392,6 +392,9 @@ export function Onboarding({ onLogin }: OnboardingProps) {
                     {' '}and{' '}
                     <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
                   </p>
+                  <p className="text-xs text-muted-foreground/70 border-t border-border/40 pt-2">
+                    RAIMZEAL is not a medical service and does not provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional before making changes to your diet, exercise, or health management.
+                  </p>
                 </div>
               )}
             </div>
