@@ -1119,6 +1119,8 @@ export default function NutritionScreen() {
   const filtersHydratedRef = useRef(false);
   const cloudSyncReadyRef = useRef(false);
   const historyFiltersHydratedRef = useRef(false);
+  const suppressRemoteRef = useRef(false);
+  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const VALID_DATE_RANGES = new Set(["all", "7d", "30d"]);
@@ -1261,6 +1263,11 @@ export default function NutritionScreen() {
     if (!isSupabaseConfigured) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session?.user) return;
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+      suppressRemoteRef.current = true;
+      suppressTimerRef.current = setTimeout(() => {
+        suppressRemoteRef.current = false;
+      }, 3000);
       upsertUserPreferences(session.user.id, {
         activeFilters: Array.from(activeFilters),
         customPresets,
@@ -1268,6 +1275,69 @@ export default function NutritionScreen() {
       }).catch(() => {});
     });
   }, [activeFilters, customPresets, filterThresholds]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const userId = session.user.id;
+      channel = supabase
+        .channel(`profiles_prefs:${userId}`)
+        .on(
+          "postgres_changes" as Parameters<ReturnType<typeof supabase.channel>["on"]>[0],
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "profiles",
+            filter: `id=eq.${userId}`,
+          },
+          (payload: { new: Record<string, unknown> }) => {
+            if (suppressRemoteRef.current) return;
+            const prefs = payload.new["preferences"];
+            if (!prefs || typeof prefs !== "object") return;
+            const p = prefs as Record<string, unknown>;
+            const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+            if (Array.isArray(p["activeFilters"])) {
+              const restored = (p["activeFilters"] as unknown[]).filter(
+                (k): k is string => typeof k === "string" && validKeys.has(k)
+              );
+              setActiveFilters(new Set(restored));
+            }
+            if (Array.isArray(p["customPresets"])) {
+              const valid = (p["customPresets"] as unknown[]).filter(
+                (item): item is CustomFilterPreset =>
+                  item !== null &&
+                  typeof item === "object" &&
+                  typeof (item as CustomFilterPreset).id === "string" &&
+                  typeof (item as CustomFilterPreset).name === "string" &&
+                  Array.isArray((item as CustomFilterPreset).filterKeys)
+              );
+              setCustomPresets(valid);
+            }
+            if (p["filterThresholds"] && typeof p["filterThresholds"] === "object") {
+              const validated: FilterThresholds = {};
+              for (const def of FILTER_DEFS) {
+                const v = (p["filterThresholds"] as Record<string, unknown>)[def.key];
+                if (typeof v === "number" && isFinite(v) && v >= 0) {
+                  validated[def.key] = Math.round(v);
+                }
+              }
+              setFilterThresholds((prev) => ({ ...prev, ...validated }));
+            }
+          }
+        )
+        .subscribe();
+    });
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+      if (suppressTimerRef.current) {
+        clearTimeout(suppressTimerRef.current);
+      }
+    };
+  }, []);
 
   function saveCustomPreset() {
     const name = savePresetName.trim();
