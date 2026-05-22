@@ -1238,6 +1238,16 @@ export default function NutritionScreen() {
             );
             setCustomPresets(valid);
           }
+          if (prefs.filterThresholds !== undefined && typeof prefs.filterThresholds === "object") {
+            const validated: FilterThresholds = {};
+            for (const def of FILTER_DEFS) {
+              const v = (prefs.filterThresholds as Record<string, unknown>)[def.key];
+              if (typeof v === "number" && isFinite(v) && v >= 0) {
+                validated[def.key] = Math.round(v);
+              }
+            }
+            setFilterThresholds((prev) => ({ ...prev, ...validated }));
+          }
         });
       })
       .catch(() => {})
@@ -1254,9 +1264,10 @@ export default function NutritionScreen() {
       upsertUserPreferences(session.user.id, {
         activeFilters: Array.from(activeFilters),
         customPresets,
+        filterThresholds,
       }).catch(() => {});
     });
-  }, [activeFilters, customPresets]);
+  }, [activeFilters, customPresets, filterThresholds]);
 
   function saveCustomPreset() {
     const name = savePresetName.trim();

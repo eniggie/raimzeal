@@ -462,6 +462,8 @@ export async function insertOviaMessage(
 export interface UserPreferences {
   activeFilters?: string[];
   customPresets?: Array<{ id: string; name: string; filterKeys: string[] }>;
+  /** Custom filter threshold values keyed by filter key (e.g. { highProtein: 20 }) */
+  filterThresholds?: Record<string, number>;
   /** App-level settings synced to the cloud profile */
   appSettings?: {
     showRestoreBadge?: boolean;
