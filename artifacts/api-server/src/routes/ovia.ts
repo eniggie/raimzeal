@@ -2,7 +2,6 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
-import { getUserTier } from "../lib/tier";
 
 const oviaRouter = Router();
 
@@ -11,8 +10,8 @@ const MAX_CONTENT_LENGTH = 4000;
 const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via oversized context
 
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
-// Foundation: capped at 15 messages/day on gpt-4o-mini.
-// Rise/Reign/Legacy: capped at 200 messages/day on gpt-4o (effectively unlimited for real use).
+// RAIMZEAL is free forever — all users are on the Foundation Plan.
+// Capped at 15 Ovia AI messages per day on gpt-4o-mini.
 // Each entry auto-expires after 24 h; the Map stays small because it only grows
 // by one entry per active user per day.
 const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
@@ -281,16 +280,15 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     }
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
+    // RAIMZEAL is free forever — Foundation Plan only, 15 messages/day on gpt-4o-mini.
     const userId = (req as any).userId as string;
-    const userTier = await getUserTier(userId);
-    const oviaModel = userTier === "foundation" ? "gpt-4o-mini" : "gpt-4o";
-    const oviaLimit = userTier === "foundation" ? 15 : 200;
+    const oviaModel = "gpt-4o-mini";
+    const oviaLimit = 15;
     if (!consumeUserDailyQuota(userId, oviaLimit)) {
-      const limitMsg =
-        userTier === "foundation"
-          ? "Daily Ovia AI limit reached (15 messages/day on Foundation). Upgrade to Rise for unlimited Ovia access."
-          : "Daily Ovia AI limit reached. Please try again tomorrow.";
-      res.status(429).json({ error: limitMsg, code: "OVIA_QUOTA_EXCEEDED" });
+      res.status(429).json({
+        error: "Daily Ovia AI limit reached (15 messages/day). Please try again tomorrow.",
+        code: "OVIA_QUOTA_EXCEEDED",
+      });
       return;
     }
 
