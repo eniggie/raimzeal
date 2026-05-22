@@ -8,7 +8,7 @@ import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/con
 
 const ALL_FEATURES = [
   'Full workout library & custom workouts',
-  'Ovia AI coaching — unlimited',
+  'Ovia AI coaching — 15 messages/day',
   'Full community: post, comment, like',
   'Nutrition & meal logging with macros',
   'Body measurements & weight tracking',

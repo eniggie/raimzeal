@@ -17,7 +17,7 @@ const ALL_FEATURES = [
   "Full workout library & programs",
   "Unlimited nutrition logging",
   "Full body measurements",
-  "Unlimited Ovia AI coaching",
+  "Ovia AI coaching (15 messages/day)",
   "Community posting & comments",
   "Activity tracker & reminders",
   "Progress card sharing",
