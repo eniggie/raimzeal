@@ -1636,11 +1636,24 @@ export default function NutritionScreen() {
     if (!thresholdEditKey) return;
     const def = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
     if (!def) return;
-    const next = { ...filterThresholds, [thresholdEditKey]: def.defaultThreshold };
-    setFilterThresholds(next);
-    AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setThresholdEditKey(null);
+    Alert.alert(
+      "Reset to Default",
+      `This will restore the ${def.label} threshold to its default value.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            const next = { ...filterThresholds, [thresholdEditKey]: def.defaultThreshold };
+            setFilterThresholds(next);
+            AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setThresholdEditKey(null);
+          },
+        },
+      ]
+    );
   }
 
   function computeDisplacement(idx: number, active: number, hover: number): number {
