@@ -2658,7 +2658,7 @@ export default function NutritionScreen() {
                           log={log}
                           onDelete={handleMealDelete}
                           onToggleStar={() =>
-                            handleToggleFavorite({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })
+                            handleToggleFavorite({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, servingLabel: log.amountGrams ? `${log.amountGrams}g` : undefined })
                           }
                         />
                       ))}
