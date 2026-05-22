@@ -2010,6 +2010,7 @@ export default function NutritionScreen() {
     const factor = isGramsMode ? parsedGrams / 100 : servings;
     const base = modalShowPer100g && selectedFoodNutrients100g ? selectedFoodNutrients100g : selectedFood;
     const { calories, protein, carbs, fat } = base;
+    const canToggleServing = !!(selectedFoodServingLabel && selectedFoodNutrients100g);
     const meal: MealLog = {
       id: Date.now().toString(),
       date: new Date().toISOString().split("T")[0],
@@ -2020,6 +2021,10 @@ export default function NutritionScreen() {
       fat: Math.round(fat * factor * 10) / 10,
       mealType: selectedMeal,
       ...(isGramsMode && parsedGrams > 0 ? { amountGrams: parsedGrams } : {}),
+      ...(canToggleServing ? {
+        nutrients100g: selectedFoodNutrients100g!,
+        servingLabel: selectedFoodServingLabel,
+      } : {}),
     };
     addMealLog(meal);
 
@@ -4661,6 +4666,7 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
       ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
       : ""
   );
+  const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
 
   function openEditSheet() {
@@ -4683,7 +4689,15 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
         ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
         : ""
     );
-    if (g !== undefined && g > 0) {
+    if (log.nutrients100g) {
+      // Authoritative per-gram ratio from the stored 100g snapshot
+      perGramRef.current = {
+        calories: log.nutrients100g.calories / 100,
+        protein: log.nutrients100g.protein / 100,
+        carbs: log.nutrients100g.carbs / 100,
+        fat: log.nutrients100g.fat / 100,
+      };
+    } else if (g !== undefined && g > 0) {
       perGramRef.current = {
         calories: log.calories / g,
         protein: log.protein / g,
@@ -4693,6 +4707,7 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
     } else {
       perGramRef.current = null;
     }
+    setEditShowPer100g(false);
     setShowEditSheet(true);
   }
 
@@ -4855,6 +4870,82 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
             >
               {editForm.name}
             </Text>
+
+            {log.nutrients100g !== undefined && (
+              <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (editShowPer100g) {
+                      setEditShowPer100g(false);
+                      if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
+                        // Restore original logged grams and scale macros accordingly
+                        const g = log.amountGrams;
+                        const gText = Number.isInteger(g) ? String(g) : g.toFixed(1);
+                        setEditGramsText(gText);
+                        setEditGrams(g);
+                        setEditBase({
+                          calories: perGramRef.current.calories * g,
+                          protein: perGramRef.current.protein * g,
+                          carbs: perGramRef.current.carbs * g,
+                          fat: perGramRef.current.fat * g,
+                        });
+                      } else {
+                        // Food was logged in serving mode (no grams): restore original macros
+                        setEditGramsText("");
+                        setEditGrams(undefined);
+                        setEditBase({
+                          calories: log.calories,
+                          protein: log.protein,
+                          carbs: log.carbs,
+                          fat: log.fat,
+                        });
+                      }
+                      setEditServings(1);
+                      setEditServingsText("1");
+                    }
+                  }}
+                  style={[
+                    styles.servingToggleOption,
+                    !editShowPer100g && { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={[
+                    styles.servingToggleText,
+                    { color: !editShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                  ]}>
+                    {log.servingLabel ? `per ${log.servingLabel}` : "per serving"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!editShowPer100g && perGramRef.current) {
+                      setEditShowPer100g(true);
+                      setEditGramsText("100");
+                      setEditGrams(100);
+                      setEditBase({
+                        calories: perGramRef.current.calories * 100,
+                        protein: perGramRef.current.protein * 100,
+                        carbs: perGramRef.current.carbs * 100,
+                        fat: perGramRef.current.fat * 100,
+                      });
+                      setEditServings(1);
+                      setEditServingsText("1");
+                    }
+                  }}
+                  style={[
+                    styles.servingToggleOption,
+                    editShowPer100g && { backgroundColor: colors.primary },
+                  ]}
+                >
+                  <Text style={[
+                    styles.servingToggleText,
+                    { color: editShowPer100g ? colors.primaryForeground : colors.mutedForeground },
+                  ]}>
+                    per 100g
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.gramsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount (g)</Text>

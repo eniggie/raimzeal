@@ -56,6 +56,10 @@ export interface MealLog {
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
   /** Grams logged when the user entered an amount via the grams input */
   amountGrams?: number;
+  /** Per-100g macro snapshot — present when the food came from the API and had both serving and 100g data. Enables the per-100g toggle in the edit modal. */
+  nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
+  /** Human-readable serving label saved at log time (e.g. "150g", "1 cup") */
+  servingLabel?: string;
 }
 
 /** Matches web app store.ts BodyMeasurement exactly */
