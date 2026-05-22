@@ -819,6 +819,8 @@ export default function NutritionScreen() {
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const historyFilterScrollRef = useRef<ScrollView>(null);
+  const historyChipHighlightAnim = useRef(new Animated.Value(0)).current;
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
 
@@ -872,6 +874,16 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setHistoryFilterHintVisible(false));
     AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+  }
+
+  function handleHistoryFilterHintPress() {
+    historyFilterScrollRef.current?.scrollTo({ x: 0, animated: true });
+    Animated.sequence([
+      Animated.timing(historyChipHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+      Animated.delay(400),
+      Animated.timing(historyChipHighlightAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
+    ]).start();
+    dismissHistoryFilterHint();
   }
 
   useEffect(() => {
@@ -2666,16 +2678,16 @@ export default function NutritionScreen() {
                 {/* Filter bar */}
                 <View style={styles.historyFilterBar}>
                   <ScrollView
+                    ref={historyFilterScrollRef}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.historyFilterRow}
                   >
-                    {(["all", "7d", "30d"] as const).map((range) => {
+                    {(["all", "7d", "30d"] as const).map((range, idx) => {
                       const label = range === "all" ? "All time" : range === "7d" ? "Last 7 days" : "Last 30 days";
                       const active = historyDateRange === range;
-                      return (
+                      const chip = (
                         <TouchableOpacity
-                          key={range}
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setHistoryDateRange(range);
@@ -2698,6 +2710,27 @@ export default function NutritionScreen() {
                           </Text>
                         </TouchableOpacity>
                       );
+                      if (idx === 0) {
+                        return (
+                          <Animated.View
+                            key={range}
+                            style={{
+                              borderRadius: 20,
+                              shadowColor: colors.primary,
+                              shadowOffset: { width: 0, height: 0 },
+                              shadowRadius: 8,
+                              shadowOpacity: historyChipHighlightAnim,
+                              elevation: historyChipHighlightAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 6],
+                              }),
+                            }}
+                          >
+                            {chip}
+                          </Animated.View>
+                        );
+                      }
+                      return <React.Fragment key={range}>{chip}</React.Fragment>;
                     })}
 
                     <View style={styles.historyFilterDivider} />
@@ -2766,7 +2799,7 @@ export default function NutritionScreen() {
                   <Animated.View style={{ opacity: historyFilterHintFadeAnim }}>
                     <Text
                       style={[styles.filterHintText, { color: colors.mutedForeground }]}
-                      onPress={dismissHistoryFilterHint}
+                      onPress={handleHistoryFilterHintPress}
                     >
                       Tap a chip to filter by date range or meal type
                     </Text>
