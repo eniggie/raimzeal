@@ -263,7 +263,9 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
         }
       : undefined;
 
-  return { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
+  const unit: "g" | "ml" = /\bml\b/i.test(servingSize ?? "") ? "ml" : "g";
+
+  return { name, calories, protein, carbs, fat, servingLabel, nutrients100g, unit };
 }
 
 type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
@@ -728,6 +730,7 @@ export default function NutritionScreen() {
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
   const [selectedFoodNutrients100g, setSelectedFoodNutrients100g] = useState<{ calories: number; protein: number; carbs: number; fat: number } | undefined>(undefined);
+  const [selectedFoodUnit, setSelectedFoodUnit] = useState<"g" | "ml">("g");
   const [modalShowPer100g, setModalShowPer100g] = useState(false);
   const [servings, setServings] = useState(1);
   const [servingsText, setServingsText] = useState("1");
@@ -1955,6 +1958,7 @@ export default function NutritionScreen() {
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
     setSelectedFoodNutrients100g(food.nutrients100g);
+    setSelectedFoodUnit(food.unit ?? "g");
     setModalShowPer100g(false);
     setServings(1);
     setServingsText("1");
@@ -3799,7 +3803,7 @@ export default function NutritionScreen() {
                           styles.servingToggleText,
                           { color: modalShowPer100g ? colors.primaryForeground : colors.mutedForeground },
                         ]}>
-                          per 100g
+                          {`per 100${selectedFoodUnit}`}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -3808,14 +3812,14 @@ export default function NutritionScreen() {
                       {selectedFoodServingLabel
                         ? `per ${selectedFoodServingLabel}`
                         : selectedFoodIsApiResult
-                        ? "per 100g"
+                        ? `per 100${selectedFoodUnit}`
                         : "per serving"}
                     </Text>
                   )}
                   {isGramsMode ? (
                     <>
                     <Text style={[styles.gramsHintCentered, { color: colors.mutedForeground }]}>
-                      Nutrition values are per 100 g — enter your amount below
+                      {`Nutrition values are per 100 ${selectedFoodUnit} — enter your amount below`}
                     </Text>
                     <View style={styles.servingsRow}>
                       <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount</Text>

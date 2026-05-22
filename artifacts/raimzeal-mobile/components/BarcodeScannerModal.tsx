@@ -121,6 +121,7 @@ export interface ScannedFood {
   fat: number;
   servingLabel?: string;
   nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
+  unit?: "g" | "ml";
 }
 
 interface OpenFoodFactsProduct {
@@ -209,7 +210,9 @@ async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
           }
         : undefined;
 
-    return { name, calories, protein, carbs, fat, servingLabel, nutrients100g };
+    const unit: "g" | "ml" = /\bml\b/i.test(servingSize ?? "") ? "ml" : "g";
+
+    return { name, calories, protein, carbs, fat, servingLabel, nutrients100g, unit };
   } catch {
     return null;
   }
