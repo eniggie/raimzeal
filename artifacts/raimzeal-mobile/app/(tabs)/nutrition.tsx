@@ -833,6 +833,8 @@ export default function NutritionScreen() {
 
   const [historyFilterHintVisible, setHistoryFilterHintVisible] = useState(false);
   const historyFilterHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyResetFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyResetSlideAnim = useRef(new Animated.Value(16)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1000,6 +1002,22 @@ export default function NutritionScreen() {
       }, 4000);
     }).catch(() => {});
   }, [activeTab]);
+
+  useEffect(() => {
+    const isNonDefault = historyDateRange !== "all" || historyMealFilter !== "all";
+    if (isNonDefault) {
+      historyResetSlideAnim.setValue(16);
+      Animated.parallel([
+        Animated.timing(historyResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(historyResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(historyResetFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(historyResetSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [historyDateRange, historyMealFilter]);
 
   useEffect(() => {
     return () => {
@@ -3047,28 +3065,34 @@ export default function NutritionScreen() {
                       );
                     })}
 
-                    {(historyDateRange !== "all" || historyMealFilter !== "all") && (
-                      <>
-                        <View style={styles.historyFilterDivider} />
-                        <TouchableOpacity
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            setHistoryDateRange("all");
-                            setHistoryMealFilter("all");
-                          }}
-                          style={[
-                            styles.historyFilterChip,
-                            { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "60" },
-                          ]}
-                          activeOpacity={0.75}
-                        >
-                          <Ionicons name="close-circle-outline" size={13} color={colors.destructive} />
-                          <Text style={[styles.historyFilterChipText, { color: colors.destructive }]}>
-                            Reset
-                          </Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
+                    <Animated.View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        opacity: historyResetFadeAnim,
+                        transform: [{ translateX: historyResetSlideAnim }],
+                      }}
+                      pointerEvents={historyDateRange !== "all" || historyMealFilter !== "all" ? "auto" : "none"}
+                    >
+                      <View style={styles.historyFilterDivider} />
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setHistoryDateRange("all");
+                          setHistoryMealFilter("all");
+                        }}
+                        style={[
+                          styles.historyFilterChip,
+                          { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "60" },
+                        ]}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="close-circle-outline" size={13} color={colors.destructive} />
+                        <Text style={[styles.historyFilterChipText, { color: colors.destructive }]}>
+                          Reset
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
                   </ScrollView>
                 </View>
 
