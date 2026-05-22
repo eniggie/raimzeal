@@ -210,7 +210,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
   <div class="mission-icon">🌱</div>
   <div>
     <div class="mission-title">RAIMZEAL — Free, Non-Profit Fitness, Food Therapy &amp; Healthcare Awareness Platform</div>
-    <div class="mission-text">RAIMZEAL has no membership fees, no paid tiers, and no hidden charges — ever. Every feature is 100% free. We are operated by ECONTEUR LLC as a non-profit community health initiative. RAIMZEAL is <strong>not here to replace any doctor, healthcare professional, or medical facility</strong> — we exist to complement their work and help spread health awareness to more people. We are sustained entirely by voluntary donations. No donation is ever required.</div>
+    <div class="mission-text">The Foundation Plan is free forever — no hidden charges. Optional paid tiers (Rise, Reign, Legacy) unlock higher Ovia AI limits and enhanced features for members who choose to support the platform. We are operated by ECONTEUR LLC as a non-profit community health initiative. RAIMZEAL is <strong>not here to replace any doctor, healthcare professional, or medical facility</strong> — we exist to complement their work and help spread health awareness to more people. Voluntary donations are always welcome and never required.</div>
   </div>
 </div>
 

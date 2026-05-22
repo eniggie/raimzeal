@@ -1,0 +1,18 @@
+Full RAIMZEAL production fix. CRITICAL CONTEXT: RAIMZEAL uses a 4-TIER PAID model — do NOT turn tiers into "optional donations." Foundation is FREE FOREVER. Rise ($9.99/mo, $99/yr), Reign ($19.99/mo, $199/yr), and Legacy ($49.99/mo, $499/yr) are REAL PAID subscriptions that unlock features (unlimited Ovia, community posting, etc.). The Stripe products, webhook, and tier-gating already exist and are tested — keep them.
+
+DIAGNOSE FIRST (report before fixing):
+1. The live site raimzeal.com /membership shows ONLY Foundation. Rise/Reign/Legacy are NOT in the shipped bundle. The correct Pricing.tsx exists in code but did NOT deploy. Find out why: is there more than one pricing/membership page? Is the live deployment serving a STALE build? List every membership/pricing component file and identify which is deployed.
+2. grep -rin "Elite\|Athlete\|50 messages\|Hall of Fame" artifacts/ --include=*.ts --include=*.tsx — paste raw output. Remove any of these used as tier names or features (Athlete as a fallback username is fine; flag it).
+
+THEN FIX:
+A. Make the LIVE site show all 4 tiers correctly: Foundation (Free Forever), Rise $9.99/$99, Reign $19.99/$199, Legacy $49.99/$499 — with feature lists and Ovia limits matching what the app delivers and Stripe describes (Rise = unlimited Ovia / 200 a day, NOT 50). Rebuild AND REDEPLOY so the live site actually updates. Paste confirmation each tier renders live.
+B. Compress icons: favicon (<50KB), icon-192 (true 192x192), icon-512 (true 512x512) — currently all 1.75MB. Keep opengraph.jpg.
+C. Verify every Donate/Support button opens https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00 (donation is a SEPARATE optional extra, NOT a replacement for paid tiers).
+D. Ovia AI: confirm output contains no markdown asterisks/stars, stays in fitness/wellness lane, and refuses medical/diagnosis questions (already implemented — confirm not regressed).
+
+DO NOT:
+- Do NOT convert paid tiers into "optional donation identities."
+- Do NOT remove paywalls or feature-gating.
+- Do NOT change Stripe products.
+
+After fixing: rebuild, checkpoint/commit, REPUBLISH, then confirm the live /membership shows all 4 paid tiers. Paste the live render of each tier and the grep output.

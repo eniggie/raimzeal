@@ -31,9 +31,9 @@ export function TermsOfService() {
           <section>
             <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
               <p className="text-foreground font-semibold">🌱 About RAIMZEAL</p>
-              <p>RAIMZEAL is a <strong className="text-foreground">free, non-profit fitness, food therapy, and healthcare awareness platform</strong> operated by ECONTEUR LLC. The Foundation Plan is free forever — no hidden charges, no subscriptions, ever. All features are included at no cost.</p>
+              <p>RAIMZEAL is a <strong className="text-foreground">non-profit fitness, food therapy, and healthcare awareness platform</strong> operated by ECONTEUR LLC. The Foundation Plan is <strong className="text-foreground">free forever</strong> — no hidden charges, no tricks. Optional paid tiers (Rise, Reign, Legacy) unlock enhanced Ovia AI limits and additional features for members who choose to support the platform.</p>
               <p>Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, food therapy, and healthcare awareness information. <strong className="text-foreground">RAIMZEAL is not here to replace any medical professional, licensed practitioner, or healthcare facility.</strong> We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.</p>
-              <p>We are sustained entirely by voluntary donations from our community. No donation is ever required to access any feature.</p>
+              <p>The platform is also supported by voluntary community donations, which are always optional and never required to access any feature.</p>
             </div>
           </section>
 
@@ -78,10 +78,11 @@ export function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-foreground font-semibold text-base mb-2">5. Free &amp; Non-Profit Service</h2>
+            <h2 className="text-foreground font-semibold text-base mb-2">5. Plans &amp; Subscriptions</h2>
             <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
-              <p><strong className="text-foreground">RAIMZEAL is a non-profit platform. The Foundation Plan is free forever</strong> — all features including Ovia AI coaching, workout tracking, nutrition logging, body analytics, community participation, progress tracking, sleep tracking, and more are available to all users at no cost, forever. There are no paid tiers and no subscription required.</p>
-              <p>We accept voluntary donations to cover server costs, app maintenance, AI services, and team compensation. Donations are entirely optional and never affect access to any feature. To support our mission: <strong className="text-foreground">donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00</strong></p>
+              <p><strong className="text-foreground">Foundation Plan — Free Forever:</strong> core features including workout tracking, nutrition logging, body analytics, community participation, progress tracking, sleep tracking, Ovia AI coaching (15 messages/day), and more are available to all users at no cost, forever.</p>
+              <p><strong className="text-foreground">Paid tiers</strong> — Rise ($9.99/mo · $99/yr), Reign ($19.99/mo · $199/yr), and Legacy ($49.99/mo · $499/yr) — unlock higher Ovia AI message limits and enhanced features. Subscriptions are processed securely by Stripe and may be cancelled at any time. The Foundation Plan remains fully functional whether or not you subscribe.</p>
+              <p>We also gratefully accept voluntary donations to cover server costs, AI services, and team compensation. Donations are entirely optional and never affect access to any feature. To donate: <strong className="text-foreground">donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00</strong></p>
             </div>
           </section>
 

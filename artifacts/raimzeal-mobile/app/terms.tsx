@@ -27,9 +27,9 @@ export default function TermsScreen() {
       icon: "leaf-outline",
       color: "#2E8B57",
       paragraphs: [
-        "RAIMZEAL is a free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. We have no membership fees, no paid tiers, no subscriptions, and no hidden charges — ever.",
+        "RAIMZEAL is a non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. The Foundation Plan is free forever — no hidden charges. Optional paid tiers (Rise, Reign, Legacy) unlock higher Ovia AI limits and enhanced features for members who wish to support the platform.",
         "Our mission is to educate, motivate, and empower individuals with evidence-based health, fitness, and nutritional information. RAIMZEAL is NOT here to replace any medical professional, licensed practitioner, or healthcare facility. We exist to complement their work and help spread health awareness to more people — especially those who cannot easily access professional care.",
-        "We are sustained entirely by voluntary donations. No donation is ever required to access any feature.",
+        "Voluntary donations are also welcome to support the team and platform — they are never required to access any feature.",
       ],
     },
     {

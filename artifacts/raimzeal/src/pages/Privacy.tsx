@@ -37,7 +37,7 @@ export function Privacy() {
               <li><strong className="text-foreground">Progress photos:</strong> photographs you voluntarily upload to the Progress Photos feature for before/after comparison. These are stored locally on your device unless you explicitly enable cloud sync.</li>
               <li><strong className="text-foreground">Community content:</strong> posts, comments, and reactions you publish to the RAIMZEAL community feed.</li>
               <li><strong className="text-foreground">AI coaching conversations:</strong> messages you send to Ovia AI and the responses generated. Conversation history is stored to provide personalised, contextual coaching.</li>
-              <li><strong className="text-foreground">Donation information:</strong> if you choose to make a voluntary donation to support RAIMZEAL, payment is processed securely by Stripe, Inc. RAIMZEAL is 100% free — donations are never required. We do not store your card number.</li>
+              <li><strong className="text-foreground">Subscription &amp; donation information:</strong> if you subscribe to a paid plan (Rise, Reign, or Legacy) or make a voluntary donation, payment is processed securely by Stripe, Inc. We do not store your card number. The Foundation Plan is always free — paid subscriptions are optional upgrades.</li>
               <li><strong className="text-foreground">Communications:</strong> email address for transactional emails (welcome, verification OTP, weekly wellness digest) if you opt in.</li>
               <li><strong className="text-foreground">Reminders &amp; notification preferences:</strong> your chosen notification times and types.</li>
             </ul>
@@ -57,7 +57,7 @@ export function Privacy() {
               <li>Provide, maintain, and improve the RAIMZEAL Service.</li>
               <li>Power Ovia AI — your personal fitness coach — by sending relevant profile data, workout history, nutrition logs, and body measurements to our AI system to generate personalised responses.</li>
               <li>Track your fitness progress, generate charts, and calculate goal metrics.</li>
-              <li>Process voluntary donations through Stripe (RAIMZEAL is free forever — all features are available at no cost, no subscription required).</li>
+              <li>Process paid subscriptions (Rise, Reign, Legacy) and voluntary donations through Stripe. The Foundation Plan is free forever — paid tiers are optional upgrades.</li>
               <li>Send transactional emails: account verification OTPs, password reset links, and welcome messages.</li>
               <li>Deliver the weekly Ovia AI wellness digest if you have subscribed.</li>
               <li>Enable community features: displaying posts, comments, and likes attributed to your username.</li>
