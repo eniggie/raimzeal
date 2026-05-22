@@ -126,7 +126,7 @@ export default function HomeScreen() {
             {greeting},
           </Text>
           <Text style={[styles.name, { color: colors.foreground }]}>
-            {user?.name ?? "Athlete"}
+            {user?.name ?? "Champion"}
           </Text>
         </View>
         <View

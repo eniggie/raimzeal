@@ -461,7 +461,7 @@ export default function ProfileScreen() {
     sortedMeasurements[sortedMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
   const weightDelta = startWeight > 0 ? +(startWeight - latestWeight).toFixed(1) : 0;
   const cardProps = {
-    userName: user?.name ?? "Athlete",
+    userName: user?.name ?? "Champion",
     goalLabel: (user?.goals?.[0] ?? "improve_fitness")
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -564,7 +564,7 @@ export default function ProfileScreen() {
               </Text>
             </TouchableOpacity>
             <Text style={[styles.profileName, { color: colors.foreground }]}>
-              {user?.name ?? "Athlete"}
+              {user?.name ?? "Champion"}
             </Text>
             <Text style={[styles.profileEmail, { color: colors.mutedForeground }]}>
               {user?.email ?? ""}

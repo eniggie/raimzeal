@@ -108,7 +108,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           <div>
             <p className="text-muted-foreground text-sm">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'},</p>
             <h1 className="text-2xl font-bold font-display truncate max-w-[180px]" data-testid="text-username">
-              {(state.user?.name?.split(' ')[0] || 'Athlete').slice(0, 20)}
+              {(state.user?.name?.split(' ')[0] || 'Champion').slice(0, 20)}
             </h1>
           </div>
           <div className="flex flex-col items-end gap-1">
