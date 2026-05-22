@@ -1592,6 +1592,22 @@ export default function NutritionScreen() {
 
   function toggleFilter(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (filterHintVisible && !filterHintDismissedRef.current) {
+      if (filterHintTimerRef.current) {
+        clearTimeout(filterHintTimerRef.current);
+      }
+      filterHintTimerRef.current = setTimeout(() => {
+        filterHintTimerRef.current = null;
+        Animated.timing(filterHintFadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setFilterHintVisible(false);
+          AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+        });
+      }, 4000);
+    }
     setActiveFilters((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
