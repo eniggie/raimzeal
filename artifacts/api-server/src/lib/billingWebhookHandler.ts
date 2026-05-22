@@ -54,22 +54,43 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
       break;
     }
 
+    case "customer.subscription.created":
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const customerId = sub.customer as string;
-      const priceId = sub.items.data[0]?.price?.id;
-      const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
-      // Price ID lookup (explicit env-var mapping) takes priority over price metadata
-      const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
       const periodEnd = (sub as any).current_period_end as number | undefined;
 
-      await supabaseAdmin.from("profiles").update({
-        subscription_status: sub.status,
-        subscription_tier: tier,
-        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-      }).eq("stripe_customer_id", customerId);
+      if (sub.status === "active" || sub.status === "trialing") {
+        // Payment succeeded — upgrade to the paid tier
+        const priceId = sub.items.data[0]?.price?.id;
+        const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
+        // Price ID lookup (explicit env-var mapping) takes priority over price metadata
+        const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier);
 
-      logger.info({ customerId, tier, status: sub.status }, "Subscription updated");
+        await supabaseAdmin.from("profiles").update({
+          subscription_status: sub.status,
+          subscription_tier: tier,
+          current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        }).eq("stripe_customer_id", customerId);
+
+        logger.info({ customerId, tier, status: sub.status }, "Subscription created/updated — tier upgraded");
+      } else if (sub.status === "incomplete_expired" || sub.status === "unpaid") {
+        // Payment window lapsed or permanently unpaid — revoke access
+        await supabaseAdmin.from("profiles").update({
+          subscription_status: sub.status,
+          subscription_tier: "foundation",
+          current_period_end: null,
+        }).eq("stripe_customer_id", customerId);
+
+        logger.info({ customerId, status: sub.status }, "Subscription expired/unpaid — reverted to foundation");
+      } else {
+        // incomplete or past_due: payment pending/in-grace-period — update status only, no tier change
+        await supabaseAdmin.from("profiles").update({
+          subscription_status: sub.status,
+        }).eq("stripe_customer_id", customerId);
+
+        logger.info({ customerId, status: sub.status }, "Subscription status updated — tier unchanged");
+      }
       break;
     }
 
