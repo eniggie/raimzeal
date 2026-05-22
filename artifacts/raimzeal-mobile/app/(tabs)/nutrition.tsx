@@ -579,7 +579,7 @@ export default function NutritionScreen() {
     for (const log of mealLogs) {
       if (!seen.has(log.name) && !favoriteNames.has(log.name)) {
         seen.add(log.name);
-        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType });
+        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}) });
       }
       if (result.length >= 5) break;
     }
@@ -2842,7 +2842,9 @@ export default function NutritionScreen() {
                           </Text>
                           <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
                             <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                              per serving
+                              {food.amountGrams !== undefined
+                                ? `per ${Number.isInteger(food.amountGrams) ? food.amountGrams : food.amountGrams.toFixed(1)}g`
+                                : "per serving"}
                             </Text>
                           </View>
                         </View>
