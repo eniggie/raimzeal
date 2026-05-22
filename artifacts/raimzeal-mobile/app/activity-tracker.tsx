@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
   Dimensions,
   Platform,
@@ -13,6 +13,7 @@ import Svg, { Circle, Path, Rect, Text as SvgText } from "react-native-svg";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { usePedometer } from "@/hooks/usePedometer";
 import { useFitness } from "@/contexts/FitnessContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -56,42 +57,12 @@ export default function ActivityTrackerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { workoutLogs, getTodayWorkouts } = useFitness();
+  const { steps, available: pedoAvailable } = usePedometer();
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const CHART_WIDTH = SCREEN_WIDTH - 48;
   const BAR_WIDTH = Math.floor((CHART_WIDTH - 24) / 7) - 4;
   const BAR_MAX_H = 80;
-
-  const [steps, setSteps] = useState(0);
-  const [pedoAvailable, setPedoAvailable] = useState(false);
-  const subRef = useRef<{ remove: () => void } | null>(null);
-
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    async function initPedometer() {
-      try {
-        const { Pedometer } = await import("expo-sensors");
-        const { granted } = await Pedometer.requestPermissionsAsync();
-        if (!granted) return;
-        const available = await Pedometer.isAvailableAsync();
-        if (!available) return;
-        setPedoAvailable(true);
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const { steps: s } = await Pedometer.getStepCountAsync(start, new Date());
-        setSteps(s);
-        subRef.current = Pedometer.watchStepCount((result: { steps: number }) => {
-          setSteps(result.steps);
-        });
-      } catch {
-        /* graceful degradation */
-      }
-    }
-    initPedometer();
-    return () => {
-      subRef.current?.remove();
-    };
-  }, []);
 
   const todayWorkouts = getTodayWorkouts();
   const activeMinutes = todayWorkouts.reduce((sum, w) => sum + w.duration, 0);

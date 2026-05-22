@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -12,6 +12,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { usePedometer } from "@/hooks/usePedometer";
 import { useFitness } from "@/contexts/FitnessContext";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
@@ -23,10 +24,44 @@ import { AnimatedPressable } from "@/components/AnimatedPressable";
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
 
+const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
+
+function useTodaySleep(): { hours: number | null; quality: number | null } {
+  const [hours, setHours] = useState<number | null>(null);
+  const [quality, setQuality] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+        const todayKey = new Date().toISOString().split("T")[0];
+        const raw = await AsyncStorage.getItem(SLEEP_STORAGE_PREFIX + todayKey);
+        if (!raw) return;
+        const entry = JSON.parse(raw) as {
+          bedHour: number; bedMin: number;
+          wakeHour: number; wakeMin: number;
+          quality: number;
+        };
+        const bedMins = entry.bedHour * 60 + entry.bedMin;
+        const wakeMins = entry.wakeHour * 60 + entry.wakeMin;
+        let diff = wakeMins - bedMins;
+        if (diff < 0) diff += 24 * 60;
+        setHours(parseFloat((diff / 60).toFixed(1)));
+        setQuality(entry.quality);
+      } catch {}
+    }
+    load();
+  }, []);
+
+  return { hours, quality };
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { steps: pedometerSteps, available: pedometerAvailable } = usePedometer();
+  const { hours: sleepHours, quality: sleepQuality } = useTodaySleep();
   const {
     user,
     streak,
@@ -202,10 +237,16 @@ export default function HomeScreen() {
           <StatCard
             icon="footsteps-outline"
             label="Steps"
-            value="—"
+            value={
+              pedometerAvailable
+                ? pedometerSteps >= 1000
+                  ? `${(pedometerSteps / 1000).toFixed(1)}k`
+                  : pedometerSteps.toString()
+                : "—"
+            }
             unit={`/ ${STEPS_GOAL.toLocaleString()}`}
             color={colors.secondary}
-            progress={0}
+            progress={pedometerAvailable ? Math.min(pedometerSteps / STEPS_GOAL, 1) : 0}
           />
         </TouchableOpacity>
         <StatCard
@@ -262,6 +303,97 @@ export default function HomeScreen() {
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
       </AnimatedPressable>
+
+      {/* Sleep Summary Banner */}
+      {sleepHours !== null ? (
+        <AnimatedPressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/sleep-tracker");
+          }}
+          style={[
+            styles.activityBanner,
+            {
+              backgroundColor:
+                sleepHours >= 7
+                  ? "#10b981" + "15"
+                  : sleepHours >= 6
+                  ? "#f59e0b" + "15"
+                  : "#ef4444" + "15",
+              borderColor:
+                sleepHours >= 7
+                  ? "#10b981" + "35"
+                  : sleepHours >= 6
+                  ? "#f59e0b" + "35"
+                  : "#ef4444" + "35",
+            },
+          ]}
+          scale={0.97}
+        >
+          <View
+            style={[
+              styles.activityIcon,
+              {
+                backgroundColor:
+                  sleepHours >= 7
+                    ? "#10b981" + "25"
+                    : sleepHours >= 6
+                    ? "#f59e0b" + "25"
+                    : "#ef4444" + "25",
+              },
+            ]}
+          >
+            <Ionicons
+              name="moon-outline"
+              size={22}
+              color={
+                sleepHours >= 7 ? "#10b981" : sleepHours >= 6 ? "#f59e0b" : "#ef4444"
+              }
+            />
+          </View>
+          <View style={styles.activityInfo}>
+            <Text style={[styles.activityTitle, { color: colors.foreground }]}>
+              {sleepHours}h sleep last night{" "}
+              {sleepQuality !== null
+                ? ["😫", "😞", "😐", "🙂", "😄"][sleepQuality - 1]
+                : ""}
+            </Text>
+            <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
+              {sleepHours >= 7
+                ? "Great recovery — you're well rested!"
+                : sleepHours >= 6
+                ? "A little short — aim for 7–9 hours"
+                : "Poor sleep — consider an earlier bedtime"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </AnimatedPressable>
+      ) : (
+        <AnimatedPressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/sleep-tracker");
+          }}
+          style={[
+            styles.activityBanner,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          scale={0.97}
+        >
+          <View style={[styles.activityIcon, { backgroundColor: colors.muted }]}>
+            <Ionicons name="moon-outline" size={22} color={colors.mutedForeground} />
+          </View>
+          <View style={styles.activityInfo}>
+            <Text style={[styles.activityTitle, { color: colors.foreground }]}>
+              Log tonight's sleep
+            </Text>
+            <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
+              Track sleep quality for better recovery
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </AnimatedPressable>
+      )}
 
       {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
