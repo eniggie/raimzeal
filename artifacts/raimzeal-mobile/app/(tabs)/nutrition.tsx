@@ -4801,16 +4801,15 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
               Edit Meal
             </Text>
 
-            <TextInput
-              placeholder="Food name"
-              placeholderTextColor={colors.mutedForeground}
-              value={editForm.name}
-              onChangeText={(v) => setEditForm((f) => ({ ...f, name: v }))}
+            <Text
+              numberOfLines={2}
               style={[
-                styles.textInput,
+                styles.editFoodNameLabel,
                 { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
               ]}
-            />
+            >
+              {editForm.name}
+            </Text>
 
             <View style={styles.gramsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Amount (g)</Text>
@@ -4904,6 +4903,10 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
               </View>
             </View>
 
+            <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
+              Per serving: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+            </Text>
+
             <View style={styles.modalNutrients}>
               <NutrientChip
                 label="Calories"
@@ -4977,26 +4980,9 @@ function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete:
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSaveEdit}
-                style={[
-                  styles.modalConfirmBtn,
-                  {
-                    backgroundColor: editForm.name.trim()
-                      ? colors.primary
-                      : colors.muted,
-                  },
-                ]}
-                disabled={!editForm.name.trim()}
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
               >
-                <Text
-                  style={[
-                    styles.modalConfirmText,
-                    {
-                      color: editForm.name.trim()
-                        ? colors.primaryForeground
-                        : colors.mutedForeground,
-                    },
-                  ]}
-                >
+                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
                   Save Changes
                 </Text>
               </TouchableOpacity>
@@ -5315,6 +5301,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     flex: 1,
+  },
+  editFoodNameLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 2,
+  },
+  editRefLine: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 4,
   },
   servingsLabel: {
     fontSize: 14,
