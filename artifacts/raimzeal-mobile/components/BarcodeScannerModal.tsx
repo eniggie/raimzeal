@@ -581,7 +581,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     color={activeTab === "recent" ? "#09090b" : "rgba(255,255,255,0.7)"}
                   />
                   <Text style={[styles.tabText, activeTab === "recent" && styles.tabTextActive]}>
-                    Recent
+                    {recentScans.length > 0 ? `Recent · ${recentScans.length}` : "Recent"}
                   </Text>
                 </TouchableOpacity>
               </View>
