@@ -255,7 +255,7 @@ export function Membership() {
           transition={{ delay: 0.22 }}
           className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
         >
-          <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe</p>
+          <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP</p>
           <p className="text-xs text-foreground/60 leading-relaxed mb-3">
             Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution. Created and powered by <span className="font-semibold text-foreground/80">ECONTEUR LLC</span> ·{' '}
             <a href="https://www.econteur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">www.econteur.com</a>

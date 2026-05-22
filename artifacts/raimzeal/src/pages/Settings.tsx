@@ -296,7 +296,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
   <div class="donation-title">The Foundation Plan is free forever — no subscription, no catch.</div>
   <div class="donation-text">
     RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.<br/><br/>
-    Books · Music · Courses · Coaching by Dr. Ephraim Oviawe (RAIMZY): <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
+    Books · Music · Courses · Coaching by Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP (RAIMZY): <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
   </div>
   <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener noreferrer">
     💚 &nbsp;Donate — Support the Team

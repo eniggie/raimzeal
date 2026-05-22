@@ -425,7 +425,7 @@ const drPhoto = img('IMG_1211_1779388174602.png') || img('IMG_1200_1779388031282
 if (drPhoto) {
   doc.image(drPhoto, ML, doc.y, { width: 80, height: 100 });
   doc.font('Helvetica-Bold').fontSize(10.5).fillColor(DARK)
-     .text('Dr. Ephraim Oviawe (RAIMZY)\nFounder, RAIMZEAL | CEO, ECONTEUR LLC', ML + 90, doc.y + 18, { width: CW - 90 });
+     .text('Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP (RAIMZY)\nFounder, RAIMZEAL | CEO, ECONTEUR LLC', ML + 90, doc.y + 18, { width: CW - 90 });
   doc.y += 110;
 } else {
   doc.moveDown(0.5);
@@ -1294,7 +1294,7 @@ if (authorPhoto) {
   doc.font('Helvetica-Bold').fontSize(10).fillColor(GOLD)
      .text('RAIMZY', ML + 112, doc.y + 23, { width: CW - 112 });
   doc.font('Helvetica').fontSize(8.5).fillColor(MUTED)
-     .text('PhD · MBA · Master of Theology · PMP · CSM · CST', ML + 112, doc.y + 38, { width: CW - 112 });
+     .text('PHD · MBA · MTS · CST · AMA · DMIPRO · CSM · PMP', ML + 112, doc.y + 38, { width: CW - 112 });
   doc.font('Helvetica').fontSize(8.5).fillColor(MUTED)
      .text('Founder, RAIMZEAL  |  CEO, ECONTEUR LLC', ML + 112, doc.y + 52, { width: CW - 112 });
   doc.font('Helvetica').fontSize(8.5).fillColor(GREEN)

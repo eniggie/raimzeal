@@ -110,7 +110,7 @@ export default function MembershipScreen() {
             <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
           </TouchableOpacity>
           <Text style={[styles.donationLinksLabel, { color: colors.foreground }]}>
-            RAIMZY — Dr. Ephraim Oviawe
+            RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP
           </Text>
           <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
             Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution.

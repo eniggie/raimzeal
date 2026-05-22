@@ -142,7 +142,7 @@ export function Community() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">Resources from RAIMZY</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                RAIMZY — Dr. Ephraim Oviawe — is the mind behind RAIMZEAL. Author, music artist, strategist, and coach.
+                RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP — is the mind behind RAIMZEAL. Author, music artist, strategist, and coach.
               </p>
               <a
                 href={RAIMZY_LINKTREE}
