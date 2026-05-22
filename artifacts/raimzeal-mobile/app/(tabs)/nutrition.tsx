@@ -26,6 +26,11 @@ if (Platform.OS === "android") {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  FILTER_HINT_STORAGE_KEY,
+  REORDER_HINT_STORAGE_KEY,
+  HISTORY_FILTER_HINT_STORAGE_KEY,
+} from "@/lib/hints";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -131,14 +136,11 @@ const FILTER_DEFS: NutritionFilterDef[] = [
 
 const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
 const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
-const FILTER_HINT_STORAGE_KEY = "@nutrition_filter_hint_dismissed";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
-const REORDER_HINT_STORAGE_KEY = "@nutrition_reorder_hint_dismissed";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
-const HISTORY_FILTER_HINT_STORAGE_KEY = "@nutrition_history_filter_hint_dismissed";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 
 interface CustomFilterPreset {

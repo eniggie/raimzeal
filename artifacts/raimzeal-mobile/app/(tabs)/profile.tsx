@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { exportToPdf } from "@/lib/pdf";
+import { resetAllHints } from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
@@ -230,6 +231,15 @@ export default function ProfileScreen() {
     Alert.alert(
       "Prompt Reset",
       "The next time you save a progress card, the photo access explanation will appear again."
+    );
+  }
+
+  async function handleResetHints() {
+    await resetAllHints();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      "Hints Reset",
+      "All one-time tips will reappear the next time you visit those sections."
     );
   }
 
@@ -634,6 +644,13 @@ export default function ProfileScreen() {
                 onPress={handleResetRationalePrompt}
               />
             )}
+            <ActionRow
+              icon="bulb-outline"
+              label="Reset all hints"
+              sublabel="Re-show one-time tips for filters and reordering"
+              color={colors.accent}
+              onPress={handleResetHints}
+            />
             <SettingToggleRow
               icon="refresh-circle-outline"
               label="Show restore badge"
