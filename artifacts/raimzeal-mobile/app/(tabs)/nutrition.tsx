@@ -975,9 +975,9 @@ export default function NutritionScreen() {
     };
   }, []);
 
-  function showPresetSavedToast(name: string) {
+  function showPresetSavedToast(name: string, message?: string) {
     if (presetSavedTimerRef.current) clearTimeout(presetSavedTimerRef.current);
-    setPresetSavedMessage(`Preset "${name}" saved`);
+    setPresetSavedMessage(message ?? `Preset "${name}" saved`);
     presetSavedAnim.setValue(0);
     Animated.spring(presetSavedAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     presetSavedTimerRef.current = setTimeout(() => {
@@ -1397,6 +1397,7 @@ export default function NutritionScreen() {
     setCustomPresets(next);
     AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     setEditingPreset(null);
+    showPresetSavedToast(name, `Preset "${name}" renamed`);
   }
 
   function computePresetDisplacement(idx: number, active: number, hover: number): number {
