@@ -179,6 +179,22 @@ export async function insertMealLog(userId: string, meal: MealLog) {
   });
 }
 
+export async function upsertMealLog(userId: string, meal: MealLog) {
+  if (!isSupabaseConfigured) return;
+  await supabase.from("meal_logs").upsert({
+    id: meal.id,
+    user_id: userId,
+    date: meal.date,
+    name: meal.name,
+    calories: meal.calories,
+    protein: meal.protein,
+    carbs: meal.carbs,
+    fat: meal.fat,
+    meal_type: meal.mealType,
+    amount_grams: meal.amountGrams ?? null,
+  });
+}
+
 // ─── Body Measurements ─────────────────────────────────────────────────────
 
 export async function syncBodyMeasurements(userId: string, items: BodyMeasurement[]) {

@@ -31,6 +31,7 @@ import {
   insertOviaMessage,
   fetchUserPreferences,
   upsertUserPreferences,
+  upsertMealLog,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -328,11 +329,20 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const updateMealLog = useCallback(
     (id: string, updates: Partial<Omit<MealLog, "id" | "date">>) => {
       setState((prev) => {
+        const updatedMeal = prev.mealLogs.find((m) => m.id === id);
         const next = {
           ...prev,
           mealLogs: prev.mealLogs.map((m) => (m.id === id ? { ...m, ...updates } : m)),
         };
         persist(next);
+        if (updatedMeal && isSupabaseConfigured) {
+          const merged = { ...updatedMeal, ...updates };
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+              upsertMealLog(session.user.id, merged).catch(() => {});
+            }
+          });
+        }
         return next;
       });
     },
