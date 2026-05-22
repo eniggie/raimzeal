@@ -30,6 +30,7 @@ import {
   FILTER_HINT_STORAGE_KEY,
   REORDER_HINT_STORAGE_KEY,
   HISTORY_FILTER_HINT_STORAGE_KEY,
+  PRESET_NUDGE_STORAGE_KEY,
 } from "@/lib/hints";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
@@ -831,6 +832,11 @@ export default function NutritionScreen() {
   const historyChipHighlightAnim = useRef(new Animated.Value(0)).current;
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
+  const [presetNudgeVisible, setPresetNudgeVisible] = useState(false);
+  const presetNudgeFadeAnim = useRef(new Animated.Value(0)).current;
+  const presetNudgeShownRef = useRef(false);
+  const presetNudgeDismissedRef = useRef(false);
+
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
 
   const favoritesYRef = useRef<number>(0);
@@ -883,6 +889,16 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setHistoryFilterHintVisible(false));
     AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+  }
+
+  function dismissPresetNudge() {
+    presetNudgeDismissedRef.current = true;
+    Animated.timing(presetNudgeFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setPresetNudgeVisible(false));
+    AsyncStorage.setItem(PRESET_NUDGE_STORAGE_KEY, "1").catch(() => {});
   }
 
   function handleHistoryFilterHintPress() {
@@ -1402,6 +1418,7 @@ export default function NutritionScreen() {
     setShowSavePresetModal(false);
     setSavePresetName("");
     showPresetSavedToast(name);
+    if (presetNudgeVisible) dismissPresetNudge();
   }
 
   function deleteCustomPreset(id: string) {
@@ -1654,6 +1671,24 @@ export default function NutritionScreen() {
       }, 4000);
     }).catch(() => {});
   }, [activeTab, isSearching]);
+
+  useEffect(() => {
+    if (activeTab !== "today" || !isSearching) return;
+    if (customPresets.length > 0) return;
+    if (presetNudgeShownRef.current) return;
+    presetNudgeShownRef.current = true;
+    AsyncStorage.getItem(PRESET_NUDGE_STORAGE_KEY).then((val) => {
+      if (val) return;
+      if (presetNudgeDismissedRef.current) return;
+      presetNudgeFadeAnim.setValue(0);
+      setPresetNudgeVisible(true);
+      Animated.timing(presetNudgeFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }).catch(() => {});
+  }, [activeTab, isSearching, customPresets.length]);
 
   const shouldShowFilterSummary =
     activeTab === "today" && isSearching && searchDone &&
@@ -2496,6 +2531,29 @@ export default function NutritionScreen() {
                 <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
                   Long-press an active chip to save as preset · long-press an inactive chip to adjust its threshold
                 </Text>
+              </Animated.View>
+            )}
+
+            {/* Preset discovery nudge — shown once when user has no presets */}
+            {activeTab === "today" && isSearching && presetNudgeVisible && customPresets.length === 0 && (
+              <Animated.View
+                style={[
+                  styles.presetNudgeRow,
+                  { opacity: presetNudgeFadeAnim, backgroundColor: colors.secondary + "14", borderColor: colors.secondary + "40" },
+                ]}
+              >
+                <Ionicons name="bookmark-outline" size={13} color={colors.secondary} style={{ marginTop: 1 }} />
+                <Text style={[styles.presetNudgeText, { color: colors.mutedForeground }]}>
+                  Activate a filter, then tap{" "}
+                  <Text style={{ color: colors.secondary, fontFamily: "Inter_600SemiBold" }}>Save</Text>
+                  {" "}to build a reusable preset
+                </Text>
+                <TouchableOpacity
+                  onPress={dismissPresetNudge}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={14} color={colors.mutedForeground + "aa"} />
+                </TouchableOpacity>
               </Animated.View>
             )}
 
@@ -5448,6 +5506,23 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 4,
     opacity: 0.75,
+  },
+  presetNudgeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginBottom: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  presetNudgeText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
   },
   filterCombinedSummary: {
     fontSize: 12,
