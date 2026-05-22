@@ -119,6 +119,7 @@ function stripMarkdown(text: string): string {
     .replace(/`{1,3}[^`]*`{1,3}/g, (m) => m.replace(/`/g, '')) // `code`
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url)
     .replace(/\n{3,}/g, '\n\n')              // collapse excess blank lines
+    .replace(/[–—]/g, ' ')                   // en-dash / em-dash
     .replace(/\*/g, '')                       // catch-all: remove any remaining asterisks
     .trim();
 }

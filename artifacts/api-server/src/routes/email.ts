@@ -182,7 +182,7 @@ function buildHtmlEmail(subject: string, bodyHtml: string): string {
                   </td>
                   <td style="vertical-align:middle;">
                     <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">RAIMZEAL</p>
-                    <p style="margin:3px 0 0;font-size:12px;color:#2E8B57;font-weight:600;letter-spacing:0.3px;">Your AI-powered fitness &amp; wellness coach</p>
+                    <p style="margin:3px 0 0;font-size:12px;color:#2E8B57;font-weight:600;letter-spacing:0.3px;">Fitness · Food Therapy · Health Awareness · Free Forever</p>
                   </td>
                 </tr>
               </table>
@@ -200,15 +200,19 @@ function buildHtmlEmail(subject: string, bodyHtml: string): string {
                 </tr>
               </table>
               <div style="background:#0d0d10;border-radius:10px;padding:16px 20px;margin-bottom:20px;text-align:center;">
-                <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Music &amp; Books by Our CEO/MD</p>
-                <p style="margin:0 0 8px;font-size:14px;color:#e8e8ec;font-weight:600;">Dr. Ephraim Oviawe</p>
-                <a href="https://www.raimzeal.com" style="display:inline-block;background:#8B31C7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 20px;border-radius:6px;">raimzeal.com</a>
+                <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:1px;color:#C9A84C;text-transform:uppercase;">Books · Music · Courses · Coaching</p>
+                <p style="margin:0 0 10px;font-size:13px;color:#9ca3af;">by Dr. Ephraim Oviawe (RAIMZY) · Founder &amp; Medical Director</p>
+                <a href="https://linktr.ee/Raimzy" style="display:inline-block;background:#8B31C7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;padding:8px 20px;border-radius:6px;margin-right:6px;">linktr.ee/Raimzy</a>
+                <a href="https://www.econteur.com" style="display:inline-block;background:#1e293b;color:#94a3b8;text-decoration:none;font-size:12px;font-weight:600;padding:8px 14px;border-radius:6px;">ECONTEUR LLC</a>
               </div>
               <hr style="border:none;border-top:1px solid #1e1e22;margin:20px 0;" />
-              <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.5;text-align:center;">
-                This digest is sent by <strong style="color:#2E8B57;">Ovia AI</strong>, your RAIMZEAL coach.<br />
+              <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.8;text-align:center;">
+                Sent by <strong style="color:#2E8B57;">Ovia AI</strong> · RAIMZEAL · Operated by ECONTEUR LLC<br />
                 Manage preferences in the app under <em>Profile → Reminders</em>.<br />
-                <a href="https://www.raimzeal.com" style="color:#6b7280;text-decoration:none;">www.raimzeal.com</a>
+                <a href="https://www.raimzeal.com" style="color:#6b7280;text-decoration:none;">raimzeal.com</a> &nbsp;·&nbsp;
+                <a href="https://linktr.ee/Raimzy" style="color:#6b7280;text-decoration:none;">linktr.ee/Raimzy</a> &nbsp;·&nbsp;
+                <a href="https://www.econteur.com" style="color:#6b7280;text-decoration:none;">econteur.com</a><br />
+                <a href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" style="color:#2E8B57;text-decoration:none;font-weight:600;">💚 Support the mission — a donation is never required</a>
               </p>
             </td>
           </tr>
@@ -350,9 +354,9 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     </div>
 
     <div style="background:#1a0d0d;border-left:3px solid #e11d48;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
-      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#e11d48;text-transform:uppercase;">Support the mission (optional)</p>
-      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#e8e8ec;">RAIMZEAL is free and will always be free. If it has helped you, a voluntary donation helps us keep the lights on and the team funded. You are never required to give anything.</p>
-      <a href="https://raimzeal.com/membership" style="font-size:12px;color:#e11d48;text-decoration:none;font-weight:600;">Support the mission at raimzeal.com/membership</a>
+      <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#e11d48;text-transform:uppercase;">Support the mission (never required)</p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#e8e8ec;">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. You are never required to give anything.</p>
+      <a href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" style="font-size:12px;color:#e11d48;text-decoration:none;font-weight:600;">💚 Donate — donate.stripe.com · Secure · Any amount helps</a>
     </div>
 
     <p style="margin:0 0 24px;font-size:13px;color:#9ca3af;line-height:1.6;">
@@ -379,11 +383,13 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     "FITNESS TIP:", tipObj.tip, `Learn more: ${tipObj.link}`, "",
     "RECOMMENDED RESOURCE:", `${resource.name} — ${resource.url}`,
     "",
-    "SUPPORT THE MISSION (OPTIONAL):",
+    "SUPPORT THE MISSION (NEVER REQUIRED):",
     "If RAIMZEAL has helped you, a voluntary donation keeps the platform free for everyone.",
-    "https://raimzeal.com/membership",
+    "Donate: https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00",
     "",
     "Open the app: https://www.raimzeal.com",
+    "RAIMZY resources: https://linktr.ee/Raimzy",
+    "ECONTEUR LLC: https://www.econteur.com",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
