@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Crown } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 
@@ -29,21 +29,15 @@ const RISE_FEATURES = [
   'Weekly Ovia AI coaching digest email',
 ];
 
-const REIGN_FEATURES = [
+const LEGACY_FEATURES = [
   'Everything in Rise',
   'Ovia AI coaching — unlimited messages',
   'AI-powered meal plan suggestions',
   'Advanced body composition analytics',
   'Custom macro goal recommendations',
-  'Reign supporter badge',
-];
-
-const LEGACY_FEATURES = [
-  'Everything in Reign',
   'Lifetime Legacy supporter badge',
   'Early access to all new features',
   '1-on-1 coaching session access',
-  'Dedicated support channel',
   'RAIMZEAL Hall of Fame listing',
 ];
 
@@ -62,19 +56,6 @@ const PAID_PLANS = [
     features: RISE_FEATURES,
   },
   {
-    key: 'reign',
-    name: 'Reign',
-    icon: Star,
-    color: 'text-purple-400',
-    border: 'border-purple-400/30',
-    bg: 'bg-purple-400/5',
-    badge: 'bg-purple-400/20 text-purple-400',
-    monthly: 14.99,
-    yearly: 143.99,
-    popular: true,
-    features: REIGN_FEATURES,
-  },
-  {
     key: 'legacy',
     name: 'Legacy',
     icon: Crown,
@@ -84,7 +65,7 @@ const PAID_PLANS = [
     badge: 'bg-yellow-400/20 text-yellow-400',
     monthly: 19.99,
     yearly: 191.99,
-    popular: false,
+    popular: true,
     features: LEGACY_FEATURES,
   },
 ] as const;
