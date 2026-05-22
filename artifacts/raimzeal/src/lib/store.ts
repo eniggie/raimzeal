@@ -1,4 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  appDataApi,
+  workoutLogsApi,
+  mealLogsApi,
+  bodyMeasurementsApi,
+  waterIntakeApi,
+  scheduledWorkoutsApi,
+  userProfileApi,
+  type ApiAppData,
+} from './apiClient';
+import { supabaseConfigured } from './supabase';
 
 const STORAGE_KEY_BASE = 'raimzeal_data';
 
@@ -201,15 +212,110 @@ const generateSampleData = (user: UserProfile): Partial<AppState> => {
   };
 };
 
-export function useAppState(userId?: string | null) {
+// ─── API ↔ Local format converters ────────────────────────────────────────────
+
+function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> {
+  const profile = data.profile;
+
+  const user: UserProfile | null = profile
+    ? {
+        id: profile.id,
+        name: profile.name ?? '',
+        email,
+        age: profile.age ?? 25,
+        height: profile.height ?? 68,
+        weight: profile.weight ?? 160,
+        fitnessLevel: (profile.fitness_level as UserProfile['fitnessLevel']) ?? 'beginner',
+        goals: profile.goals ?? [],
+        units: (profile.units as UserProfile['units']) ?? 'imperial',
+        createdAt: profile.created_at ?? new Date().toISOString(),
+        bloodType: (profile.blood_type as UserProfile['bloodType']) ?? undefined,
+        rhFactor: (profile.rh_factor as UserProfile['rhFactor']) ?? undefined,
+        genotype: (profile.genotype as UserProfile['genotype']) ?? undefined,
+      }
+    : null;
+
+  const settings = profile?.app_settings
+    ? {
+        darkMode: profile.app_settings.dark_mode ?? defaultState.settings.darkMode,
+        textSize: (profile.app_settings.text_size as AppState['settings']['textSize']) ?? defaultState.settings.textSize,
+        notifications: profile.app_settings.notifications ?? defaultState.settings.notifications,
+        weightUnit: (profile.app_settings.weight_unit as AppState['settings']['weightUnit']) ?? defaultState.settings.weightUnit,
+      }
+    : undefined;
+
+  const workoutLogs: WorkoutLog[] = data.workout_logs.map(l => ({
+    id: l.id,
+    workoutId: l.workout_id,
+    workoutName: l.workout_name,
+    date: l.date,
+    duration: l.duration,
+    caloriesBurned: l.calories_burned,
+    exercises: l.exercises,
+  }));
+
+  const mealLogs: MealLog[] = data.meal_logs.map(m => ({
+    id: m.id,
+    date: m.date,
+    name: m.name,
+    calories: m.calories,
+    protein: m.protein,
+    carbs: m.carbs,
+    fat: m.fat,
+    mealType: m.meal_type,
+  }));
+
+  const bodyMeasurements: BodyMeasurement[] = data.body_measurements.map(m => ({
+    id: m.id,
+    date: m.date,
+    weight: m.weight,
+    chest: m.chest ?? undefined,
+    waist: m.waist ?? undefined,
+    hips: m.hips ?? undefined,
+    arms: m.arms ?? undefined,
+    thighs: m.thighs ?? undefined,
+  }));
+
+  const waterIntake = data.water_intake.map(w => ({ date: w.date, glasses: w.glasses }));
+
+  const scheduledWorkouts: ScheduledWorkout[] = data.scheduled_workouts.map(s => ({
+    id: s.id,
+    workoutId: s.workout_id,
+    workoutName: s.workout_name,
+    date: s.date,
+    completed: s.completed,
+  }));
+
+  return {
+    ...(user ? { user, isOnboarded: true } : {}),
+    ...(settings ? { settings } : {}),
+    workoutLogs,
+    mealLogs,
+    bodyMeasurements,
+    waterIntake,
+    scheduledWorkouts,
+    streak: profile?.streak ?? 0,
+  };
+}
+
+// ─── useAppState ──────────────────────────────────────────────────────────────
+
+export function useAppState(userId?: string | null, userEmail?: string | null) {
   const storageKey = userId ? `${STORAGE_KEY_BASE}_${userId}` : null;
 
   const [state, setState] = useState<AppState>(defaultState);
+  const [cloudSynced, setCloudSynced] = useState(false);
+  const [syncError, setSyncError] = useState(false);
+
+  const cloudSyncedRef = useRef(false);
+  const userIdRef = useRef<string | null | undefined>(undefined);
 
   // Re-load state from localStorage whenever the user changes (login/logout)
   useEffect(() => {
     if (!storageKey) {
       setState(defaultState);
+      setCloudSynced(false);
+      cloudSyncedRef.current = false;
       return;
     }
     const stored = localStorage.getItem(storageKey);
@@ -227,7 +333,36 @@ export function useAppState(userId?: string | null) {
     } else {
       setState(defaultState);
     }
+    setCloudSynced(false);
+    cloudSyncedRef.current = false;
   }, [storageKey]);
+
+  // Load data from the cloud when the user logs in
+  useEffect(() => {
+    if (!userId || !supabaseConfigured) return;
+    if (cloudSyncedRef.current && userIdRef.current === userId) return;
+    userIdRef.current = userId;
+    cloudSyncedRef.current = true;
+
+    appDataApi.loadAll().then(data => {
+      const fromCloud = apiToLocalAppState(data, userEmail ?? '');
+      setState(prev => ({
+        ...prev,
+        ...fromCloud,
+        settings: fromCloud.settings
+          ? { ...prev.settings, ...fromCloud.settings }
+          : prev.settings,
+        // Keep isOnboarded true if already true locally (safe guard for first-ever load)
+        isOnboarded: prev.isOnboarded || (fromCloud.isOnboarded ?? false),
+      }));
+      setCloudSynced(true);
+      setSyncError(false);
+    }).catch(() => {
+      // Mark cloud sync as settled but flag the error so the UI can surface it
+      setCloudSynced(true);
+      setSyncError(true);
+    });
+  }, [userId, userEmail]);
 
   // Persist state to localStorage for the current user
   useEffect(() => {
@@ -248,6 +383,22 @@ export function useAppState(userId?: string | null) {
       user,
       ...sampleData,
     }));
+
+    // Persist profile & initial data to API
+    if (supabaseConfigured) {
+      userProfileApi.update({
+        name: user.name,
+        age: user.age,
+        height: user.height,
+        weight: user.weight,
+        fitness_level: user.fitnessLevel,
+        goals: user.goals,
+        units: user.units,
+        blood_type: user.bloodType ?? null,
+        rh_factor: user.rhFactor ?? null,
+        genotype: user.genotype ?? null,
+      }).catch(() => { /* best-effort */ });
+    }
   }, []);
 
   const addWorkoutLog = (log: WorkoutLog) => {
@@ -256,6 +407,18 @@ export function useAppState(userId?: string | null) {
       workoutLogs: [log, ...prev.workoutLogs],
       streak: prev.streak + 1,
     }));
+
+    if (supabaseConfigured) {
+      workoutLogsApi.create({
+        id: log.id,
+        workout_id: log.workoutId,
+        workout_name: log.workoutName,
+        date: log.date,
+        duration: log.duration,
+        calories_burned: log.caloriesBurned,
+        exercises: log.exercises,
+      }).catch(() => { /* best-effort */ });
+    }
   };
 
   const addMealLog = (meal: MealLog) => {
@@ -263,6 +426,19 @@ export function useAppState(userId?: string | null) {
       ...prev,
       mealLogs: [meal, ...prev.mealLogs],
     }));
+
+    if (supabaseConfigured) {
+      mealLogsApi.create({
+        id: meal.id,
+        date: meal.date,
+        name: meal.name,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        meal_type: meal.mealType,
+      }).catch(() => { /* best-effort */ });
+    }
   };
 
   const updateWaterIntake = (glasses: number) => {
@@ -282,6 +458,10 @@ export function useAppState(userId?: string | null) {
         waterIntake: [{ date: today, glasses }, ...prev.waterIntake],
       };
     });
+
+    if (supabaseConfigured) {
+      waterIntakeApi.upsert(today, glasses).catch(() => { /* best-effort */ });
+    }
   };
 
   const scheduleWorkout = (workout: ScheduledWorkout) => {
@@ -289,6 +469,16 @@ export function useAppState(userId?: string | null) {
       ...prev,
       scheduledWorkouts: [...prev.scheduledWorkouts, workout],
     }));
+
+    if (supabaseConfigured) {
+      scheduledWorkoutsApi.create({
+        id: workout.id,
+        workout_id: workout.workoutId,
+        workout_name: workout.workoutName,
+        date: workout.date,
+        completed: workout.completed,
+      }).catch(() => { /* best-effort */ });
+    }
   };
 
   const addBodyMeasurement = (measurement: BodyMeasurement) => {
@@ -296,13 +486,41 @@ export function useAppState(userId?: string | null) {
       ...prev,
       bodyMeasurements: [measurement, ...prev.bodyMeasurements],
     }));
+
+    if (supabaseConfigured) {
+      bodyMeasurementsApi.create({
+        id: measurement.id,
+        date: measurement.date,
+        weight: measurement.weight,
+        chest: measurement.chest ?? null,
+        waist: measurement.waist ?? null,
+        hips: measurement.hips ?? null,
+        arms: measurement.arms ?? null,
+        thighs: measurement.thighs ?? null,
+      }).catch(() => { /* best-effort */ });
+    }
   };
 
   const updateSettings = (settings: Partial<AppState['settings']>) => {
+    // Merge against current state (not defaultState) so partial updates
+    // don't silently reset other settings fields in the database.
+    const nextSettings = { ...state.settings, ...settings };
+
     setState(prev => ({
       ...prev,
       settings: { ...prev.settings, ...settings },
     }));
+
+    if (supabaseConfigured) {
+      userProfileApi.update({
+        app_settings: {
+          dark_mode: nextSettings.darkMode,
+          text_size: nextSettings.textSize,
+          notifications: nextSettings.notifications,
+          weight_unit: nextSettings.weightUnit,
+        },
+      }).catch(() => { /* best-effort */ });
+    }
   };
 
   const updateProfile = (updates: Partial<UserProfile>) => {
@@ -310,6 +528,21 @@ export function useAppState(userId?: string | null) {
       ...prev,
       user: prev.user ? { ...prev.user, ...updates } : null,
     }));
+
+    if (supabaseConfigured) {
+      const apiUpdates: Parameters<typeof userProfileApi.update>[0] = {};
+      if (updates.name !== undefined) apiUpdates.name = updates.name;
+      if (updates.age !== undefined) apiUpdates.age = updates.age;
+      if (updates.height !== undefined) apiUpdates.height = updates.height;
+      if (updates.weight !== undefined) apiUpdates.weight = updates.weight;
+      if (updates.fitnessLevel !== undefined) apiUpdates.fitness_level = updates.fitnessLevel;
+      if (updates.goals !== undefined) apiUpdates.goals = updates.goals;
+      if (updates.units !== undefined) apiUpdates.units = updates.units;
+      if (updates.bloodType !== undefined) apiUpdates.blood_type = updates.bloodType ?? null;
+      if (updates.rhFactor !== undefined) apiUpdates.rh_factor = updates.rhFactor ?? null;
+      if (updates.genotype !== undefined) apiUpdates.genotype = updates.genotype ?? null;
+      userProfileApi.update(apiUpdates).catch(() => { /* best-effort */ });
+    }
   };
 
   const exportData = () => {
@@ -494,6 +727,8 @@ ${mealLogs.length > 0 ? `<table>
 
   return {
     state,
+    cloudSynced,
+    syncError,
     updateState,
     completeOnboarding,
     addWorkoutLog,

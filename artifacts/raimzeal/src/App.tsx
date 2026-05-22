@@ -77,6 +77,7 @@ function AppContent() {
   const { session, user, loading, signOut } = useAuth();
   const {
     state,
+    syncError,
     completeOnboarding,
     addWorkoutLog,
     addMealLog,
@@ -87,7 +88,7 @@ function AppContent() {
     updateProfile,
     exportData,
     exportPdfReport,
-  } = useAppState(user?.id);
+  } = useAppState(user?.id, user?.email);
 
   const [showLogin, setShowLogin] = useState(false);
 
@@ -171,6 +172,12 @@ function AppContent() {
 
   // Authenticated + verified — show the app
   return (
+    <>
+      {syncError && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500/90 text-yellow-950 text-center text-xs py-1.5 px-4 font-medium">
+          Cloud sync unavailable — your data is saved locally and will sync when the connection is restored.
+        </div>
+      )}
     <Switch>
       <Route path="/">
         <Home state={state} onUpdateWater={updateWaterIntake} />
@@ -245,6 +252,7 @@ function AppContent() {
       </Route>
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 

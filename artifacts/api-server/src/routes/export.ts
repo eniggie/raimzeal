@@ -22,12 +22,17 @@ exportRouter.get("/user/export", requireAuth, async (req, res) => {
   const format = ((req.query.format as string) || "json").toLowerCase();
 
   try {
-    const [profileRes, postsRes, commentsRes, prsRes, sleepRes] = await Promise.all([
+    const [profileRes, postsRes, commentsRes, prsRes, sleepRes, workoutLogsRes, mealLogsRes, bodyMeasRes, waterRes, scheduledRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("id,name,full_name,age,height,weight,fitness_level,goals,units,phone_verified,email_verified,country,city,created_at,updated_at").eq("id", userId).single(),
       supabaseAdmin.from("community_posts").select("*").eq("user_id", userId),
       supabaseAdmin.from("community_comments").select("*").eq("user_id", userId),
       supabaseAdmin.from("personal_records").select("*").eq("user_id", userId),
       supabaseAdmin.from("sleep_logs").select("*").eq("user_id", userId),
+      supabaseAdmin.from("workout_logs").select("*").eq("user_id", userId).order("date", { ascending: false }),
+      supabaseAdmin.from("meal_logs").select("*").eq("user_id", userId).order("date", { ascending: false }),
+      supabaseAdmin.from("body_measurements").select("*").eq("user_id", userId).order("date", { ascending: false }),
+      supabaseAdmin.from("water_intake").select("*").eq("user_id", userId).order("date", { ascending: false }),
+      supabaseAdmin.from("scheduled_workouts").select("*").eq("user_id", userId).order("date", { ascending: true }),
     ]);
 
     const exportDate = new Date().toISOString().slice(0, 10);
@@ -39,6 +44,11 @@ exportRouter.get("/user/export", requireAuth, async (req, res) => {
         community_comments: (commentsRes.data ?? []) as Record<string, unknown>[],
         personal_records: (prsRes.data ?? []) as Record<string, unknown>[],
         sleep_logs: (sleepRes.data ?? []) as Record<string, unknown>[],
+        workout_logs: (workoutLogsRes.data ?? []) as Record<string, unknown>[],
+        meal_logs: (mealLogsRes.data ?? []) as Record<string, unknown>[],
+        body_measurements: (bodyMeasRes.data ?? []) as Record<string, unknown>[],
+        water_intake: (waterRes.data ?? []) as Record<string, unknown>[],
+        scheduled_workouts: (scheduledRes.data ?? []) as Record<string, unknown>[],
       };
 
       const parts: string[] = [];
@@ -60,6 +70,11 @@ exportRouter.get("/user/export", requireAuth, async (req, res) => {
         community_comments: commentsRes.data ?? [],
         personal_records: prsRes.data ?? [],
         sleep_logs: sleepRes.data ?? [],
+        workout_logs: workoutLogsRes.data ?? [],
+        meal_logs: mealLogsRes.data ?? [],
+        body_measurements: bodyMeasRes.data ?? [],
+        water_intake: waterRes.data ?? [],
+        scheduled_workouts: scheduledRes.data ?? [],
       };
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Content-Disposition", `attachment; filename="raimzeal-export-${exportDate}.json"`);

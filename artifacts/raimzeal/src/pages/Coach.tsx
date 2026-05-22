@@ -9,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
+import { coachMessagesApi } from '@/lib/apiClient';
+import { supabaseConfigured } from '@/lib/supabase';
 
 interface CoachProps {
   state: AppState;
@@ -143,6 +145,33 @@ export function Coach({ state }: CoachProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<unknown>(null);
+  const historyLoadedRef = useRef(false);
+
+  // Load persisted conversation history from the server on first open
+  useEffect(() => {
+    if (!session?.access_token || !supabaseConfigured) return;
+    if (historyLoadedRef.current) return;
+    historyLoadedRef.current = true;
+
+    coachMessagesApi.list(60).then(({ messages: history }) => {
+      if (history.length === 0) return;
+      setMessages([
+        {
+          id: '1',
+          role: 'coach',
+          content: buildWelcomeMessage(state),
+          timestamp: new Date(),
+        },
+        ...history.map(m => ({
+          id: m.id,
+          role: m.role as 'user' | 'coach',
+          content: m.content,
+          timestamp: new Date(m.created_at),
+          isWeekly: m.is_weekly,
+        })),
+      ]);
+    }).catch(() => { /* best-effort — local welcome message stays if load fails */ });
+  }, [session?.access_token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startVoice() {
     type AnyRec = Record<string, unknown>;
@@ -240,6 +269,13 @@ export function Coach({ state }: CoachProps) {
               isWeekly: true,
             },
           ]);
+
+          // Persist the weekly digest message
+          if (supabaseConfigured) {
+            coachMessagesApi.saveBatch([
+              { role: 'coach', content: cleaned, is_weekly: true },
+            ]).catch(() => { /* best-effort */ });
+          }
         }
       } catch {
         // Weekly digest is best-effort — silent fail
@@ -323,6 +359,9 @@ export function Coach({ state }: CoachProps) {
       const decoder = new TextDecoder();
       let buffer = '';
       let streamDone = false;
+      // Accumulate raw streamed text in a plain local variable so we can
+      // persist it reliably without depending on React state updater timing.
+      let rawStreamedContent = '';
 
       while (!streamDone) {
         const { done, value } = await reader.read();
@@ -345,6 +384,7 @@ export function Coach({ state }: CoachProps) {
             if (json.searching) setSearchingFor(json.searching);
 
             if (json.content) {
+              rawStreamedContent += json.content;
               setSearchingFor(null);
               setMessages((prev) =>
                 prev.map((m) =>
@@ -363,12 +403,23 @@ export function Coach({ state }: CoachProps) {
         }
       }
 
-      // Strip any markdown that slipped through
+      // Strip markdown from the locally-accumulated string (source of truth)
+      const cleanedCoachContent = stripMarkdown(rawStreamedContent);
+
+      // Apply cleaned content to state
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantId ? { ...m, content: stripMarkdown(m.content) } : m
+          m.id === assistantId ? { ...m, content: cleanedCoachContent } : m
         )
       );
+
+      // Persist this exchange to the server using the local variable — not a setState side effect
+      if (supabaseConfigured && cleanedCoachContent) {
+        coachMessagesApi.saveBatch([
+          { role: 'user', content: trimmed },
+          { role: 'coach', content: cleanedCoachContent },
+        ]).catch(() => { /* best-effort */ });
+      }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));

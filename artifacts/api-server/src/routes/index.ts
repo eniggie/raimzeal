@@ -17,6 +17,13 @@ import customWorkoutsRouter from "./customWorkouts";
 import streakFreezeRouter from "./streakFreeze";
 import progressPhotosRouter from "./progressPhotos";
 import mealPhotoRouter from "./mealPhoto";
+import coachMessagesRouter from "./coachMessages";
+import workoutLogsRouter from "./workoutLogs";
+import mealLogsRouter from "./mealLogs";
+import bodyMeasurementsRouter from "./bodyMeasurements";
+import waterIntakeRouter from "./waterIntake";
+import scheduledWorkoutsRouter from "./scheduledWorkouts";
+import userProfileRouter from "./userProfile";
 
 const router: IRouter = Router();
 
@@ -37,6 +44,13 @@ router.use(customWorkoutsRouter);
 router.use(streakFreezeRouter);
 router.use(progressPhotosRouter);
 router.use(mealPhotoRouter);
+router.use(coachMessagesRouter);
+router.use(workoutLogsRouter);
+router.use(mealLogsRouter);
+router.use(bodyMeasurementsRouter);
+router.use(waterIntakeRouter);
+router.use(scheduledWorkoutsRouter);
+router.use(userProfileRouter);
 router.use(appRouter);
 
 export default router;
