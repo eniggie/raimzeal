@@ -566,6 +566,8 @@ export default function NutritionScreen() {
         delay: 400,
         useNativeDriver: false,
       }).start(() => setHighlightedFavorite(null));
+    } else {
+      delete favoriteCardYsRef.current[food.name];
     }
   }
 
