@@ -2073,6 +2073,15 @@ export default function NutritionScreen() {
       mealType: manualMeal,
     };
     addMealLog(meal);
+
+    AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+      .then((raw) => {
+        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+        map[name] = manualMeal;
+        return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
+      })
+      .catch(() => {});
+
     setShowManualEntry(false);
   }
 
@@ -3515,6 +3524,16 @@ export default function NutritionScreen() {
               placeholderTextColor={colors.mutedForeground}
               value={manualForm.name}
               onChangeText={(v) => setManualForm((f) => ({ ...f, name: v }))}
+              onBlur={() => {
+                const name = manualForm.name.trim();
+                if (!name) return;
+                AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+                  .then((raw) => {
+                    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+                    if (map[name]) setManualMeal(map[name] as "breakfast" | "lunch" | "dinner" | "snack");
+                  })
+                  .catch(() => {});
+              }}
               style={[
                 styles.textInput,
                 { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
