@@ -230,6 +230,8 @@ interface SortablePresetItemProps {
   dragTranslateY: SharedValue<number>;
   hoveredIdx: SharedValue<number>;
   reduceMotionShared: SharedValue<boolean>;
+  snapFromIdx: SharedValue<number>;
+  snapTargetIdx: SharedValue<number>;
   isActive: boolean;
   onLoadPreset: (p: CardPreset) => void;
   onDeletePreset: (id: string) => void;
@@ -245,6 +247,8 @@ function SortablePresetItem({
   dragTranslateY,
   hoveredIdx,
   reduceMotionShared,
+  snapFromIdx,
+  snapTargetIdx,
   isActive,
   onLoadPreset,
   onDeletePreset,
@@ -259,7 +263,13 @@ function SortablePresetItem({
     const hIdx = hoveredIdx.value;
 
     if (dIdx === -1) {
-      return { top: itemIndex * PRESET_ITEM_H, zIndex: 1, elevation: 1, shadowOpacity: 0 };
+      const snapTop =
+        reduceMotionShared.value &&
+        snapFromIdx.value >= 0 &&
+        snapFromIdx.value === itemIndex
+          ? snapTargetIdx.value * PRESET_ITEM_H
+          : itemIndex * PRESET_ITEM_H;
+      return { top: snapTop, zIndex: 1, elevation: 1, shadowOpacity: 0 };
     }
 
     if (itemIndex === dIdx) {
@@ -313,6 +323,10 @@ function SortablePresetItem({
       "worklet";
       const finalSlot = hoveredIdx.value;
       const fromSlot = draggingIdx.value;
+      if (reduceMotionShared.value) {
+        snapFromIdx.value = fromSlot;
+        snapTargetIdx.value = finalSlot;
+      }
       draggingIdx.value = -1;
       hoveredIdx.value = -1;
       dragTranslateY.value = 0;
@@ -436,6 +450,13 @@ function SortablePresetList({
   const draggingIdx = useSharedValue(-1);
   const dragTranslateY = useSharedValue(0);
   const hoveredIdx = useSharedValue(-1);
+  const snapFromIdx = useSharedValue(-1);
+  const snapTargetIdx = useSharedValue(-1);
+
+  useEffect(() => {
+    snapFromIdx.value = -1;
+    snapTargetIdx.value = -1;
+  }, [items]);
 
   function handlePanEnd(fromIdx: number, toIdx: number) {
     if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
@@ -468,6 +489,8 @@ function SortablePresetList({
             dragTranslateY={dragTranslateY}
             hoveredIdx={hoveredIdx}
             reduceMotionShared={reduceMotionShared}
+            snapFromIdx={snapFromIdx}
+            snapTargetIdx={snapTargetIdx}
             isActive={preset.id === activePresetId}
             onLoadPreset={(p) => { onLoadPreset(p); onDone(); }}
             onDeletePreset={onDeletePreset}
