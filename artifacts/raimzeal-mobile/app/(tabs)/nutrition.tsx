@@ -701,6 +701,8 @@ export default function NutritionScreen() {
   type TrendMetric = "calories" | "protein" | "carbs" | "fat";
 
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("calories");
+  const trendPillPulse = useRef(new Animated.Value(1)).current;
+  const trendMetricMounted = useRef(false);
 
   useEffect(() => {
     AsyncStorage.getItem(TREND_METRIC_STORAGE_KEY).then((val) => {
@@ -712,6 +714,16 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     AsyncStorage.setItem(TREND_METRIC_STORAGE_KEY, trendMetric).catch(() => {});
+    if (!trendMetricMounted.current) {
+      trendMetricMounted.current = true;
+      return;
+    }
+    trendPillPulse.setValue(1);
+    Animated.sequence([
+      Animated.timing(trendPillPulse, { toValue: 1.18, duration: 90, useNativeDriver: true }),
+      Animated.timing(trendPillPulse, { toValue: 0.93, duration: 70, useNativeDriver: true }),
+      Animated.timing(trendPillPulse, { toValue: 1, duration: 80, useNativeDriver: true }),
+    ]).start();
   }, [trendMetric]);
 
   const trendChartDays = React.useMemo(() => {
@@ -3293,14 +3305,18 @@ export default function NutritionScreen() {
                               },
                             ]}
                           >
-                            <Text
-                              style={[
-                                styles.trendMetricPillText,
-                                { color: isActive ? color : colors.mutedForeground },
-                              ]}
+                            <Animated.View
+                              style={isActive ? { transform: [{ scale: trendPillPulse }] } : undefined}
                             >
-                              {label}
-                            </Text>
+                              <Text
+                                style={[
+                                  styles.trendMetricPillText,
+                                  { color: isActive ? color : colors.mutedForeground },
+                                ]}
+                              >
+                                {label}
+                              </Text>
+                            </Animated.View>
                           </TouchableOpacity>
                         );
                       })}
