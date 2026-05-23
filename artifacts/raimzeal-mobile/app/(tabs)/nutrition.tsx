@@ -842,6 +842,14 @@ export default function NutritionScreen() {
   const historyChipHighlightAnim = useRef(new Animated.Value(0)).current;
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
+  const HISTORY_CHIP_COUNT = 8;
+  const historyChipFadeAnims = useRef(
+    Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
+  ).current;
+  const historyChipSlideAnims = useRef(
+    Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(18))
+  ).current;
+
   const [presetNudgeVisible, setPresetNudgeVisible] = useState(false);
   const presetNudgeFadeAnim = useRef(new Animated.Value(0)).current;
   const presetNudgeShownRef = useRef(false);
@@ -974,6 +982,30 @@ export default function NutritionScreen() {
       if (historyFilterHintTimerRef.current) clearTimeout(historyFilterHintTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    historyChipFadeAnims.forEach((anim) => anim.setValue(0));
+    historyChipSlideAnims.forEach((anim) => anim.setValue(18));
+    Animated.stagger(
+      35,
+      historyChipFadeAnims.map((_, i) =>
+        Animated.parallel([
+          Animated.timing(historyChipFadeAnims[i], {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.spring(historyChipSlideAnims[i], {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 160,
+            friction: 14,
+          }),
+        ])
+      )
+    ).start();
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== "history") return;
@@ -3020,48 +3052,68 @@ export default function NutritionScreen() {
                                 inputRange: [0, 1],
                                 outputRange: [0, 6],
                               }),
+                              opacity: historyChipFadeAnims[idx],
+                              transform: [{ translateX: historyChipSlideAnims[idx] }],
                             }}
                           >
                             {chip}
                           </Animated.View>
                         );
                       }
-                      return <React.Fragment key={range}>{chip}</React.Fragment>;
+                      return (
+                        <Animated.View
+                          key={range}
+                          style={{
+                            opacity: historyChipFadeAnims[idx],
+                            transform: [{ translateX: historyChipSlideAnims[idx] }],
+                          }}
+                        >
+                          {chip}
+                        </Animated.View>
+                      );
                     })}
 
                     <View style={styles.historyFilterDivider} />
 
-                    {(["all", ...MEALS] as const).map((meal) => {
+                    {(["all", ...MEALS] as const).map((meal, mealIdx) => {
+                      const chipIdx = 3 + mealIdx;
                       const label = meal === "all" ? "All meals" : meal.charAt(0).toUpperCase() + meal.slice(1);
                       const active = historyMealFilter === meal;
                       const dotColor = meal !== "all" ? MEAL_COLORS[meal as MealType] : colors.primary;
                       return (
-                        <TouchableOpacity
+                        <Animated.View
                           key={`meal-${meal}`}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setHistoryMealFilter(meal as HistoryMealFilter);
+                          style={{
+                            opacity: historyChipFadeAnims[chipIdx],
+                            transform: [{ translateX: historyChipSlideAnims[chipIdx] }],
                           }}
-                          style={[
-                            styles.historyFilterChip,
-                            active
-                              ? { backgroundColor: dotColor + "22", borderColor: dotColor }
-                              : { backgroundColor: colors.card, borderColor: colors.border },
-                          ]}
-                          activeOpacity={0.75}
                         >
-                          {meal !== "all" && (
-                            <View style={[styles.historyFilterDot, { backgroundColor: dotColor }]} />
-                          )}
-                          <Text
+                          <TouchableOpacity
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setHistoryMealFilter(meal as HistoryMealFilter);
+                            }}
                             style={[
-                              styles.historyFilterChipText,
-                              { color: active ? dotColor : colors.mutedForeground },
+                              styles.historyFilterChip,
+                              active
+                                ? { backgroundColor: dotColor + "22", borderColor: dotColor }
+                                : { backgroundColor: colors.card, borderColor: colors.border },
                             ]}
+                            activeOpacity={0.75}
                           >
-                            {label}
-                          </Text>
-                        </TouchableOpacity>
+                            {meal !== "all" && (
+                              <View style={[styles.historyFilterDot, { backgroundColor: dotColor }]} />
+                            )}
+                            <Text
+                              style={[
+                                styles.historyFilterChipText,
+                                { color: active ? dotColor : colors.mutedForeground },
+                              ]}
+                            >
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        </Animated.View>
                       );
                     })}
 
