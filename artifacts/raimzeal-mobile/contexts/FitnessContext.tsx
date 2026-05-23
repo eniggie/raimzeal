@@ -434,8 +434,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) insertWorkoutLog(session.user.id, log).catch(() => {});
           });
-          // Advance enrolled program progress whenever a workout is logged
-          advanceEnrolledProgram().catch(() => {});
+          // Advance enrolled program progress by the workout's date.
+          // The server guards against double-advancing on the same calendar day.
+          advanceEnrolledProgram(log.date).catch(() => {});
         }
         return next;
       });

@@ -61,8 +61,18 @@ enrolledProgramRouter.post("/user/enrolled-program", requireAuth, async (req, re
   }
 });
 
+const AdvanceSchema = z.object({
+  workout_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "workout_date must be YYYY-MM-DD"),
+});
+
 enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
+  const parse = AdvanceSchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
+    return;
+  }
+  const { workout_date } = parse.data;
   try {
     const { data: current, error: fetchErr } = await supabaseAdmin
       .from("enrolled_programs")
@@ -81,8 +91,16 @@ enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, r
       id: string;
       current_week: number;
       current_day: number;
+      last_advance_date: string | null;
       program_data: { durationWeeks?: number };
     };
+
+    // Idempotency guard: only advance once per calendar day
+    if (row.last_advance_date && row.last_advance_date >= workout_date) {
+      res.json({ enrollment: current, skipped: true });
+      return;
+    }
+
     const durationWeeks: number = row.program_data?.durationWeeks ?? 8;
     let newDay = row.current_day + 1;
     let newWeek = row.current_week;
@@ -94,7 +112,11 @@ enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, r
     if (newWeek > durationWeeks) {
       completedAt = new Date().toISOString();
     }
-    const updates: Record<string, unknown> = { current_day: newDay, current_week: newWeek };
+    const updates: Record<string, unknown> = {
+      current_day: newDay,
+      current_week: newWeek,
+      last_advance_date: workout_date,
+    };
     if (completedAt) updates["completed_at"] = completedAt;
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from("enrolled_programs")

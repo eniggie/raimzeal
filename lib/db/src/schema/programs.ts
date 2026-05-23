@@ -32,6 +32,8 @@ export const enrolledPrograms = pgTable("enrolled_programs", {
   currentWeek: integer("current_week").notNull().default(1),
   currentDay: integer("current_day").notNull().default(1),
   completedAt: timestamp("completed_at"),
+  /** Last YYYY-MM-DD date a workout was logged against this enrollment. Used to prevent double-advancing on the same calendar day. */
+  lastAdvanceDate: varchar("last_advance_date", { length: 10 }),
 });
 
 export type EnrolledProgramRow = typeof enrolledPrograms.$inferSelect;

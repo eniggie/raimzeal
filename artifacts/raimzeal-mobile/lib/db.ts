@@ -591,13 +591,19 @@ export async function enrollProgram(
   return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
 }
 
-export async function advanceEnrolledProgram(): Promise<EnrolledProgram | null> {
+/**
+ * Advances the enrolled program by one day for the given workout date.
+ * The server will skip the advance if the same date has already been used
+ * (idempotency guard — one advance per calendar day).
+ */
+export async function advanceEnrolledProgram(workoutDate: string): Promise<EnrolledProgram | null> {
   if (!isSupabaseConfigured) return null;
   const token = await getAccessToken();
   if (!token) return null;
   const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ workout_date: workoutDate }),
   });
   if (!res.ok) return null;
   const body = await res.json() as { enrollment?: Record<string, unknown> | null };
