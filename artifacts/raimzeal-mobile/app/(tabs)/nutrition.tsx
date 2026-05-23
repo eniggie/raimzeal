@@ -6564,6 +6564,7 @@ function HistoryMacroChip({
   const colors = useColors();
   const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
   const ratio = goal > 0 ? value / goal : 1;
+  const chipColor = value >= goal ? colors.success : colors.destructive;
   const badge: "low" | "over" | null =
     ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
@@ -6591,11 +6592,11 @@ function HistoryMacroChip({
         <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
         {badgeEl}
       </View>
-      <Text style={[styles.historyMacroChipValue, { color }]}>
+      <Text style={[styles.historyMacroChipValue, { color: chipColor }]}>
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
       </Text>
-      <View style={[styles.historyMacroChipBar, { backgroundColor: color + "30" }]}>
-        <View style={[styles.historyMacroChipBarFill, { backgroundColor: color, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
+      <View style={[styles.historyMacroChipBar, { backgroundColor: chipColor + "30" }]}>
+        <View style={[styles.historyMacroChipBarFill, { backgroundColor: chipColor, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
       </View>
     </>
   );
@@ -6604,14 +6605,14 @@ function HistoryMacroChip({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
-        style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "55" }]}
+        style={[styles.historyMacroChip, { backgroundColor: chipColor + "15", borderColor: chipColor + "55" }]}
       >
         {inner}
       </TouchableOpacity>
     );
   }
   return (
-    <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
+    <View style={[styles.historyMacroChip, { backgroundColor: chipColor + "15", borderColor: chipColor + "35" }]}>
       {inner}
     </View>
   );
