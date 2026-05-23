@@ -19,7 +19,15 @@ import { useFitness } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
 import type { WorkoutTemplate } from "@/constants/workoutTemplates";
-import { fetchPrograms, ProgramItem, ProgramWeek } from "@/lib/db";
+import {
+  fetchPrograms,
+  fetchEnrolledProgram,
+  enrollProgram,
+  unenrollProgram,
+  ProgramItem,
+  ProgramWeek,
+  type EnrolledProgram,
+} from "@/lib/db";
 import { loadCustomWorkouts, deleteCustomWorkout } from "@/lib/customWorkouts";
 
 type ActiveTab = "library" | "programs" | "history";
@@ -152,6 +160,8 @@ export default function WorkoutsScreen() {
   const [programsLoading, setProgramsLoading] = useState(false);
   const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null);
   const [customWorkouts, setCustomWorkouts] = useState<WorkoutTemplate[]>([]);
+  const [enrolledProgram, setEnrolledProgram] = useState<EnrolledProgram | null>(null);
+  const [enrollLoading, setEnrollLoading] = useState<string | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -162,8 +172,9 @@ export default function WorkoutsScreen() {
   );
 
   useEffect(() => {
-    if (activeTab === "programs" && programs.length === 0) {
-      loadPrograms();
+    if (activeTab === "programs") {
+      if (programs.length === 0) loadPrograms();
+      loadEnrolledProgram();
     }
   }, [activeTab]);
 
@@ -179,17 +190,61 @@ export default function WorkoutsScreen() {
     }
   }
 
+  async function loadEnrolledProgram() {
+    const ep = await fetchEnrolledProgram().catch(() => null);
+    setEnrolledProgram(ep);
+  }
+
   function handleStartWorkout(workoutId: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({ pathname: "/workout-player", params: { workoutId } });
   }
 
-  function handleEnrollProgram(title: string) {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  async function handleEnrollProgram(prog: ProgramItem) {
+    if (enrollLoading) return;
+    if (enrolledProgram && enrolledProgram.programId === prog.id) return;
+    const doEnroll = async () => {
+      setEnrollLoading(prog.id);
+      try {
+        const ep = await enrollProgram(prog.id, prog.title, prog);
+        setEnrolledProgram(ep);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        Alert.alert("Error", "Could not enroll. Please try again.");
+      } finally {
+        setEnrollLoading(null);
+      }
+    };
+    if (enrolledProgram) {
+      Alert.alert(
+        "Switch Program?",
+        `You're currently enrolled in "${enrolledProgram.programName}". Switch to "${prog.title}"? Your current progress will be reset.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Switch", style: "destructive", onPress: doEnroll },
+        ]
+      );
+    } else {
+      await doEnroll();
+    }
+  }
+
+  async function handleUnenroll() {
     Alert.alert(
-      "Program Started!",
-      `You have enrolled in "${title}". Follow the weekly schedule and log your workouts in the library. Ovia AI will track your progress.`,
-      [{ text: "Let's Go!", style: "default" }]
+      "Leave Program?",
+      `Stop "${enrolledProgram?.programName}"? Your progress will be saved but the program will no longer be active.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            await unenrollProgram().catch(() => {});
+            setEnrolledProgram(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ]
     );
   }
 
@@ -383,9 +438,42 @@ export default function WorkoutsScreen() {
             <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
               Structured training plans to guide your journey. Follow the weekly schedule and log your workouts.
             </Text>
+
+            {/* ── Current Program card ── */}
+            {enrolledProgram && (
+              <View style={[styles.activeProgramCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "40" }]}>
+                <View style={styles.activeProgramHeader}>
+                  <View style={[styles.activeProgramBadge, { backgroundColor: colors.primary + "20" }]}>
+                    <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
+                    <Text style={[styles.activeProgramBadgeText, { color: colors.primary }]}>ACTIVE</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleUnenroll} hitSlop={8}>
+                    <Text style={[styles.unenrollText, { color: colors.destructive }]}>Leave</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={[styles.activeProgramName, { color: colors.foreground }]} numberOfLines={1}>
+                  {enrolledProgram.programName}
+                </Text>
+                <Text style={[styles.activeProgramProgress, { color: colors.mutedForeground }]}>
+                  Week {enrolledProgram.currentWeek} of {enrolledProgram.programData?.durationWeeks ?? "?"} · Day {enrolledProgram.currentDay} of 5
+                </Text>
+                {(() => {
+                  const totalDays = (enrolledProgram.programData?.durationWeeks ?? 8) * 5;
+                  const doneDays = (enrolledProgram.currentWeek - 1) * 5 + enrolledProgram.currentDay - 1;
+                  const pct = Math.min(doneDays / totalDays, 1);
+                  return (
+                    <View style={[styles.progressBarTrack, { backgroundColor: colors.border }]}>
+                      <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${Math.round(pct * 100)}%` as unknown as number }]} />
+                    </View>
+                  );
+                })()}
+              </View>
+            )}
+
             {programs.map((prog) => {
               const levelColor = LEVEL_COLORS[prog.level];
               const isExpanded = expandedProgramId === prog.id;
+              const isActive = enrolledProgram?.programId === prog.id;
               return (
                 <View
                   key={prog.id}
@@ -538,14 +626,21 @@ export default function WorkoutsScreen() {
                   )}
 
                   <TouchableOpacity
-                    onPress={() => handleEnrollProgram(prog.title)}
+                    onPress={() => handleEnrollProgram(prog)}
+                    disabled={isActive || enrollLoading === prog.id}
                     style={[
                       styles.enrollBtn,
-                      { backgroundColor: levelColor },
+                      { backgroundColor: isActive ? colors.primary + "60" : levelColor },
                     ]}
                   >
-                    <Ionicons name="rocket-outline" size={16} color="#fff" />
-                    <Text style={styles.enrollBtnText}>Start Program</Text>
+                    {enrollLoading === prog.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name={isActive ? "checkmark-circle-outline" : "rocket-outline"} size={16} color="#fff" />
+                    )}
+                    <Text style={styles.enrollBtnText}>
+                      {isActive ? "Active" : "Start Program"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -765,4 +860,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buildBtnText: { flex: 1, gap: 3 },
+  activeProgramCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 6,
+    marginBottom: 4,
+  },
+  activeProgramHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  activeProgramBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  activeProgramBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  unenrollText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  activeProgramName: {
+    fontSize: 16,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  activeProgramProgress: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginTop: 2,
+  },
+  progressBarFill: {
+    height: 6,
+    borderRadius: 3,
+  },
 });

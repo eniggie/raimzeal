@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, integer, json, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, json, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -21,3 +21,17 @@ export const insertProgramSchema = createInsertSchema(programs).omit({
 });
 export type InsertProgram = z.infer<typeof insertProgramSchema>;
 export type Program = typeof programs.$inferSelect;
+
+export const enrolledPrograms = pgTable("enrolled_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  programId: varchar("program_id").notNull(),
+  programName: text("program_name").notNull(),
+  programData: jsonb("program_data").notNull(),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  currentWeek: integer("current_week").notNull().default(1),
+  currentDay: integer("current_day").notNull().default(1),
+  completedAt: timestamp("completed_at"),
+});
+
+export type EnrolledProgramRow = typeof enrolledPrograms.$inferSelect;

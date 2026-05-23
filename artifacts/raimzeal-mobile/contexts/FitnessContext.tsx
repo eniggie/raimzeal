@@ -37,6 +37,7 @@ import {
   upsertUserPreferences,
   upsertMealLog,
   getApiBase,
+  advanceEnrolledProgram,
   type UserPreferences,
 } from "@/lib/db";
 
@@ -433,6 +434,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) insertWorkoutLog(session.user.id, log).catch(() => {});
           });
+          // Advance enrolled program progress whenever a workout is logged
+          advanceEnrolledProgram().catch(() => {});
         }
         return next;
       });

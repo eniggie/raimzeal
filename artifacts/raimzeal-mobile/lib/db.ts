@@ -535,6 +535,85 @@ export async function upsertUserPreferences(
     .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
 }
 
+// ─── Program Enrollment ─────────────────────────────────────────────────────
+
+export interface EnrolledProgram {
+  id: string;
+  programId: string;
+  programName: string;
+  programData: ProgramItem;
+  startedAt: string;
+  currentWeek: number;
+  currentDay: number;
+  completedAt: string | null;
+}
+
+function mapEnrollmentRow(r: Record<string, unknown>): EnrolledProgram {
+  return {
+    id: r["id"] as string,
+    programId: r["program_id"] as string,
+    programName: r["program_name"] as string,
+    programData: r["program_data"] as ProgramItem,
+    startedAt: r["started_at"] as string,
+    currentWeek: r["current_week"] as number,
+    currentDay: r["current_day"] as number,
+    completedAt: (r["completed_at"] as string | null) ?? null,
+  };
+}
+
+export async function fetchEnrolledProgram(): Promise<EnrolledProgram | null> {
+  if (!isSupabaseConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
+  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { enrollment?: Record<string, unknown> | null };
+  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+}
+
+export async function enrollProgram(
+  programId: string,
+  programName: string,
+  programData: ProgramItem
+): Promise<EnrolledProgram | null> {
+  if (!isSupabaseConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
+  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ program_id: programId, program_name: programName, program_data: programData }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { enrollment?: Record<string, unknown> };
+  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+}
+
+export async function advanceEnrolledProgram(): Promise<EnrolledProgram | null> {
+  if (!isSupabaseConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
+  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { enrollment?: Record<string, unknown> | null };
+  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+}
+
+export async function unenrollProgram(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const token = await getAccessToken();
+  if (!token) return;
+  await fetch(`${getApiBase()}/user/enrolled-program`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // ─── Programs ───────────────────────────────────────────────────────────────
 
 export interface ProgramWeek {

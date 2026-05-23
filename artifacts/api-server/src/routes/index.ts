@@ -25,6 +25,7 @@ import bodyMeasurementsRouter from "./bodyMeasurements";
 import waterIntakeRouter from "./waterIntake";
 import scheduledWorkoutsRouter from "./scheduledWorkouts";
 import userProfileRouter from "./userProfile";
+import enrolledProgramRouter from "./enrolledProgram";
 
 const router: IRouter = Router();
 
@@ -53,6 +54,7 @@ router.use(bodyMeasurementsRouter);
 router.use(waterIntakeRouter);
 router.use(scheduledWorkoutsRouter);
 router.use(userProfileRouter);
+router.use(enrolledProgramRouter);
 router.use(appRouter);
 
 export default router;
