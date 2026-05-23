@@ -541,6 +541,227 @@ function DraggablePresetItem({
   );
 }
 
+function formatCustomRangeLabel(start: string, end: string): string {
+  const s = new Date(start + "T12:00:00");
+  const e = new Date(end + "T12:00:00");
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  if (start === end) return `${MONTHS[s.getMonth()]} ${s.getDate()}`;
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+    return `${MONTHS[s.getMonth()]} ${s.getDate()}\u2013${e.getDate()}`;
+  }
+  return `${MONTHS[s.getMonth()]} ${s.getDate()} \u2013 ${MONTHS[e.getMonth()]} ${e.getDate()}`;
+}
+
+interface CalendarPickerSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  markedDates: Set<string>;
+  onRangeSelect: (start: string, end: string) => void;
+  initialStart?: string | null;
+  initialEnd?: string | null;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function CalendarPickerSheet({
+  visible,
+  onClose,
+  markedDates,
+  onRangeSelect,
+  initialStart,
+  initialEnd,
+  colors,
+}: CalendarPickerSheetProps) {
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const { width: screenWidth } = useWindowDimensions();
+  const cellSize = Math.floor((screenWidth - 32) / 7);
+
+  const [viewYear, setViewYear] = React.useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = React.useState(today.getMonth());
+  const [pendingStart, setPendingStart] = React.useState<string | null>(null);
+  const [pendingEnd, setPendingEnd] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (visible) {
+      const base = initialStart ? new Date(initialStart + "T12:00:00") : new Date();
+      setViewYear(base.getFullYear());
+      setViewMonth(base.getMonth());
+      setPendingStart(initialStart ?? null);
+      setPendingEnd(initialEnd ?? null);
+    }
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (viewYear > today.getFullYear() || (viewYear === today.getFullYear() && viewMonth >= today.getMonth())) return;
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+  }
+
+  function handleDayPress(ds: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!pendingStart || pendingEnd !== null) {
+      setPendingStart(ds);
+      setPendingEnd(null);
+    } else if (ds <= pendingStart) {
+      setPendingStart(ds);
+      setPendingEnd(null);
+    } else {
+      setPendingEnd(ds);
+    }
+  }
+
+  function handleApply() {
+    if (!pendingStart) return;
+    const end = pendingEnd ?? pendingStart;
+    onRangeSelect(pendingStart, end);
+    onClose();
+  }
+
+  function padZ(n: number) { return n.toString().padStart(2, "0"); }
+  function dayStr(d: number) { return `${viewYear}-${padZ(viewMonth + 1)}-${padZ(d)}`; }
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  const startDow = firstOfMonth.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const monthLabel = `${MONTHS[viewMonth]} ${viewYear}`;
+  const canGoNext = !(viewYear === today.getFullYear() && viewMonth === today.getMonth());
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={calStyles.overlay}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <View style={[calStyles.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[calStyles.handle, { backgroundColor: colors.border }]} />
+
+          <View style={calStyles.monthNav}>
+            <TouchableOpacity onPress={prevMonth} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="chevron-back" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[calStyles.monthLabel, { color: colors.foreground }]}>{monthLabel}</Text>
+            <TouchableOpacity
+              onPress={nextMonth}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ opacity: canGoNext ? 1 : 0.25 }}
+            >
+              <Ionicons name="chevron-forward" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={calStyles.dowRow}>
+            {["Su","Mo","Tu","We","Th","Fr","Sa"].map((d) => (
+              <Text key={d} style={[calStyles.dowText, { color: colors.mutedForeground, width: cellSize }]}>{d}</Text>
+            ))}
+          </View>
+
+          <View style={calStyles.grid}>
+            {cells.map((cell, idx) => {
+              if (cell === null) return <View key={`e${idx}`} style={{ width: cellSize, height: cellSize }} />;
+              const ds = dayStr(cell);
+              const isFuture = ds > todayStr;
+              const isStart = pendingStart === ds;
+              const isEnd = pendingEnd === ds;
+              const isInRange = !!(pendingStart && pendingEnd && ds > pendingStart && ds < pendingEnd);
+              const isSelected = isStart || isEnd;
+              const isToday = ds === todayStr;
+              const hasLog = markedDates.has(ds);
+              return (
+                <TouchableOpacity
+                  key={ds}
+                  style={[
+                    calStyles.cell,
+                    { width: cellSize, height: cellSize },
+                    isSelected && { backgroundColor: colors.primary, borderRadius: 8 },
+                    isInRange && { backgroundColor: colors.primary + "28" },
+                    isToday && !isSelected && { borderRadius: 8, borderWidth: 1, borderColor: colors.primary + "80" },
+                  ]}
+                  onPress={() => !isFuture && handleDayPress(ds)}
+                  activeOpacity={isFuture ? 1 : 0.75}
+                  disabled={isFuture}
+                >
+                  <Text style={[
+                    calStyles.dayNum,
+                    { color: isFuture ? colors.border : colors.foreground },
+                    isSelected && { color: colors.primaryForeground },
+                    isToday && !isSelected && { color: colors.primary },
+                  ]}>
+                    {cell}
+                  </Text>
+                  {hasLog && (
+                    <View style={[calStyles.logDot, {
+                      backgroundColor: isSelected ? colors.primaryForeground + "aa" : colors.primary,
+                    }]} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[calStyles.hint, { color: colors.mutedForeground }]}>
+            {!pendingStart
+              ? "Tap a day to select, or pick two days for a range"
+              : !pendingEnd
+              ? "Now tap the end date for your range"
+              : `Selected: ${formatCustomRangeLabel(pendingStart, pendingEnd)}`}
+          </Text>
+
+          <View style={calStyles.actionRow}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={[calStyles.btn, calStyles.cancelBtn, { borderColor: colors.border }]}
+            >
+              <Text style={[calStyles.btnText, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleApply}
+              disabled={!pendingStart}
+              style={[calStyles.btn, calStyles.applyBtn, {
+                backgroundColor: pendingStart ? colors.primary : colors.muted,
+                opacity: pendingStart ? 1 : 0.5,
+              }]}
+            >
+              <Text style={[calStyles.btnText, {
+                color: pendingStart ? colors.primaryForeground : colors.mutedForeground,
+              }]}>
+                Apply
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 10 },
+  handle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 14 },
+  monthNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, marginBottom: 10 },
+  monthLabel: { fontSize: 16, fontFamily: "SpaceGrotesk_700Bold" },
+  dowRow: { flexDirection: "row", marginBottom: 2 },
+  dowText: { textAlign: "center", fontSize: 11, fontFamily: "Inter_500Medium", paddingVertical: 4 },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  cell: { alignItems: "center", justifyContent: "center" },
+  dayNum: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  logDot: { width: 4, height: 4, borderRadius: 2, marginTop: 1 },
+  hint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 14, marginBottom: 16 },
+  actionRow: { flexDirection: "row", gap: 12 },
+  btn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  cancelBtn: { borderWidth: 1 },
+  applyBtn: {},
+  btnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+});
+
 export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -621,11 +842,22 @@ export default function NutritionScreen() {
       });
   }, [mealLogs]);
 
-  type HistoryDateRange = "7d" | "30d" | "all";
+  const markedDates = React.useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const s = new Set<string>();
+    for (const log of mealLogs) {
+      if (log.date !== today) s.add(log.date);
+    }
+    return s;
+  }, [mealLogs]);
+
+  type HistoryDateRange = "7d" | "30d" | "all" | "custom";
   type HistoryMealFilter = MealType | "all";
 
   const [historyDateRange, setHistoryDateRange] = useState<HistoryDateRange>("all");
   const [historyMealFilter, setHistoryMealFilter] = useState<HistoryMealFilter>("all");
+  const [customDateRange, setCustomDateRange] = useState<{ start: string; end: string } | null>(null);
+  const [calendarSheetVisible, setCalendarSheetVisible] = useState(false);
   const [macroAlert, setMacroAlert] = useState<{ cal: number; prot: number; carb: number; fat: number } | null>(null);
   const macroAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -677,6 +909,9 @@ export default function NutritionScreen() {
 
     return historyDays
       .filter(({ date }) => {
+        if (historyDateRange === "custom" && customDateRange) {
+          return date >= customDateRange.start && date <= customDateRange.end;
+        }
         if (!cutoff) return true;
         return new Date(date + "T12:00:00").getTime() >= cutoff;
       })
@@ -697,7 +932,7 @@ export default function NutritionScreen() {
         return { date, logs: filteredLogs, totals: filteredTotals };
       })
       .filter(({ logs }) => logs.length > 0);
-  }, [historyDays, historyDateRange, historyMealFilter]);
+  }, [historyDays, historyDateRange, historyMealFilter, customDateRange]);
 
   const firstTodayLogId = React.useMemo(() => {
     for (const meal of MEALS) {
@@ -1401,7 +1636,7 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (!historyFiltersHydratedRef.current) return;
-    if (historyDateRange === "all") {
+    if (historyDateRange === "all" || historyDateRange === "custom") {
       AsyncStorage.removeItem(HISTORY_DATE_RANGE_KEY).catch(() => {});
     } else {
       AsyncStorage.setItem(HISTORY_DATE_RANGE_KEY, historyDateRange).catch(() => {});
@@ -3224,6 +3459,53 @@ export default function NutritionScreen() {
                       );
                     })}
 
+                    {/* Custom date range chip — visible when a custom range is active */}
+                    {historyDateRange === "custom" && customDateRange && (
+                      <View style={[
+                        styles.historyFilterChip,
+                        { backgroundColor: colors.primary + "18", borderColor: colors.primary, flexDirection: "row", alignItems: "center", gap: 4 },
+                      ]}>
+                        <Ionicons name="calendar" size={12} color={colors.primary} />
+                        <Text style={[styles.historyFilterChipText, { color: colors.primary }]}>
+                          {formatCustomRangeLabel(customDateRange.start, customDateRange.end)}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setHistoryDateRange("7d");
+                            setCustomDateRange(null);
+                          }}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons name="close" size={13} color={colors.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Calendar icon button — opens date picker */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setCalendarSheetVisible(true);
+                      }}
+                      style={[
+                        styles.historyFilterChip,
+                        {
+                          backgroundColor: historyDateRange === "custom" ? colors.primary + "18" : colors.card,
+                          borderColor: historyDateRange === "custom" ? colors.primary : colors.border,
+                          paddingHorizontal: 9,
+                        },
+                      ]}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={15}
+                        color={historyDateRange === "custom" ? colors.primary : colors.mutedForeground}
+                      />
+                    </TouchableOpacity>
+
                     <View style={styles.historyFilterDivider} />
 
                     {(["all", ...MEALS] as const).map((meal, mealIdx) => {
@@ -3285,6 +3567,7 @@ export default function NutritionScreen() {
                           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                           setHistoryDateRange("all");
                           setHistoryMealFilter("all");
+                          setCustomDateRange(null);
                         }}
                         style={[
                           styles.historyFilterChip,
@@ -4949,6 +5232,21 @@ export default function NutritionScreen() {
           />
         )}
       </Modal>
+
+      {/* Calendar Date Picker Sheet */}
+      <CalendarPickerSheet
+        visible={calendarSheetVisible}
+        onClose={() => setCalendarSheetVisible(false)}
+        markedDates={markedDates}
+        onRangeSelect={(start, end) => {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setCustomDateRange({ start, end });
+          setHistoryDateRange("custom");
+        }}
+        initialStart={customDateRange?.start}
+        initialEnd={customDateRange?.end}
+        colors={colors}
+      />
     </View>
   );
 }
