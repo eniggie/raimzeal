@@ -1098,6 +1098,10 @@ export default function NutritionScreen() {
   const restoredAnim = useRef(new Animated.Value(0)).current;
   const restoredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [logTodayName, setLogTodayName] = useState<string | null>(null);
+  const logTodayAnim = useRef(new Animated.Value(0)).current;
+  const logTodayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { toggleFavoriteWithToast, isFavorite, starToastElement } = useToggleFavorite({
     bottomOffset: undoMeal !== null ? insets.bottom + 72 : insets.bottom + 16,
   });
@@ -1588,6 +1592,33 @@ export default function NutritionScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     removeMealLog(meal.id);
     showUndoToast(meal);
+  }
+
+  function handleLogToday(log: MealLog) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const today = new Date().toISOString().split("T")[0];
+    addMealLog({
+      id: Date.now().toString(),
+      date: today,
+      name: log.name,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+      fat: log.fat,
+      mealType: log.mealType,
+      amountGrams: log.amountGrams,
+      nutrients100g: log.nutrients100g,
+    });
+    if (logTodayTimerRef.current) clearTimeout(logTodayTimerRef.current);
+    setLogTodayName(log.name);
+    logTodayAnim.setValue(0);
+    Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    logTodayTimerRef.current = setTimeout(() => {
+      Animated.timing(logTodayAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setLogTodayName(null);
+      });
+      logTodayTimerRef.current = null;
+    }, 2500);
   }
 
   useEffect(() => {
@@ -3881,6 +3912,7 @@ export default function NutritionScreen() {
                                   isFirst={log.id === firstHistoryLogId}
                                   onAddFood={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
                                   onDelete={handleMealDelete}
+                                  onLogToday={handleLogToday}
                                 />
                               ))}
                             </View>
@@ -5094,6 +5126,33 @@ export default function NutritionScreen() {
         </Animated.View>
       )}
 
+      {logTodayName !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: logTodayAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: logTodayAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle-outline" size={16} color="#22c55e" style={{ marginRight: 4 }} />
+          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+            "{logTodayName}" logged for today
+          </Text>
+        </Animated.View>
+      )}
+
       {starToastElement}
 
       {deletedPreset !== null && (
@@ -5333,7 +5392,7 @@ function MacroBar({
   );
 }
 
-function HistoryFoodRow({ log, onAddFood, onDelete, isFirst }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; isFirst?: boolean }) {
+function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean }) {
   const colors = useColors();
   const { updateMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
@@ -5484,16 +5543,31 @@ function HistoryFoodRow({ log, onAddFood, onDelete, isFirst }: { log: MealLog; o
     onDelete(log);
   }
 
+  function handleLogTodayPress() {
+    swipeableRef.current?.close();
+    onLogToday(log);
+  }
+
   function renderRightActions() {
     return (
-      <TouchableOpacity
-        onPress={handleDelete}
-        activeOpacity={0.85}
-        style={[styles.deleteAction, { backgroundColor: "#ef4444" }]}
-      >
-        <Ionicons name="trash-outline" size={20} color="#fff" />
-        <Text style={styles.deleteActionText}>Delete</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: "row" }}>
+        <TouchableOpacity
+          onPress={handleLogTodayPress}
+          activeOpacity={0.85}
+          style={[styles.deleteAction, { backgroundColor: "#22c55e" }]}
+        >
+          <Ionicons name="add-circle-outline" size={20} color="#fff" />
+          <Text style={styles.deleteActionText}>Log Today</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleDelete}
+          activeOpacity={0.85}
+          style={[styles.deleteAction, { backgroundColor: "#ef4444" }]}
+        >
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+          <Text style={styles.deleteActionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
