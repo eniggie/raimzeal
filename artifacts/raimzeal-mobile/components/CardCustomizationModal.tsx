@@ -1179,6 +1179,7 @@ export default function CardCustomizationModal({
   const cardChipFadeAnim = useRef(new Animated.Value(0)).current;
   const cardChipSlideAnim = useRef(new Animated.Value(6)).current;
   const cardChipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showCardChip, setShowCardChip] = useState(false);
 
   useEffect(() => {
     if (cardChipTimerRef.current !== null) {
@@ -1189,10 +1190,10 @@ export default function CardCustomizationModal({
     cardChipSlideAnim.stopAnimation();
 
     if (!restoredFromStorage) {
-      cardChipFadeAnim.setValue(0);
-      cardChipSlideAnim.setValue(6);
       return;
     }
+
+    setShowCardChip(true);
 
     if (reduceMotion) {
       cardChipFadeAnim.setValue(1);
@@ -1252,6 +1253,7 @@ export default function CardCustomizationModal({
     cardChipSlideAnim.stopAnimation();
     if (reduceMotion) {
       cardChipFadeAnim.setValue(0);
+      setShowCardChip(false);
     } else {
       Animated.parallel([
         Animated.timing(cardChipFadeAnim, {
@@ -1264,7 +1266,9 @@ export default function CardCustomizationModal({
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        setShowCardChip(false);
+      });
     }
   }
 
@@ -2100,6 +2104,7 @@ export default function CardCustomizationModal({
     setBackgroundPhotoCrop(null);
     setBackgroundPhotoDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
     resetZoomPosition();
+    dismissCardChip();
   }
 
   function openPresetPreview(preset: CardPreset, originRect?: PresetOriginRect) {
@@ -2928,7 +2933,7 @@ export default function CardCustomizationModal({
                   />
                 </View>
               </Animated.View>
-              {restoredFromStorage && (
+              {showCardChip && (
                 <Animated.View
                   style={[
                     styles.cardChip,
