@@ -6,12 +6,13 @@ export const favouriteFoods = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     userId: varchar("user_id").notNull(),
+    foodId: varchar("food_id").notNull().default(sql`gen_random_uuid()`),
     foodName: text("food_name").notNull(),
     foodData: jsonb("food_data").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (table) => [unique("uniq_fav_food_per_user").on(table.userId, table.foodName)]
+  (table) => [unique("uniq_fav_food_per_user").on(table.userId, table.foodId)]
 );
 
 export type FavouriteFoodRow = typeof favouriteFoods.$inferSelect;

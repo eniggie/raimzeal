@@ -7,13 +7,14 @@ const favouriteFoodsRouter = Router();
 
 interface FavRow {
   id: string;
+  food_id: string;
   food_data: Record<string, unknown>;
   sort_order: number;
 }
 
 interface FavIdRow {
   id: string;
-  food_name: string;
+  food_id: string;
 }
 
 favouriteFoodsRouter.get("/user/favourite-foods", requireAuth, async (req, res) => {
@@ -21,13 +22,14 @@ favouriteFoodsRouter.get("/user/favourite-foods", requireAuth, async (req, res) 
   try {
     const { data, error } = await supabaseAdmin
       .from("favourite_foods")
-      .select("id, food_data, sort_order")
+      .select("id, food_id, food_data, sort_order")
       .eq("user_id", userId)
       .order("sort_order", { ascending: true });
     if (error) throw error;
     const foods = (data as FavRow[] ?? []).map((r) => ({
       ...r.food_data,
       _serverId: r.id,
+      _foodId: r.food_id,
     }));
     res.json({ foods });
   } catch (err) {
@@ -43,17 +45,27 @@ favouriteFoodsRouter.post("/user/favourite-foods", requireAuth, async (req, res)
     res.status(400).json({ error: "food with a name field is required." });
     return;
   }
+  // Strip server-only metadata before storing in food_data JSONB
+  const { _serverId, _foodId, ...foodData } = food as Record<string, unknown>;
+  const foodId = typeof _foodId === "string" && _foodId ? _foodId : undefined;
   try {
     const { data, error } = await supabaseAdmin
       .from("favourite_foods")
       .upsert(
-        { user_id: userId, food_name: food.name as string, food_data: food, sort_order: 0 },
-        { onConflict: "user_id,food_name" }
+        {
+          user_id: userId,
+          ...(foodId ? { food_id: foodId } : {}),
+          food_name: food.name as string,
+          food_data: foodData,
+          sort_order: 0,
+        },
+        { onConflict: "user_id,food_id" }
       )
-      .select("id")
+      .select("id, food_id")
       .single();
     if (error) throw error;
-    res.json({ success: true, id: (data as { id: string }).id });
+    const row = data as { id: string; food_id: string };
+    res.json({ success: true, id: row.id, foodId: row.food_id });
   } catch (err) {
     logger.error({ err }, "POST /user/favourite-foods error");
     res.status(500).json({ error: "Could not save favourite food." });
@@ -74,40 +86,48 @@ favouriteFoodsRouter.put("/user/favourite-foods/reorder", requireAuth, async (re
       return;
     }
 
-    const rows = foods.map((food, i) => ({
-      user_id: userId,
-      food_name: food.name as string,
-      food_data: food,
-      sort_order: i,
-    }));
-    // Upsert preserves existing ids (no id change on sort_order update)
+    const rows = foods.map((food, i) => {
+      const { _serverId, _foodId, ...foodData } = food as Record<string, unknown>;
+      const foodId = typeof _foodId === "string" && _foodId ? _foodId : undefined;
+      return {
+        user_id: userId,
+        ...(foodId ? { food_id: foodId } : {}),
+        food_name: food.name as string,
+        food_data: foodData,
+        sort_order: i,
+      };
+    });
+    // Upsert preserves existing row ids; conflict on (user_id, food_id)
     const { error } = await supabaseAdmin
       .from("favourite_foods")
-      .upsert(rows, { onConflict: "user_id,food_name" });
+      .upsert(rows, { onConflict: "user_id,food_id" });
     if (error) throw error;
 
     // Delete orphan rows no longer in the new list
     const { data: existing } = await supabaseAdmin
       .from("favourite_foods")
-      .select("id, food_name")
+      .select("id, food_id")
       .eq("user_id", userId);
-    const newNames = new Set(foods.map((f) => f.name as string));
+    const newFoodIds = new Set(
+      foods.map((f) => (f as Record<string, unknown>)._foodId as string).filter(Boolean)
+    );
     const orphanIds = (existing as FavIdRow[] ?? [])
-      .filter((r) => !newNames.has(r.food_name))
+      .filter((r) => !newFoodIds.has(r.food_id))
       .map((r) => r.id);
     if (orphanIds.length > 0) {
       await supabaseAdmin.from("favourite_foods").delete().in("id", orphanIds);
     }
 
-    // Return updated list with server ids so client can refresh _serverId cache
+    // Return updated list with server ids for client _serverId/_foodId refresh
     const { data: updated } = await supabaseAdmin
       .from("favourite_foods")
-      .select("id, food_data")
+      .select("id, food_id, food_data")
       .eq("user_id", userId)
       .order("sort_order", { ascending: true });
-    const updatedFoods = (updated as { id: string; food_data: Record<string, unknown> }[] ?? []).map((r) => ({
+    const updatedFoods = (updated as { id: string; food_id: string; food_data: Record<string, unknown> }[] ?? []).map((r) => ({
       ...r.food_data,
       _serverId: r.id,
+      _foodId: r.food_id,
     }));
     res.json({ success: true, foods: updatedFoods });
   } catch (err) {

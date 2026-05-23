@@ -114,6 +114,9 @@ export type FavoriteFood = Omit<MealLog, "id" | "date"> & {
   servingLabel?: string;
   /** Server-assigned UUID injected from API on GET/POST. Used for reliable id-based DELETE. */
   _serverId?: string;
+  /** Client-generated stable UUID created when the food is first pinned. Used as the
+   *  server conflict key so two foods with the same display name don't overwrite each other. */
+  _foodId?: string;
 };
 
 /** Matches web app store.ts AppState (subset relevant to mobile) */
@@ -170,14 +173,22 @@ interface FitnessContextType extends AppState {
 const STORAGE_KEY = "raimzeal_fitness_data";
 const PENDING_REMOVES_KEY = "raimzeal_pending_fav_removes";
 
-type PendingRemove = { serverId: string; foodName: string };
+/** Pending-remove entries are scoped by userId so account switching never corrupts the queue. */
+type PendingRemove = { serverId: string; foodId: string; userId: string };
 
-async function queuePendingRemove(serverId: string, foodName: string): Promise<void> {
+function generateFoodId(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+async function queuePendingRemove(serverId: string, foodId: string, userId: string): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(PENDING_REMOVES_KEY);
     const existing: PendingRemove[] = raw ? (JSON.parse(raw) as PendingRemove[]) : [];
     if (!existing.some((r) => r.serverId === serverId)) {
-      await AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify([...existing, { serverId, foodName }]));
+      await AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify([...existing, { serverId, foodId, userId }]));
     }
   } catch {}
 }
@@ -283,17 +294,19 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Process pending removes: foods the user removed locally but whose DELETE may have failed
+        // Process pending removes: foods the user removed locally but whose DELETE may have failed.
+        // Entries are scoped by userId — account switching cannot corrupt this queue.
         const pendingRemoves: PendingRemove[] = (() => {
           try { return pendingRemovesRaw ? (JSON.parse(pendingRemovesRaw) as PendingRemove[]) : []; }
           catch { return []; }
         })();
-        const pendingRemoveNames = new Set(pendingRemoves.map((r) => r.foodName));
+        const myPendingRemoves = pendingRemoves.filter((r) => r.userId === userId);
+        const pendingRemoveFoodIds = new Set(myPendingRemoves.map((r) => r.foodId));
 
         // Retry pending removes in background (best-effort; queue cleared on success)
-        pendingRemoves
-          .filter((r) => favouritesRemote.some((f) => f.name === r.foodName))
-          .forEach(({ serverId, foodName }) => {
+        myPendingRemoves
+          .filter((r) => favouritesRemote.some((f) => f._foodId === r.foodId))
+          .forEach(({ serverId, foodId }) => {
             fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(serverId)}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${session.access_token}` },
@@ -301,18 +314,22 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               if (res.ok) {
                 AsyncStorage.getItem(PENDING_REMOVES_KEY).then((raw) => {
                   const cur: PendingRemove[] = raw ? (JSON.parse(raw) as PendingRemove[]) : [];
-                  AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify(cur.filter((r) => r.foodName !== foodName))).catch(() => {});
+                  AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify(cur.filter((r) => r.foodId !== foodId || r.userId !== userId))).catch(() => {});
                 }).catch(() => {});
               }
             }).catch(() => {});
           });
 
-        // True merge: local-only foods (not yet on server) + filtered server foods (pending removes excluded)
-        // Remote wins on conflict (same food name present both locally and on server).
-        const filteredServerFoods = favouritesRemote.filter((f) => !pendingRemoveNames.has(f.name));
+        // True merge: local-only foods (not yet on server) + filtered server foods (pending removes excluded).
+        // Remote wins on conflict. _foodId is the primary match key; falls back to name for pre-migration entries.
+        const filteredServerFoods = favouritesRemote.filter((f) => !f._foodId || !pendingRemoveFoodIds.has(f._foodId));
         const hydratedFavs: FavoriteFood[] = hydrated.favoriteFoods ?? [];
+        const remoteByFoodId = new Map(filteredServerFoods.filter((f) => f._foodId).map((f) => [f._foodId!, f]));
         const remoteByName = new Map(filteredServerFoods.map((f) => [f.name, f]));
-        const localOnlyFoods = hydratedFavs.filter((lf) => !remoteByName.has(lf.name));
+        const localOnlyFoods = hydratedFavs.filter((lf) => {
+          if (lf._foodId) return !remoteByFoodId.has(lf._foodId);
+          return !remoteByName.has(lf.name); // Fallback for entries without _foodId
+        });
         const mergedFavs = [...localOnlyFoods, ...filteredServerFoods];
 
         setState((prev) => {
@@ -349,19 +366,22 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           };
         });
 
-        // Retry failed adds: push local-only foods to server and cache their server ids
+        // Retry failed adds: push local-only foods to server and cache _serverId + _foodId on success
         localOnlyFoods.forEach((f) => {
+          const foodWithId: FavoriteFood = f._foodId ? f : { ...f, _foodId: generateFoodId() };
           fetch(`${getApiBase()}/user/favourite-foods`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ food: f }),
+            body: JSON.stringify({ food: foodWithId }),
           }).then(async (res) => {
             if (res.ok) {
-              const body = await res.json() as { id?: string };
+              const body = await res.json() as { id?: string; foodId?: string };
               if (body.id) {
                 setState((prev) => {
                   const favoriteFoods = prev.favoriteFoods.map((ff) =>
-                    ff.name === f.name ? { ...ff, _serverId: body.id } : ff
+                    ff.name === f.name
+                      ? { ...ff, _serverId: body.id, _foodId: body.foodId ?? ff._foodId ?? foodWithId._foodId }
+                      : ff
                   );
                   const next = { ...prev, favoriteFoods };
                   persist(next);
@@ -535,12 +555,21 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     (food: FavoriteFood) => {
       let capturedExists = false;
       let capturedServerId: string | undefined;
+      let capturedFoodId: string | undefined;
+      let capturedNewFood: FavoriteFood | undefined;
       setState((prev) => {
         capturedExists = prev.favoriteFoods.some((f) => f.name === food.name);
-        capturedServerId = (prev.favoriteFoods.find((f) => f.name === food.name) as (FavoriteFood & { _serverId?: string }) | undefined)?._serverId;
-        const favoriteFoods = capturedExists
-          ? prev.favoriteFoods.filter((f) => f.name !== food.name)
-          : [food, ...prev.favoriteFoods];
+        const existingFood = prev.favoriteFoods.find((f) => f.name === food.name);
+        capturedServerId = existingFood?._serverId;
+        capturedFoodId = existingFood?._foodId;
+        let favoriteFoods: FavoriteFood[];
+        if (capturedExists) {
+          favoriteFoods = prev.favoriteFoods.filter((f) => f.name !== food.name);
+        } else {
+          // Generate a stable _foodId on first pin; reuse if already present
+          capturedNewFood = { ...food, _foodId: food._foodId ?? generateFoodId() };
+          favoriteFoods = [capturedNewFood, ...prev.favoriteFoods];
+        }
         const next = { ...prev, favoriteFoods };
         persist(next);
         return next;
@@ -548,33 +577,36 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if (!isSupabaseConfigured) return;
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session?.access_token) return;
+        const uid = session.user?.id ?? "";
         if (capturedExists) {
-          // Delete by server id; food without a server id was never synced — no action needed
-          if (capturedServerId) {
+          // Delete by server id; food without a server id was never synced — no server action needed
+          if (capturedServerId && capturedFoodId) {
             fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(capturedServerId)}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${session.access_token}` },
             }).then((res) => {
               if (!res.ok) {
-                void queuePendingRemove(capturedServerId!, food.name);
+                void queuePendingRemove(capturedServerId!, capturedFoodId!, uid);
               }
             }).catch(() => {
-              void queuePendingRemove(capturedServerId!, food.name);
+              void queuePendingRemove(capturedServerId!, capturedFoodId!, uid);
             });
           }
-        } else {
-          // Add: POST and persist the server id for reliable future deletes
+        } else if (capturedNewFood) {
+          // Add: POST with stable _foodId; cache server id for reliable future deletes
           fetch(`${getApiBase()}/user/favourite-foods`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ food }),
+            body: JSON.stringify({ food: capturedNewFood }),
           }).then(async (res) => {
             if (res.ok) {
-              const body = await res.json() as { id?: string };
+              const body = await res.json() as { id?: string; foodId?: string };
               if (body.id) {
                 setState((prev) => {
                   const favoriteFoods = prev.favoriteFoods.map((ff) =>
-                    ff.name === food.name ? { ...ff, _serverId: body.id } : ff
+                    ff.name === food.name
+                      ? { ...ff, _serverId: body.id, _foodId: body.foodId ?? ff._foodId }
+                      : ff
                   );
                   const next = { ...prev, favoriteFoods };
                   persist(next);
