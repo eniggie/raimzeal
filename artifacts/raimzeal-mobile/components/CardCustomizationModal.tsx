@@ -2931,6 +2931,7 @@ export default function CardCustomizationModal({
                   >
                     <Ionicons name="time-outline" size={11} color="#fff" />
                     <Text style={styles.cardChipText}>Last used</Text>
+                    <Ionicons name="close" size={10} color="rgba(255,255,255,0.65)" style={{ marginLeft: 1 }} />
                   </TouchableOpacity>
                 </Animated.View>
               )}
