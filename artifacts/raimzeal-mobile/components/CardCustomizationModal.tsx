@@ -1219,11 +1219,18 @@ export default function CardCustomizationModal({
         if (!finished) return;
         cardChipTimerRef.current = setTimeout(() => {
           cardChipTimerRef.current = null;
-          Animated.timing(cardChipFadeAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }).start();
+          Animated.parallel([
+            Animated.timing(cardChipFadeAnim, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(cardChipSlideAnim, {
+              toValue: -6,
+              duration: 500,
+              useNativeDriver: true,
+            }),
+          ]).start();
         }, 2500);
       });
     }
@@ -1242,14 +1249,22 @@ export default function CardCustomizationModal({
       cardChipTimerRef.current = null;
     }
     cardChipFadeAnim.stopAnimation();
+    cardChipSlideAnim.stopAnimation();
     if (reduceMotion) {
       cardChipFadeAnim.setValue(0);
     } else {
-      Animated.timing(cardChipFadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(cardChipFadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardChipSlideAnim, {
+          toValue: -6,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }
 
