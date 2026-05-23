@@ -26,6 +26,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -75,6 +76,8 @@ export default function ProfileScreen() {
     requestCameraRollPermission,
     updateCameraRollStatus,
   } = usePermissions();
+
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   const [shareLoading, setShareLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
@@ -217,14 +220,7 @@ export default function ProfileScreen() {
     setShowPhotoRationaleModal(false);
     const result = await requestCameraRollPermission();
     if (result === "denied") {
-      Alert.alert(
-        "Access Denied",
-        "Photo library access was denied. You can enable it in Settings.",
-        [
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
-          { text: "Cancel", style: "cancel" },
-        ]
-      );
+      showPermissionToast("Photo access blocked — tap to open Settings");
     }
   }
 
@@ -1009,6 +1005,7 @@ export default function ProfileScreen() {
             www.econteur.com
           </Text>
         </ScrollView>
+      {permissionToastElement}
     </View>
   );
 }

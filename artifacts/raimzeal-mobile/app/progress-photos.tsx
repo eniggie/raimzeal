@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -106,6 +107,8 @@ export default function ProgressPhotosScreen() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelected, setCompareSelected] = useState<ProgressPhoto[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   useFocusEffect(
     useCallback(() => {
@@ -314,14 +317,7 @@ export default function ProgressPhotosScreen() {
     if (Platform.OS !== "web") {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Photo Access Blocked",
-          "RAIMZEAL needs access to your photo library to add progress photos. Please enable it in Settings.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => void Linking.openSettings() },
-          ]
-        );
+        showPermissionToast("Photo access blocked — tap to open Settings");
         return;
       }
     }
@@ -345,14 +341,7 @@ export default function ProgressPhotosScreen() {
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Camera Access Blocked",
-        "RAIMZEAL needs camera access to take progress photos. Please enable it in Settings.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open Settings", onPress: () => void Linking.openSettings() },
-        ]
-      );
+      showPermissionToast("Camera access blocked — tap to open Settings");
       return;
     }
 
@@ -737,6 +726,8 @@ export default function ProgressPhotosScreen() {
           </Text>
         </View>
       )}
+
+      {permissionToastElement}
 
       {/* Before/After Comparison Modal */}
       {showCompare && compareSelected.length === 2 && (

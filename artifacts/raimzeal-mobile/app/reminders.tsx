@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,6 +44,7 @@ const REMINDER_ORDER: (keyof ReminderSettings)[] = [
 
 export default function RemindersScreen() {
   const colors = useColors();
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -81,11 +83,7 @@ export default function RemindersScreen() {
         const granted = await requestNotificationPermissions();
         setHasPermission(granted);
         if (!granted) {
-          Alert.alert(
-            "Notifications Disabled",
-            "Please enable notifications for RAIMZEAL in your device Settings to receive Ovia AI reminders.",
-            [{ text: "OK" }]
-          );
+          showPermissionToast("Notifications blocked — tap to open Settings");
           return;
         }
       }
@@ -103,11 +101,7 @@ export default function RemindersScreen() {
       const granted = await requestNotificationPermissions();
       setHasPermission(granted);
       if (!granted) {
-        Alert.alert(
-          "Permission Needed",
-          "Please enable notifications for RAIMZEAL in your device Settings.",
-          [{ text: "OK" }]
-        );
+        showPermissionToast("Notifications blocked — tap to open Settings");
         return;
       }
     }
@@ -135,11 +129,7 @@ export default function RemindersScreen() {
       const granted = await requestNotificationPermissions();
       setHasPermission(granted);
       if (!granted) {
-        Alert.alert(
-          "Notifications Disabled",
-          "Please enable notifications for RAIMZEAL in your device Settings.",
-          [{ text: "OK" }]
-        );
+        showPermissionToast("Notifications blocked — tap to open Settings");
         return;
       }
     }
@@ -462,6 +452,7 @@ export default function RemindersScreen() {
           </View>
         </View>
       </ScrollView>
+      {permissionToastElement}
     </View>
   );
 }

@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -102,6 +103,9 @@ export default function CommunityScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [newPostImageUri, setNewPostImageUri] = useState<string | null>(null);
   const [newPostImageUploading, setNewPostImageUploading] = useState(false);
+
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
+
   useEffect(() => {
     if (isSupabaseConfigured) {
       supabase.auth.getSession().then(({ data }) => {
@@ -891,7 +895,7 @@ export default function CommunityScreen() {
                         onPress: async () => {
                           const { status } = await ImagePicker.requestCameraPermissionsAsync();
                           if (status !== "granted") {
-                            Alert.alert("Permission needed", "Please allow camera access to take a photo.");
+                            showPermissionToast("Camera access blocked — tap to open Settings");
                             return;
                           }
                           const result = await ImagePicker.launchCameraAsync({
@@ -909,7 +913,7 @@ export default function CommunityScreen() {
                         onPress: async () => {
                           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                           if (status !== "granted") {
-                            Alert.alert("Permission needed", "Please allow photo access to attach an image.");
+                            showPermissionToast("Photo access blocked — tap to open Settings");
                             return;
                           }
                           const result = await ImagePicker.launchImageLibraryAsync({
@@ -958,6 +962,8 @@ export default function CommunityScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {permissionToastElement}
     </View>
   );
 }

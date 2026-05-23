@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
@@ -38,6 +39,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, updateProfile } = useFitness();
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   const [name, setName] = useState(user?.name ?? "");
   const [age, setAge] = useState(user?.age?.toString() ?? "");
@@ -66,7 +68,7 @@ export default function EditProfileScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission denied", "Location access is needed to auto-fill your city.");
+        showPermissionToast("Location access blocked — tap to open Settings");
         setLocLoading(false);
         return;
       }
@@ -387,6 +389,7 @@ export default function EditProfileScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+      {permissionToastElement}
     </KeyboardAvoidingView>
   );
 }
