@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -20,15 +21,23 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFocusEffect } from "expo-router";
+import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/lib/db";
 
-const STORAGE_KEY = "raimzeal_progress_photos";
+const STORAGE_KEY = "raimzeal_progress_photos_v2";
+
+type SyncStatus = "local" | "uploading" | "synced" | "error";
 
 interface ProgressPhoto {
   id: string;
   uri: string;
+  localUri?: string;
   date: string;
-  note?: string;
+  takenAt?: string;
   category: "front" | "side" | "back" | "other";
+  note?: string;
+  storagePath?: string;
+  syncStatus: SyncStatus;
 }
 
 const CATEGORIES: Array<{ key: ProgressPhoto["category"]; label: string; icon: string }> = [
@@ -46,10 +55,48 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function encodeCaptionCategory(category: ProgressPhoto["category"], note?: string): string {
+  return note ? `${category}:${note}` : `${category}:`;
+}
+
+function decodeCaptionCategory(caption: string | null): { category: ProgressPhoto["category"]; note?: string } {
+  if (!caption) return { category: "other" };
+  const match = caption.match(/^(front|side|back|other):(.*)?$/s);
+  if (!match) return { category: "other", note: caption || undefined };
+  return {
+    category: match[1] as ProgressPhoto["category"],
+    note: match[2] ? match[2] : undefined,
+  };
+}
+
+function mapServerPhoto(p: {
+  id: string;
+  storage_path: string;
+  caption: string | null;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  taken_at: string;
+  created_at: string;
+  url: string | null;
+}): ProgressPhoto {
+  const { category, note } = decodeCaptionCategory(p.caption);
+  return {
+    id: p.id,
+    uri: p.url ?? "",
+    date: p.taken_at ? `${p.taken_at}T00:00:00.000Z` : p.created_at,
+    takenAt: p.taken_at,
+    category,
+    note,
+    storagePath: p.storage_path,
+    syncStatus: "synced",
+  };
+}
+
 export default function ProgressPhotosScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { session } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
@@ -61,41 +108,164 @@ export default function ProgressPhotosScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPhotos();
-    }, [])
+      void loadPhotos();
+    }, [session?.access_token]) // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  async function persistPhotos(updated: ProgressPhoto[]) {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch { }
+  }
+
+  function updatePhotoById(id: string, patch: Partial<ProgressPhoto>) {
+    setPhotos((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...patch } : p));
+      void persistPhotos(next);
+      return next;
+    });
+  }
+
   async function loadPhotos() {
+    setLoading(true);
+
+    let localPhotos: ProgressPhoto[] = [];
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) setPhotos(JSON.parse(raw));
+      if (raw) {
+        const parsed: unknown[] = JSON.parse(raw);
+        localPhotos = parsed.map((p: unknown) => {
+          const photo = p as unknown as ProgressPhoto;
+          if (!photo.syncStatus) {
+            return { ...photo, syncStatus: "local" as SyncStatus };
+          }
+          return photo;
+        });
+      }
+    } catch { }
+
+    if (!session?.access_token) {
+      setPhotos(localPhotos);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${getApiBase()}/user/progress-photos`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json() as { photos: Parameters<typeof mapServerPhoto>[0][] };
+      const serverPhotos = body.photos.map(mapServerPhoto);
+
+      const pendingLocals = localPhotos.filter(
+        (lp) =>
+          lp.syncStatus === "uploading" ||
+          lp.syncStatus === "error" ||
+          (lp.syncStatus === "local" && !serverPhotos.some((sp) => sp.storagePath === lp.storagePath))
+      );
+
+      const merged = [...pendingLocals, ...serverPhotos].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setPhotos(merged);
+      void persistPhotos(merged);
     } catch {
-      // ignore
+      setPhotos(localPhotos);
     } finally {
       setLoading(false);
     }
   }
 
-  async function savePhotos(updated: ProgressPhoto[]) {
-    setPhotos(updated);
+  async function uploadPhoto(tempId: string, localUri: string, category: ProgressPhoto["category"], note: string | undefined) {
+    if (!session?.access_token) {
+      updatePhotoById(tempId, { syncStatus: "local" });
+      return;
+    }
+
+    const ext = localUri.split(".").pop()?.toLowerCase() ?? "jpg";
+    const contentType =
+      ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+    const filename = `progress_${Date.now()}.${ext}`;
+
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      const urlRes = await fetch(`${getApiBase()}/user/progress-photos/upload-url`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ filename, contentType }),
+      });
+      if (!urlRes.ok) throw new Error(`URL ${urlRes.status}`);
+      const { uploadUrl, storagePath } = await urlRes.json() as { uploadUrl: string; storagePath: string; token: string };
+
+      const fileRes = await fetch(localUri);
+      const blob = await fileRes.blob();
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: blob,
+      });
+      if (!putRes.ok) throw new Error(`PUT ${putRes.status}`);
+
+      const recordRes = await fetch(`${getApiBase()}/user/progress-photos`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          storage_path: storagePath,
+          caption: encodeCaptionCategory(category, note),
+          taken_at: new Date().toISOString().split("T")[0],
+        }),
+      });
+      if (!recordRes.ok) throw new Error(`Record ${recordRes.status}`);
+      const { photo: serverPhoto } = await recordRes.json() as { photo: { id: string } };
+
+      updatePhotoById(tempId, {
+        id: serverPhoto.id,
+        storagePath,
+        syncStatus: "synced",
+      });
     } catch {
-      // ignore
+      updatePhotoById(tempId, { syncStatus: "error" });
     }
   }
 
-  async function addPhotoFromAsset(uri: string) {
+  async function retryUpload(photo: ProgressPhoto) {
+    if (!photo.localUri) return;
+    updatePhotoById(photo.id, { syncStatus: "uploading" });
+    await uploadPhoto(photo.id, photo.localUri, photo.category, photo.note);
+  }
+
+  async function addPhotoFromAsset(localUri: string) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const category = await pickCategory();
     if (!category) return;
-    const newPhoto: ProgressPhoto = {
-      id: `photo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      uri,
-      date: new Date().toISOString(),
+
+    const tempId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const now = new Date();
+    const pendingPhoto: ProgressPhoto = {
+      id: tempId,
+      uri: localUri,
+      localUri,
+      date: now.toISOString(),
+      takenAt: now.toISOString().split("T")[0],
       category,
+      syncStatus: session?.access_token ? "uploading" : "local",
     };
-    await savePhotos([newPhoto, ...photos]);
+
+    setPhotos((prev) => {
+      const next = [pendingPhoto, ...prev];
+      void persistPhotos(next);
+      return next;
+    });
+
+    if (session?.access_token) {
+      await uploadPhoto(tempId, localUri, category, undefined);
+    }
   }
 
   async function handleAddPhoto() {
@@ -107,7 +277,7 @@ export default function ProgressPhotosScreen() {
           "RAIMZEAL needs access to your photo library to add progress photos. Please enable it in Settings.",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Open Settings", onPress: () => Linking.openSettings() },
+            { text: "Open Settings", onPress: () => void Linking.openSettings() },
           ]
         );
         return;
@@ -138,7 +308,7 @@ export default function ProgressPhotosScreen() {
         "RAIMZEAL needs camera access to take progress photos. Please enable it in Settings.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Open Settings", onPress: () => Linking.openSettings() },
+          { text: "Open Settings", onPress: () => void Linking.openSettings() },
         ]
       );
       return;
@@ -170,7 +340,7 @@ export default function ProgressPhotosScreen() {
     });
   }
 
-  function handleDeletePhoto(id: string) {
+  function handleDeletePhoto(photo: ProgressPhoto) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       "Delete Photo",
@@ -180,7 +350,20 @@ export default function ProgressPhotosScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => savePhotos(photos.filter((p) => p.id !== id)),
+          onPress: async () => {
+            const withoutPhoto = photos.filter((p) => p.id !== photo.id);
+            setPhotos(withoutPhoto);
+            void persistPhotos(withoutPhoto);
+
+            if (photo.syncStatus === "synced" && session?.access_token) {
+              try {
+                await fetch(`${getApiBase()}/user/progress-photos/${encodeURIComponent(photo.id)}`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${session.access_token}` },
+                });
+              } catch { }
+            }
+          },
         },
       ]
     );
@@ -192,6 +375,9 @@ export default function ProgressPhotosScreen() {
 
   const categoryCount = (cat: ProgressPhoto["category"] | "all") =>
     cat === "all" ? photos.length : photos.filter((p) => p.category === cat).length;
+
+  const pendingCount = photos.filter((p) => p.syncStatus === "uploading").length;
+  const errorCount = photos.filter((p) => p.syncStatus === "error").length;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -220,11 +406,13 @@ export default function ProgressPhotosScreen() {
             Progress Photos
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
-            {photos.length} photo{photos.length !== 1 ? "s" : ""} saved
+            {photos.length} photo{photos.length !== 1 ? "s" : ""}
+            {pendingCount > 0 ? ` · ${pendingCount} uploading` : ""}
+            {errorCount > 0 ? ` · ${errorCount} failed` : ""}
           </Text>
         </View>
         <View style={{ flexDirection: "row", gap: 8 }}>
-          {photos.length >= 2 && (
+          {photos.filter((p) => p.syncStatus === "synced").length >= 2 && (
             <TouchableOpacity
               onPress={() => {
                 Haptics.selectionAsync();
@@ -259,8 +447,8 @@ export default function ProgressPhotosScreen() {
                 "Add Photo",
                 "Choose a source",
                 [
-                  { text: "Take Photo", onPress: handleTakePhoto },
-                  { text: "Choose from Library", onPress: handleAddPhoto },
+                  { text: "Take Photo", onPress: () => void handleTakePhoto() },
+                  { text: "Choose from Library", onPress: () => void handleAddPhoto() },
                   { text: "Cancel", style: "cancel" },
                 ]
               );
@@ -271,6 +459,16 @@ export default function ProgressPhotosScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Upload error banner */}
+      {errorCount > 0 && (
+        <View style={[styles.errorBanner, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]}>
+          <Ionicons name="cloud-offline-outline" size={16} color={colors.destructive} />
+          <Text style={[styles.errorBannerText, { color: colors.destructive }]}>
+            {errorCount} photo{errorCount !== 1 ? "s" : ""} failed to upload — tap the retry button to try again
+          </Text>
+        </View>
+      )}
 
       {/* Compare mode action bar */}
       {compareMode && (
@@ -346,7 +544,11 @@ export default function ProgressPhotosScreen() {
       </ScrollView>
 
       {/* Photo grid */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: "#8B31C7" + "15" }]}>
             <Ionicons name="camera-outline" size={48} color="#8B31C7" />
@@ -361,8 +563,8 @@ export default function ProgressPhotosScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               Alert.alert("Add Photo", "Choose a source", [
-                { text: "Take Photo", onPress: handleTakePhoto },
-                { text: "Choose from Library", onPress: handleAddPhoto },
+                { text: "Take Photo", onPress: () => void handleTakePhoto() },
+                { text: "Choose from Library", onPress: () => void handleAddPhoto() },
                 { text: "Cancel", style: "cancel" },
               ]);
             }}
@@ -386,11 +588,16 @@ export default function ProgressPhotosScreen() {
           columnWrapperStyle={styles.row}
           renderItem={({ item }) => {
             const isSelected = compareSelected.some((p) => p.id === item.id);
+            const isUploading = item.syncStatus === "uploading";
+            const isError = item.syncStatus === "error";
+            const isLocal = item.syncStatus === "local";
+
             return (
               <TouchableOpacity
                 activeOpacity={compareMode ? 0.7 : 1}
                 onPress={() => {
                   if (!compareMode) return;
+                  if (item.syncStatus !== "synced") return;
                   if (isSelected) {
                     setCompareSelected((prev) => prev.filter((p) => p.id !== item.id));
                   } else if (compareSelected.length < 2) {
@@ -399,16 +606,62 @@ export default function ProgressPhotosScreen() {
                   }
                 }}
                 onLongPress={() => {
-                  if (!compareMode) handleDeletePhoto(item.id);
+                  if (!compareMode) handleDeletePhoto(item);
                 }}
-                style={[styles.photoCard, { backgroundColor: colors.card, borderColor: isSelected ? colors.secondary : colors.border, borderWidth: isSelected ? 2 : 1 }]}
+                style={[
+                  styles.photoCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: isError
+                      ? colors.destructive + "80"
+                      : isSelected
+                      ? colors.secondary
+                      : colors.border,
+                    borderWidth: isError || isSelected ? 2 : 1,
+                    opacity: isUploading ? 0.8 : 1,
+                  },
+                ]}
               >
                 <Image source={{ uri: item.uri }} style={styles.photoImage} resizeMode="cover" />
+
+                {/* Uploading overlay */}
+                {isUploading && (
+                  <View style={styles.uploadingOverlay}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.uploadingText}>Uploading…</Text>
+                  </View>
+                )}
+
+                {/* Error overlay with retry */}
+                {isError && (
+                  <View style={styles.errorOverlay}>
+                    <Ionicons name="cloud-offline-outline" size={20} color="#fff" />
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        void retryUpload(item);
+                      }}
+                      style={styles.retryBtn}
+                    >
+                      <Text style={styles.retryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Local (no auth) badge */}
+                {isLocal && (
+                  <View style={[styles.localBadge, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="phone-portrait-outline" size={10} color={colors.mutedForeground} />
+                  </View>
+                )}
+
+                {/* Compare selection overlay */}
                 {isSelected && (
                   <View style={styles.selectedOverlay}>
                     <Ionicons name="checkmark-circle" size={28} color={colors.secondary} />
                   </View>
                 )}
+
                 <View style={[styles.photoCategoryBadge, { backgroundColor: "#8B31C7CC" }]}>
                   <Text style={styles.photoCategoryText}>
                     {CATEGORIES.find((c) => c.key === item.category)?.label ?? item.category}
@@ -418,9 +671,9 @@ export default function ProgressPhotosScreen() {
                   <Text style={[styles.photoDate, { color: colors.mutedForeground }]}>
                     {formatDate(item.date)}
                   </Text>
-                  {!compareMode && (
+                  {!compareMode && !isUploading && (
                     <TouchableOpacity
-                      onPress={() => handleDeletePhoto(item.id)}
+                      onPress={() => handleDeletePhoto(item)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Ionicons name="trash-outline" size={16} color={colors.destructive} />
@@ -434,7 +687,7 @@ export default function ProgressPhotosScreen() {
       )}
 
       {/* Tips banner */}
-      {photos.length > 0 && !compareMode && (
+      {photos.length > 0 && !compareMode && !loading && (
         <View style={[styles.tipBanner, { backgroundColor: "#8B31C7" + "10", borderColor: "#8B31C7" + "30" }]}>
           <Ionicons name="bulb-outline" size={16} color="#8B31C7" />
           <Text style={[styles.tipText, { color: colors.mutedForeground }]}>
@@ -508,7 +761,7 @@ export default function ProgressPhotosScreen() {
 }
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const PHOTO_SIZE = (SCREEN_W - 12 * 2 - 8) / 2; // 12px padding each side, 8px gap between columns
+const PHOTO_SIZE = (SCREEN_W - 12 * 2 - 8) / 2;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -536,6 +789,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  errorBannerText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -551,6 +813,11 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   filterChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   grid: { padding: 12, gap: 8 },
   row: { gap: 8 },
   photoCard: {
@@ -562,6 +829,54 @@ const styles = StyleSheet.create({
   photoImage: {
     width: PHOTO_SIZE,
     height: PHOTO_SIZE * 1.25,
+  },
+  uploadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  uploadingText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  errorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(180,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  retryBtn: {
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  retryText: {
+    color: "#b00",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  localBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   photoCategoryBadge: {
     position: "absolute",
@@ -579,6 +894,16 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   photoDate: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  selectedOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptyState: {
     flex: 1,
     alignItems: "center",
@@ -632,16 +957,6 @@ const styles = StyleSheet.create({
   compareBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
   compareBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20 },
   compareBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  selectedOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   compareModal: {
     position: "absolute",
     top: 0,
