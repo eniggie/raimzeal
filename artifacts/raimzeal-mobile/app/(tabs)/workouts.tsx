@@ -43,7 +43,7 @@ type WorkoutWeekGroup = {
   logs: WorkoutLog[];
   totalDuration: number;
   totalCalories: number;
-  topExercise: string | null;
+  topMuscleGroup: string | null;
 };
 
 type WorkoutMonthGroup = {
@@ -74,17 +74,64 @@ function getMondayOfWeek(dateStr: string): string {
   return d.toISOString().split("T")[0];
 }
 
-function computeTopExercise(logs: WorkoutLog[]): string | null {
+// Keyword → muscle-group mapping (ordered most-specific first).
+// Matches exercise names by substring so custom names like "Barbell Squat" still resolve.
+const MUSCLE_KEYWORDS: [string, string][] = [
+  // Chest
+  ["bench press", "Chest"], ["push-up", "Chest"], ["push up", "Chest"],
+  ["pushup", "Chest"], ["chest fly", "Chest"], ["chest press", "Chest"],
+  ["incline press", "Chest"], ["decline press", "Chest"], ["pec", "Chest"],
+  // Back
+  ["deadlift", "Back"], ["pull-up", "Back"], ["pull up", "Back"],
+  ["pullup", "Back"], ["chin-up", "Back"], ["chin up", "Back"],
+  ["lat pull", "Back"], ["back ext", "Back"],
+  // Back (must come after "overhead press" / "bench press" checks)
+  ["row", "Back"],
+  // Shoulders
+  ["shoulder press", "Shoulders"], ["overhead press", "Shoulders"],
+  ["lateral raise", "Shoulders"], ["front raise", "Shoulders"],
+  ["arnold", "Shoulders"], ["military press", "Shoulders"],
+  // Arms
+  ["bicep", "Arms"], ["tricep", "Arms"], ["dip", "Arms"],
+  ["curl", "Arms"], ["skull crush", "Arms"],
+  // Legs
+  ["squat", "Legs"], ["lunge", "Legs"], ["leg press", "Legs"],
+  ["leg ext", "Legs"], ["leg curl", "Legs"], ["calf", "Legs"],
+  ["hip thrust", "Legs"], ["glute", "Legs"], ["box jump", "Legs"],
+  ["step up", "Legs"],
+  // Core
+  ["plank", "Core"], ["crunch", "Core"], ["sit-up", "Core"],
+  ["sit up", "Core"], ["leg raise", "Core"], ["russian twist", "Core"],
+  ["mountain climb", "Core"], ["flutter", "Core"], [" ab ", "Core"],
+  // Cardio
+  ["burpee", "Cardio"], ["jump rope", "Cardio"], ["sprint", "Cardio"],
+  ["cycling", "Cardio"], ["elliptical", "Cardio"], ["cardio", "Cardio"],
+  ["walk", "Cardio"],
+  // Recovery
+  ["yoga", "Recovery"], ["foam roll", "Recovery"],
+  ["stretch", "Recovery"], ["mobility", "Recovery"],
+];
+
+function exerciseToMuscleGroup(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [kw, mg] of MUSCLE_KEYWORDS) {
+    if (lower.includes(kw)) return mg;
+  }
+  return "Other";
+}
+
+function computeTopMuscleGroup(logs: WorkoutLog[]): string | null {
   const counts = new Map<string, number>();
   for (const log of logs) {
     for (const ex of log.exercises) {
-      counts.set(ex.name, (counts.get(ex.name) ?? 0) + 1);
+      const mg = exerciseToMuscleGroup(ex.name);
+      counts.set(mg, (counts.get(mg) ?? 0) + ex.sets);
     }
   }
   if (counts.size === 0) return null;
   let top = "";
   let max = 0;
-  counts.forEach((n, name) => { if (n > max) { max = n; top = name; } });
+  counts.forEach((n, mg) => { if (n > max) { max = n; top = mg; } });
   return top || null;
 }
 
@@ -110,7 +157,7 @@ function groupWorkoutsByWeek(logs: WorkoutLog[]): WorkoutWeekGroup[] {
         logs: sorted,
         totalDuration: weekLogs.reduce((s, l) => s + l.duration, 0),
         totalCalories: weekLogs.reduce((s, l) => s + l.caloriesBurned, 0),
-        topExercise: computeTopExercise(weekLogs),
+        topMuscleGroup: computeTopMuscleGroup(weekLogs),
       };
     });
 }
@@ -921,11 +968,11 @@ export default function WorkoutsScreen() {
                         <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
                         <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalDuration}m</Text>
                       </View>
-                      {g.topExercise && (
+                      {g.topMuscleGroup && (
                         <View style={secStyles.metaChip}>
-                          <Ionicons name="trophy-outline" size={11} color={colors.mutedForeground} />
+                          <Ionicons name="body-outline" size={11} color={colors.mutedForeground} />
                           <Text style={[secStyles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {g.topExercise}
+                            {g.topMuscleGroup}
                           </Text>
                         </View>
                       )}
@@ -989,11 +1036,11 @@ export default function WorkoutsScreen() {
                         <Ionicons name="time-outline" size={10} color={colors.mutedForeground} />
                         <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalDuration}m</Text>
                       </View>
-                      {g.topExercise && (
+                      {g.topMuscleGroup && (
                         <View style={secStyles.metaChip}>
-                          <Ionicons name="trophy-outline" size={10} color={colors.mutedForeground} />
+                          <Ionicons name="body-outline" size={10} color={colors.mutedForeground} />
                           <Text style={[secStyles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                            {g.topExercise}
+                            {g.topMuscleGroup}
                           </Text>
                         </View>
                       )}
