@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  LayoutAnimation,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness } from "@/contexts/FitnessContext";
+import { useFitness, type WorkoutLog } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
 import type { WorkoutTemplate } from "@/constants/workoutTemplates";
@@ -31,6 +31,216 @@ import {
 import { loadCustomWorkouts, deleteCustomWorkout } from "@/lib/customWorkouts";
 
 type ActiveTab = "library" | "programs" | "history";
+type HistoryViewMode = "week" | "month";
+
+// ── Grouping types ────────────────────────────────────────────────────────────
+type WorkoutWeekGroup = {
+  weekKey: string;
+  weekLabel: string;
+  startDate: string;
+  endDate: string;
+  logs: WorkoutLog[];
+  totalDuration: number;
+  totalCalories: number;
+};
+
+type WorkoutMonthGroup = {
+  monthKey: string;
+  monthLabel: string;
+  logs: WorkoutLog[];
+  totalDuration: number;
+  totalCalories: number;
+};
+
+// ── Pure grouping utilities ───────────────────────────────────────────────────
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_LONG  = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function getMondayOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay();
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split("T")[0];
+}
+
+function groupWorkoutsByWeek(logs: WorkoutLog[]): WorkoutWeekGroup[] {
+  const map = new Map<string, WorkoutLog[]>();
+  for (const log of logs) {
+    const key = getMondayOfWeek(log.date);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(log);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => (a > b ? -1 : 1))
+    .map(([weekKey, weekLogs]) => {
+      const endD = new Date(weekKey + "T12:00:00");
+      endD.setDate(endD.getDate() + 6);
+      const d = new Date(weekKey + "T12:00:00");
+      return {
+        weekKey,
+        weekLabel: `Week of ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
+        startDate: weekKey,
+        endDate: endD.toISOString().split("T")[0],
+        logs: [...weekLogs].sort((a, b) => (a.date > b.date ? -1 : 1)),
+        totalDuration: weekLogs.reduce((s, l) => s + l.duration, 0),
+        totalCalories: weekLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+      };
+    });
+}
+
+function groupWorkoutsByMonth(weekGroups: WorkoutWeekGroup[]): WorkoutMonthGroup[] {
+  const map = new Map<string, WorkoutLog[]>();
+  for (const wg of weekGroups) {
+    const monthKey = wg.endDate.slice(0, 7);
+    if (!map.has(monthKey)) map.set(monthKey, []);
+    map.get(monthKey)!.push(...wg.logs);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => (a > b ? -1 : 1))
+    .map(([monthKey, mLogs]) => {
+      const [yr, mo] = monthKey.split("-");
+      return {
+        monthKey,
+        monthLabel: `${MONTH_LONG[parseInt(mo) - 1]} ${yr}`,
+        logs: mLogs,
+        totalDuration: mLogs.reduce((s, l) => s + l.duration, 0),
+        totalCalories: mLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+      };
+    });
+}
+
+// ── Section components ────────────────────────────────────────────────────────
+function WorkoutWeekSection({
+  group,
+  expanded,
+  onToggle,
+  colors,
+}: {
+  group: WorkoutWeekGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={[secStyles.container, { borderColor: colors.border }]}>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.75}
+        style={[secStyles.header, { backgroundColor: colors.card }]}
+      >
+        <View style={secStyles.headerLeft}>
+          <Text style={[secStyles.headerLabel, { color: colors.foreground }]}>
+            {group.weekLabel}
+          </Text>
+          <View style={secStyles.metaRow}>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.logs.length} workout{group.logs.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.totalDuration}m
+              </Text>
+            </View>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="flame-outline" size={11} color={colors.warning} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.totalCalories} kcal
+              </Text>
+            </View>
+          </View>
+        </View>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={17}
+          color={colors.mutedForeground}
+        />
+      </TouchableOpacity>
+      {expanded && (
+        <View style={[secStyles.logList, { backgroundColor: colors.background }]}>
+          {group.logs.map((log) => (
+            <WorkoutCard key={log.id} workout={log} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function WorkoutMonthSection({
+  group,
+  expanded,
+  onToggle,
+  colors,
+}: {
+  group: WorkoutMonthGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={[secStyles.container, { borderColor: colors.border }]}>
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.75}
+        style={[secStyles.header, { backgroundColor: colors.card }]}
+      >
+        <View style={secStyles.headerLeft}>
+          <Text style={[secStyles.headerLabel, { color: colors.foreground }]}>
+            {group.monthLabel}
+          </Text>
+          <View style={secStyles.metaRow}>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.logs.length} workout{group.logs.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.totalDuration}m
+              </Text>
+            </View>
+            <View style={secStyles.metaChip}>
+              <Ionicons name="flame-outline" size={11} color={colors.warning} />
+              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                {group.totalCalories} kcal
+              </Text>
+            </View>
+          </View>
+        </View>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={17}
+          color={colors.mutedForeground}
+        />
+      </TouchableOpacity>
+      {expanded && (
+        <View style={[secStyles.logList, { backgroundColor: colors.background }]}>
+          {group.logs.map((log) => (
+            <WorkoutCard key={log.id} workout={log} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const secStyles = StyleSheet.create({
+  container: { borderRadius: 14, borderWidth: 1, overflow: "hidden", marginBottom: 2 },
+  header: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
+  headerLeft: { flex: 1, gap: 5 },
+  headerLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
+  metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  logList: { padding: 10, gap: 8 },
+});
 
 const LEVEL_COLORS: Record<ProgramItem["level"], string> = {
   beginner: "#2E8B57",
@@ -162,6 +372,28 @@ export default function WorkoutsScreen() {
   const [customWorkouts, setCustomWorkouts] = useState<WorkoutTemplate[]>([]);
   const [enrolledProgram, setEnrolledProgram] = useState<EnrolledProgram | null>(null);
   const [enrollLoading, setEnrollLoading] = useState<string | null>(null);
+  const [historyViewMode, setHistoryViewMode] = useState<HistoryViewMode>("week");
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const expandedInitRef = useRef(false);
+
+  const weekGroups = useMemo(() => groupWorkoutsByWeek(workoutLogs), [workoutLogs]);
+  const monthGroups = useMemo(() => groupWorkoutsByMonth(weekGroups), [weekGroups]);
+
+  useEffect(() => {
+    if (expandedInitRef.current || weekGroups.length === 0) return;
+    expandedInitRef.current = true;
+    setExpandedKeys(new Set(weekGroups.slice(0, 2).map((g) => g.weekKey)));
+  }, [weekGroups]);
+
+  function toggleKey(key: string) {
+    Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -650,33 +882,70 @@ export default function WorkoutsScreen() {
       )}
 
       {activeTab === "history" && (
-        <FlatList
-          data={workoutLogs}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="barbell-outline"
-                size={48}
-                color={colors.mutedForeground}
-              />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No workouts yet
-              </Text>
-              <Text
-                style={[styles.emptySubtext, { color: colors.mutedForeground }]}
-              >
-                Start a workout from the library
-              </Text>
+        workoutLogs.length === 0 ? (
+          <View style={[styles.emptyState, { flex: 1 }]}>
+            <Ionicons name="barbell-outline" size={48} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No workouts yet</Text>
+            <Text style={[styles.emptySubtext, { color: colors.mutedForeground }]}>Start a workout from the library</Text>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Week / Month toggle */}
+            <View style={[styles.historyToggleRow, { backgroundColor: colors.muted }]}>
+              {(["week", "month"] as HistoryViewMode[]).map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setHistoryViewMode(mode);
+                  }}
+                  style={[
+                    styles.historyToggleBtn,
+                    historyViewMode === mode && { backgroundColor: colors.card },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.historyToggleLabel,
+                      {
+                        color: historyViewMode === mode ? colors.foreground : colors.mutedForeground,
+                        fontFamily: historyViewMode === mode ? "Inter_600SemiBold" : "Inter_400Regular",
+                      },
+                    ]}
+                  >
+                    {mode === "week" ? "By Week" : "By Month"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          }
-          renderItem={({ item }) => <WorkoutCard workout={item} />}
-        />
+
+            {historyViewMode === "week"
+              ? weekGroups.map((group) => (
+                  <WorkoutWeekSection
+                    key={group.weekKey}
+                    group={group}
+                    expanded={expandedKeys.has(group.weekKey)}
+                    onToggle={() => toggleKey(group.weekKey)}
+                    colors={colors}
+                  />
+                ))
+              : monthGroups.map((group) => (
+                  <WorkoutMonthSection
+                    key={group.monthKey}
+                    group={group}
+                    expanded={expandedKeys.has(group.monthKey)}
+                    onToggle={() => toggleKey(group.monthKey)}
+                    colors={colors}
+                  />
+                ))}
+          </ScrollView>
+        )
       )}
     </View>
   );
@@ -907,4 +1176,17 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
+  historyToggleRow: {
+    flexDirection: "row",
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 10,
+  },
+  historyToggleBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  historyToggleLabel: { fontSize: 13 },
 });
