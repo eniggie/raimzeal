@@ -17,12 +17,12 @@ import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 const SUGGESTIONS = [
-  "Design my workout plan for this week",
-  "What should I eat today to hit my goals?",
-  "Help me stay motivated right now",
-  "Best supplements for my goals?",
-  "How do I recover faster?",
-  "What are my next fitness goals?",
+  "Design my food plan for this week 🥗",
+  "What foods suit my blood group? 🩸",
+  "Create my meal plan for today 🍽️",
+  "What vitamins do I need? 💊",
+  "Design my workout plan 💪",
+  "How do I recover faster? ⚡",
 ];
 
 function stripMarkdown(text: string): string {
@@ -130,6 +130,7 @@ export default function OviaScreen() {
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -243,6 +244,15 @@ export default function OviaScreen() {
         },
         body: JSON.stringify({ messages: allMessages, userContext }),
       });
+      if (response.status === 429) {
+        const firstName = user?.name?.split(" ")[0] ?? "Champion";
+        addOviaMessage({
+          role: "assistant",
+          content: `Hey ${firstName}! 😅 You've hit your 15 message daily limit. Your quota resets every 24 hours. Come back tomorrow and let's keep crushing those goals! 🔥`,
+        });
+        setQuotaRemaining(0);
+        return;
+      }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       if (!response.body) throw new Error("No response stream");
 
@@ -264,7 +274,12 @@ export default function OviaScreen() {
               content?: string;
               done?: boolean;
               error?: string;
+              quotaRemaining?: number;
+              searching?: string;
             };
+            if (typeof json.quotaRemaining === "number") {
+              setQuotaRemaining(json.quotaRemaining);
+            }
             if (json.content) {
               accumulated += json.content;
               setStreamingContent(accumulated);
@@ -312,7 +327,23 @@ export default function OviaScreen() {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Ovia AI</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Ovia AI</Text>
+          {quotaRemaining !== null && (
+            <View style={[
+              styles.quotaBadge,
+              { backgroundColor: quotaRemaining <= 3 ? colors.accent + "20" : colors.muted,
+                borderColor: quotaRemaining <= 3 ? colors.accent + "60" : colors.border }
+            ]}>
+              <Text style={[
+                styles.quotaText,
+                { color: quotaRemaining <= 3 ? colors.accent : colors.mutedForeground }
+              ]}>
+                {quotaRemaining} left today
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -340,7 +371,7 @@ export default function OviaScreen() {
               </View>
               <Text style={[styles.oviaName, { color: colors.foreground }]}>Ovia AI</Text>
               <Text style={[styles.oviaSubtitle, { color: colors.mutedForeground }]}>
-                Fitness coach, wellness guide and mindset mentor
+                Food therapy, fitness, nutrition & healthcare 🔥
               </Text>
               <View style={styles.suggestions}>
                 {SUGGESTIONS.map((s) => (
@@ -476,7 +507,10 @@ function ChatBubble({ message }: { message: OviaMessage }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  quotaBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+  quotaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   chatContent: { padding: 16, gap: 12 },
   oviaHero: { alignItems: "center", paddingVertical: 24, gap: 8 },
   oviaAvatar: { width: 64, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 1 },
