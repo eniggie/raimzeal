@@ -460,12 +460,16 @@ export function Community() {
                     </div>
                     <p className="text-sm whitespace-pre-wrap mb-3 leading-relaxed">{post.content}</p>
                     {post.image_url && (
-                      <img
-                        src={post.image_url}
-                        alt="Post attachment"
-                        className="w-full rounded-lg object-cover aspect-video mb-3"
-                        loading="lazy"
-                      />
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-muted">
+                        <div className="absolute inset-0 bg-muted animate-pulse" />
+                        <img
+                          src={post.image_url}
+                          alt="Post attachment"
+                          className="relative w-full h-full object-cover"
+                          loading="lazy"
+                          onLoad={(e) => { (e.currentTarget.previousElementSibling as HTMLElement).style.display = 'none'; }}
+                        />
+                      </div>
                     )}
                     <div className="flex items-center gap-4">
                       <Button

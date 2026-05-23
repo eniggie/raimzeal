@@ -43,6 +43,17 @@ communityRouter.post(
     const path = `${userId}/${randomUUID()}.${safeExt}`;
 
     const supabase = getAdminClient();
+
+    // Ensure the bucket exists (idempotent — ignores "already exists" error).
+    // Public read so feed images load without tokens; authenticated write is
+    // enforced by requireAuth above — clients never touch the bucket directly.
+    await supabase.storage.createBucket("community-images", {
+      public: true,
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      fileSizeLimit: 10 * 1024 * 1024, // 10 MB
+    });
+    // ^ error intentionally ignored — bucket already existing is not an error
+
     const { data, error } = await supabase.storage
       .from("community-images")
       .createSignedUploadUrl(path);

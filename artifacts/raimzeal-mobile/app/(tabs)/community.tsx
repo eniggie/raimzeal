@@ -50,6 +50,27 @@ interface PostState extends CommunityPost {
 }
 
 
+function PostImage({ uri, colors }: { uri: string; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+  const [loaded, setLoaded] = React.useState(false);
+  return (
+    <View style={{ width: "100%", aspectRatio: 16 / 9, backgroundColor: colors.muted as string }}>
+      {!loaded && (
+        <ActivityIndicator
+          size="small"
+          color={colors.mutedForeground as string}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      )}
+      <Image
+        source={{ uri }}
+        style={{ width: "100%", height: "100%", opacity: loaded ? 1 : 0 }}
+        resizeMode="cover"
+        onLoad={() => setLoaded(true)}
+      />
+    </View>
+  );
+}
+
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime();
   const mins = Math.floor(diff / 60000);
@@ -396,11 +417,7 @@ export default function CommunityScreen() {
         </Text>
 
         {!!item.imageUrl && (
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={styles.postImage}
-            resizeMode="cover"
-          />
+          <PostImage uri={item.imageUrl} colors={colors} />
         )}
 
         <View style={[styles.postActions, { borderTopColor: colors.border }]}>
@@ -864,20 +881,50 @@ export default function CommunityScreen() {
 
               <TouchableOpacity
                 style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
-                onPress={async () => {
-                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                  if (status !== "granted") {
-                    Alert.alert("Permission needed", "Please allow photo access to attach an image.");
-                    return;
-                  }
-                  const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    quality: 0.8,
-                    allowsEditing: false,
-                  });
-                  if (!result.canceled && result.assets[0]) {
-                    setNewPostImageUri(result.assets[0].uri);
-                  }
+                onPress={() => {
+                  Alert.alert(
+                    "Add a photo",
+                    undefined,
+                    [
+                      {
+                        text: "Take Photo",
+                        onPress: async () => {
+                          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                          if (status !== "granted") {
+                            Alert.alert("Permission needed", "Please allow camera access to take a photo.");
+                            return;
+                          }
+                          const result = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            quality: 0.8,
+                            allowsEditing: false,
+                          });
+                          if (!result.canceled && result.assets[0]) {
+                            setNewPostImageUri(result.assets[0].uri);
+                          }
+                        },
+                      },
+                      {
+                        text: "Choose from Library",
+                        onPress: async () => {
+                          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                          if (status !== "granted") {
+                            Alert.alert("Permission needed", "Please allow photo access to attach an image.");
+                            return;
+                          }
+                          const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            quality: 0.8,
+                            allowsEditing: false,
+                          });
+                          if (!result.canceled && result.assets[0]) {
+                            setNewPostImageUri(result.assets[0].uri);
+                          }
+                        },
+                      },
+                      { text: "Cancel", style: "cancel" },
+                    ]
+                  );
                 }}
               >
                 <Ionicons name="image-outline" size={18} color={colors.mutedForeground} />
