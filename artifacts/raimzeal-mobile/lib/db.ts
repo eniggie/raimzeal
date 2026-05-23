@@ -504,6 +504,11 @@ export interface UserPreferences {
      * the pre-prompt they already declined.
      */
     cameraRollRationaleDismissed?: boolean;
+    darkMode?: boolean;
+    notifications?: boolean;
+    weightUnit?: "lbs" | "kg";
+    undoWindowSeconds?: 3 | 5 | 10;
+    reorderHintFrequency?: "never" | "monthly" | "weekly";
   };
 }
 

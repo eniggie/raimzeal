@@ -37,6 +37,7 @@ import {
   upsertUserPreferences,
   upsertMealLog,
   getApiBase,
+  type UserPreferences,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -352,14 +353,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             waterIntake: waterRemote.length > 0 ? waterRemote : prev.waterIntake,
             oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
             favoriteFoods: mergedFavs,
-            // Merge cloud-backed settings (remote wins over local for synced fields)
+            // Merge cloud-backed settings (remote wins over local for every synced field)
             settings: {
               ...prev.settings,
               ...(remoteSettings != null
                 ? {
-                    ...(remoteSettings.showRestoreBadge != null
-                      ? { showRestoreBadge: remoteSettings.showRestoreBadge }
-                      : {}),
+                    ...(remoteSettings.darkMode != null ? { darkMode: remoteSettings.darkMode } : {}),
+                    ...(remoteSettings.notifications != null ? { notifications: remoteSettings.notifications } : {}),
+                    ...(remoteSettings.weightUnit != null ? { weightUnit: remoteSettings.weightUnit } : {}),
+                    ...(remoteSettings.undoWindowSeconds != null ? { undoWindowSeconds: remoteSettings.undoWindowSeconds } : {}),
+                    ...(remoteSettings.showRestoreBadge != null ? { showRestoreBadge: remoteSettings.showRestoreBadge } : {}),
+                    ...(remoteSettings.reorderHintFrequency != null ? { reorderHintFrequency: remoteSettings.reorderHintFrequency } : {}),
                   }
                 : {}),
             },
@@ -688,28 +692,29 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, settings: { ...prev.settings, ...updates } };
         persist(next);
-        // Push synced settings fields to Supabase so they persist across devices
-        if (isSupabaseConfigured) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session?.user) return;
-            const appSettings: { showRestoreBadge?: boolean } = {};
-            if ("showRestoreBadge" in updates) {
-              appSettings.showRestoreBadge = updates.showRestoreBadge;
-            }
-            if (Object.keys(appSettings).length > 0) {
-              // Merge into existing preferences so other preference keys are preserved
-              fetchUserPreferences(session.user.id)
-                .then((existing) =>
-                  upsertUserPreferences(session.user.id, {
-                    ...existing,
-                    appSettings: { ...(existing?.appSettings ?? {}), ...appSettings },
-                  })
-                )
-                .catch(() => {});
-            }
-          });
-        }
         return next;
+      });
+      if (!isSupabaseConfigured) return;
+      // Build the cloud-synced subset of changed settings fields
+      const appSettings: NonNullable<UserPreferences["appSettings"]> = {};
+      if ("darkMode" in updates) appSettings.darkMode = updates.darkMode;
+      if ("notifications" in updates) appSettings.notifications = updates.notifications;
+      if ("weightUnit" in updates) appSettings.weightUnit = updates.weightUnit;
+      if ("undoWindowSeconds" in updates) appSettings.undoWindowSeconds = updates.undoWindowSeconds;
+      if ("showRestoreBadge" in updates) appSettings.showRestoreBadge = updates.showRestoreBadge;
+      if ("reorderHintFrequency" in updates) appSettings.reorderHintFrequency = updates.reorderHintFrequency;
+      if (Object.keys(appSettings).length === 0) return;
+      // Merge into existing preferences so unrelated keys are preserved
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: { ...(existing?.appSettings ?? {}), ...appSettings },
+            })
+          )
+          .catch(() => {});
       });
     },
     [persist]
