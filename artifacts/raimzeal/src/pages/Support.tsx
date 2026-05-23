@@ -46,7 +46,6 @@ const TIERS = [
 ];
 
 export function Support() {
-  const [donationError, setDonationError] = useState(false);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -113,26 +112,10 @@ export function Support() {
               </div>
               {DONATION_ACTIVE ? (
                 <div className="shrink-0 flex flex-col items-end gap-1">
-                  <motion.button
-                    onClick={async () => {
-                      const popup = window.open('about:blank', '_blank');
-                      if (!popup) {
-                        setDonationError(true);
-                        setTimeout(() => setDonationError(false), 5000);
-                        return;
-                      }
-                      try {
-                        const r = await fetch('/api/stripe/donation-health');
-                        const { ok } = await r.json() as { ok: boolean };
-                        if (!ok) throw new Error('unhealthy');
-                        popup.location.href = STRIPE_DONATION_URL;
-                        setDonationError(false);
-                      } catch {
-                        popup.close();
-                        setDonationError(true);
-                        setTimeout(() => setDonationError(false), 5000);
-                      }
-                    }}
+                  <motion.a
+                    href={STRIPE_DONATION_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold cursor-pointer"
                     animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
                     transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
@@ -140,10 +123,7 @@ export function Support() {
                   >
                     <Heart className="w-4 h-4 fill-current" />
                     Donate
-                  </motion.button>
-                  {donationError && (
-                    <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
-                  )}
+                  </motion.a>
                 </div>
               ) : (
                 <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>

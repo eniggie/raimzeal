@@ -39,7 +39,6 @@ function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; protein
 }
 
 export function Home({ state, onUpdateWater }: HomeProps) {
-  const [homeDonationError, setHomeDonationError] = useState(false);
   const [streakFreezes, setStreakFreezes] = useState(0);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [freezeMsg, setFreezeMsg] = useState('');
@@ -165,26 +164,10 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
-              <motion.button
-                onClick={async () => {
-                  const popup = window.open('about:blank', '_blank');
-                  if (!popup) {
-                    setHomeDonationError(true);
-                    setTimeout(() => setHomeDonationError(false), 5000);
-                    return;
-                  }
-                  try {
-                    const r = await fetch('/api/stripe/donation-health');
-                    const { ok } = await r.json() as { ok: boolean };
-                    if (!ok) throw new Error('unhealthy');
-                    popup.location.href = STRIPE_DONATION_URL;
-                    setHomeDonationError(false);
-                  } catch {
-                    popup.close();
-                    setHomeDonationError(true);
-                    setTimeout(() => setHomeDonationError(false), 5000);
-                  }
-                }}
+              <motion.a
+                href={STRIPE_DONATION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap cursor-pointer"
                 animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
@@ -192,10 +175,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
               >
                 <Heart className="w-3.5 h-3.5 fill-current" />
                 Donate
-              </motion.button>
-              {homeDonationError && (
-                <p className="text-xs text-destructive whitespace-nowrap">Donation link temporarily unavailable — please try again shortly.</p>
-              )}
+              </motion.a>
             </div>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic whitespace-nowrap">Donation link coming soon.</p>
