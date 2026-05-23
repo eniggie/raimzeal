@@ -603,6 +603,10 @@ function ZoomableCard({
     })
     .onEnd((e) => {
       "worklet";
+      // Boundary clamping is applied instantly in onUpdate, so no spring is
+      // needed here. If a spring is ever added to this commit path it must be
+      // gated on !reduceMotionShared.value to match the pattern used in
+      // pinchGesture.onEnd() and doubleTapGesture.onEnd().
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
       if (
