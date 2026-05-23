@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
+import { randomUUID } from "crypto";
 
 // Supabase project URL — fall back to the known project ref if the env var
 // contains the anon key value instead of the URL (a common misconfiguration).
@@ -25,6 +26,41 @@ function getAdminClient() {
 
 const communityRouter = Router();
 
+// ── POST /api/community/image-upload-url ─────────────────────────────────────
+// Returns a Supabase Storage signed upload URL so the client can PUT an image
+// directly to the community-images bucket, without streaming bytes through the
+// API server. The public URL is also returned so the caller can attach it to
+// the subsequent POST /community/posts request.
+communityRouter.post(
+  "/community/image-upload-url",
+  requireAuth,
+  communityMutateLimitHeavy,
+  async (req, res) => {
+    const userId = (req as any).userId as string;
+    const { ext } = req.body as { ext?: unknown };
+
+    const safeExt = typeof ext === "string" && /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
+    const path = `${userId}/${randomUUID()}.${safeExt}`;
+
+    const supabase = getAdminClient();
+    const { data, error } = await supabase.storage
+      .from("community-images")
+      .createSignedUploadUrl(path);
+
+    if (error || !data) {
+      req.log.error({ error }, "Failed to create signed upload URL");
+      res.status(500).json({ error: "Failed to create upload URL" });
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("community-images")
+      .getPublicUrl(path);
+
+    res.json({ uploadUrl: data.signedUrl, publicUrl });
+  }
+);
+
 // ── POST /api/community/posts ────────────────────────────────────────────────
 // Creates a new community post.
 // userId is extracted exclusively from the validated JWT — never from the body.
@@ -34,10 +70,11 @@ communityRouter.post(
   communityMutateLimitHeavy,
   async (req, res) => {
     const userId = (req as any).userId as string;
-    const { userName, content, postType } = req.body as {
+    const { userName, content, postType, imageUrl } = req.body as {
       userName?: unknown;
       content?: unknown;
       postType?: unknown;
+      imageUrl?: unknown;
     };
 
     if (typeof content !== "string" || !content.trim()) {
@@ -56,6 +93,8 @@ communityRouter.post(
       res.status(400).json({ error: "content too long (max 2000 characters)" });
       return;
     }
+    const safeImageUrl =
+      typeof imageUrl === "string" && imageUrl.startsWith("https://") ? imageUrl : null;
 
     const supabase = getAdminClient();
     const { data, error } = await supabase
@@ -65,6 +104,7 @@ communityRouter.post(
         user_name: userName.trim().slice(0, 60),
         content: content.trim(),
         post_type: postType,
+        ...(safeImageUrl ? { image_url: safeImageUrl } : {}),
       })
       .select()
       .single();

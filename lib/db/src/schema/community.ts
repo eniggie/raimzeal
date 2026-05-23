@@ -9,6 +9,7 @@ export const communityPosts = pgTable("community_posts", {
   userName: text("user_name").notNull(),
   content: text("content").notNull(),
   postType: varchar("post_type", { enum: ["post", "question"] }).notNull().default("post"),
+  imageUrl: text("image_url"),
   likesCount: integer("likes_count").notNull().default(0),
   commentsCount: integer("comments_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

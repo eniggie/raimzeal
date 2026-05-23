@@ -280,6 +280,7 @@ export interface CommunityPost {
   userName: string;
   content: string;
   postType: "post" | "question";
+  imageUrl?: string | null;
   likesCount: number;
   commentsCount: number;
   createdAt: string;
@@ -319,6 +320,7 @@ export async function fetchCommunityPosts(
       userName: r.user_name,
       content: r.content,
       postType: r.post_type as "post" | "question",
+      imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
       likesCount: raw.community_likes?.[0]?.count ?? 0,
       commentsCount: raw.community_comments?.[0]?.count ?? 0,
       createdAt: r.created_at,
@@ -330,7 +332,8 @@ export async function createCommunityPost(
   _userId: string,
   userName: string,
   content: string,
-  postType: "post" | "question"
+  postType: "post" | "question",
+  imageUrl?: string | null
 ): Promise<CommunityPost | null> {
   if (!isSupabaseConfigured) return null;
   const token = await getAccessToken();
@@ -342,7 +345,7 @@ export async function createCommunityPost(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ userName, content, postType }),
+      body: JSON.stringify({ userName, content, postType, imageUrl: imageUrl ?? undefined }),
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { post: Record<string, unknown> };
@@ -353,10 +356,33 @@ export async function createCommunityPost(
       userName: d.user_name as string,
       content: d.content as string,
       postType: d.post_type as "post" | "question",
+      imageUrl: (d.image_url as string | null | undefined) ?? null,
       likesCount: 0,
       commentsCount: 0,
       createdAt: d.created_at as string,
     };
+  } catch {
+    return null;
+  }
+}
+
+export async function getImageUploadUrl(
+  ext: string
+): Promise<{ uploadUrl: string; publicUrl: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBase()}/community/image-upload-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ext }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as { uploadUrl: string; publicUrl: string };
   } catch {
     return null;
   }

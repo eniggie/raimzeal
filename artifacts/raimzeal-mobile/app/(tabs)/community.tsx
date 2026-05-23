@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -16,6 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -30,6 +32,7 @@ import {
   toggleLike,
   checkUserLikes,
   getApiBase,
+  getImageUploadUrl,
 } from "@/lib/db";
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
@@ -43,6 +46,7 @@ interface PostState extends CommunityPost {
   loadingComments: boolean;
   commentInput: string;
   submittingComment: boolean;
+  imageUrl?: string | null;
 }
 
 
@@ -75,6 +79,8 @@ export default function CommunityScreen() {
   const [newPostType, setNewPostType] = useState<"post" | "question">("post");
   const [newPostContent, setNewPostContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [newPostImageUri, setNewPostImageUri] = useState<string | null>(null);
+  const [newPostImageUploading, setNewPostImageUploading] = useState(false);
   useEffect(() => {
     if (isSupabaseConfigured) {
       supabase.auth.getSession().then(({ data }) => {
@@ -263,12 +269,34 @@ export default function CommunityScreen() {
     const userName = user?.name ?? "Anonymous";
     const content = newPostContent.trim();
 
+    // Upload image if selected before closing the modal
+    let uploadedImageUrl: string | null = null;
+    if (newPostImageUri && isSupabaseConfigured) {
+      setNewPostImageUploading(true);
+      try {
+        const ext = newPostImageUri.split(".").pop()?.toLowerCase() ?? "jpg";
+        const urls = await getImageUploadUrl(ext);
+        if (urls) {
+          const fileRes = await fetch(newPostImageUri);
+          const blob = await fileRes.blob();
+          const putRes = await fetch(urls.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": blob.type || "image/jpeg" },
+            body: blob,
+          });
+          if (putRes.ok) uploadedImageUrl = urls.publicUrl;
+        }
+      } catch { /* best-effort — post without image */ }
+      setNewPostImageUploading(false);
+    }
+
     const optimistic: PostState = {
       id: `opt-${Date.now()}`,
       userId: userId ?? "local",
       userName,
       content,
       postType: newPostType,
+      imageUrl: uploadedImageUrl ?? newPostImageUri, // show local preview optimistically
       likesCount: 0,
       commentsCount: 0,
       createdAt: new Date().toISOString(),
@@ -283,10 +311,11 @@ export default function CommunityScreen() {
     setPosts((prev) => [optimistic, ...prev]);
     setShowNewPost(false);
     setNewPostContent("");
+    setNewPostImageUri(null);
 
     if (isSupabaseConfigured && userId) {
       try {
-        const saved = await createCommunityPost(userId, userName, content, newPostType);
+        const saved = await createCommunityPost(userId, userName, content, newPostType, uploadedImageUrl);
         if (saved) {
           setPosts((prev) =>
             prev.map((p) =>
@@ -365,6 +394,14 @@ export default function CommunityScreen() {
         <Text style={[styles.postContent, { color: colors.foreground }]}>
           {item.content}
         </Text>
+
+        {!!item.imageUrl && (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.postImage}
+            resizeMode="cover"
+          />
+        )}
 
         <View style={[styles.postActions, { borderTopColor: colors.border }]}>
           <TouchableOpacity
@@ -557,6 +594,7 @@ export default function CommunityScreen() {
           onPress={() => {
             setNewPostContent("");
             setNewPostType("post");
+            setNewPostImageUri(null);
             setShowNewPost(true);
           }}
           style={[styles.newPostBtn, { backgroundColor: colors.primary }]}
@@ -700,7 +738,7 @@ export default function CommunityScreen() {
               style={[styles.modalHeader, { borderBottomColor: colors.border }]}
             >
               <TouchableOpacity
-                onPress={() => setShowNewPost(false)}
+                onPress={() => { setShowNewPost(false); setNewPostImageUri(null); }}
                 style={styles.modalCloseBtn}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -712,11 +750,11 @@ export default function CommunityScreen() {
               </Text>
               <TouchableOpacity
                 onPress={handleCreatePost}
-                disabled={!newPostContent.trim() || submitting}
+                disabled={!newPostContent.trim() || submitting || newPostImageUploading}
                 style={[
                   styles.modalSubmitBtn,
                   {
-                    backgroundColor: newPostContent.trim()
+                    backgroundColor: newPostContent.trim() && !newPostImageUploading
                       ? colors.primary
                       : colors.muted,
                   },
@@ -824,23 +862,51 @@ export default function CommunityScreen() {
                 {newPostContent.length}/500
               </Text>
 
-              <View
-                style={[
-                  styles.noMediaNotice,
-                  { backgroundColor: colors.muted, borderColor: colors.border },
-                ]}
+              <TouchableOpacity
+                style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
+                onPress={async () => {
+                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (status !== "granted") {
+                    Alert.alert("Permission needed", "Please allow photo access to attach an image.");
+                    return;
+                  }
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    quality: 0.8,
+                    allowsEditing: false,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    setNewPostImageUri(result.assets[0].uri);
+                  }
+                }}
               >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={15}
-                  color={colors.mutedForeground}
-                />
-                <Text
-                  style={[styles.noMediaText, { color: colors.mutedForeground }]}
-                >
-                  Text-only posts. Images, videos, and audio will be available in a future update.
+                <Ionicons name="image-outline" size={18} color={colors.mutedForeground} />
+                <Text style={[styles.imagePickerText, { color: colors.mutedForeground }]}>
+                  {newPostImageUri ? "Change photo" : "Add a photo (optional)"}
                 </Text>
-              </View>
+              </TouchableOpacity>
+
+              {!!newPostImageUri && (
+                <View style={styles.imagePreviewRow}>
+                  {newPostImageUploading ? (
+                    <ActivityIndicator size="small" color={colors.primary} style={{ margin: 8 }} />
+                  ) : (
+                    <>
+                      <Image
+                        source={{ uri: newPostImageUri }}
+                        style={styles.imagePreviewThumb}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        onPress={() => setNewPostImageUri(null)}
+                        style={[styles.imageRemoveBtn, { backgroundColor: colors.destructive }]}
+                      >
+                        <Ionicons name="close" size={12} color="white" />
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              )}
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1083,4 +1149,38 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   donateBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  postImage: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: "#1a1a1a",
+  },
+  imagePicker: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  imagePickerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  imagePreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  imagePreviewThumb: {
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+  },
+  imageRemoveBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: -10,
+    marginBottom: 60,
+  },
 });

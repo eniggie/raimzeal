@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw, ExternalLink, BookOpen,
+  ImagePlus, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +23,7 @@ interface LivePost {
   likes_count: number;
   comments_count: number;
   created_at: string;
+  image_url?: string | null;
   _localLiked?: boolean;
   _localLikes?: number;
 }
@@ -46,6 +48,10 @@ export function Community() {
   const [newPost, setNewPost] = useState('');
   const [posting, setPosting] = useState(false);
   const [postType, setPostType] = useState<'post' | 'win' | 'question' | 'tip' | 'challenge'>('post');
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadPosts = useCallback(async () => {
     if (!supabaseConfigured) { setLoading(false); return; }
@@ -54,7 +60,7 @@ export function Community() {
     try {
       const { data, error } = await supabase
         .from('community_posts')
-        .select('id, user_name, content, post_type, likes_count, comments_count, created_at')
+        .select('id, user_name, content, post_type, likes_count, comments_count, created_at, image_url')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -88,10 +94,37 @@ export function Community() {
       const displayName = (user.user_metadata?.name as string | undefined)?.split(' ')[0]
         || user.email?.split('@')[0]
         || 'Member';
+
+      // Upload image if attached — best-effort; post goes through even if upload fails
+      let imageUrl: string | null = null;
+      if (pendingImageFile) {
+        setImageUploading(true);
+        try {
+          const ext = (pendingImageFile.name.split('.').pop() ?? 'jpg').toLowerCase();
+          const urlRes = await fetch('/api/community/image-upload-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ ext }),
+          });
+          if (urlRes.ok) {
+            const { uploadUrl, publicUrl } = await urlRes.json() as { uploadUrl: string; publicUrl: string };
+            const putRes = await fetch(uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': pendingImageFile.type || 'image/jpeg' },
+              body: pendingImageFile,
+            });
+            if (putRes.ok) imageUrl = publicUrl;
+          }
+        } catch { /* best-effort */ }
+        setImageUploading(false);
+      }
+      setPendingImageFile(null);
+      setPendingImagePreview(null);
+
       const res = await fetch('/api/community/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userName: displayName, content, postType }),
+        body: JSON.stringify({ userName: displayName, content, postType, imageUrl: imageUrl ?? undefined }),
       });
       if (res.ok) {
         const json = await res.json() as { post: Record<string, unknown> };
@@ -104,6 +137,7 @@ export function Community() {
           likes_count: 0,
           comments_count: 0,
           created_at: d.created_at as string,
+          image_url: d.image_url as string | null | undefined,
           _localLiked: false,
           _localLikes: 0,
         }, ...prev]);
@@ -290,17 +324,58 @@ export function Community() {
                     {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 flex gap-2">
-                  <Input
-                    placeholder={postType === 'win' ? 'Share your win or milestone...' : postType === 'question' ? 'Ask the community a health question...' : postType === 'tip' ? 'Share a food therapy or fitness tip...' : postType === 'challenge' ? 'Post a challenge for the community...' : 'Share your progress...'}
-                    value={newPost}
-                    onChange={e => setNewPost(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
-                    data-testid="input-new-post"
-                  />
-                  <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
-                    {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  </Button>
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={postType === 'win' ? 'Share your win or milestone...' : postType === 'question' ? 'Ask the community a health question...' : postType === 'tip' ? 'Share a food therapy or fitness tip...' : postType === 'challenge' ? 'Post a challenge for the community...' : 'Share your progress...'}
+                      value={newPost}
+                      onChange={e => setNewPost(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
+                      data-testid="input-new-post"
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setPendingImageFile(file);
+                        setPendingImagePreview(URL.createObjectURL(file));
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      variant="ghost" size="icon" type="button"
+                      title="Attach image"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {imageUploading
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <ImagePlus className="w-4 h-4" />
+                      }
+                    </Button>
+                    <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
+                      {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {pendingImagePreview && (
+                    <div className="relative inline-flex self-start">
+                      <img
+                        src={pendingImagePreview}
+                        alt="Attachment preview"
+                        className="h-20 w-auto rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setPendingImageFile(null); setPendingImagePreview(null); }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
+                      >
+                        <X className="w-3 h-3 text-white" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
           </div>
@@ -384,6 +459,14 @@ export function Community() {
                       </span>
                     </div>
                     <p className="text-sm whitespace-pre-wrap mb-3 leading-relaxed">{post.content}</p>
+                    {post.image_url && (
+                      <img
+                        src={post.image_url}
+                        alt="Post attachment"
+                        className="w-full rounded-lg object-cover aspect-video mb-3"
+                        loading="lazy"
+                      />
+                    )}
                     <div className="flex items-center gap-4">
                       <Button
                         variant="ghost" size="sm" className="h-8 px-2"
