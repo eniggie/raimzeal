@@ -136,7 +136,7 @@ export interface AppState {
     darkMode: boolean;
     notifications: boolean;
     weightUnit: "lbs" | "kg";
-    undoWindowSeconds: 3 | 5 | 10;
+    undoWindowSeconds: number;
     showRestoreBadge: boolean;
     reorderHintFrequency: "never" | "monthly" | "weekly";
   };

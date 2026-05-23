@@ -533,7 +533,7 @@ export interface UserPreferences {
     darkMode?: boolean;
     notifications?: boolean;
     weightUnit?: "lbs" | "kg";
-    undoWindowSeconds?: 3 | 5 | 10;
+    undoWindowSeconds?: number;
     reorderHintFrequency?: "never" | "monthly" | "weekly";
     /** Hint keys dismissed by the user — synced cross-device */
     dismissedHints?: string[];

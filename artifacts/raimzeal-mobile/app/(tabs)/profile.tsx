@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -87,6 +88,9 @@ export default function ProfileScreen() {
   const [cardBgPhotoCrop, setCardBgPhotoCrop] = useState<BackgroundPhotoCrop | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
   const [autoTriggerDelay, setAutoTriggerDelay] = useState<string>("3");
+
+  const [showUndoWindowModal, setShowUndoWindowModal] = useState(false);
+  const [undoWindowInput, setUndoWindowInput] = useState("");
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
@@ -280,16 +284,19 @@ export default function ProfileScreen() {
   }
 
   function handlePickUndoWindow() {
-    Alert.alert(
-      "Undo Window Duration",
-      "How long should the undo option stay visible after deleting a meal?",
-      [
-        { text: "3 seconds", onPress: () => updateSettings({ undoWindowSeconds: 3 }) },
-        { text: "5 seconds", onPress: () => updateSettings({ undoWindowSeconds: 5 }) },
-        { text: "10 seconds", onPress: () => updateSettings({ undoWindowSeconds: 10 }) },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
+    setUndoWindowInput(String(settings.undoWindowSeconds ?? 3));
+    setShowUndoWindowModal(true);
+  }
+
+  function handleConfirmUndoWindow() {
+    const parsed = parseInt(undoWindowInput, 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 30) {
+      Alert.alert("Invalid Value", "Please enter a number between 1 and 30.");
+      return;
+    }
+    updateSettings({ undoWindowSeconds: parsed });
+    setShowUndoWindowModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   function handlePickReorderHintFrequency() {
@@ -542,6 +549,56 @@ export default function ProfileScreen() {
             { backgroundColor: flashColor, opacity: flashOpacity },
           ]}
         />
+      </Modal>
+
+      {/* Undo window duration — custom numeric input modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showUndoWindowModal}
+        onRequestClose={() => setShowUndoWindowModal(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowUndoWindowModal(false)}
+          style={styles.undoModalBackdrop}
+        >
+          <TouchableOpacity activeOpacity={1} style={[styles.undoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.undoModalTitle, { color: colors.foreground }]}>Undo Window Duration</Text>
+            <Text style={[styles.undoModalSubtitle, { color: colors.mutedForeground }]}>
+              How long (in seconds) should the undo option stay visible after deleting a meal? Enter a value from 1 to 30.
+            </Text>
+            <View style={[styles.undoInputRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.undoInput, { color: colors.foreground }]}
+                value={undoWindowInput}
+                onChangeText={(t) => setUndoWindowInput(t.replace(/[^0-9]/g, ""))}
+                keyboardType="number-pad"
+                maxLength={2}
+                returnKeyType="done"
+                onSubmitEditing={handleConfirmUndoWindow}
+                autoFocus
+                selectTextOnFocus
+              />
+              <Text style={[styles.undoInputUnit, { color: colors.mutedForeground }]}>seconds</Text>
+            </View>
+            <View style={styles.undoModalButtons}>
+              <TouchableOpacity
+                onPress={() => setShowUndoWindowModal(false)}
+                style={[styles.undoModalBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.undoModalBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmUndoWindow}
+                style={[styles.undoModalBtn, styles.undoModalBtnPrimary, { backgroundColor: colors.primary }]}
+              >
+                <Text style={[styles.undoModalBtnText, { color: "#fff" }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Header */}
@@ -1138,4 +1195,15 @@ const styles = StyleSheet.create({
   actionLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   settingPickerValue: { fontSize: 13, fontFamily: "Inter_400Regular", marginRight: 4 },
   version: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 8 },
+  undoModalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
+  undoModalCard: { width: "100%", maxWidth: 360, borderRadius: 20, borderWidth: 1, padding: 24, gap: 16 },
+  undoModalTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold" },
+  undoModalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  undoInputRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  undoInput: { fontSize: 28, fontFamily: "Inter_700Bold", minWidth: 52, textAlign: "center" },
+  undoInputUnit: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  undoModalButtons: { flexDirection: "row", gap: 10 },
+  undoModalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", borderWidth: 1 },
+  undoModalBtnPrimary: { borderWidth: 0 },
+  undoModalBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
 });
