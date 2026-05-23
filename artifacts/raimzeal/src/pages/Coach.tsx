@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -22,6 +22,26 @@ interface Message {
   content: string;
   timestamp: Date;
   isWeekly?: boolean;
+  saveState?: 'saving' | 'saved' | 'failed';
+}
+
+async function saveWithRetry(
+  fn: () => Promise<unknown>,
+  maxAttempts = 3,
+): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxAttempts - 1) {
+        await new Promise<void>((res) => setTimeout(res, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 function buildUserContext(state: AppState) {
@@ -157,21 +177,30 @@ export function Coach({ state }: CoachProps) {
 
     coachMessagesApi.list(60).then(({ messages: history }) => {
       if (history.length === 0) return;
-      setMessages([
-        {
-          id: '1',
-          role: 'coach',
-          content: buildWelcomeMessage(state),
-          timestamp: new Date(),
-        },
-        ...history.map(m => ({
-          id: m.id,
-          role: m.role as 'user' | 'coach',
-          content: m.content,
-          timestamp: new Date(m.created_at),
-          isWeekly: m.is_weekly,
-        })),
-      ]);
+      const welcome: Message = {
+        id: '1',
+        role: 'coach',
+        content: buildWelcomeMessage(state),
+        timestamp: new Date(),
+      };
+      const serverIds = new Set(history.map((m) => m.id));
+      setMessages((prev) => {
+        // Preserve any locally-sent messages not yet on the server
+        // (sent in the gap before load completed, or previously failed saves).
+        const localUnsynced = prev.filter((m) => m.id !== '1' && !serverIds.has(m.id));
+        return [
+          welcome,
+          ...history.map((m) => ({
+            id: m.id,
+            role: m.role as 'user' | 'coach',
+            content: m.content,
+            timestamp: new Date(m.created_at),
+            isWeekly: m.is_weekly,
+            saveState: 'saved' as const,
+          })),
+          ...localUnsynced,
+        ];
+      });
     }).catch(() => { /* best-effort — local welcome message stays if load fails */ });
   }, [session?.access_token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -272,11 +301,13 @@ export function Coach({ state }: CoachProps) {
             },
           ]);
 
-          // Persist the weekly digest message
+          // Persist the weekly digest message with retry (best-effort, no UI feedback)
           if (supabaseConfigured) {
-            coachMessagesApi.saveBatch([
-              { role: 'coach', content: cleaned, is_weekly: true },
-            ]).catch(() => { /* best-effort */ });
+            saveWithRetry(() =>
+              coachMessagesApi.saveBatch([
+                { role: 'coach', content: cleaned, is_weekly: true },
+              ])
+            ).catch(() => { /* best-effort — silent after 3 retries */ });
           }
         }
       } catch {
@@ -303,6 +334,7 @@ export function Coach({ state }: CoachProps) {
       role: 'user',
       content: trimmed,
       timestamp: new Date(),
+      saveState: supabaseConfigured ? 'saving' : undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -415,12 +447,30 @@ export function Coach({ state }: CoachProps) {
         )
       );
 
-      // Persist this exchange to the server using the local variable — not a setState side effect
+      // Persist this exchange with retry — up to 3 attempts, 1 s / 2 s / 4 s back-off
       if (supabaseConfigured && cleanedCoachContent) {
-        coachMessagesApi.saveBatch([
-          { role: 'user', content: trimmed },
-          { role: 'coach', content: cleanedCoachContent },
-        ]).catch(() => { /* best-effort */ });
+        saveWithRetry(() =>
+          coachMessagesApi.saveBatch([
+            { role: 'user', content: trimmed },
+            { role: 'coach', content: cleanedCoachContent },
+          ])
+        ).then(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === userMessage.id || m.id === assistantId
+                ? { ...m, saveState: 'saved' }
+                : m
+            )
+          );
+        }).catch(() => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === userMessage.id || m.id === assistantId
+                ? { ...m, saveState: 'failed' }
+                : m
+            )
+          );
+        });
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -439,6 +489,40 @@ export function Coach({ state }: CoachProps) {
       setSearchingFor(null);
     }
   }, [input, isTyping, messages, state, session, firstName]);
+
+  const handleRetrySave = useCallback(async (userMsgId: string) => {
+    const idx = messages.findIndex((m) => m.id === userMsgId);
+    if (idx === -1) return;
+    const userMsg = messages[idx];
+    const coachMsg = messages[idx + 1];
+    if (!coachMsg || coachMsg.role !== 'coach') return;
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === userMsgId || m.id === coachMsg.id ? { ...m, saveState: 'saving' } : m
+      )
+    );
+
+    try {
+      await saveWithRetry(() =>
+        coachMessagesApi.saveBatch([
+          { role: 'user', content: userMsg.content },
+          { role: 'coach', content: coachMsg.content },
+        ])
+      );
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsgId || m.id === coachMsg.id ? { ...m, saveState: 'saved' } : m
+        )
+      );
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsgId || m.id === coachMsg.id ? { ...m, saveState: 'failed' } : m
+        )
+      );
+    }
+  }, [messages]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -525,6 +609,24 @@ export function Coach({ state }: CoachProps) {
                     </span>
                   )}
                 </p>
+                {message.saveState === 'saving' && (
+                  <p className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-pulse inline-block" />
+                    Saving…
+                  </p>
+                )}
+                {message.saveState === 'failed' && message.role === 'user' && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="text-xs text-amber-400">Not saved</span>
+                    <button
+                      onClick={() => handleRetrySave(message.id)}
+                      className="text-xs text-amber-400 underline hover:no-underline ml-0.5"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
               </Card>
             </motion.div>
           ))}
