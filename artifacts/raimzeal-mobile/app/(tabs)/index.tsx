@@ -183,7 +183,13 @@ export default function HomeScreen() {
               progress={netCalories / calorieGoal}
               size={110}
               strokeWidth={9}
-              color={isDeficit ? colors.primary : colors.warning}
+              color={
+                netCalories / calorieGoal > 1
+                  ? colors.destructive
+                  : netCalories / calorieGoal >= 0.9
+                  ? colors.warning
+                  : colors.primary
+              }
               label={netCalories.toString()}
               sublabel="net kcal"
             />
@@ -203,14 +209,19 @@ export default function HomeScreen() {
           {/* Macro goal progress rings */}
           <View style={[styles.macroRingRow, { borderTopColor: colors.border }]}>
             {[
-              { label: "Calories", value: totalCaloriesToday, goal: calorieGoal, unit: "kcal", color: colors.primary },
-              { label: "Protein", value: proteinToday, goal: macroGoals.protein, unit: "g", color: colors.secondary },
-              { label: "Carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", color: colors.warning },
-              { label: "Fat", value: fatToday, goal: macroGoals.fat, unit: "g", color: colors.accent },
-            ].map(({ label, value, goal, unit, color }) => {
-              const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
-              const isOver = goal > 0 && value > goal;
-              const ringColor = isOver ? colors.warning : color;
+              { label: "Calories", value: totalCaloriesToday, goal: calorieGoal, unit: "kcal", baseColor: colors.primary },
+              { label: "Protein", value: proteinToday, goal: macroGoals.protein, unit: "g", baseColor: colors.secondary },
+              { label: "Carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", baseColor: "#f97316" },
+              { label: "Fat", value: fatToday, goal: macroGoals.fat, unit: "g", baseColor: colors.accent },
+            ].map(({ label, value, goal, unit, baseColor }) => {
+              const rawRatio = goal > 0 ? value / goal : 0;
+              const pct = Math.min(rawRatio, 1);
+              const ringColor =
+                rawRatio > 1
+                  ? colors.destructive
+                  : rawRatio >= 0.9
+                  ? colors.warning
+                  : baseColor;
               return (
                 <View key={label} style={styles.macroRingItem}>
                   <ProgressRing
