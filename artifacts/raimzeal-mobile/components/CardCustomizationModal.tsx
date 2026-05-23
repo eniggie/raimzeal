@@ -1619,7 +1619,15 @@ export default function CardCustomizationModal({
           ? "Couldn't copy to clipboard"
           : "Couldn't save or share the card";
       const errMsg = err instanceof Error && err.message ? err.message : fallback;
-      showConfirmation(errMsg, "error", undefined, () => handleGenerate(action));
+      const errIcon: keyof typeof Ionicons.glyphMap =
+        action === "save"
+          ? "camera-outline"
+          : action === "share"
+          ? "share-social-outline"
+          : action === "copy"
+          ? "copy-outline"
+          : "layers-outline";
+      showConfirmation(errMsg, "error", errIcon, () => handleGenerate(action));
     }
   }
 
@@ -3170,7 +3178,7 @@ export default function CardCustomizationModal({
                 ]}
               >
                 <Ionicons
-                  name={confirmVariant === "error" ? "alert-circle" : (confirmIcon ?? "checkmark-circle")}
+                  name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
                   size={14}
                   color={confirmVariant === "error" ? "#ff4436" : colors.primary}
                 />
