@@ -4976,12 +4976,23 @@ function MacroBar({
 }) {
   const colors = useColors();
   const fillRatio = Math.min(1, Math.max(0, value / goal));
+  const ratio = goal > 0 ? value / goal : 1;
+  const badge: "low" | "over" | null =
+    ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
+  const badgeColor = badge === "low" ? colors.warning : colors.accent;
   return (
     <View style={styles.macroBarContainer}>
       <View style={styles.macroBarHeader}>
         <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>
           {label}
         </Text>
+        {badge !== null && (
+          <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
+            <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>
+              {badge === "low" ? "Low" : "Over"}
+            </Text>
+          </View>
+        )}
         <Text style={[styles.macroBarValue, { color: colors.foreground }]}>
           {value}/{goal}g
         </Text>
