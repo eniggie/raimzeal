@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
@@ -95,6 +95,103 @@ export function CalorieTrendChart({
 
   const [pillLabel, setPillLabel] = useState("");
 
+  // --- Tooltip label animation ---
+  const labelOpacity = useRef(new Animated.Value(0)).current;
+  const labelTranslateY = useRef(new Animated.Value(4)).current;
+  const [labelInfo, setLabelInfo] = useState<{
+    x: number;
+    dateText: string;
+    valueText: string;
+    yTop: number;
+  } | null>(null);
+  const prevHighlightedDate = useRef<string | null>(null);
+
+  const computeLabelInfo = useCallback(
+    (date: string) => {
+      const idx = days.findIndex((d) => d.date === date);
+      if (idx === -1) return null;
+      const day = days[idx];
+      if (day.value <= 0) return null;
+      const barH = Math.max(MIN_BAR_H, barAreaH * (day.value / maxVal));
+      const x = SIDE_PADDING + idx * (barW + barGap);
+      const y = TOP_PADDING + barAreaH - barH;
+      return {
+        x: x + barW / 2,
+        yTop: Math.max(TOP_PADDING - 2, y - 14),
+        dateText: formatPillDate(date),
+        valueText: day.value.toLocaleString(),
+      };
+    },
+    [days, barAreaH, maxVal, barW, barGap]
+  );
+
+  useEffect(() => {
+    const wasHighlighted = prevHighlightedDate.current;
+    prevHighlightedDate.current = highlightedDate;
+
+    if (!highlightedDate) {
+      // Deselect — fade out
+      Animated.timing(labelOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    const info = computeLabelInfo(highlightedDate);
+
+    if (!info) {
+      // Zero-value bar — fade out any existing label so stale data isn't shown
+      Animated.timing(labelOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    if (wasHighlighted && wasHighlighted !== highlightedDate) {
+      // Switching between bars — fade out, swap, fade in
+      Animated.timing(labelOpacity, {
+        toValue: 0,
+        duration: 75,
+        useNativeDriver: true,
+      }).start(() => {
+        setLabelInfo(info);
+        labelTranslateY.setValue(4);
+        Animated.parallel([
+          Animated.timing(labelOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(labelTranslateY, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    } else {
+      // First selection — fade in with slide
+      setLabelInfo(info);
+      labelTranslateY.setValue(4);
+      Animated.parallel([
+        Animated.timing(labelOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(labelTranslateY, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [highlightedDate, computeLabelInfo]);
+
   useEffect(() => {
     if (highlightedDate) {
       const highlightedDay = days.find((d) => d.date === highlightedDate);
@@ -125,6 +222,7 @@ export function CalorieTrendChart({
 
   return (
     <View>
+      <View style={{ position: "relative", width: containerWidth, height: CHART_HEIGHT + LABEL_HEIGHT }}>
       <Svg width={containerWidth} height={CHART_HEIGHT + LABEL_HEIGHT}>
         {/* Goal line */}
         <Line
@@ -194,36 +292,49 @@ export function CalorieTrendChart({
               >
                 {day.label}
               </SvgText>
-              {/* Value label on top of bar when highlighted */}
-              {isHighlighted && day.value > 0 && (
-                <>
-                  <SvgText
-                    x={x + barW / 2}
-                    y={Math.max(TOP_PADDING - 2, y - 14)}
-                    fontSize={8}
-                    fill={colors.warning}
-                    textAnchor="middle"
-                    fontWeight="bold"
-                    opacity={0.9}
-                  >
-                    {formatPillDate(day.date)}
-                  </SvgText>
-                  <SvgText
-                    x={x + barW / 2}
-                    y={Math.max(TOP_PADDING + 9, y - 4)}
-                    fontSize={9}
-                    fill={colors.warning}
-                    textAnchor="middle"
-                    fontWeight="bold"
-                  >
-                    {day.value.toLocaleString()}
-                  </SvgText>
-                </>
-              )}
             </React.Fragment>
           );
         })}
       </Svg>
+
+      {/* Animated tooltip label overlay */}
+      {labelInfo && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: labelInfo.x - 28,
+            top: labelInfo.yTop - 12,
+            width: 56,
+            alignItems: "center",
+            opacity: labelOpacity,
+            transform: [{ translateY: labelTranslateY }],
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 8,
+              fontWeight: "bold",
+              color: colors.warning,
+              opacity: 0.9,
+              textAlign: "center",
+            }}
+          >
+            {labelInfo.dateText}
+          </Text>
+          <Text
+            style={{
+              fontSize: 9,
+              fontWeight: "bold",
+              color: colors.warning,
+              textAlign: "center",
+            }}
+          >
+            {labelInfo.valueText}
+          </Text>
+        </Animated.View>
+      )}
+      </View>
 
       {/* Summary pill — fades in when a date is highlighted */}
       <Animated.View
