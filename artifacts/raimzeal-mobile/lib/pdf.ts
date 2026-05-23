@@ -3,10 +3,41 @@ import * as Sharing from "expo-sharing";
 import type { AppState } from "@/contexts/FitnessContext";
 import type { MacroGoals } from "@/contexts/MacroGoalsContext";
 
-export async function exportToPdf(state: AppState, macroGoals?: MacroGoals): Promise<void> {
-  const { user, workoutLogs, mealLogs, bodyMeasurements, streak, personalRecords } = state;
+export type DateRangeOption = "7d" | "30d" | "90d" | "all";
+
+function getDateRangeLabel(option: DateRangeOption): string {
+  switch (option) {
+    case "7d": return "Last 7 Days";
+    case "30d": return "Last 30 Days";
+    case "90d": return "Last 90 Days";
+    case "all": return "All Time";
+  }
+}
+
+function getCutoffDate(option: DateRangeOption): Date | null {
+  if (option === "all") return null;
+  const days = option === "7d" ? 7 : option === "30d" ? 30 : 90;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - days + 1);
+  return cutoff;
+}
+
+export async function exportToPdf(state: AppState, macroGoals?: MacroGoals, dateRange: DateRangeOption = "all"): Promise<void> {
+  const { user, streak, personalRecords, settings } = state;
+
+  const cutoff = getCutoffDate(dateRange);
+  const filterByDate = <T extends { date: string }>(items: T[]): T[] => {
+    if (!cutoff) return items;
+    return items.filter((item) => new Date(item.date) >= cutoff);
+  };
+
+  const workoutLogs = filterByDate(state.workoutLogs);
+  const mealLogs = filterByDate(state.mealLogs);
+  const bodyMeasurements = filterByDate(state.bodyMeasurements);
 
   const generatedAt = new Date().toLocaleString();
+  const dateRangeLabel = getDateRangeLabel(dateRange);
   const totalCalBurned = workoutLogs.reduce((s, l) => s + l.caloriesBurned, 0);
   const totalMinutes = workoutLogs.reduce((s, l) => s + l.duration, 0);
   const uniqueDays = [...new Set(mealLogs.map((m) => m.date))].length;
@@ -27,7 +58,7 @@ export async function exportToPdf(state: AppState, macroGoals?: MacroGoals): Pro
       ? Math.round(mealLogs.reduce((s, m) => s + m.fat, 0) / uniqueDays)
       : 0;
   const latestWeight = bodyMeasurements[bodyMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
-  const unit = state.settings.weightUnit;
+  const unit = settings.weightUnit;
 
   const workoutRows = workoutLogs
     .map(
@@ -155,6 +186,7 @@ export async function exportToPdf(state: AppState, macroGoals?: MacroGoals): Pro
     </div>
     <div class="report-meta">
       <div class="title">Health &amp; Fitness Report</div>
+      <div class="date">Period: ${dateRangeLabel}</div>
       <div class="date">Generated: ${generatedAt}</div>
     </div>
   </div>

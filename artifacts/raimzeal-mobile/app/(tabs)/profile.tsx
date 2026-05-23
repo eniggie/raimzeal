@@ -23,7 +23,7 @@ import { useFitness } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
-import { exportToPdf } from "@/lib/pdf";
+import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
 import { resetAllHints } from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
@@ -408,8 +408,22 @@ export default function ProfileScreen() {
     });
   }
 
-  async function handleExportPdf() {
+  function handleExportPdf() {
     if (pdfLoading) return;
+    Alert.alert(
+      "Choose Date Range",
+      "Which period should the report cover?",
+      [
+        { text: "Last 7 Days", onPress: () => runPdfExport("7d") },
+        { text: "Last 30 Days", onPress: () => runPdfExport("30d") },
+        { text: "Last 90 Days", onPress: () => runPdfExport("90d") },
+        { text: "All Time", onPress: () => runPdfExport("all") },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
+  async function runPdfExport(dateRange: DateRangeOption) {
     setPdfLoading(true);
     try {
       const fitnessState = {
@@ -424,7 +438,7 @@ export default function ProfileScreen() {
         favoriteFoods,
         oviaMessages,
       };
-      await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals);
+      await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals, dateRange);
     } catch {
       Alert.alert("Export Failed", "Something went wrong while generating the PDF. Please try again.");
     } finally {
