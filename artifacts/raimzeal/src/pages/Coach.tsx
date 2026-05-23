@@ -183,11 +183,11 @@ export function Coach({ state }: CoachProps) {
         content: buildWelcomeMessage(state),
         timestamp: new Date(),
       };
-      const serverIds = new Set(history.map((m) => m.id));
       setMessages((prev) => {
-        // Preserve any locally-sent messages not yet on the server
-        // (sent in the gap before load completed, or previously failed saves).
-        const localUnsynced = prev.filter((m) => m.id !== '1' && !serverIds.has(m.id));
+        // Only preserve messages explicitly marked failed — those are definitively
+        // not on the server. Server IDs are generated server-side so they can
+        // never be matched by client UUID; any other comparison risks duplicates.
+        const failedLocal = prev.filter((m) => m.saveState === 'failed');
         return [
           welcome,
           ...history.map((m) => ({
@@ -198,7 +198,7 @@ export function Coach({ state }: CoachProps) {
             isWeekly: m.is_weekly,
             saveState: 'saved' as const,
           })),
-          ...localUnsynced,
+          ...failedLocal,
         ];
       });
     }).catch(() => { /* best-effort — local welcome message stays if load fails */ });
@@ -301,13 +301,16 @@ export function Coach({ state }: CoachProps) {
             },
           ]);
 
-          // Persist the weekly digest message with retry (best-effort, no UI feedback)
+          // Weekly digest persistence is intentionally best-effort and is
+          // explicitly out-of-scope for the Task #523 message-save guarantee.
+          // The digest is regenerated automatically on next open if missing,
+          // so a silent failure here is acceptable. No saveState / retry UI.
           if (supabaseConfigured) {
             saveWithRetry(() =>
               coachMessagesApi.saveBatch([
                 { role: 'coach', content: cleaned, is_weekly: true },
               ])
-            ).catch(() => { /* best-effort — silent after 3 retries */ });
+            ).catch(() => { /* intentionally silent — see comment above */ });
           }
         }
       } catch {
@@ -479,10 +482,14 @@ export function Coach({ state }: CoachProps) {
       }
       const errorMsg = err instanceof Error ? err.message
         : `Sorry ${firstName}, I am having trouble connecting right now. Please check your connection and try again.`;
+      // Mark the user message as failed so the retry chip appears — the exchange
+      // was never saved because generation did not produce a valid response.
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId ? { ...m, content: errorMsg } : m
-        )
+        prev.map((m) => {
+          if (m.id === assistantId) return { ...m, content: errorMsg };
+          if (m.id === userMessage.id && supabaseConfigured) return { ...m, saveState: 'failed' as const };
+          return m;
+        })
       );
     } finally {
       setIsTyping(false);
