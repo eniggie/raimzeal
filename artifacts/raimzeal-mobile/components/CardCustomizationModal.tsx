@@ -2306,6 +2306,7 @@ export default function CardCustomizationModal({
   const zoomTranslateX = useRef(new Animated.Value(0)).current;
   const zoomTranslateY = useRef(new Animated.Value(0)).current;
   const zoomOriginScale = useRef(new Animated.Value(1)).current;
+  const zoomSwipeDragY = useRef(new Animated.Value(0)).current;
   const zoomOriginRect = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const cardPreviewRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
@@ -2408,12 +2409,13 @@ export default function CardCustomizationModal({
     }
   }
 
-  function closeZoom() {
+  function closeZoom(releaseVelocity = 0) {
     if (reduceMotionRef.current) {
       zoomAnim.setValue(0);
       zoomTranslateX.setValue(0);
       zoomTranslateY.setValue(0);
       zoomOriginScale.setValue(1);
+      zoomSwipeDragY.setValue(0);
       setZoomVisible(false);
     } else {
       const win = Dimensions.get("window");
@@ -2428,18 +2430,56 @@ export default function CardCustomizationModal({
       Animated.parallel([
         Animated.spring(zoomAnim, { toValue: 0, ...springConfig }),
         Animated.spring(zoomTranslateX, { toValue: originCenterX - screenW / 2, ...springConfig }),
-        Animated.spring(zoomTranslateY, { toValue: originCenterY - screenH / 2, ...springConfig }),
+        Animated.spring(zoomTranslateY, { toValue: originCenterY - screenH / 2, velocity: releaseVelocity, ...springConfig }),
         Animated.spring(zoomOriginScale, { toValue: targetScale, ...springConfig }),
+        Animated.spring(zoomSwipeDragY, { toValue: 0, ...springConfig }),
       ]).start(({ finished }) => {
         if (finished) {
           setZoomVisible(false);
           zoomTranslateX.setValue(0);
           zoomTranslateY.setValue(0);
           zoomOriginScale.setValue(1);
+          zoomSwipeDragY.setValue(0);
         }
       });
     }
   }
+
+  // Swipe-down gesture to dismiss the zoom overlay
+  const closeZoomRef = useRef(closeZoom);
+  closeZoomRef.current = closeZoom;
+  const zoomSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5,
+      onPanResponderMove: (_, gs) => {
+        zoomSwipeDragY.setValue(Math.max(0, gs.dy));
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 80 || gs.vy > 0.5) {
+          closeZoomRef.current(gs.vy);
+        } else {
+          Animated.spring(zoomSwipeDragY, {
+            toValue: 0,
+            damping: 20,
+            stiffness: 300,
+            mass: 0.6,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(zoomSwipeDragY, {
+          toValue: 0,
+          damping: 20,
+          stiffness: 300,
+          mass: 0.6,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
 
   // Stable callback wrappers via refs — give memoized child components stable function
   // references while always invoking the latest closure, eliminating stale-closure hazards.
@@ -3431,7 +3471,7 @@ export default function CardCustomizationModal({
         visible={zoomVisible}
         animationType="none"
         transparent
-        onRequestClose={closeZoom}
+        onRequestClose={() => closeZoom()}
         statusBarTranslucent
       >
         <Animated.View
@@ -3439,13 +3479,15 @@ export default function CardCustomizationModal({
             styles.zoomOverlay,
             {
               opacity: zoomAnim,
+              transform: [{ translateY: zoomSwipeDragY }],
             },
           ]}
+          {...zoomSwipePanResponder.panHandlers}
         >
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-            onPress={closeZoom}
+            onPress={() => closeZoom()}
           />
 
           <Animated.View
@@ -3527,7 +3569,7 @@ export default function CardCustomizationModal({
           >
             <TouchableOpacity
               style={styles.zoomCloseBtn}
-              onPress={closeZoom}
+              onPress={() => closeZoom()}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
