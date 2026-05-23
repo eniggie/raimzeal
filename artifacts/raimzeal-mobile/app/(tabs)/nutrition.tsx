@@ -148,6 +148,7 @@ const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
+const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
 
 interface CustomFilterPreset {
   id: string;
@@ -682,6 +683,20 @@ export default function NutritionScreen() {
   }, [filteredHistoryDays]);
 
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HIGHLIGHTED_DATE_STORAGE_KEY).then((val) => {
+      if (val) setHighlightedDate(val);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (highlightedDate) {
+      AsyncStorage.setItem(HIGHLIGHTED_DATE_STORAGE_KEY, highlightedDate).catch(() => {});
+    } else {
+      AsyncStorage.removeItem(HIGHLIGHTED_DATE_STORAGE_KEY).catch(() => {});
+    }
+  }, [highlightedDate]);
 
   type TrendMetric = "calories" | "protein" | "carbs" | "fat";
 
