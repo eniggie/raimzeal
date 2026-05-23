@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   LayoutAnimation,
   Platform,
   ScrollView,
@@ -42,6 +43,7 @@ type WorkoutWeekGroup = {
   logs: WorkoutLog[];
   totalDuration: number;
   totalCalories: number;
+  topExercise: string | null;
 };
 
 type WorkoutMonthGroup = {
@@ -50,7 +52,15 @@ type WorkoutMonthGroup = {
   logs: WorkoutLog[];
   totalDuration: number;
   totalCalories: number;
+  weekGroups: WorkoutWeekGroup[];
 };
+
+// Flat item discriminated union — drives the virtualized FlatList
+type FlatItem =
+  | { type: "weekHeader"; group: WorkoutWeekGroup }
+  | { type: "monthHeader"; group: WorkoutMonthGroup }
+  | { type: "weekSubHeader"; group: WorkoutWeekGroup }
+  | { type: "log"; log: WorkoutLog; indented: boolean };
 
 // ── Pure grouping utilities ───────────────────────────────────────────────────
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -62,6 +72,20 @@ function getMondayOfWeek(dateStr: string): string {
   const diff = dow === 0 ? -6 : 1 - dow;
   d.setDate(d.getDate() + diff);
   return d.toISOString().split("T")[0];
+}
+
+function computeTopExercise(logs: WorkoutLog[]): string | null {
+  const counts = new Map<string, number>();
+  for (const log of logs) {
+    for (const ex of log.exercises) {
+      counts.set(ex.name, (counts.get(ex.name) ?? 0) + 1);
+    }
+  }
+  if (counts.size === 0) return null;
+  let top = "";
+  let max = 0;
+  counts.forEach((n, name) => { if (n > max) { max = n; top = name; } });
+  return top || null;
 }
 
 function groupWorkoutsByWeek(logs: WorkoutLog[]): WorkoutWeekGroup[] {
@@ -77,176 +101,90 @@ function groupWorkoutsByWeek(logs: WorkoutLog[]): WorkoutWeekGroup[] {
       const endD = new Date(weekKey + "T12:00:00");
       endD.setDate(endD.getDate() + 6);
       const d = new Date(weekKey + "T12:00:00");
+      const sorted = [...weekLogs].sort((a, b) => (a.date > b.date ? -1 : 1));
       return {
         weekKey,
         weekLabel: `Week of ${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
         startDate: weekKey,
         endDate: endD.toISOString().split("T")[0],
-        logs: [...weekLogs].sort((a, b) => (a.date > b.date ? -1 : 1)),
+        logs: sorted,
         totalDuration: weekLogs.reduce((s, l) => s + l.duration, 0),
         totalCalories: weekLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+        topExercise: computeTopExercise(weekLogs),
       };
     });
 }
 
-function groupWorkoutsByMonth(weekGroups: WorkoutWeekGroup[]): WorkoutMonthGroup[] {
-  const map = new Map<string, WorkoutLog[]>();
-  for (const wg of weekGroups) {
-    const monthKey = wg.endDate.slice(0, 7);
-    if (!map.has(monthKey)) map.set(monthKey, []);
-    map.get(monthKey)!.push(...wg.logs);
+function groupWorkoutsByMonth(wkGroups: WorkoutWeekGroup[]): WorkoutMonthGroup[] {
+  // Key each week by the month of its Monday (startDate), not its end date,
+  // so cross-month weeks land in the month where most of their days fall.
+  const map = new Map<string, WorkoutWeekGroup[]>();
+  for (const wg of wkGroups) {
+    const mk = wg.startDate.slice(0, 7);
+    if (!map.has(mk)) map.set(mk, []);
+    map.get(mk)!.push(wg);
   }
   return Array.from(map.entries())
     .sort(([a], [b]) => (a > b ? -1 : 1))
-    .map(([monthKey, mLogs]) => {
+    .map(([monthKey, mWeeks]) => {
+      const allLogs = mWeeks.flatMap((w) => w.logs);
       const [yr, mo] = monthKey.split("-");
       return {
         monthKey,
         monthLabel: `${MONTH_LONG[parseInt(mo) - 1]} ${yr}`,
-        logs: mLogs,
-        totalDuration: mLogs.reduce((s, l) => s + l.duration, 0),
-        totalCalories: mLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+        logs: allLogs,
+        totalDuration: allLogs.reduce((s, l) => s + l.duration, 0),
+        totalCalories: allLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+        weekGroups: mWeeks,
       };
     });
 }
-
-// ── Section components ────────────────────────────────────────────────────────
-function WorkoutWeekSection({
-  group,
-  expanded,
-  onToggle,
-  colors,
-}: {
-  group: WorkoutWeekGroup;
-  expanded: boolean;
-  onToggle: () => void;
-  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
-}) {
-  return (
-    <View style={[secStyles.container, { borderColor: colors.border }]}>
-      <TouchableOpacity
-        onPress={onToggle}
-        activeOpacity={0.75}
-        style={[secStyles.header, { backgroundColor: colors.card }]}
-      >
-        <View style={secStyles.headerLeft}>
-          <Text style={[secStyles.headerLabel, { color: colors.foreground }]}>
-            {group.weekLabel}
-          </Text>
-          <View style={secStyles.metaRow}>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.logs.length} workout{group.logs.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.totalDuration}m
-              </Text>
-            </View>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="flame-outline" size={11} color={colors.warning} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.totalCalories} kcal
-              </Text>
-            </View>
-          </View>
-        </View>
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={17}
-          color={colors.mutedForeground}
-        />
-      </TouchableOpacity>
-      {expanded && (
-        <View style={[secStyles.logList, { backgroundColor: colors.background }]}>
-          {group.logs.map((log) => (
-            <WorkoutCard key={log.id} workout={log} />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function WorkoutMonthSection({
-  group,
-  expanded,
-  onToggle,
-  colors,
-}: {
-  group: WorkoutMonthGroup;
-  expanded: boolean;
-  onToggle: () => void;
-  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
-}) {
-  return (
-    <View style={[secStyles.container, { borderColor: colors.border }]}>
-      <TouchableOpacity
-        onPress={onToggle}
-        activeOpacity={0.75}
-        style={[secStyles.header, { backgroundColor: colors.card }]}
-      >
-        <View style={secStyles.headerLeft}>
-          <Text style={[secStyles.headerLabel, { color: colors.foreground }]}>
-            {group.monthLabel}
-          </Text>
-          <View style={secStyles.metaRow}>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.logs.length} workout{group.logs.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.totalDuration}m
-              </Text>
-            </View>
-            <View style={secStyles.metaChip}>
-              <Ionicons name="flame-outline" size={11} color={colors.warning} />
-              <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
-                {group.totalCalories} kcal
-              </Text>
-            </View>
-          </View>
-        </View>
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={17}
-          color={colors.mutedForeground}
-        />
-      </TouchableOpacity>
-      {expanded && (
-        <View style={[secStyles.logList, { backgroundColor: colors.background }]}>
-          {group.logs.map((log) => (
-            <WorkoutCard key={log.id} workout={log} />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-const secStyles = StyleSheet.create({
-  container: { borderRadius: 14, borderWidth: 1, overflow: "hidden", marginBottom: 2 },
-  header: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
-  headerLeft: { flex: 1, gap: 5 },
-  headerLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
-  metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  logList: { padding: 10, gap: 8 },
-});
 
 const LEVEL_COLORS: Record<ProgramItem["level"], string> = {
   beginner: "#2E8B57",
   intermediate: "#C9A84C",
   advanced: "#8B31C7",
 };
+
+const secStyles = StyleSheet.create({
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  monthHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 4,
+  },
+  weekSubHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 4,
+    marginLeft: 12,
+  },
+  headerLeft: { flex: 1, gap: 5 },
+  headerLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  monthLabel: { fontSize: 15, fontFamily: "SpaceGrotesk_600SemiBold" },
+  subHeaderLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
+  metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  indentedLog: { marginLeft: 12 },
+});
 
 const DEFAULT_PROGRAMS: ProgramItem[] = [
   {
@@ -378,6 +316,33 @@ export default function WorkoutsScreen() {
 
   const weekGroups = useMemo(() => groupWorkoutsByWeek(workoutLogs), [workoutLogs]);
   const monthGroups = useMemo(() => groupWorkoutsByMonth(weekGroups), [weekGroups]);
+
+  const flatItems = useMemo((): FlatItem[] => {
+    if (historyViewMode === "week") {
+      const items: FlatItem[] = [];
+      for (const g of weekGroups) {
+        items.push({ type: "weekHeader", group: g });
+        if (expandedKeys.has(g.weekKey)) {
+          for (const log of g.logs) items.push({ type: "log", log, indented: false });
+        }
+      }
+      return items;
+    } else {
+      const items: FlatItem[] = [];
+      for (const mg of monthGroups) {
+        items.push({ type: "monthHeader", group: mg });
+        if (expandedKeys.has(mg.monthKey)) {
+          for (const wg of mg.weekGroups) {
+            items.push({ type: "weekSubHeader", group: wg });
+            if (expandedKeys.has(wg.weekKey)) {
+              for (const log of wg.logs) items.push({ type: "log", log, indented: true });
+            }
+          }
+        }
+      }
+      return items;
+    }
+  }, [historyViewMode, weekGroups, monthGroups, expandedKeys]);
 
   useEffect(() => {
     if (expandedInitRef.current || weekGroups.length === 0) return;
@@ -882,70 +847,170 @@ export default function WorkoutsScreen() {
       )}
 
       {activeTab === "history" && (
-        workoutLogs.length === 0 ? (
-          <View style={[styles.emptyState, { flex: 1 }]}>
-            <Ionicons name="barbell-outline" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No workouts yet</Text>
-            <Text style={[styles.emptySubtext, { color: colors.mutedForeground }]}>Start a workout from the library</Text>
-          </View>
-        ) : (
-          <ScrollView
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Week / Month toggle */}
-            <View style={[styles.historyToggleRow, { backgroundColor: colors.muted }]}>
-              {(["week", "month"] as HistoryViewMode[]).map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setHistoryViewMode(mode);
-                  }}
-                  style={[
-                    styles.historyToggleBtn,
-                    historyViewMode === mode && { backgroundColor: colors.card },
-                  ]}
-                >
-                  <Text
+        <FlatList
+          data={workoutLogs.length === 0 ? [] : flatItems}
+          keyExtractor={(item, idx) => {
+            if (item.type === "weekHeader") return "wh-" + item.group.weekKey;
+            if (item.type === "monthHeader") return "mh-" + item.group.monthKey;
+            if (item.type === "weekSubHeader") return "ws-" + item.group.weekKey;
+            return "log-" + item.log.id + "-" + idx;
+          }}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            workoutLogs.length > 0 ? (
+              <View style={[styles.historyToggleRow, { backgroundColor: colors.muted }]}>
+                {(["week", "month"] as HistoryViewMode[]).map((mode) => (
+                  <TouchableOpacity
+                    key={mode}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setHistoryViewMode(mode);
+                    }}
                     style={[
-                      styles.historyToggleLabel,
-                      {
-                        color: historyViewMode === mode ? colors.foreground : colors.mutedForeground,
-                        fontFamily: historyViewMode === mode ? "Inter_600SemiBold" : "Inter_400Regular",
-                      },
+                      styles.historyToggleBtn,
+                      historyViewMode === mode && { backgroundColor: colors.card },
                     ]}
                   >
-                    {mode === "week" ? "By Week" : "By Month"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {historyViewMode === "week"
-              ? weekGroups.map((group) => (
-                  <WorkoutWeekSection
-                    key={group.weekKey}
-                    group={group}
-                    expanded={expandedKeys.has(group.weekKey)}
-                    onToggle={() => toggleKey(group.weekKey)}
-                    colors={colors}
-                  />
-                ))
-              : monthGroups.map((group) => (
-                  <WorkoutMonthSection
-                    key={group.monthKey}
-                    group={group}
-                    expanded={expandedKeys.has(group.monthKey)}
-                    onToggle={() => toggleKey(group.monthKey)}
-                    colors={colors}
-                  />
+                    <Text
+                      style={[
+                        styles.historyToggleLabel,
+                        {
+                          color: historyViewMode === mode ? colors.foreground : colors.mutedForeground,
+                          fontFamily: historyViewMode === mode ? "Inter_600SemiBold" : "Inter_400Regular",
+                        },
+                      ]}
+                    >
+                      {mode === "week" ? "By Week" : "By Month"}
+                    </Text>
+                  </TouchableOpacity>
                 ))}
-          </ScrollView>
-        )
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="barbell-outline" size={48} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No workouts yet</Text>
+              <Text style={[styles.emptySubtext, { color: colors.mutedForeground }]}>Start a workout from the library</Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            if (item.type === "weekHeader") {
+              const g = item.group;
+              const expanded = expandedKeys.has(g.weekKey);
+              return (
+                <TouchableOpacity
+                  onPress={() => toggleKey(g.weekKey)}
+                  activeOpacity={0.75}
+                  style={[secStyles.sectionHeader, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <View style={secStyles.headerLeft}>
+                    <Text style={[secStyles.headerLabel, { color: colors.foreground }]}>{g.weekLabel}</Text>
+                    <View style={secStyles.metaRow}>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                          {g.logs.length} workout{g.logs.length !== 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalDuration}m</Text>
+                      </View>
+                      {g.topExercise && (
+                        <View style={secStyles.metaChip}>
+                          <Ionicons name="trophy-outline" size={11} color={colors.mutedForeground} />
+                          <Text style={[secStyles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {g.topExercise}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={17} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              );
+            }
+            if (item.type === "monthHeader") {
+              const g = item.group;
+              const expanded = expandedKeys.has(g.monthKey);
+              return (
+                <TouchableOpacity
+                  onPress={() => toggleKey(g.monthKey)}
+                  activeOpacity={0.75}
+                  style={[secStyles.monthHeader, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "35" }]}
+                >
+                  <View style={secStyles.headerLeft}>
+                    <Text style={[secStyles.monthLabel, { color: colors.foreground }]}>{g.monthLabel}</Text>
+                    <View style={secStyles.metaRow}>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="barbell-outline" size={11} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                          {g.logs.length} workout{g.logs.length !== 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="time-outline" size={11} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalDuration}m</Text>
+                      </View>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="flame-outline" size={11} color={colors.warning} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalCalories} kcal</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={17} color={colors.primary} />
+                </TouchableOpacity>
+              );
+            }
+            if (item.type === "weekSubHeader") {
+              const g = item.group;
+              const expanded = expandedKeys.has(g.weekKey);
+              return (
+                <TouchableOpacity
+                  onPress={() => toggleKey(g.weekKey)}
+                  activeOpacity={0.75}
+                  style={[secStyles.weekSubHeader, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <View style={secStyles.headerLeft}>
+                    <Text style={[secStyles.subHeaderLabel, { color: colors.foreground }]}>{g.weekLabel}</Text>
+                    <View style={secStyles.metaRow}>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="barbell-outline" size={10} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>
+                          {g.logs.length} workout{g.logs.length !== 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                      <View style={secStyles.metaChip}>
+                        <Ionicons name="time-outline" size={10} color={colors.mutedForeground} />
+                        <Text style={[secStyles.metaText, { color: colors.mutedForeground }]}>{g.totalDuration}m</Text>
+                      </View>
+                      {g.topExercise && (
+                        <View style={secStyles.metaChip}>
+                          <Ionicons name="trophy-outline" size={10} color={colors.mutedForeground} />
+                          <Text style={[secStyles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                            {g.topExercise}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={15} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              );
+            }
+            // type === "log"
+            return (
+              <View style={item.indented ? secStyles.indentedLog : undefined}>
+                <WorkoutCard workout={item.log} />
+              </View>
+            );
+          }}
+        />
       )}
     </View>
   );
