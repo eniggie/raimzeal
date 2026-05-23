@@ -15,6 +15,8 @@ interface CalorieTrendChartProps {
   accentColor: string;
   highlightedDate: string | null;
   onBarPress: (date: string) => void;
+  onPillPress?: (date: string) => void;
+  onClearHighlight?: () => void;
   onEditGoals?: () => void;
   colors: {
     primary: string;
@@ -50,6 +52,8 @@ export function CalorieTrendChart({
   accentColor,
   highlightedDate,
   onBarPress,
+  onPillPress,
+  onClearHighlight,
   onEditGoals,
   colors,
 }: CalorieTrendChartProps) {
@@ -226,41 +230,76 @@ export function CalorieTrendChart({
         pointerEvents={highlightedDate ? "auto" : "none"}
         style={{ opacity: Animated.multiply(pillOpacity, pillFlash), alignItems: "center", marginTop: 8, marginBottom: 2 }}
       >
-        <TouchableOpacity
-          activeOpacity={0.75}
-          onPress={() => highlightedDate && onBarPress(highlightedDate)}
+        <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
-            paddingHorizontal: 14,
-            paddingVertical: 6,
             borderRadius: 20,
             backgroundColor: colors.warning + "1A",
             borderWidth: 1,
             borderColor: colors.warning + "55",
+            overflow: "hidden",
           }}
         >
-          <View
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: 4,
-              backgroundColor: colors.warning,
+          {/* Nav body — tapping jumps to that day's meal log */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => {
+              if (!highlightedDate) return;
+              if (onPillPress) {
+                onPillPress(highlightedDate);
+              } else {
+                onBarPress(highlightedDate);
+              }
             }}
-          />
-          <Text
             style={{
-              fontSize: 12,
-              fontWeight: "600",
-              color: colors.warning,
-              letterSpacing: 0.1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
             }}
           >
-            {pillLabel}
-          </Text>
-          <Text style={{ fontSize: 11, color: colors.warning + "BB" }}>✕</Text>
-        </TouchableOpacity>
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                backgroundColor: colors.warning,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: colors.warning,
+                letterSpacing: 0.1,
+              }}
+            >
+              {pillLabel}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.warning + "CC" }}>→</Text>
+          </TouchableOpacity>
+          {/* Dismiss button */}
+          <TouchableOpacity
+            activeOpacity={0.65}
+            onPress={() => {
+              if (onClearHighlight) {
+                onClearHighlight();
+              } else if (highlightedDate) {
+                onBarPress(highlightedDate);
+              }
+            }}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderLeftWidth: 1,
+              borderLeftColor: colors.warning + "44",
+            }}
+          >
+            <Text style={{ fontSize: 11, color: colors.warning + "BB" }}>✕</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* Legend row */}

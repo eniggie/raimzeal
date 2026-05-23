@@ -2220,18 +2220,35 @@ export default function NutritionScreen() {
     setShowManualEntry(false);
   }
 
+  function scrollToDateCard(date: string) {
+    const cardY = historyCardYsRef.current[date];
+    if (cardY != null) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: cardY, animated: true });
+      }, 50);
+    }
+  }
+
   function handleChartBarPress(date: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setHighlightedDate((prev) => {
-      if (prev === date) return null;
-      const cardY = historyCardYsRef.current[date];
-      if (cardY != null) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: cardY, animated: true });
-        }, 50);
+      if (prev === date) {
+        // Re-tapping the highlighted bar scrolls to that day's card instead of clearing
+        scrollToDateCard(date);
+        return date;
       }
+      scrollToDateCard(date);
       return date;
     });
+  }
+
+  function handleChartPillPress(date: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scrollToDateCard(date);
+  }
+
+  function handleClearHighlight() {
+    setHighlightedDate(null);
   }
 
   return (
@@ -3234,7 +3251,7 @@ export default function NutritionScreen() {
                       </Text>
                       <Text style={[styles.trendChartSubtitle, { color: colors.mutedForeground }]}>
                         Last {trendChartDays.length} day{trendChartDays.length !== 1 ? "s" : ""}
-                        {highlightedDate ? " · tap again to clear" : " · tap a bar to highlight"}
+                        {highlightedDate ? " · tap pill → to jump to day" : " · tap a bar to highlight"}
                       </Text>
                     </View>
                     {/* Segmented metric selector */}
@@ -3295,6 +3312,8 @@ export default function NutritionScreen() {
                       }
                       highlightedDate={highlightedDate}
                       onBarPress={handleChartBarPress}
+                      onPillPress={handleChartPillPress}
+                      onClearHighlight={handleClearHighlight}
                       onEditGoals={() => router.push("/macro-goals")}
                       colors={colors}
                     />
