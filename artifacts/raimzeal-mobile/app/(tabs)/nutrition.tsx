@@ -3018,6 +3018,7 @@ export default function NutritionScreen() {
                         <TouchableOpacity
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                             setHistoryDateRange(range);
                           }}
                           style={[
@@ -3091,6 +3092,7 @@ export default function NutritionScreen() {
                           <TouchableOpacity
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                               setHistoryMealFilter(meal as HistoryMealFilter);
                             }}
                             style={[
@@ -3130,6 +3132,7 @@ export default function NutritionScreen() {
                       <TouchableOpacity
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                           setHistoryDateRange("all");
                           setHistoryMealFilter("all");
                         }}
