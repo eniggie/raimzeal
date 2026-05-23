@@ -1124,6 +1124,7 @@ export default function NutritionScreen() {
   const undoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
+  const undoProgressAnim = useRef(new Animated.Value(1)).current;
 
   const [restoredLabel, setRestoredLabel] = useState<string | null>(null);
   const restoredAnim = useRef(new Animated.Value(0)).current;
@@ -1146,12 +1147,14 @@ export default function NutritionScreen() {
   const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetUndoCountdown, setPresetUndoCountdown] = useState(0);
   const presetUndoAnim = useRef(new Animated.Value(0)).current;
+  const presetUndoProgressAnim = useRef(new Animated.Value(1)).current;
 
   const [renamedPreset, setRenamedPreset] = useState<{ old: CustomFilterPreset; newName: string } | null>(null);
   const presetRenameUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetRenameUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetRenameUndoCountdown, setPresetRenameUndoCountdown] = useState(0);
   const presetRenameUndoAnim = useRef(new Animated.Value(0)).current;
+  const presetRenameUndoProgressAnim = useRef(new Animated.Value(1)).current;
 
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -1482,7 +1485,9 @@ export default function NutritionScreen() {
     setDeletedPreset(preset);
     setPresetUndoCountdown(durationSec);
     presetUndoAnim.setValue(0);
+    presetUndoProgressAnim.setValue(1);
     Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.timing(presetUndoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
     presetUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
@@ -1492,6 +1497,7 @@ export default function NutritionScreen() {
   }
 
   function dismissPresetUndoToast() {
+    presetUndoProgressAnim.stopAnimation();
     Animated.timing(presetUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setDeletedPreset(null);
     });
@@ -1516,6 +1522,7 @@ export default function NutritionScreen() {
   }
 
   function dismissPresetRenameUndoToast() {
+    presetRenameUndoProgressAnim.stopAnimation();
     Animated.timing(presetRenameUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setRenamedPreset(null);
     });
@@ -1536,7 +1543,9 @@ export default function NutritionScreen() {
     setRenamedPreset({ old: oldPreset, newName });
     setPresetRenameUndoCountdown(durationSec);
     presetRenameUndoAnim.setValue(0);
+    presetRenameUndoProgressAnim.setValue(1);
     Animated.spring(presetRenameUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.timing(presetRenameUndoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
     presetRenameUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetRenameUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
@@ -1563,7 +1572,9 @@ export default function NutritionScreen() {
     const durationSec = settings.undoWindowSeconds ?? 3;
     setUndoMeal(meal);
     setUndoCountdown(durationSec);
+    undoProgressAnim.setValue(1);
     Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.timing(undoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
     undoCountdownIntervalRef.current = setInterval(() => {
       setUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
@@ -1573,6 +1584,7 @@ export default function NutritionScreen() {
   }
 
   function dismissUndoToast() {
+    undoProgressAnim.stopAnimation();
     Animated.timing(undoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
       setUndoMeal(null);
     });
@@ -5128,6 +5140,15 @@ export default function NutritionScreen() {
           >
             <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
           </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.undoProgressBar,
+              {
+                backgroundColor: colors.primary,
+                width: undoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              },
+            ]}
+          />
         </Animated.View>
       )}
 
@@ -5217,6 +5238,15 @@ export default function NutritionScreen() {
           >
             <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
           </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.undoProgressBar,
+              {
+                backgroundColor: colors.primary,
+                width: presetUndoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              },
+            ]}
+          />
         </Animated.View>
       )}
 
@@ -5251,6 +5281,15 @@ export default function NutritionScreen() {
           >
             <Text style={[styles.undoBtnText, { color: colors.primaryForeground }]}>Undo</Text>
           </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.undoProgressBar,
+              {
+                backgroundColor: colors.primary,
+                width: presetRenameUndoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+              },
+            ]}
+          />
         </Animated.View>
       )}
 
@@ -7725,6 +7764,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
     gap: 8,
+    overflow: "hidden",
+  },
+  undoProgressBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    height: 3,
+    opacity: 0.5,
   },
   undoToastText: {
     flex: 1,
