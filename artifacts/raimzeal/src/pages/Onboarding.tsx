@@ -41,6 +41,9 @@ export function Onboarding({ onLogin }: OnboardingProps) {
     units: 'imperial' as 'imperial' | 'metric',
     fitnessLevel: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
     goals: [] as string[],
+    bloodType: '',
+    rhFactor: '' as '+' | '-' | '',
+    genotype: '',
     email: '',
     password: '',
   });
@@ -51,10 +54,11 @@ export function Onboarding({ onLogin }: OnboardingProps) {
     { title: 'Your Stats', subtitle: 'Help us personalise your experience' },
     { title: 'Fitness Level', subtitle: 'Where are you in your journey?' },
     { title: 'Your Goals', subtitle: 'What do you want to achieve?' },
+    { title: 'Health Profile', subtitle: 'Optional — helps Ovia AI give better food therapy advice' },
     { title: 'Create Account', subtitle: 'Almost there!' },
   ];
 
-  const passwordError = step === 5 ? validatePassword(formData.password) : '';
+  const passwordError = step === 6 ? validatePassword(formData.password) : '';
 
   const canProceed = () => {
     switch (step) {
@@ -63,7 +67,8 @@ export function Onboarding({ onLogin }: OnboardingProps) {
       case 2: return formData.height && formData.weight;
       case 3: return !!formData.fitnessLevel;
       case 4: return formData.goals.length > 0;
-      case 5: return !!formData.email && !validatePassword(formData.password);
+      case 5: return true; // health profile is optional
+      case 6: return !!formData.email && !validatePassword(formData.password);
       default: return false;
     }
   };
@@ -74,7 +79,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
       return;
     }
 
-    // Step 5 — create real Supabase account
+    // Step 6 — create real Supabase account
     setError('');
     setIsLoading(true);
 
@@ -93,6 +98,9 @@ export function Onboarding({ onLogin }: OnboardingProps) {
             weight: parseInt(formData.weight),
             fitnessLevel: formData.fitnessLevel,
             goals: formData.goals,
+            ...(formData.bloodType && { bloodType: formData.bloodType }),
+            ...(formData.rhFactor && { rhFactor: formData.rhFactor }),
+            ...(formData.genotype && { genotype: formData.genotype }),
           },
         },
       });
@@ -363,6 +371,77 @@ export function Onboarding({ onLogin }: OnboardingProps) {
               )}
 
               {step === 5 && (
+                <div className="space-y-6">
+                  <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground leading-relaxed">
+                    This information is used by Ovia AI to give you personalised food therapy and health-awareness insights. It is completely optional and can be updated anytime in your profile.
+                  </div>
+
+                  {/* Blood type */}
+                  <div className="space-y-2">
+                    <Label>Blood Type (optional)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {['A', 'B', 'AB', 'O'].map((bt) => (
+                        <button
+                          key={bt}
+                          type="button"
+                          onClick={() => setFormData(f => ({ ...f, bloodType: f.bloodType === bt ? '' : bt }))}
+                          className={cn(
+                            'px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all',
+                            formData.bloodType === bt
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border text-muted-foreground hover:border-muted-foreground'
+                          )}
+                        >
+                          {bt}
+                        </button>
+                      ))}
+                    </div>
+                    {formData.bloodType && (
+                      <div className="flex gap-2 mt-1">
+                        {(['+', '-'] as const).map((rh) => (
+                          <button
+                            key={rh}
+                            type="button"
+                            onClick={() => setFormData(f => ({ ...f, rhFactor: f.rhFactor === rh ? '' : rh }))}
+                            className={cn(
+                              'px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all',
+                              formData.rhFactor === rh
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:border-muted-foreground'
+                            )}
+                          >
+                            {rh === '+' ? 'Rh+ (positive)' : 'Rh− (negative)'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Genotype */}
+                  <div className="space-y-2">
+                    <Label>Genotype (optional)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {['AA', 'AS', 'AC', 'SS', 'SC', 'CC'].map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setFormData(f => ({ ...f, genotype: f.genotype === g ? '' : g }))}
+                          className={cn(
+                            'px-4 py-2 rounded-xl border-2 text-sm font-medium transition-all',
+                            formData.genotype === g
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border text-muted-foreground hover:border-muted-foreground'
+                          )}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 6 && (
                 <div className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -447,12 +526,12 @@ export function Onboarding({ onLogin }: OnboardingProps) {
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                {step === steps.length - 1 ? 'Create Account' : 'Continue'}
-                {step < steps.length - 1 && <ChevronRight className="w-5 h-5 ml-2" />}
-              </>
-            )}
+            ) : step === steps.length - 1
+              ? 'Create Account'
+              : step === 5 && !formData.bloodType && !formData.genotype
+                ? <><span>Skip</span><ChevronRight className="w-5 h-5 ml-2" /></>
+                : <><span>Continue</span><ChevronRight className="w-5 h-5 ml-2" /></>
+            }
           </Button>
         </div>
       </div>

@@ -293,8 +293,14 @@ export default function BreathingScreen() {
             ) : (
               <View style={styles.centerPlaceholder}>
                 <Ionicons name="leaf-outline" size={36} color={accentColor} />
-                <Text style={[styles.readyText, { color: colors.mutedForeground }]}>
-                  Ready
+                <Text style={[styles.readyPatternName, { color: accentColor }]}>
+                  {pattern.name}
+                </Text>
+                <Text style={[styles.readyBenefit, { color: colors.mutedForeground }]}>
+                  {pattern.benefit}
+                </Text>
+                <Text style={[styles.readyHint, { color: colors.mutedForeground }]}>
+                  Choose a pattern below, then press Begin
                 </Text>
               </View>
             )}
@@ -464,8 +470,10 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceGrotesk_700Bold",
     marginTop: -4,
   },
-  centerPlaceholder: { alignItems: "center", gap: 8 },
-  readyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  centerPlaceholder: { alignItems: "center", gap: 6 },
+  readyPatternName: { fontSize: 16, fontFamily: "SpaceGrotesk_700Bold" },
+  readyBenefit: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  readyHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 4, textAlign: "center" as const, opacity: 0.7 },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-around",

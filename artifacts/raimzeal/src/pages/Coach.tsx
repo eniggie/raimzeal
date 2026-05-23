@@ -112,17 +112,19 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/#{1,6}\s*/g, '')         // # headings
-    .replace(/\*{1,3}([^*]*)\*{1,3}/g, '$1') // *bold* **bold** ***bold***
-    .replace(/_{1,2}([^_]*)_{1,2}/g, '$1')    // _italic_ __bold__
-    .replace(/^[\s]*[-]{2,}[\s]*/gm, '')      // -- list items
-    .replace(/^[\s]*[*]\s+/gm, '')            // * list items
-    .replace(/^[\s]*[-]\s+/gm, '')            // - list items
+    .replace(/#{1,6}\s*/g, '')                        // # headings
+    .replace(/\*{1,3}([^*]*)\*{1,3}/g, '$1')          // *bold* **bold** ***bold***
+    .replace(/_{1,2}([^_]*)_{1,2}/g, '$1')             // _italic_ __bold__
+    .replace(/^[\s]*\d+\.\s+/gm, '')                  // 1. numbered lists
+    .replace(/^[\s]*[-]{2,}[\s]*/gm, '')               // -- list items
+    .replace(/^[\s]*[*]\s+/gm, '')                     // * list items
+    .replace(/^[\s]*[-]\s+/gm, '')                     // - list items
     .replace(/`{1,3}[^`]*`{1,3}/g, (m) => m.replace(/`/g, '')) // `code`
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url)
-    .replace(/\n{3,}/g, '\n\n')              // collapse excess blank lines
-    .replace(/[–—]/g, ' ')                   // en-dash / em-dash
-    .replace(/\*/g, '')                       // catch-all: remove any remaining asterisks
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')           // [text](url)
+    .replace(/\n{3,}/g, '\n\n')                        // collapse excess blank lines
+    .replace(/[–—]/g, ' ')                             // en-dash / em-dash
+    .replace(/\*/g, '')                                // catch-all: remove remaining asterisks
+    .replace(/>+\s*/g, '')                             // > blockquotes
     .trim();
 }
 

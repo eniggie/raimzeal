@@ -62,6 +62,7 @@ export default function ProfileScreen() {
     settings,
     favoriteFoods,
     updateSettings,
+    resetState,
   } = useFitness();
   const { signOut } = useAuth();
   const { goals: macroGoals } = useMacroGoals();
@@ -456,6 +457,7 @@ export default function ProfileScreen() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
+            resetState();
             await signOut();
             if (!isSupabaseConfigured) {
               Alert.alert("Signed out", "You have been signed out.");
@@ -627,6 +629,29 @@ export default function ProfileScreen() {
               icon="trophy-outline"
             />
           </GlassCard>
+
+          {/* Profile completion nudge */}
+          {(!user?.height || !user?.weight || !user?.goals?.length) && (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => router.push("/edit-profile")}
+            >
+              <GlassCard style={[styles.nudgeCard, { borderColor: colors.warning + "55" }]}>
+                <View style={styles.nudgeRow}>
+                  <Ionicons name="alert-circle-outline" size={20} color={colors.warning} />
+                  <View style={styles.nudgeText}>
+                    <Text style={[styles.nudgeTitle, { color: colors.foreground }]}>
+                      Complete your profile
+                    </Text>
+                    <Text style={[styles.nudgeSubtitle, { color: colors.mutedForeground }]}>
+                      Add height, weight & goals for personalised Ovia AI recommendations
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+                </View>
+              </GlassCard>
+            </TouchableOpacity>
+          )}
 
           {/* Settings */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Settings</Text>
@@ -1096,6 +1121,11 @@ const styles = StyleSheet.create({
   profileStatValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
   profileStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   infoCard: { padding: 0, overflow: "hidden" },
+  nudgeCard: { padding: 12, borderWidth: 1, marginBottom: 4 },
+  nudgeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  nudgeText: { flex: 1 },
+  nudgeTitle: { fontSize: 14, fontFamily: "SpaceGrotesk_700Bold", marginBottom: 2 },
+  nudgeSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 16 },
   infoRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
   infoLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   infoValue: { fontSize: 14, fontFamily: "Inter_500Medium" },

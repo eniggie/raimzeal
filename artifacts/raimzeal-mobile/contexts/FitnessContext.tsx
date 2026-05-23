@@ -159,6 +159,8 @@ interface FitnessContextType extends AppState {
   stateHydrated: boolean;
   /** Mark the user as having completed health onboarding */
   markOnboarded: () => void;
+  /** Wipe all local fitness data and AsyncStorage on logout — prevents ghost-data for the next user */
+  resetState: () => void;
 }
 
 /** Same key as the web app — data schemas are compatible */
@@ -295,10 +297,28 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
   }, []);
 
+  const resetState = useCallback(() => {
+    setState({ ...defaultState, isOnboarded: true }); // keep onboarded flag so health-onboarding doesn't re-fire
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
+
   const addWorkoutLog = useCallback(
     (log: WorkoutLog) => {
       setState((prev) => {
-        const next = { ...prev, workoutLogs: [log, ...prev.workoutLogs], streak: prev.streak + 1 };
+        const today = todayStr();
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const lastDate = prev.workoutLogs[0]?.date ?? null;
+        let newStreak: number;
+        if (!lastDate) {
+          newStreak = 1;
+        } else if (lastDate === today) {
+          newStreak = prev.streak; // already logged today — don't double-count
+        } else if (lastDate === yesterday) {
+          newStreak = prev.streak + 1; // consecutive day
+        } else {
+          newStreak = 1; // gap — reset
+        }
+        const next = { ...prev, workoutLogs: [log, ...prev.workoutLogs], streak: newStreak };
         persist(next);
         // Background push to Supabase
         if (isSupabaseConfigured) {
@@ -573,6 +593,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         getWeekCalories,
         stateHydrated,
         markOnboarded,
+        resetState,
       }}
     >
       {children}

@@ -280,10 +280,13 @@ export default function OviaScreen() {
         role: "assistant",
         content: stripMarkdown(accumulated) || "I could not generate a response. Please try again.",
       });
-    } catch {
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && String(err.message).toLowerCase().includes("fetch");
       addOviaMessage({
         role: "assistant",
-        content: `Sorry ${user?.name?.split(" ")[0] ?? "Champion"}, I am having trouble connecting right now. Please check your connection and try again.`,
+        content: isNetworkError
+          ? `Sorry ${user?.name?.split(" ")[0] ?? "Champion"}, I could not reach the server. Make sure you have an internet connection and try again.`
+          : `Sorry ${user?.name?.split(" ")[0] ?? "Champion"}, something went wrong on my end. Please try again in a moment.`,
       });
     } finally {
       setStreamingContent("");
