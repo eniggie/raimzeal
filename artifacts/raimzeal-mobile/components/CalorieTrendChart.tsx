@@ -67,6 +67,7 @@ export function CalorieTrendChart({
   const goalY = TOP_PADDING + barAreaH * (1 - goal / maxVal);
 
   const pillOpacity = useRef(new Animated.Value(0)).current;
+  const pillFlash = useRef(new Animated.Value(1)).current;
   const pillVisible = useRef(false);
 
   useEffect(() => {
@@ -93,11 +94,26 @@ export function CalorieTrendChart({
   useEffect(() => {
     if (highlightedDate) {
       const highlightedDay = days.find((d) => d.date === highlightedDate);
-      if (highlightedDay) {
-        setPillLabel(
-          `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`
-        );
+      if (!highlightedDay) return;
+      const nextLabel = `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`;
+      if (pillLabel === "") {
+        setPillLabel(nextLabel);
+        return;
       }
+      Animated.sequence([
+        Animated.timing(pillFlash, {
+          toValue: 0.15,
+          duration: 75,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pillFlash, {
+          toValue: 1,
+          duration: 75,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      const timeout = setTimeout(() => setPillLabel(nextLabel), 75);
+      return () => clearTimeout(timeout);
     } else {
       setPillLabel("");
     }
@@ -208,7 +224,7 @@ export function CalorieTrendChart({
       {/* Summary pill — fades in when a date is highlighted */}
       <Animated.View
         pointerEvents={highlightedDate ? "auto" : "none"}
-        style={{ opacity: pillOpacity, alignItems: "center", marginTop: 8, marginBottom: 2 }}
+        style={{ opacity: Animated.multiply(pillOpacity, pillFlash), alignItems: "center", marginTop: 8, marginBottom: 2 }}
       >
         <TouchableOpacity
           activeOpacity={0.75}
