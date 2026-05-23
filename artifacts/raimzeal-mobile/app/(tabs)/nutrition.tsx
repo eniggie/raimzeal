@@ -3363,14 +3363,22 @@ export default function NutritionScreen() {
                         across {weeklyAvgSummary.days} days
                       </Text>
                     </View>
-                    <View style={[styles.weeklyAvgCalRow, { borderBottomColor: colors.border }]}>
+                    <TouchableOpacity
+                      style={[styles.weeklyAvgCalRow, { borderBottomColor: colors.border }]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setTrendMetric("calories");
+                        flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                      }}
+                    >
                       <View style={[styles.weeklyAvgCalBadge, { backgroundColor: colors.primary + "18" }]}>
                         <Ionicons name="flame-outline" size={13} color={colors.primary} />
                         <Text style={[styles.weeklyAvgCalText, { color: colors.primary }]}>
                           {weeklyAvgSummary.avgCalories} / {CALORIE_GOAL} kcal avg/day
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.weeklyAvgMacroRow}>
                       <HistoryMacroChip
                         label="P"
