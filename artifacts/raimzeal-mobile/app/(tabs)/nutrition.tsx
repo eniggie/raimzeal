@@ -5097,6 +5097,14 @@ export default function NutritionScreen() {
                               <Text style={[styles.breakdownFoodCal, { color: colors.primary }]}>
                                 {Math.round(log.calories)} kcal
                               </Text>
+                              <TouchableOpacity
+                                onPress={() => handleLogToday(log)}
+                                activeOpacity={0.7}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                style={[styles.breakdownReAddBtn, { backgroundColor: colors.primary + "1A", borderColor: colors.primary + "40" }]}
+                              >
+                                <Ionicons name="add" size={16} color={colors.primary} />
+                              </TouchableOpacity>
                             </View>
                           ))}
                         </View>
@@ -7581,6 +7589,15 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     minWidth: 60,
     textAlign: "right",
+  },
+  breakdownReAddBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 4,
   },
   breakdownTotalRow: {
     flexDirection: "row",
