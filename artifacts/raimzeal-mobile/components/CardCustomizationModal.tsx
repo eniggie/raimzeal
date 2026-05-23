@@ -36,6 +36,7 @@ import * as ImagePicker from "expo-image-picker";
 import CropPhotoModal, { CropData } from "@/components/CropPhotoModal";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFitness } from "@/contexts/FitnessContext";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
@@ -948,6 +949,7 @@ export default function CardCustomizationModal({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
+  const { settings } = useFitness();
   const { cameraRollStatus } = usePermissions();
   const reduceMotionRef = useRef(false);
   const reduceMotionShared = useSharedValue(reduceMotion);
@@ -1202,6 +1204,7 @@ export default function CardCustomizationModal({
     retryFn?: () => void,
     actionFn?: () => void,
     actionLabel?: string,
+    holdDurationOverrideMs?: number,
   ) {
     confirmOpacity.stopAnimation();
     setConfirmMessage(msg);
@@ -1211,7 +1214,7 @@ export default function CardCustomizationModal({
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
-    const holdDuration = (retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600;
+    const holdDuration = holdDurationOverrideMs ?? ((retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600);
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       setTimeout(() => {
@@ -1735,7 +1738,8 @@ export default function CardCustomizationModal({
   }
 
   function handleDismissBadge() {
-    // Delay the actual persist so the user has ~3 s to undo.
+    // Delay the actual persist so the user has time to undo (respects their undo window setting).
+    const undoMs = (settings.undoWindowSeconds ?? 3) * 1000;
     const schedulePersist = () => {
       if (badgePersistTimerRef.current !== null) {
         clearTimeout(badgePersistTimerRef.current);
@@ -1750,7 +1754,7 @@ export default function CardCustomizationModal({
         // Sync the preference to the cloud settings object so it persists
         // across devices (authenticated users).
         onBadgeDismiss?.();
-      }, 3000);
+      }, undoMs);
     };
 
     const showUndoToast = () => {
@@ -1768,6 +1772,7 @@ export default function CardCustomizationModal({
           setBadgeDismissed(false);
         },
         "Undo",
+        undoMs,
       );
     };
 
@@ -2073,6 +2078,7 @@ export default function CardCustomizationModal({
   }
 
   function showUndoToast(preset: CardPreset, index: number) {
+    const undoMs = (settings.undoWindowSeconds ?? 3) * 1000;
     if (undoTimerRef.current !== null) {
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
@@ -2088,14 +2094,14 @@ export default function CardCustomizationModal({
       Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       Animated.timing(undoProgressAnim, {
         toValue: 0,
-        duration: 4000,
+        duration: undoMs,
         useNativeDriver: false,
       }).start();
     }
     undoTimerRef.current = setTimeout(() => {
       undoTimerRef.current = null;
       dismissUndoToast();
-    }, 4000);
+    }, undoMs);
   }
 
   async function handleUndoDelete() {
