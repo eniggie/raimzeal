@@ -1001,6 +1001,9 @@ export default function CardCustomizationModal({
     )
   ).current;
   const actionLongPressedRef = useRef(false);
+  const modalScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const statTogglesYOffsetRef = useRef(0);
+  const statTogglesPulseAnim = useRef(new Animated.Value(0)).current;
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
@@ -2253,6 +2256,16 @@ export default function CardCustomizationModal({
     setReorderMode(true);
   }
 
+  function scrollToStatToggles() {
+    modalScrollRef.current?.scrollTo({ y: statTogglesYOffsetRef.current, animated: !reduceMotionRef.current });
+    statTogglesPulseAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(statTogglesPulseAnim, { toValue: 1, duration: reduceMotionRef.current ? 0 : 250, useNativeDriver: false }),
+      Animated.delay(600),
+      Animated.timing(statTogglesPulseAnim, { toValue: 0, duration: reduceMotionRef.current ? 0 : 400, useNativeDriver: false }),
+    ]).start();
+  }
+
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
 
@@ -2534,6 +2547,7 @@ export default function CardCustomizationModal({
           </View>
 
           <ScrollView
+            ref={modalScrollRef}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={!reorderMode}
@@ -2890,10 +2904,27 @@ export default function CardCustomizationModal({
             </View>
 
             {/* Stat toggles */}
+            <View
+              onLayout={(e) => { statTogglesYOffsetRef.current = e.nativeEvent.layout.y; }}
+            >
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
               VISIBLE STATS
             </Text>
-            <View style={[styles.togglesCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Animated.View
+              style={[
+                styles.togglesCard,
+                {
+                  backgroundColor: statTogglesPulseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.card, colors.primary + "22"],
+                  }),
+                  borderColor: statTogglesPulseAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [colors.border, colors.primary + "88"],
+                  }),
+                },
+              ]}
+            >
               {STAT_TOGGLES.map((item, index) => {
                 const isOn = visibleStats[item.key];
                 const pillBg = pillColorAnims[item.key].interpolate({
@@ -2963,6 +2994,7 @@ export default function CardCustomizationModal({
                   </TouchableOpacity>
                 );
               })}
+            </Animated.View>
             </View>
 
             {/* Custom message */}
@@ -3176,7 +3208,10 @@ export default function CardCustomizationModal({
                         handleGenerate(action);
                       }}
                       onLongPress={() => {
-                        if (!anyStatEnabled) return;
+                        if (!anyStatEnabled) {
+                          scrollToStatToggles();
+                          return;
+                        }
                         if (!isPhotoBlocked) handleSetDefault(action);
                       }}
                       delayLongPress={500}
