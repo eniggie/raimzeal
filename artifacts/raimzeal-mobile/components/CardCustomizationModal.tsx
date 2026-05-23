@@ -1822,6 +1822,7 @@ export default function CardCustomizationModal({
       setDefaultAction(action);
       setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+      showConfirmation(`★ ${label} set as default · generating…`, "success", undefined, undefined, undefined, undefined, 1800);
       handleGenerate(action);
     } else {
       // "Set-only" mode: show confirmation alert before setting default
