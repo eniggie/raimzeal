@@ -97,6 +97,7 @@ const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay";
+const STORAGE_KEY_ACTIVE_PRESET = "@raimzeal_active_preset_id";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
@@ -1442,7 +1443,6 @@ export default function CardCustomizationModal({
     }
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
-    setActivePresetId(null);
     setShowInlineSave(false);
     setPresetNameInput("");
     setThemeScrollAtEnd(false);
@@ -1455,7 +1455,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -1467,12 +1467,17 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_HINT_OPENS),
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_AND_RUN),
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
+          AsyncStorage.getItem(STORAGE_KEY_ACTIVE_PRESET),
         ]);
 
         if (cancelled) return;
 
         setPresets(loadedPresets);
         setReorderMode(false);
+        const restoredActiveId = savedActivePresetId && loadedPresets.some((p) => p.id === savedActivePresetId)
+          ? savedActivePresetId
+          : null;
+        setActivePresetId(restoredActiveId);
 
         let effectiveStats = { ...DEFAULT_VISIBLE_STATS };
         if (savedStats) {
@@ -1656,6 +1661,7 @@ export default function CardCustomizationModal({
       return next;
     });
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
     if (!reduceMotionRef.current) {
@@ -1671,6 +1677,7 @@ export default function CardCustomizationModal({
     if (showInlineSave) setShowInlineSave(false);
     setSelectedThemeId(themeId);
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
     if (themeTransitionTimer.current !== null) {
@@ -1695,6 +1702,7 @@ export default function CardCustomizationModal({
   function handleMessageChange(text: string) {
     setCustomMessage(text);
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
   }
@@ -2012,6 +2020,7 @@ export default function CardCustomizationModal({
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     resetZoomPosition();
     try {
       setThumbnailSize("m");
@@ -2065,6 +2074,7 @@ export default function CardCustomizationModal({
     setBackgroundPhotoUri(uri);
     setBackgroundPhotoCrop(crop);
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel });
     AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
@@ -2081,12 +2091,19 @@ export default function CardCustomizationModal({
     setShowCropModal(true);
   }
 
+  function handleDimLevelChange(level: number) {
+    setBackgroundPhotoDimLevel(level);
+    setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+  }
+
   function handleRemoveBackgroundPhoto() {
     if (showInlineSave) setShowInlineSave(false);
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
     setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
     setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
   }
@@ -2099,6 +2116,7 @@ export default function CardCustomizationModal({
     setSelectedThemeId(preset.themeId);
     setDisplayedThemeId(preset.themeId);
     setActivePresetId(preset.id);
+    AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, preset.id).catch(() => {});
     setRestoredFromStorage(false);
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
     setBackgroundPhotoCrop(null);
@@ -2364,7 +2382,10 @@ export default function CardCustomizationModal({
     const updated = presets.filter((p) => p.id !== presetId);
     await savePresets(updated);
     setPresets(updated);
-    if (activePresetId === presetId) setActivePresetId(null);
+    if (activePresetId === presetId) {
+      setActivePresetId(null);
+      AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+    }
     showUndoToast(preset, index);
   }
 
@@ -3222,7 +3243,7 @@ export default function CardCustomizationModal({
                 </View>
                 <DimLevelSlider
                   value={backgroundPhotoDimLevel}
-                  onChange={setBackgroundPhotoDimLevel}
+                  onChange={handleDimLevelChange}
                   colors={colors}
                 />
               </>
