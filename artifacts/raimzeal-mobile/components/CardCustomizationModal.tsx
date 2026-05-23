@@ -867,12 +867,19 @@ const ThemeSwatchItem = memo(function ThemeSwatchItem({
   );
 });
 
+interface PresetOriginRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface PresetChipItemProps {
   preset: CardPreset;
   isActive: boolean;
   cardPreviewData: CardPreviewData;
   colors: ReturnType<typeof useColors>;
-  onPress: (preset: CardPreset) => void;
+  onPress: (preset: CardPreset, originRect: PresetOriginRect) => void;
   onLongPress: () => void;
   onDelete: (id: string) => void;
 }
@@ -887,9 +894,19 @@ const PresetChipItem = memo(function PresetChipItem({
   onDelete,
 }: PresetChipItemProps) {
   const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
+  const chipRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   return (
     <TouchableOpacity
-      onPress={() => onPress(preset)}
+      ref={chipRef}
+      onPress={() => {
+        if (chipRef.current) {
+          chipRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
+            onPress(preset, { x, y, width, height });
+          });
+        } else {
+          onPress(preset, { x: 0, y: 0, width: 0, height: 0 });
+        }
+      }}
       onLongPress={onLongPress}
       delayLongPress={350}
       activeOpacity={0.75}
@@ -1072,6 +1089,10 @@ export default function CardCustomizationModal({
   const presetPreviewPresetsRef = useRef<CardPreset[]>([]);
   const [presetPreviewVisible, setPresetPreviewVisible] = useState(false);
   const presetPreviewAnim = useRef(new Animated.Value(0)).current;
+  const presetPreviewTranslateX = useRef(new Animated.Value(0)).current;
+  const presetPreviewTranslateY = useRef(new Animated.Value(0)).current;
+  const presetPreviewOriginScale = useRef(new Animated.Value(1)).current;
+  const presetPreviewOriginRect = useRef<PresetOriginRect>({ x: 0, y: 0, width: 0, height: 0 });
   const presetCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Badge fade-in + slide-in animation
@@ -2039,7 +2060,7 @@ export default function CardCustomizationModal({
     resetZoomPosition();
   }
 
-  function openPresetPreview(preset: CardPreset) {
+  function openPresetPreview(preset: CardPreset, originRect?: PresetOriginRect) {
     const idx = presets.findIndex((p) => p.id === preset.id);
     const safeIdx = idx >= 0 ? idx : 0;
     presetPreviewIndexRef.current = safeIdx;
@@ -2056,32 +2077,80 @@ export default function CardCustomizationModal({
     setPresetPreviewVisible(true);
     if (reduceMotionRef.current) {
       presetPreviewAnim.setValue(1);
+      presetPreviewTranslateX.setValue(0);
+      presetPreviewTranslateY.setValue(0);
+      presetPreviewOriginScale.setValue(1);
     } else {
-      presetPreviewAnim.setValue(0);
-      Animated.spring(presetPreviewAnim, {
-        toValue: 1,
-        damping: 18,
-        stiffness: 280,
-        mass: 0.8,
-        useNativeDriver: true,
-      }).start();
+      const win = Dimensions.get("window");
+      const screenW = win.width;
+      const screenH = win.height;
+      const rect = originRect ?? { x: 0, y: 0, width: 0, height: 0 };
+      presetPreviewOriginRect.current = rect;
+
+      const launchAnimation = (
+        initialTX: number,
+        initialTY: number,
+        initialScale: number
+      ) => {
+        presetPreviewAnim.setValue(0);
+        presetPreviewTranslateX.setValue(initialTX);
+        presetPreviewTranslateY.setValue(initialTY);
+        presetPreviewOriginScale.setValue(initialScale);
+        const springConfig = { damping: 16, stiffness: 400, mass: 0.6, useNativeDriver: true as const };
+        Animated.parallel([
+          Animated.spring(presetPreviewAnim, { toValue: 1, ...springConfig }),
+          Animated.spring(presetPreviewTranslateX, { toValue: 0, ...springConfig }),
+          Animated.spring(presetPreviewTranslateY, { toValue: 0, ...springConfig }),
+          Animated.spring(presetPreviewOriginScale, { toValue: 1, ...springConfig }),
+        ]).start();
+      };
+
+      if (rect.width > 0 && rect.height > 0) {
+        const originCenterX = rect.x + rect.width / 2;
+        const originCenterY = rect.y + rect.height / 2;
+        const previewCardW = CARD_WIDTH * zoomScale;
+        const initialScale = rect.width / previewCardW;
+        launchAnimation(
+          originCenterX - screenW / 2,
+          originCenterY - screenH / 2,
+          initialScale
+        );
+      } else {
+        launchAnimation(0, 0, 0.85);
+      }
     }
   }
 
   function closePresetPreview() {
     if (reduceMotionRef.current) {
       presetPreviewAnim.setValue(0);
+      presetPreviewTranslateX.setValue(0);
+      presetPreviewTranslateY.setValue(0);
+      presetPreviewOriginScale.setValue(1);
       setPresetPreviewVisible(false);
       setPresetPreviewTarget(null);
     } else {
-      Animated.timing(presetPreviewAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
+      const win = Dimensions.get("window");
+      const screenW = win.width;
+      const screenH = win.height;
+      const { x, y, width, height } = presetPreviewOriginRect.current;
+      const originCenterX = x + width / 2;
+      const originCenterY = y + height / 2;
+      const previewCardW = CARD_WIDTH * zoomScale;
+      const targetScale = width > 0 ? width / previewCardW : 0.85;
+      const springConfig = { damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true as const };
+      Animated.parallel([
+        Animated.spring(presetPreviewAnim, { toValue: 0, ...springConfig }),
+        Animated.spring(presetPreviewTranslateX, { toValue: width > 0 ? originCenterX - screenW / 2 : 0, ...springConfig }),
+        Animated.spring(presetPreviewTranslateY, { toValue: height > 0 ? originCenterY - screenH / 2 : 0, ...springConfig }),
+        Animated.spring(presetPreviewOriginScale, { toValue: targetScale, ...springConfig }),
+      ]).start(({ finished }) => {
         if (finished) {
           setPresetPreviewVisible(false);
           setPresetPreviewTarget(null);
+          presetPreviewTranslateX.setValue(0);
+          presetPreviewTranslateY.setValue(0);
+          presetPreviewOriginScale.setValue(1);
         }
       });
     }
@@ -2493,7 +2562,7 @@ export default function CardCustomizationModal({
   const openPresetPreviewRef = useRef(openPresetPreview);
   openPresetPreviewRef.current = openPresetPreview;
   const stableOpenPresetPreview = useCallback(
-    (preset: CardPreset) => openPresetPreviewRef.current(preset),
+    (preset: CardPreset, originRect: PresetOriginRect) => openPresetPreviewRef.current(preset, originRect),
     []
   );
 
@@ -3643,15 +3712,16 @@ export default function CardCustomizationModal({
             <>
               <Animated.View
                 style={{
-                  opacity: presetCardOpacity,
                   transform: [
-                    {
-                      scale: presetPreviewAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.85, 1],
-                      }),
-                    },
+                    { translateX: presetPreviewTranslateX },
+                    { translateY: presetPreviewTranslateY },
+                    { scale: presetPreviewOriginScale },
                   ],
+                }}
+              >
+              <Animated.View
+                style={{
+                  opacity: presetCardOpacity,
                 }}
               >
                 <ZoomableCard
@@ -3693,6 +3763,7 @@ export default function CardCustomizationModal({
                     </View>
                   )}
                 </ZoomableCard>
+              </Animated.View>
               </Animated.View>
 
               <Animated.View
