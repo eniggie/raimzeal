@@ -1279,15 +1279,23 @@ export default function CardCustomizationModal({
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(8);
     confirmSwipeY.setValue(0);
-    const holdDuration = holdDurationOverrideMs ?? ((retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600);
+    const holdDuration = holdDurationOverrideMs ?? (retryFn ? 4500 : variant === "error" ? 2200 : 1600);
+    const noAutoDismiss = !holdDurationOverrideMs && !!actionFn;
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       confirmTranslateY.setValue(0);
-      setTimeout(() => {
-        confirmOpacity.setValue(0);
-        confirmTranslateY.setValue(8);
-        setConfirmMessage(null);
-      }, holdDuration);
+      if (!noAutoDismiss) {
+        setTimeout(() => {
+          confirmOpacity.setValue(0);
+          confirmTranslateY.setValue(8);
+          setConfirmMessage(null);
+        }, holdDuration);
+      }
+    } else if (noAutoDismiss) {
+      Animated.parallel([
+        Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(confirmTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
     } else {
       Animated.sequence([
         Animated.parallel([
