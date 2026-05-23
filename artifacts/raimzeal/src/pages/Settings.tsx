@@ -28,13 +28,23 @@ interface SettingsProps {
 
 export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
-  const [settingsDonationError, setSettingsDonationError] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  function handleExportData() {
+  async function handleExportData() {
     if (exportLoading) return;
     setExportLoading(true);
     try {
+      let logoDataUrl = '';
+      try {
+        const res = await fetch('/brand/raimzeal-logo.jpeg');
+        const blob = await res.blob();
+        logoDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch { /* fallback to SVG below */ }
       const u = state.user;
       const wUnit = state.settings.weightUnit ?? 'lbs';
       const exportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -183,7 +193,10 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
 <div class="report-header">
   <div class="logo-row">
     <div class="logo-mark">
-      <svg width="48" height="48" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="180" height="180" rx="36" fill="#0a0a0b"/><rect x="34" y="86" width="112" height="8" rx="4" fill="#82cb15"/><rect x="30" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="18" y="72" width="14" height="36" rx="3" fill="#82cb15"/><rect x="140" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="148" y="72" width="14" height="36" rx="3" fill="#82cb15"/><polyline points="42,90 62,90 70,66 80,116 90,54 100,120 110,78 120,90 138,90" fill="none" stroke="#82cb15" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      ${logoDataUrl
+        ? `<img src="${logoDataUrl}" style="width:48px;height:48px;border-radius:12px;object-fit:cover" alt="RAIMZEAL logo" />`
+        : `<svg width="48" height="48" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="180" height="180" rx="36" fill="#0a0a0b"/><rect x="34" y="86" width="112" height="8" rx="4" fill="#82cb15"/><rect x="30" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="18" y="72" width="14" height="36" rx="3" fill="#82cb15"/><rect x="140" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="148" y="72" width="14" height="36" rx="3" fill="#82cb15"/><polyline points="42,90 62,90 70,66 80,116 90,54 100,120 110,78 120,90 138,90" fill="none" stroke="#82cb15" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+      }
     </div>
     <div>
       <div class="logo-text">RAIMZEAL</div>
@@ -742,39 +755,18 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 </a>
               </div>
               {DONATION_ACTIVE ? (
-                <div className="shrink-0 flex flex-col items-end gap-1">
-                  <motion.button
-                    onClick={async () => {
-                      const popup = window.open('about:blank', '_blank');
-                      if (!popup) {
-                        setSettingsDonationError(true);
-                        setTimeout(() => setSettingsDonationError(false), 5000);
-                        return;
-                      }
-                      try {
-                        const r = await fetch('/api/stripe/donation-health');
-                        const { ok } = await r.json() as { ok: boolean };
-                        if (!ok) throw new Error('unhealthy');
-                        popup.location.href = STRIPE_DONATION_URL;
-                        setSettingsDonationError(false);
-                      } catch {
-                        popup.close();
-                        setSettingsDonationError(true);
-                        setTimeout(() => setSettingsDonationError(false), 5000);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
-                    animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
-                    aria-label="Donate to support RAIMZEAL"
-                  >
-                    <Heart className="w-3.5 h-3.5 fill-current" />
-                    Donate
-                  </motion.button>
-                  {settingsDonationError && (
-                    <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
-                  )}
-                </div>
+                <motion.a
+                  href={STRIPE_DONATION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+                  animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+                  aria-label="Donate to support RAIMZEAL"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-current" />
+                  Donate
+                </motion.a>
               ) : (
                 <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
               )}

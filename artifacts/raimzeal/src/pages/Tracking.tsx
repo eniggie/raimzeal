@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'wouter';
 import { 
   TrendingUp, TrendingDown, Scale, Ruler, Camera, 
   Plus, Trophy, Dumbbell, ChevronRight, Share2
@@ -24,6 +25,28 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [bodyMeasOpen, setBodyMeasOpen] = useState(false);
+  const [measFields, setMeasFields] = useState({
+    weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '',
+  });
+
+  const handleSaveBodyMeasurements = () => {
+    const weight = parseFloat(measFields.weight);
+    if (isNaN(weight) || weight <= 0) return;
+    const measurement: BodyMeasurement = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString().split('T')[0],
+      weight,
+      ...(measFields.chest ? { chest: parseFloat(measFields.chest) } : {}),
+      ...(measFields.waist ? { waist: parseFloat(measFields.waist) } : {}),
+      ...(measFields.hips ? { hips: parseFloat(measFields.hips) } : {}),
+      ...(measFields.arms ? { arms: parseFloat(measFields.arms) } : {}),
+      ...(measFields.thighs ? { thighs: parseFloat(measFields.thighs) } : {}),
+    };
+    onAddMeasurement(measurement);
+    setMeasFields({ weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '' });
+    setBodyMeasOpen(false);
+  };
 
   const weightData = state.bodyMeasurements
     .slice(0, 8)
@@ -269,20 +292,26 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-photos">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                <Camera className="w-6 h-6 text-accent" />
+          <Link href="/progress/photos">
+            <Card className="p-4 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-photos">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-accent" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold">Progress Photos</div>
+                  <div className="text-sm text-muted-foreground">Track your visual transformation</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">Progress Photos</div>
-                <div className="text-sm text-muted-foreground">Track your visual transformation</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </Card>
+            </Card>
+          </Link>
 
-          <Card className="p-4 mt-3 cursor-pointer hover:border-primary/30 glass-hover" data-testid="card-measurements">
+          <Card
+            className="p-4 mt-3 cursor-pointer hover:border-primary/30 glass-hover"
+            data-testid="card-measurements"
+            onClick={() => setBodyMeasOpen(true)}
+          >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
                 <Ruler className="w-6 h-6 text-secondary" />
@@ -296,6 +325,49 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
           </Card>
         </motion.div>
       </div>
+
+      {/* Body Measurements Dialog */}
+      <Dialog open={bodyMeasOpen} onOpenChange={setBodyMeasOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Log Body Measurements</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-muted-foreground">Weight is required. All other measurements are optional.</p>
+            {([
+              { key: 'weight', label: `Weight (${state.user?.units === 'metric' ? 'kg' : 'lbs'})`, required: true },
+              { key: 'chest', label: 'Chest (in)', required: false },
+              { key: 'waist', label: 'Waist (in)', required: false },
+              { key: 'hips', label: 'Hips (in)', required: false },
+              { key: 'arms', label: 'Arms (in)', required: false },
+              { key: 'thighs', label: 'Thighs (in)', required: false },
+            ] as const).map(({ key, label, required }) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-xs">
+                  {label}
+                  {required && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="—"
+                  value={measFields[key]}
+                  onChange={e => setMeasFields(prev => ({ ...prev, [key]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <Button
+              onClick={handleSaveBodyMeasurements}
+              disabled={!measFields.weight || isNaN(parseFloat(measFields.weight))}
+              className="w-full mt-2"
+            >
+              Save Measurements
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <BottomNav />
       <ProgressShareCard open={shareOpen} onClose={() => setShareOpen(false)} state={state} />
     </div>

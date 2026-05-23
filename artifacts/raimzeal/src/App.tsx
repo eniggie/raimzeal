@@ -303,6 +303,8 @@ function App() {
               <Route path="/contact"><Redirect to="/support" /></Route>
               <Route path="/privacy-policy"><Redirect to="/privacy" /></Route>
               <Route path="/delete-account"><Redirect to="/settings/delete-account" /></Route>
+              <Route path="/body-measurements"><Redirect to="/tracking" /></Route>
+              <Route path="/export"><Redirect to="/settings" /></Route>
               {/* All other routes — handled by AppContent based on auth state */}
               <Route><AppContent /></Route>
             </Switch>

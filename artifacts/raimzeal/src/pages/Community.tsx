@@ -52,7 +52,6 @@ function formatTime(dateStr: string): string {
 
 export function Community() {
   const { user } = useAuth();
-  const [communityDonationError, setCommunityDonationError] = useState(false);
   const [posts, setPosts] = useState<LivePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -390,39 +389,18 @@ export function Community() {
             <p className="text-xs text-muted-foreground mt-0.5">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. Books · Music · Courses · Coaching: <span className="font-semibold">linktr.ee/Raimzy</span></p>
           </div>
           {DONATION_ACTIVE ? (
-            <div className="shrink-0 flex flex-col items-end gap-1">
-              <motion.button
-                onClick={async () => {
-                  const popup = window.open('about:blank', '_blank');
-                  if (!popup) {
-                    setCommunityDonationError(true);
-                    setTimeout(() => setCommunityDonationError(false), 5000);
-                    return;
-                  }
-                  try {
-                    const r = await fetch('/api/stripe/donation-health');
-                    const { ok } = await r.json() as { ok: boolean };
-                    if (!ok) throw new Error('unhealthy');
-                    popup.location.href = STRIPE_DONATION_URL;
-                    setCommunityDonationError(false);
-                  } catch {
-                    popup.close();
-                    setCommunityDonationError(true);
-                    setTimeout(() => setCommunityDonationError(false), 5000);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold cursor-pointer"
-                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 5 }}
-                aria-label="Donate to support RAIMZEAL"
-              >
-                <Heart className="w-3.5 h-3.5 fill-current" />
-                Donate
-              </motion.button>
-              {communityDonationError && (
-                <p className="text-xs text-destructive">Donation link temporarily unavailable — please try again shortly.</p>
-              )}
-            </div>
+            <motion.a
+              href={STRIPE_DONATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+              animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 5 }}
+              aria-label="Donate to support RAIMZEAL"
+            >
+              <Heart className="w-3.5 h-3.5 fill-current" />
+              Donate
+            </motion.a>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic">Donation link coming soon.</p>
           )}

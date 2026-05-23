@@ -1,0 +1,517 @@
+RAIMZEAL FINAL PRODUCTION AUDIT. FIX EVERYTHING BEFORE GOOGLE PLAY TESTING.
+
+This app cannot look like a demo. I do not want fake buttons, fake data, fake tracking, broken screens, coming soon errors on active features, wrong popups, old logos, frozen pages, or buttons that do nothing.
+
+Audit the entire RAIMZEAL app like a real production product.
+
+MAIN GOAL:
+Make RAIMZEAL a fully working fitness, food therapy, wellness, and coaching app. Every visible button must either work correctly or be clearly disabled with a correct Coming Soon message. No fake demo behavior.
+
+APP IDENTITY:
+App name: RAIMZEAL
+Brand: Fitness • Food Therapy • Healthcare • Wellness Support
+Created and powered by ECONTEUR LLC
+Website: https://www.raimzeal.com
+Support: raimzeal@gmail.com
+Official logo: use the current RAIMZEAL RZ logo everywhere
+Remove all old demo logos and placeholder branding.
+
+CRITICAL RULE:
+Do not tell me “fixed” until you test every page, every button, every form, every modal, every upload, every export, and every route on mobile view.
+
+1. FULL BUTTON AUDIT
+
+Search the entire app and test every clickable element:
+buttons
+links
+cards
+icons
+tabs
+menus
+bottom navigation
+profile settings
+upgrade buttons
+export buttons
+upload buttons
+share buttons
+delete buttons
+save buttons
+retry buttons
+
+Every button must do one of these:
+A. Perform the correct real action
+B. Navigate to the correct working page
+C. Open the correct working modal
+D. Show a clear accurate Coming Soon message only if that feature is truly not ready
+
+No button should:
+open about:blank
+open 404
+freeze the page
+show the wrong message
+trigger the wrong popup
+show fake success
+do nothing
+use placeholder demo data
+
+Create a button audit list and fix every failure.
+
+2. FIX ALL ROUTES
+
+Audit and repair these routes:
+
+/
+/home
+/workouts
+/ovia-ai
+/progress
+/profile
+/community
+/pricing
+/support
+/contact
+/privacy-policy
+/terms
+/delete-account
+/measurements
+/body-measurements
+/progress-photos
+/public-profile
+/export
+/settings
+
+If any route is missing, create it or redirect properly.
+No internal feature should send the user to a 404 page.
+No feature should open about:blank.
+No mobile page should freeze.
+
+3. FIX SUBSCRIPTIONS AND UPGRADE FLOW
+
+Current issue:
+Users click upgrade and get “subscriptions launching soon” or a donation popup. That is confusing and looks fake.
+
+Fix the logic:
+
+If subscriptions are NOT ready:
+hide real purchase language
+disable paid upgrade checkout
+show “Coming Soon”
+make the CTA say “Notify Me”
+when clicked, collect the user email or send them to a working support/contact form
+do not show donation popup unless user clicked “Support Now”
+
+If “Support Now” is shown:
+it must go to a real working support/donation page
+it must not pretend to unlock digital app features
+
+Pricing must display correctly:
+
+Monthly:
+Rise: $9.99/mo
+Reign: $19.99/mo
+Legacy: $49.99/mo if visible
+
+Yearly:
+Rise: $99/yr
+Reign: $199/yr
+Legacy: $499/yr if visible
+
+Correct monthly equivalent:
+Rise yearly: $8.25/mo equivalent
+Reign yearly: $16.58/mo equivalent
+Legacy yearly: $41.58/mo equivalent
+
+Do not display wrong equivalent numbers.
+
+4. REAL TRACKING ONLY. NO FAKE MONITORING.
+
+RAIMZEAL must not pretend to monitor what it cannot truly monitor.
+
+Fix tracking rules:
+
+Step tracking:
+must use real device pedometer/sensor if available
+if not available, show “Step tracking unavailable on this device/browser”
+do not show fake live steps
+
+Workout tracking:
+must save real completed workouts
+must save workout name, date, duration, sets, reps, calories estimate, and notes if available
+must update progress after workout completion
+
+Weight tracking:
+must save real user-entered weight
+must show real trend from saved entries
+must not show fake chart data
+
+Body measurements:
+must save real user-entered measurements
+fields:
+weight
+chest
+waist
+hips
+arms
+thighs
+date
+notes
+must show history
+must allow edit and delete
+
+Progress photos:
+must allow real photo upload
+must allow preview before saving
+must save to working storage
+must show photo history
+must allow delete
+if storage is not configured, configure Supabase Storage or disable the feature clearly as Coming Soon
+
+Nutrition tracking:
+must save real meal entries
+must show real calorie and macro totals from saved foods
+if Open Food Facts API fails, show a real error and allow manual entry
+do not show fake nutrition results
+
+Water tracking:
+must save real user tap entries
+must reset daily or organize by date
+must display actual saved value
+
+Community:
+must load real posts from Supabase or the selected backend
+must allow creating a real post
+must allow questions, tips, challenges, wins if visible
+must not show “Could not load posts” unless the backend truly fails
+if no posts exist, show:
+“No posts yet. Be the first to share your progress.”
+
+Ovia AI:
+must connect to the real AI endpoint
+must show proper loading state
+must show clear error if API key or endpoint fails
+must not use fake AI demo messages
+
+5. FIX COMMUNITY PAGE
+
+Current issue:
+Community says “Could not load posts.”
+
+Investigate:
+Supabase URL
+Supabase anon key
+table names
+RLS policies
+auth/session
+network request
+API endpoint
+wrong query
+missing environment variables
+CORS
+empty table handling
+
+Fix:
+posts load
+create post works
+image post works or is disabled
+retry button retries
+tabs work
+page does not freeze
+empty state is clean
+error state is specific and useful
+
+6. FIX PROGRESS PAGE
+
+Current issues:
+Measurement button not working.
+Photo button not working properly.
+Progress pages show empty/broken states.
+
+Fix:
+Log button opens working log form
+Weight tab saves and displays data
+Workouts tab loads completed workouts
+PRs tab works or shows clean empty state
+Body Measurements opens working form
+Progress Photos opens working upload/view page
+Share button creates a real shareable progress card
+No overlap with bottom nav
+No frozen screen
+
+7. FIX FOOTER AND MOBILE LAYOUT
+
+Current issue:
+Footer is too close to the bottom button/nav area.
+
+Add proper safe spacing on every page:
+
+Use mobile safe-area padding:
+padding-bottom: calc(env(safe-area-inset-bottom) + 96px);
+
+Make sure:
+bottom navigation never covers content
+footer never touches browser controls
+buttons are not hidden
+forms scroll correctly
+modals fit mobile screens
+text stays inside cards
+no sentence leaves its container
+all pages work on iPhone Safari, Android Chrome, and installed PWA/TWA
+
+8. FIX EXPORT RECORDS
+
+Current issue:
+Export records uses old demo logo.
+
+Fix:
+remove all old demo logos
+use the official RAIMZEAL logo in every export
+centralize logo assets in one folder:
+public/brand/raimzeal-logo.png
+public/brand/raimzeal-icon.png
+
+Export should support:
+CSV
+JSON
+PDF if available
+
+Export file names:
+raimzeal-records-[date].csv
+raimzeal-records-[date].json
+raimzeal-records-[date].pdf
+
+Export header must include:
+RAIMZEAL
+Fitness • Food Therapy • Healthcare
+www.raimzeal.com
+Created and Powered by ECONTEUR LLC
+
+No placeholder logo.
+No demo logo.
+No wrong brand name.
+
+9. FIX PUBLIC PROFILE
+
+Current issue:
+Public profile layout and validation are weak.
+
+Fix:
+public profile toggle saves correctly
+handle must allow only lowercase letters, numbers, underscores
+handle must be 3 to 30 characters
+invalid input must show clear validation message
+public profile link must generate correctly
+shareable link must open without 404
+no demo user data
+bottom nav must not overlap form
+
+10. FIX PAGE FREEZING
+
+Find and fix every freeze.
+
+Check:
+console errors
+uncaught promise rejections
+infinite loading state
+missing await/try-catch
+broken Supabase request
+broken API endpoint
+missing environment variable
+missing route component
+broken image upload promise
+broken navigation call
+
+Add:
+error boundaries
+loading timeout
+fallback UI
+clear retry buttons
+proper error messages
+
+No page should hang with no explanation.
+
+11. REMOVE DEMO AND PLACEHOLDER CONTENT
+
+Search the entire codebase for:
+demo
+placeholder
+mock
+sample
+fake
+test data
+old logo
+coming soon
+about:blank
+lorem
+TODO
+hardcoded user
+hardcoded stats
+dummy
+static chart
+
+Replace or remove anything that makes RAIMZEAL look unfinished.
+
+Any feature that is not connected must be:
+completed
+or hidden
+or clearly labeled Coming Soon
+
+12. BACKEND AND DATABASE AUDIT
+
+Audit all Supabase/database features:
+
+auth
+profiles
+workouts
+workout history
+nutrition logs
+water logs
+body measurements
+progress photos
+community posts
+comments
+likes
+public profiles
+exports
+support/notify emails if used
+
+Fix RLS policies so authenticated users can:
+read their own data
+write their own data
+update their own data
+delete their own data
+
+Community rules:
+users can read public community posts
+authenticated users can create posts
+users can edit/delete their own posts
+users can like/comment properly
+
+Storage:
+progress photos bucket works
+profile photos bucket works
+community image bucket works if feature is visible
+file size limits are reasonable
+image upload errors are handled
+
+13. REAL-TIME FEATURES
+
+If a feature claims real-time, make it real.
+
+Real-time community:
+new posts should appear after refresh or live subscription
+likes/comments update after action
+no fake counters
+
+Real-time workout:
+timer must run correctly
+sets must update
+rest timer must work
+finish workout must save results
+
+Real-time nutrition:
+macro totals update after adding/editing/deleting food
+
+Real-time progress:
+charts update after logging measurement
+
+If true real-time live updates are not implemented, do not claim “real-time” in the UI. Use accurate wording like “updated after logging.”
+
+14. GOOGLE PLAY READY MODE
+
+Create a clean Google Play release mode.
+
+For Play release:
+no fake upgrade flow
+no broken payment flow
+no external digital subscription purchase unless Play Billing is implemented
+no medical diagnosis claims
+no emergency healthcare claims
+no fake monitoring claims
+no demo content
+no broken links
+privacy policy page works
+terms page works
+delete account page works
+contact page works
+
+15. TESTING COMMANDS
+
+Run:
+
+npm install
+npm run lint
+npm run typecheck
+npm run build
+
+Then test the production build locally.
+
+Also run a manual mobile QA test with:
+iPhone Safari viewport
+Android Chrome viewport
+installed PWA behavior if possible
+
+If available, add Playwright tests for:
+home loads
+bottom nav works
+community loads
+progress page loads
+measurements modal opens
+progress photos page opens
+pricing toggle works
+export button downloads file
+no route returns 404
+no button opens about:blank
+
+16. FINAL ACCEPTANCE CHECKLIST
+
+Before final response, verify:
+
+Home works
+Workouts works
+Ovia AI works
+Progress works
+Profile works
+Community works
+Pricing works
+Support/contact works
+Privacy policy works
+Terms works
+Delete account works
+Measurements work
+Progress photos work
+Public profile works
+Export works
+Official logo appears everywhere
+No old demo logo
+No dead buttons
+No fake buttons
+No about:blank pages
+No 404 from visible buttons
+No frozen pages
+No footer overlap
+No bottom nav overlap
+No wrong popup messages
+No fake tracking data
+No fake success messages
+
+17. FINAL REPORT REQUIRED
+
+When finished, give me a clean report with:
+
+1. Bugs found
+2. Files changed
+3. Features repaired
+4. Backend/database fixes made
+5. Storage fixes made
+6. Routes fixed
+7. Buttons tested
+8. Any features still not ready
+9. Any environment variables needed
+10. Confirmation that all tests passed
+11. Confirmation that the app is ready for Google Play internal testing
+
+Do not say everything is working unless you actually tested it.
+Do not leave placeholders.
+Do not leave fake buttons.
+Do not leave broken features.
+Make RAIMZEAL production-ready.
