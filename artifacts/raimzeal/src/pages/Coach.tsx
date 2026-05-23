@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { AlertTriangle, ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff } from 'lucide-react';
+import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
@@ -676,7 +677,7 @@ export function Coach({ state }: CoachProps) {
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-4 border-t border-border glass">
+      <div className="p-4 pb-28 border-t border-border glass" style={{ paddingBottom: 'calc(1.75rem + env(safe-area-inset-bottom, 0px) + 4rem)' }}>
         <div className="flex gap-2 max-w-2xl mx-auto items-end">
           <Textarea
             placeholder="Ask about training, nutrition, food therapy, or health awareness..."
@@ -714,6 +715,7 @@ export function Coach({ state }: CoachProps) {
           Ovia AI is for fitness, food therapy &amp; health awareness only. It does not replace any doctor, dietitian, or healthcare professional. Always consult a qualified professional for medical decisions. You are solely responsible for any action you take based on this app.
         </p>
       </div>
+      <BottomNav />
     </div>
   );
 }

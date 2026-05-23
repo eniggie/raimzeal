@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { programs } from '@/lib/store';
+import { BottomNav } from '@/components/BottomNav';
 
 const difficultyColors: Record<string, string> = {
   beginner: 'bg-success/20 text-success',
@@ -41,7 +42,7 @@ export function Programs() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-24">
       <div className="px-4 pt-6 pb-4 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -219,6 +220,7 @@ export function Programs() {
           </Card>
         </motion.div>
       </div>
+      <BottomNav />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatRing } from '@/components/StatRing';
 import { cn } from '@/lib/utils';
 import { quickFoods, type MealLog, type AppState } from '@/lib/store';
+import { BottomNav } from '@/components/BottomNav';
 
 interface NutritionProps {
   state: AppState;
@@ -128,7 +129,7 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="min-h-screen bg-background pb-24">
       <div className="px-4 pt-6 pb-4 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -356,6 +357,7 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
           ))}
         </motion.div>
       </div>
+      <BottomNav />
     </div>
   );
 }

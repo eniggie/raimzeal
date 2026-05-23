@@ -94,8 +94,8 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
   .report-header{background:linear-gradient(135deg,#1a2e1a 0%,#2E8B57 100%);color:#fff;padding:40px 48px 36px;position:relative;overflow:hidden}
   .report-header::after{content:'';position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05)}
   .logo-row{display:flex;align-items:center;gap:14px;margin-bottom:20px}
-  .logo-mark{width:48px;height:48px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .logo-mark svg{width:32px;height:32px}
+  .logo-mark{width:48px;height:48px;background:#0a0a0b;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+  .logo-mark svg{width:48px;height:48px;border-radius:12px}
   .logo-text{font-size:1.6rem;font-weight:800;letter-spacing:-.5px;color:#fff}
   .logo-sub{font-size:.75rem;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
   .header-meta{display:flex;gap:32px;margin-top:8px;flex-wrap:wrap}
@@ -183,10 +183,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
 <div class="report-header">
   <div class="logo-row">
     <div class="logo-mark">
-      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="#2E8B57"/>
-        <path d="M8 8h8a6 6 0 0 1 0 12h-4l5 8H13l-5-8V8zm4 4v4h4a2 2 0 0 0 0-4h-4z" fill="#fff"/>
-      </svg>
+      <svg width="48" height="48" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="180" height="180" rx="36" fill="#0a0a0b"/><rect x="34" y="86" width="112" height="8" rx="4" fill="#82cb15"/><rect x="30" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="18" y="72" width="14" height="36" rx="3" fill="#82cb15"/><rect x="140" y="66" width="10" height="48" rx="3" fill="#82cb15"/><rect x="148" y="72" width="14" height="36" rx="3" fill="#82cb15"/><polyline points="42,90 62,90 70,66 80,116 90,54 100,120 110,78 120,90 138,90" fill="none" stroke="#82cb15" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <div>
       <div class="logo-text">RAIMZEAL</div>

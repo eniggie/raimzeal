@@ -15,7 +15,7 @@ export function BottomNav() {
   const [location] = useLocation();
 
   return (
-    <nav className="fixed bottom-6 left-4 right-4 z-50 glass-strong glass-nav-edge safe-area-inset-bottom rounded-2xl border-white/20 shadow-xl overflow-hidden max-w-lg mx-auto">
+    <nav className="fixed left-4 right-4 z-50 glass-strong glass-nav-edge rounded-2xl border-white/20 shadow-xl overflow-hidden max-w-lg mx-auto" style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = location === item.path || 
