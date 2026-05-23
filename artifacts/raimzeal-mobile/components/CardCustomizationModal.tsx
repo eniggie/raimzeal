@@ -998,6 +998,7 @@ export default function CardCustomizationModal({
   const hasPulsedDefaultRef = useRef(false);
   const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
+  const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
   // Auto-trigger state: counts down from 3 then fires the default action
@@ -1095,6 +1096,23 @@ export default function CardCustomizationModal({
       badgeSlideAnim.setValue(5);
     }
   }, [restoredFromStorage, badgeDismissed, reduceMotion]);
+
+  useEffect(() => {
+    if (showLongPressHint) {
+      longPressHintFadeAnim.setValue(0);
+      if (reduceMotionRef.current) {
+        longPressHintFadeAnim.setValue(1);
+      } else {
+        Animated.timing(longPressHintFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }
+    } else {
+      longPressHintFadeAnim.setValue(0);
+    }
+  }, [showLongPressHint]);
 
   // Card-preview chip: fade in then auto-dismiss after ~2.5 s
   const cardChipFadeAnim = useRef(new Animated.Value(0)).current;
@@ -3206,21 +3224,23 @@ export default function CardCustomizationModal({
             </Text>
           )}
           {anyStatEnabled && showLongPressHint && (
-            <TouchableOpacity
-              onPress={() => {
-                setShowLongPressHint(false);
-                AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
-              }}
-              activeOpacity={0.6}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss hint"
-            >
-              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-                {longPressAndRun
-                  ? "Long-press a button to set it as default and generate instantly"
-                  : "Long-press a button to set it as your default"}{" · Tap to dismiss"}
-              </Text>
-            </TouchableOpacity>
+            <Animated.View style={{ opacity: longPressHintFadeAnim }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowLongPressHint(false);
+                  AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+                }}
+                activeOpacity={0.6}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss hint"
+              >
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                  {longPressAndRun
+                    ? "Long-press a button to set it as default and generate instantly"
+                    : "Long-press a button to set it as your default"}{" · Tap to dismiss"}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           )}
           {anyStatEnabled && (
             <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
