@@ -183,23 +183,30 @@ export default function HomeScreen() {
               <RingStat color={colors.muted} label="Goal" value={calorieGoal} />
             </View>
           </View>
-          {/* Macro progress bars */}
-          <View style={styles.macroRow}>
+          {/* Macro goal progress rings */}
+          <View style={[styles.macroRingRow, { borderTopColor: colors.border }]}>
             {[
-              { label: "P", value: proteinToday, goal: macroGoals.protein, color: colors.secondary },
-              { label: "C", value: carbsToday, goal: macroGoals.carbs, color: colors.warning },
-              { label: "F", value: fatToday, goal: macroGoals.fat, color: colors.accent },
-            ].map(({ label, value, goal, color }) => {
+              { label: "Calories", value: totalCaloriesToday, goal: calorieGoal, unit: "kcal", color: colors.primary },
+              { label: "Protein", value: proteinToday, goal: macroGoals.protein, unit: "g", color: colors.secondary },
+              { label: "Carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", color: colors.warning },
+              { label: "Fat", value: fatToday, goal: macroGoals.fat, unit: "g", color: colors.accent },
+            ].map(({ label, value, goal, unit, color }) => {
               const pct = goal > 0 ? Math.min(value / goal, 1) : 0;
+              const isOver = goal > 0 && value > goal;
+              const ringColor = isOver ? colors.warning : color;
               return (
-                <View key={label} style={styles.macroBar}>
-                  <View style={styles.macroBarHeader}>
-                    <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>{label}</Text>
-                    <Text style={[styles.macroBarVal, { color }]}>{value}<Text style={{ color: colors.mutedForeground, fontSize: 9 }}>/{goal}g</Text></Text>
-                  </View>
-                  <View style={[styles.macroBarTrack, { backgroundColor: color + "25" }]}>
-                    <View style={[styles.macroBarFill, { width: `${Math.round(pct * 100)}%` as `${number}%`, backgroundColor: color }]} />
-                  </View>
+                <View key={label} style={styles.macroRingItem}>
+                  <ProgressRing
+                    progress={pct}
+                    size={64}
+                    strokeWidth={6}
+                    color={ringColor}
+                  />
+                  <Text style={[styles.macroRingName, { color: colors.mutedForeground }]}>{label}</Text>
+                  <Text style={[styles.macroRingValue, { color: ringColor }]}>
+                    {value}
+                    <Text style={[styles.macroRingGoal, { color: colors.mutedForeground }]}>/{goal}{unit}</Text>
+                  </Text>
                 </View>
               );
             })}
@@ -826,11 +833,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   netBannerText: { flex: 1, fontSize: 12, fontFamily: "Inter_500Medium" },
-  macroRow: { flexDirection: "row", gap: 10, marginTop: 16 },
-  macroBar: { flex: 1, gap: 4 },
-  macroBarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
-  macroBarLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "uppercase" },
-  macroBarVal: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  macroBarTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
-  macroBarFill: { height: "100%", borderRadius: 3 },
+  macroRingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  macroRingItem: { alignItems: "center", gap: 4 },
+  macroRingName: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
+  macroRingValue: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  macroRingGoal: { fontSize: 9, fontFamily: "Inter_400Regular" },
 });
