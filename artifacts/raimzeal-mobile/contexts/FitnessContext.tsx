@@ -376,7 +376,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                   }
                 : {}),
             },
-            dismissedHints: remoteSettings?.dismissedHints != null && remoteSettings.dismissedHints.length > 0
+            dismissedHints: Array.isArray(remoteSettings?.dismissedHints)
               ? remoteSettings.dismissedHints
               : prev.dismissedHints,
           };
