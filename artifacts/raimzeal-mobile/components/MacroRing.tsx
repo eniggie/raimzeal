@@ -58,6 +58,12 @@ export function MacroRing({
     },
   ];
 
+  const legend = [
+    { color: MACRO_RING_COLORS.protein, label: "P" },
+    { color: MACRO_RING_COLORS.carbs, label: "C" },
+    { color: MACRO_RING_COLORS.fat, label: "F" },
+  ];
+
   return (
     <View style={styles.wrapper}>
       <Pressable
@@ -95,6 +101,15 @@ export function MacroRing({
         </Svg>
       </Pressable>
 
+      <View style={styles.legend}>
+        {legend.map((item) => (
+          <View key={item.label} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+            <Text style={[styles.legendLabel, { color: item.color }]}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+
       {expanded && hasData && (
         <View style={styles.tooltip}>
           <View style={styles.tooltipRow}>
@@ -129,6 +144,26 @@ const styles = StyleSheet.create({
   ringPressable: {
     alignItems: "center",
     justifyContent: "center",
+  },
+  legend: {
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  legendDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  legendLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
   },
   tooltip: {
     flexDirection: "row",
