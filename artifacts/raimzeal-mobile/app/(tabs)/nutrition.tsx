@@ -35,6 +35,8 @@ import {
   REORDER_HINT_STORAGE_KEY,
   HISTORY_FILTER_HINT_STORAGE_KEY,
   PRESET_NUDGE_STORAGE_KEY,
+  SWIPE_DELETE_HINT_STORAGE_KEY,
+  HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
 } from "@/lib/hints";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
@@ -696,6 +698,24 @@ export default function NutritionScreen() {
       })
       .filter(({ logs }) => logs.length > 0);
   }, [historyDays, historyDateRange, historyMealFilter]);
+
+  const firstTodayLogId = React.useMemo(() => {
+    for (const meal of MEALS) {
+      const logs = todayMeals.filter((m) => m.mealType === meal);
+      if (logs.length > 0) return logs[0].id;
+    }
+    return null;
+  }, [todayMeals]);
+
+  const firstHistoryLogId = React.useMemo(() => {
+    for (const { logs } of filteredHistoryDays) {
+      for (const meal of MEALS) {
+        const entries = logs.filter((m) => m.mealType === meal);
+        if (entries.length > 0) return entries[0].id;
+      }
+    }
+    return null;
+  }, [filteredHistoryDays]);
 
   const weeklyAvgSummary = React.useMemo(() => {
     const count = filteredHistoryDays.length;
@@ -2872,6 +2892,7 @@ export default function NutritionScreen() {
                         <NutritionRow
                           key={log.id}
                           log={log}
+                          isFirst={log.id === firstTodayLogId}
                           onDelete={handleMealDelete}
                           onToggleStar={() =>
                             handleToggleFavorite({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, servingLabel: log.amountGrams ? `${log.amountGrams}g` : undefined })
@@ -3568,6 +3589,7 @@ export default function NutritionScreen() {
                                 <HistoryFoodRow
                                   key={log.id}
                                   log={log}
+                                  isFirst={log.id === firstHistoryLogId}
                                   onAddFood={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
                                   onDelete={handleMealDelete}
                                 />
@@ -5007,10 +5029,29 @@ function MacroBar({
   );
 }
 
-function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void }) {
+function HistoryFoodRow({ log, onAddFood, onDelete, isFirst }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; isFirst?: boolean }) {
   const colors = useColors();
   const { updateMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
+
+  useEffect(() => {
+    if (!isFirst) return;
+    let cancelled = false;
+    AsyncStorage.getItem(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY).then((seen) => {
+      if (seen || cancelled) return;
+      void AsyncStorage.setItem(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, "1");
+      const peekTimer = setTimeout(() => {
+        if (cancelled) return;
+        swipeableRef.current?.openRight();
+        const closeTimer = setTimeout(() => {
+          if (!cancelled) swipeableRef.current?.close();
+        }, 700);
+        return () => clearTimeout(closeTimer);
+      }, 600);
+      return () => clearTimeout(peekTimer);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({
@@ -5505,11 +5546,30 @@ function HistoryFoodRow({ log, onAddFood, onDelete }: { log: MealLog; onAddFood:
   );
 }
 
-function NutritionRow({ log, onDelete, onToggleStar }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void }) {
+function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean }) {
   const colors = useColors();
   const { updateMealLog, favoriteFoods } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
+
+  useEffect(() => {
+    if (!isFirst) return;
+    let cancelled = false;
+    AsyncStorage.getItem(SWIPE_DELETE_HINT_STORAGE_KEY).then((seen) => {
+      if (seen || cancelled) return;
+      void AsyncStorage.setItem(SWIPE_DELETE_HINT_STORAGE_KEY, "1");
+      const peekTimer = setTimeout(() => {
+        if (cancelled) return;
+        swipeableRef.current?.openRight();
+        const closeTimer = setTimeout(() => {
+          if (!cancelled) swipeableRef.current?.close();
+        }, 700);
+        return () => clearTimeout(closeTimer);
+      }, 600);
+      return () => clearTimeout(peekTimer);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({
