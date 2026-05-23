@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/db";
 
 const STORAGE_KEY = "raimzeal_progress_photos_v2";
+const OLD_STORAGE_KEY = "raimzeal_progress_photos";
 
 type SyncStatus = "local" | "uploading" | "synced" | "error";
 
@@ -129,6 +130,28 @@ export default function ProgressPhotosScreen() {
   async function loadPhotos() {
     setLoading(true);
 
+    // One-time migration: lift photos from the old storage key into v2 format
+    try {
+      const oldRaw = await AsyncStorage.getItem(OLD_STORAGE_KEY);
+      if (oldRaw) {
+        const oldParsed: unknown[] = JSON.parse(oldRaw);
+        const migrated: ProgressPhoto[] = oldParsed.map((p: unknown) => {
+          const photo = p as unknown as ProgressPhoto;
+          return {
+            ...photo,
+            syncStatus: "local" as SyncStatus,
+            localUri: photo.localUri ?? photo.uri,
+          };
+        });
+        // Merge into v2 only if v2 is empty so we don't clobber newer data
+        const existingV2 = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!existingV2 && migrated.length > 0) {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        }
+        await AsyncStorage.removeItem(OLD_STORAGE_KEY);
+      }
+    } catch { }
+
     let localPhotos: ProgressPhoto[] = [];
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -136,10 +159,12 @@ export default function ProgressPhotosScreen() {
         const parsed: unknown[] = JSON.parse(raw);
         localPhotos = parsed.map((p: unknown) => {
           const photo = p as unknown as ProgressPhoto;
-          if (!photo.syncStatus) {
-            return { ...photo, syncStatus: "local" as SyncStatus };
-          }
-          return photo;
+          // Stale "uploading" means the app crashed mid-upload — treat as retryable error
+          const status: SyncStatus =
+            !photo.syncStatus || photo.syncStatus === "uploading"
+              ? "error"
+              : photo.syncStatus;
+          return { ...photo, syncStatus: status, localUri: photo.localUri ?? photo.uri };
         });
       }
     } catch { }
@@ -158,18 +183,35 @@ export default function ProgressPhotosScreen() {
       const body = await res.json() as { photos: Parameters<typeof mapServerPhoto>[0][] };
       const serverPhotos = body.photos.map(mapServerPhoto);
 
+      // Keep only truly unsynced locals (not yet on server)
       const pendingLocals = localPhotos.filter(
         (lp) =>
-          lp.syncStatus === "uploading" ||
           lp.syncStatus === "error" ||
-          (lp.syncStatus === "local" && !serverPhotos.some((sp) => sp.storagePath === lp.storagePath))
+          lp.syncStatus === "local" ||
+          (lp.syncStatus === "uploading" &&
+            !serverPhotos.some((sp) => sp.storagePath === lp.storagePath))
       );
 
-      const merged = [...pendingLocals, ...serverPhotos].sort(
+      // Automatically queue pending locals for upload
+      const toUpload = pendingLocals.filter((p) => !!p.localUri);
+      const readyLocals = pendingLocals.map((p) =>
+        toUpload.some((u) => u.id === p.id)
+          ? { ...p, syncStatus: "uploading" as SyncStatus }
+          : p
+      );
+
+      const merged = [...readyLocals, ...serverPhotos].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       setPhotos(merged);
       void persistPhotos(merged);
+
+      // Fire off background uploads for any pending local/error photos
+      if (toUpload.length > 0) {
+        toUpload.forEach((p) => {
+          void uploadPhoto(p.id, p.localUri!, p.category, p.note);
+        });
+      }
     } catch {
       setPhotos(localPhotos);
     } finally {
