@@ -2248,9 +2248,10 @@ export default function NutritionScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setHighlightedDate((prev) => {
       if (prev === date) {
-        // Re-tapping the highlighted bar scrolls to that day's card instead of clearing
-        scrollToDateCard(date);
-        return date;
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+        }, 50);
+        return null;
       }
       scrollToDateCard(date);
       return date;
