@@ -2303,6 +2303,7 @@ export default function CardCustomizationModal({
       };
       updatedPresets = [...presets, newPreset];
       setActivePresetId(newPreset.id);
+      AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, newPreset.id).catch(() => {});
     }
 
     await savePresets(updatedPresets);
