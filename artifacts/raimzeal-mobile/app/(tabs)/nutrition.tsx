@@ -6,6 +6,8 @@ import {
   FlatList,
   LayoutAnimation,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   PanResponder,
   Platform,
   ScrollView,
@@ -14,6 +16,7 @@ import {
   TextInput,
   TouchableOpacity,
   UIManager,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Reanimated, {
@@ -866,6 +869,47 @@ export default function NutritionScreen() {
   const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyCardYsRef = useRef<Record<string, number>>({});
   const trendChartYRef = useRef<number>(0);
+  const { height: windowHeight } = useWindowDimensions();
+  const scrollYRef = useRef<number>(0);
+  const seenDatesRef = useRef<Set<string>>(new Set());
+  const [, setSeenDatesTick] = useState(0);
+
+  const markDateSeen = useCallback((date: string) => {
+    if (!seenDatesRef.current.has(date)) {
+      seenDatesRef.current.add(date);
+      setSeenDatesTick((t) => t + 1);
+    }
+  }, []);
+
+  const checkHistoryVisibility = useCallback(
+    (scrollY: number) => {
+      const entries = Object.entries(historyCardYsRef.current);
+      // Short-circuit: nothing recorded yet, or all cards already seen.
+      if (entries.length === 0 || seenDatesRef.current.size >= entries.length) return;
+
+      const viewportBottom = scrollY + windowHeight;
+      let changed = false;
+      for (const [date, cardY] of entries) {
+        if (!seenDatesRef.current.has(date) && cardY < viewportBottom) {
+          seenDatesRef.current.add(date);
+          changed = true;
+        }
+      }
+      if (changed) setSeenDatesTick((t) => t + 1);
+    },
+    [windowHeight],
+  );
+
+  const handleFlatListScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      scrollYRef.current = y;
+      if (activeTab === "history") {
+        checkHistoryVisibility(y);
+      }
+    },
+    [activeTab, checkHistoryVisibility],
+  );
 
   function dismissFilterHint() {
     if (filterHintTimerRef.current) {
@@ -2196,6 +2240,8 @@ export default function NutritionScreen() {
         keyExtractor={(item, i) => `${item._kind}-${item.name}-${i}`}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScroll={handleFlatListScroll}
+        scrollEventThrottle={16}
         ListHeaderComponent={() => (
           <View style={{ gap: 16 }}>
             <View style={[styles.header, { paddingTop: topPad + 16 }]}>
@@ -3350,7 +3396,13 @@ export default function NutritionScreen() {
                       <View
                         key={date}
                         onLayout={(e) => {
-                          historyCardYsRef.current[date] = e.nativeEvent.layout.y;
+                          const cardY = e.nativeEvent.layout.y;
+                          historyCardYsRef.current[date] = cardY;
+                          // Immediately mark cards that are already in the visible
+                          // viewport when the history section first lays out.
+                          if (cardY < scrollYRef.current + windowHeight) {
+                            markDateSeen(date);
+                          }
                         }}
                         style={[
                           styles.historyDay,
@@ -3375,6 +3427,7 @@ export default function NutritionScreen() {
                               protein={totals.protein}
                               carbs={totals.carbs}
                               fat={totals.fat}
+                              shouldAnimate={seenDatesRef.current.has(date)}
                             />
                             <TouchableOpacity
                               onPress={() => setDayBreakdownDate(date)}
