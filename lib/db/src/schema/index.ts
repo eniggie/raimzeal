@@ -2,3 +2,4 @@ export * from "./schema";
 export * from "./community";
 export * from "./programs";
 export * from "./digest";
+export * from "./favourites";

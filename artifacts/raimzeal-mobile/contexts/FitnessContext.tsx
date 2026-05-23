@@ -36,6 +36,7 @@ import {
   fetchUserPreferences,
   upsertUserPreferences,
   upsertMealLog,
+  getApiBase,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -236,7 +237,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs] = await Promise.all([
+        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs, favouritesRemote] = await Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
@@ -244,6 +245,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           fetchWaterIntake(userId),
           fetchOviaMessages(userId),
           fetchUserPreferences(userId),
+          (async (): Promise<FavoriteFood[]> => {
+            try {
+              const res = await fetch(`${getApiBase()}/user/favourite-foods`, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              if (!res.ok) return [];
+              const body = await res.json() as { foods: FavoriteFood[] };
+              return Array.isArray(body.foods) ? body.foods : [];
+            } catch { return []; }
+          })(),
         ]);
         // Restore the camera-roll rationale flag to AsyncStorage so
         // PermissionsContext picks it up on this fresh install.
@@ -274,6 +285,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             bodyMeasurements: bodyMeasurementsRemote.length > 0 ? bodyMeasurementsRemote : prev.bodyMeasurements,
             waterIntake: waterRemote.length > 0 ? waterRemote : prev.waterIntake,
             oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
+            favoriteFoods: favouritesRemote.length > 0 ? favouritesRemote : prev.favoriteFoods,
             // Merge cloud-backed settings (remote wins over local for synced fields)
             settings: {
               ...prev.settings,
@@ -456,6 +468,27 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           : [food, ...prev.favoriteFoods];
         const next = { ...prev, favoriteFoods };
         persist(next);
+        // Background sync with API
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session?.access_token) return;
+            if (exists) {
+              fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(food.name)}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              }).catch(() => {});
+            } else {
+              fetch(`${getApiBase()}/user/favourite-foods`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ food }),
+              }).catch(() => {});
+            }
+          });
+        }
         return next;
       });
     },
@@ -467,6 +500,20 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, favoriteFoods: foods };
         persist(next);
+        // Background sync with API
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session?.access_token) return;
+            fetch(`${getApiBase()}/user/favourite-foods/reorder`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ foods }),
+            }).catch(() => {});
+          });
+        }
         return next;
       });
     },
