@@ -3206,11 +3206,21 @@ export default function CardCustomizationModal({
             </Text>
           )}
           {anyStatEnabled && showLongPressHint && (
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              {longPressAndRun
-                ? "Long-press a button to set it as default and generate instantly"
-                : "Long-press a button to set it as your default"}
-            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowLongPressHint(false);
+                AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+              }}
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss hint"
+            >
+              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                {longPressAndRun
+                  ? "Long-press a button to set it as default and generate instantly"
+                  : "Long-press a button to set it as your default"}{" · Tap to dismiss"}
+              </Text>
+            </TouchableOpacity>
           )}
           {anyStatEnabled && (
             <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
