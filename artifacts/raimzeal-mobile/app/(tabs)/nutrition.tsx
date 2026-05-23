@@ -627,6 +627,42 @@ export default function NutritionScreen() {
   const [macroAlert, setMacroAlert] = useState<{ cal: number; prot: number; carb: number; fat: number } | null>(null);
   const macroAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [macroDrillDown, setMacroDrillDown] = useState<{
+    label: string;
+    macro: "protein" | "carbs" | "fat";
+    goal: number;
+    color: string;
+    badge: "low" | "over";
+    avgValue: number;
+    outOfRangeDays: { date: string; value: number }[];
+    inRangeDays: { date: string; value: number }[];
+  } | null>(null);
+
+  function openMacroDrillDown(
+    macro: "protein" | "carbs" | "fat",
+    label: string,
+    goal: number,
+    color: string,
+    avg: number,
+  ) {
+    const ratio = goal > 0 ? avg / goal : 1;
+    const badge: "low" | "over" = ratio < 0.8 ? "low" : "over";
+    const outOfRange: { date: string; value: number }[] = [];
+    const inRange: { date: string; value: number }[] = [];
+    for (const { date, totals } of filteredHistoryDays) {
+      const val = Math.round(totals[macro]);
+      const r = goal > 0 ? val / goal : 1;
+      const isOut = badge === "low" ? r < 0.8 : r > 1.1;
+      if (isOut) {
+        outOfRange.push({ date, value: val });
+      } else {
+        inRange.push({ date, value: val });
+      }
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setMacroDrillDown({ label, macro, goal, color, badge, avgValue: avg, outOfRangeDays: outOfRange, inRangeDays: inRange });
+  }
+
   const filteredHistoryDays = React.useMemo(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -3406,6 +3442,7 @@ export default function NutritionScreen() {
                           setTrendMetric("protein");
                           flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
                         }}
+                        onBadgePress={() => openMacroDrillDown("protein", "Protein", PROTEIN_GOAL, colors.secondary, weeklyAvgSummary.avgProtein)}
                       />
                       <HistoryMacroChip
                         label="C"
@@ -3417,6 +3454,7 @@ export default function NutritionScreen() {
                           setTrendMetric("carbs");
                           flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
                         }}
+                        onBadgePress={() => openMacroDrillDown("carbs", "Carbs", CARBS_GOAL, colors.warning, weeklyAvgSummary.avgCarbs)}
                       />
                       <HistoryMacroChip
                         label="F"
@@ -3428,6 +3466,7 @@ export default function NutritionScreen() {
                           setTrendMetric("fat");
                           flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
                         }}
+                        onBadgePress={() => openMacroDrillDown("fat", "Fat", FAT_GOAL, colors.accent, weeklyAvgSummary.avgFat)}
                       />
                     </View>
                   </View>
@@ -4868,6 +4907,26 @@ export default function NutritionScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Macro Drill-Down Sheet */}
+      <Modal
+        visible={macroDrillDown !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMacroDrillDown(null)}
+      >
+        <TouchableOpacity
+          style={styles.drillDownBackdrop}
+          activeOpacity={1}
+          onPress={() => setMacroDrillDown(null)}
+        />
+        {macroDrillDown !== null && (
+          <MacroDrillDownSheet
+            drillDown={macroDrillDown}
+            onClose={() => setMacroDrillDown(null)}
+          />
+        )}
+      </Modal>
     </View>
   );
 }
@@ -5954,12 +6013,14 @@ function HistoryMacroChip({
   goal,
   color,
   onPress,
+  onBadgePress,
 }: {
   label: string;
   value: number;
   goal: number;
   color: string;
   onPress?: () => void;
+  onBadgePress?: () => void;
 }) {
   const colors = useColors();
   const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
@@ -5968,15 +6029,28 @@ function HistoryMacroChip({
     ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
   const badgeLabel = badge === "low" ? "Low" : "Over";
+  const badgeEl = badge !== null ? (
+    onBadgePress ? (
+      <TouchableOpacity
+        onPress={(e) => { e.stopPropagation?.(); onBadgePress(); }}
+        activeOpacity={0.7}
+        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}
+      >
+        <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
+        <Ionicons name="chevron-forward" size={8} color={badgeColor} style={{ marginLeft: 1 }} />
+      </TouchableOpacity>
+    ) : (
+      <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
+        <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
+      </View>
+    )
+  ) : null;
   const inner = (
     <>
       <View style={styles.historyMacroChipLabelRow}>
         <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
-        {badge !== null && (
-          <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
-            <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>{badgeLabel}</Text>
-          </View>
-        )}
+        {badgeEl}
       </View>
       <Text style={[styles.historyMacroChipValue, { color }]}>
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
@@ -6000,6 +6074,121 @@ function HistoryMacroChip({
   return (
     <View style={[styles.historyMacroChip, { backgroundColor: color + "15", borderColor: color + "35" }]}>
       {inner}
+    </View>
+  );
+}
+
+function formatDrillDate(dateStr: string): string {
+  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const d = new Date(dateStr + "T12:00:00");
+  return `${DAY_NAMES[d.getDay()]}, ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+}
+
+type DrillDownData = {
+  label: string;
+  macro: "protein" | "carbs" | "fat";
+  goal: number;
+  color: string;
+  badge: "low" | "over";
+  avgValue: number;
+  outOfRangeDays: { date: string; value: number }[];
+  inRangeDays: { date: string; value: number }[];
+};
+
+function MacroDrillDownSheet({
+  drillDown,
+  onClose,
+}: {
+  drillDown: DrillDownData;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const badgeColor = drillDown.badge === "low" ? colors.warning : colors.accent;
+
+  function DayRow({ date, value, dimmed }: { date: string; value: number; dimmed?: boolean }) {
+    const pct = drillDown.goal > 0 ? Math.round((value / drillDown.goal) * 100) : 0;
+    const barColor = dimmed ? colors.mutedForeground : drillDown.color;
+    return (
+      <View style={[styles.drillDownDayRow, { borderBottomColor: colors.border, opacity: dimmed ? 0.55 : 1 }]}>
+        <Text style={[styles.drillDownDayDate, { color: colors.foreground }]}>
+          {formatDrillDate(date)}
+        </Text>
+        <View style={styles.drillDownDayRight}>
+          <View style={[styles.drillDownDayBar, { backgroundColor: barColor + "25" }]}>
+            <View style={[
+              styles.drillDownDayBarFill,
+              { backgroundColor: barColor, width: `${Math.min(pct, 100)}%` as `${number}%` }
+            ]} />
+          </View>
+          <Text style={[styles.drillDownDayValue, { color: barColor }]}>{value}g</Text>
+          <Text style={[styles.drillDownDayPct, { color: colors.mutedForeground }]}>{pct}%</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.drillDownSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.drillDownHandle, { backgroundColor: colors.mutedForeground + "55" }]} />
+
+      <View style={styles.drillDownHeader}>
+        <View style={[styles.drillDownIconBg, { backgroundColor: drillDown.color + "20" }]}>
+          <Ionicons
+            name={drillDown.macro === "protein" ? "barbell-outline" : drillDown.macro === "carbs" ? "leaf-outline" : "water-outline"}
+            size={18}
+            color={drillDown.color}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.drillDownTitle, { color: colors.foreground }]}>
+            {drillDown.label} Breakdown
+          </Text>
+          <Text style={[styles.drillDownSubtitle, { color: colors.mutedForeground }]}>
+            Avg {drillDown.avgValue}g · Goal {drillDown.goal}g
+          </Text>
+        </View>
+        <View style={[styles.drillDownBadgePill, { backgroundColor: badgeColor + "20", borderColor: badgeColor + "60" }]}>
+          <Text style={[styles.drillDownBadgePillText, { color: badgeColor }]}>
+            {drillDown.badge === "low" ? "Low avg" : "Over avg"}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={[styles.drillDownSectionLabel, { color: colors.mutedForeground }]}>
+        {drillDown.badge === "low"
+          ? `Days below 80% of goal (${Math.round(drillDown.goal * 0.8)}g)`
+          : `Days above 110% of goal (${Math.round(drillDown.goal * 1.1)}g)`}
+      </Text>
+
+      <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+        {drillDown.outOfRangeDays.length === 0 ? (
+          <Text style={[styles.drillDownEmpty, { color: colors.mutedForeground }]}>
+            No single day stands out — the average is dragged by many days near the threshold.
+          </Text>
+        ) : (
+          drillDown.outOfRangeDays.map(({ date, value }) => (
+            <DayRow key={date} date={date} value={value} />
+          ))
+        )}
+        {drillDown.inRangeDays.length > 0 && (
+          <>
+            <Text style={[styles.drillDownSectionLabel, { color: colors.mutedForeground, marginTop: 12 }]}>
+              On-track days
+            </Text>
+            {drillDown.inRangeDays.map(({ date, value }) => (
+              <DayRow key={date} date={date} value={value} dimmed />
+            ))}
+          </>
+        )}
+      </ScrollView>
+
+      <TouchableOpacity
+        onPress={onClose}
+        style={[styles.drillDownDismiss, { borderColor: colors.border }]}
+      >
+        <Text style={[styles.drillDownDismissText, { color: colors.mutedForeground }]}>Close</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -7274,5 +7463,121 @@ const styles = StyleSheet.create({
   previewSheetLogLabel: {
     fontSize: 15,
     fontFamily: "SpaceGrotesk_700Bold",
+  },
+  drillDownBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  drillDownSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 12,
+  },
+  drillDownHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  drillDownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  drillDownIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drillDownTitle: {
+    fontSize: 16,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  drillDownSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  drillDownBadgePill: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  drillDownBadgePillText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  drillDownSectionLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  drillDownEmpty: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  drillDownDayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+  },
+  drillDownDayDate: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+  drillDownDayRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  drillDownDayBar: {
+    width: 60,
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  drillDownDayBarFill: {
+    height: 5,
+    borderRadius: 3,
+  },
+  drillDownDayValue: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 38,
+    textAlign: "right",
+  },
+  drillDownDayPct: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    minWidth: 32,
+    textAlign: "right",
+  },
+  drillDownDismiss: {
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  drillDownDismissText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
   },
 });
