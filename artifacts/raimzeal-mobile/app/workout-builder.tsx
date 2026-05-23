@@ -76,6 +76,36 @@ const EXERCISE_LIBRARY: { name: string; category: string }[] = [
 
 const CATEGORIES = [...new Set(EXERCISE_LIBRARY.map((e) => e.category))];
 
+function HighlightText({
+  text,
+  query,
+  style,
+  highlightColor,
+}: {
+  text: string;
+  query: string;
+  style: object | object[];
+  highlightColor: string;
+}) {
+  if (!query.trim()) {
+    return <Text style={style}>{text}</Text>;
+  }
+  const idx = text.toLowerCase().indexOf(query.toLowerCase().trim());
+  if (idx === -1) {
+    return <Text style={style}>{text}</Text>;
+  }
+  const q = query.trim();
+  return (
+    <Text style={style}>
+      {text.slice(0, idx)}
+      <Text style={[style, { color: highlightColor, fontFamily: "Inter_700Bold" }]}>
+        {text.slice(idx, idx + q.length)}
+      </Text>
+      {text.slice(idx + q.length)}
+    </Text>
+  );
+}
+
 const ICON_OPTIONS: { icon: IoniconsName; label: string }[] = [
   { icon: "barbell-outline", label: "Weights" },
   { icon: "body-outline", label: "Body" },
@@ -94,6 +124,7 @@ export default function WorkoutBuilderScreen() {
   const [exercises, setExercises] = useState<CustomExercise[]>([]);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
   const [customExName, setCustomExName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -171,9 +202,13 @@ export default function WorkoutBuilderScreen() {
     ]);
   }
 
-  const filteredLibrary = pickerCategory
-    ? EXERCISE_LIBRARY.filter((e) => e.category === pickerCategory)
-    : EXERCISE_LIBRARY;
+  const filteredLibrary = EXERCISE_LIBRARY.filter((e) => {
+    if (pickerCategory && e.category !== pickerCategory) return false;
+    if (pickerSearch.trim()) {
+      if (!e.name.toLowerCase().includes(pickerSearch.toLowerCase().trim())) return false;
+    }
+    return true;
+  });
 
   return (
     <KeyboardAvoidingView
@@ -325,6 +360,7 @@ export default function WorkoutBuilderScreen() {
           onPress={() => {
             setShowExercisePicker(!showExercisePicker);
             setPickerCategory(null);
+            setPickerSearch("");
             setCustomExName("");
           }}
           style={[styles.addExBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -357,6 +393,26 @@ export default function WorkoutBuilderScreen() {
                 <Text style={[styles.customExAddText, { color: colors.primaryForeground }]}>Add</Text>
               </Pressable>
             </View>
+            {/* Search bar */}
+            <View style={[pickerStyles.searchContainer, { backgroundColor: colors.muted, borderBottomColor: colors.border }]}>
+              <Ionicons name="search-outline" size={15} color={colors.mutedForeground} />
+              <TextInput
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder="Search exercises…"
+                placeholderTextColor={colors.mutedForeground}
+                style={[pickerStyles.searchInput, { color: colors.foreground }]}
+                returnKeyType="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {pickerSearch.length > 0 && (
+                <Pressable onPress={() => setPickerSearch("")} hitSlop={8}>
+                  <Ionicons name="close-circle" size={15} color={colors.mutedForeground} />
+                </Pressable>
+              )}
+            </View>
+
             {/* Category tabs */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catTabs}>
               <Pressable
@@ -376,28 +432,47 @@ export default function WorkoutBuilderScreen() {
               ))}
             </ScrollView>
             {/* Exercise list */}
-            {filteredLibrary.map((ex) => {
-              const already = exercises.some((e) => e.name === ex.name);
-              return (
-                <TouchableOpacity
-                  key={ex.name}
-                  onPress={() => !already && addExercise(ex.name)}
-                  activeOpacity={already ? 1 : 0.7}
-                  style={[
-                    styles.pickerRow,
-                    { borderBottomColor: colors.border, opacity: already ? 0.4 : 1 },
-                  ]}
-                >
-                  <Text style={[styles.pickerRowName, { color: colors.foreground }]}>{ex.name}</Text>
-                  <Text style={[styles.pickerRowCat, { color: colors.mutedForeground }]}>{ex.category}</Text>
-                  {already ? (
-                    <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                  ) : (
-                    <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {filteredLibrary.length === 0 ? (
+              <View style={pickerStyles.emptyState}>
+                <Ionicons name="search-outline" size={28} color={colors.mutedForeground} />
+                <Text style={[pickerStyles.emptyText, { color: colors.mutedForeground }]}>
+                  No exercises match
+                </Text>
+                {pickerSearch.length > 0 && (
+                  <Pressable onPress={() => setPickerSearch("")} style={[pickerStyles.clearBtn, { backgroundColor: colors.muted }]}>
+                    <Text style={[pickerStyles.clearBtnText, { color: colors.primary }]}>Clear search</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : (
+              filteredLibrary.map((ex) => {
+                const already = exercises.some((e) => e.name === ex.name);
+                return (
+                  <TouchableOpacity
+                    key={ex.name}
+                    onPress={() => !already && addExercise(ex.name)}
+                    activeOpacity={already ? 1 : 0.7}
+                    style={[
+                      styles.pickerRow,
+                      { borderBottomColor: colors.border, opacity: already ? 0.4 : 1 },
+                    ]}
+                  >
+                    <HighlightText
+                      text={ex.name}
+                      query={pickerSearch}
+                      style={[styles.pickerRowName, { color: colors.foreground }]}
+                      highlightColor={colors.primary}
+                    />
+                    <Text style={[styles.pickerRowCat, { color: colors.mutedForeground }]}>{ex.category}</Text>
+                    {already ? (
+                      <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         )}
 
@@ -471,4 +546,40 @@ const styles = StyleSheet.create({
   pickerRowCat: { fontSize: 12, fontFamily: "Inter_400Regular" },
   saveBtn: { height: 56, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 8 },
   saveBtnText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+});
+
+const pickerStyles = StyleSheet.create({
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 28,
+  },
+  emptyText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  clearBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  clearBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
 });

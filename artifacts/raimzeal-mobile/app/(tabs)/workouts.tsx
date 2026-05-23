@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -344,6 +345,51 @@ const DEFAULT_PROGRAMS: ProgramItem[] = [
   },
 ];
 
+// ── Library search/filter constants ──────────────────────────────────────────
+const LIBRARY_MUSCLE_GROUPS = [
+  "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio", "Full Body",
+] as const;
+
+function getTemplateMuscles(exercises: { name: string }[]): Set<string> {
+  const s = new Set<string>();
+  for (const ex of exercises) {
+    const mg = exerciseToMuscleGroup(ex.name);
+    if (mg !== "Other") s.add(mg);
+  }
+  return s;
+}
+
+function HighlightText({
+  text,
+  query,
+  style,
+  highlightColor,
+  numberOfLines,
+}: {
+  text: string;
+  query: string;
+  style: object | object[];
+  highlightColor: string;
+  numberOfLines?: number;
+}) {
+  if (!query.trim()) {
+    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
+  }
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) {
+    return <Text style={style} numberOfLines={numberOfLines}>{text}</Text>;
+  }
+  return (
+    <Text style={style} numberOfLines={numberOfLines}>
+      {text.slice(0, idx)}
+      <Text style={[style, { color: highlightColor, fontFamily: "Inter_700Bold" }]}>
+        {text.slice(idx, idx + query.length)}
+      </Text>
+      {text.slice(idx + query.length)}
+    </Text>
+  );
+}
+
 export default function WorkoutsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -361,8 +407,58 @@ export default function WorkoutsScreen() {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const expandedInitRef = useRef(false);
 
+  // ── Library search / filter ──────────────────────────────────────────────
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   const weekGroups = useMemo(() => groupWorkoutsByWeek(workoutLogs), [workoutLogs]);
   const monthGroups = useMemo(() => groupWorkoutsByMonth(weekGroups), [weekGroups]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(librarySearch), 150);
+    return () => clearTimeout(t);
+  }, [librarySearch]);
+
+  const filteredTemplates = useMemo(() => {
+    return WORKOUT_TEMPLATES.filter((item) => {
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        const nameMatch = item.name.toLowerCase().includes(q);
+        const exMatch = item.exercises.some((e) => e.name.toLowerCase().includes(q));
+        if (!nameMatch && !exMatch) return false;
+      }
+      if (selectedMuscles.length > 0) {
+        const muscles = getTemplateMuscles(item.exercises);
+        const isFullBody = muscles.size >= 4;
+        const matched = selectedMuscles.some((m) =>
+          m === "Full Body" ? isFullBody : muscles.has(m)
+        );
+        if (!matched) return false;
+      }
+      return true;
+    });
+  }, [debouncedSearch, selectedMuscles]);
+
+  const filteredCustom = useMemo(() => {
+    return customWorkouts.filter((item) => {
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        const nameMatch = item.name.toLowerCase().includes(q);
+        const exMatch = item.exercises.some((e) => e.name.toLowerCase().includes(q));
+        if (!nameMatch && !exMatch) return false;
+      }
+      if (selectedMuscles.length > 0) {
+        const muscles = getTemplateMuscles(item.exercises);
+        const isFullBody = muscles.size >= 4;
+        const matched = selectedMuscles.some((m) =>
+          m === "Full Body" ? isFullBody : muscles.has(m)
+        );
+        if (!matched) return false;
+      }
+      return true;
+    });
+  }, [debouncedSearch, selectedMuscles, customWorkouts]);
 
   const flatItems = useMemo((): FlatItem[] => {
     if (historyViewMode === "week") {
@@ -405,6 +501,19 @@ export default function WorkoutsScreen() {
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
+  }
+
+  function toggleMuscle(mg: string) {
+    Haptics.selectionAsync();
+    setSelectedMuscles((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg]
+    );
+  }
+
+  function clearLibraryFilters() {
+    setLibrarySearch("");
+    setSelectedMuscles([]);
+    setDebouncedSearch("");
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -547,7 +656,57 @@ export default function WorkoutsScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
+          {/* Search bar */}
+          <View style={[libStyles.searchContainer, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Ionicons name="search-outline" size={16} color={colors.mutedForeground} />
+            <TextInput
+              value={librarySearch}
+              onChangeText={setLibrarySearch}
+              placeholder="Search workouts & exercises…"
+              placeholderTextColor={colors.mutedForeground}
+              style={[libStyles.searchInput, { color: colors.foreground }]}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {librarySearch.length > 0 && (
+              <TouchableOpacity onPress={() => setLibrarySearch("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Muscle group filter chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={libStyles.chipRow}
+          >
+            {LIBRARY_MUSCLE_GROUPS.map((mg) => {
+              const active = selectedMuscles.includes(mg);
+              return (
+                <TouchableOpacity
+                  key={mg}
+                  onPress={() => toggleMuscle(mg)}
+                  activeOpacity={0.7}
+                  style={[
+                    libStyles.chip,
+                    {
+                      backgroundColor: active ? colors.primary : colors.muted,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[libStyles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                    {mg}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           {/* Build Workout button */}
           <TouchableOpacity
             activeOpacity={0.85}
@@ -567,99 +726,133 @@ export default function WorkoutsScreen() {
             <Ionicons name="chevron-forward" size={18} color={colors.primary} />
           </TouchableOpacity>
 
-          {/* My Workouts */}
-          {customWorkouts.length > 0 && (
+          {/* Empty state when no results */}
+          {(debouncedSearch || selectedMuscles.length > 0) &&
+           filteredCustom.length === 0 && filteredTemplates.length === 0 ? (
+            <View style={libStyles.emptyState}>
+              <Ionicons name="search-outline" size={44} color={colors.mutedForeground} />
+              <Text style={[libStyles.emptyTitle, { color: colors.foreground }]}>No workouts match</Text>
+              <Text style={[libStyles.emptySubtitle, { color: colors.mutedForeground }]}>
+                Try a different search term or muscle group
+              </Text>
+              <TouchableOpacity
+                onPress={clearLibraryFilters}
+                style={[libStyles.clearBtn, { backgroundColor: colors.primary }]}
+              >
+                <Text style={[libStyles.clearBtnText, { color: colors.primaryForeground }]}>Clear filters</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <>
-              <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>My Workouts</Text>
-              {customWorkouts.map((item) => (
-                <TouchableOpacity
-                  key={item.workoutId}
-                  activeOpacity={0.8}
-                  onPress={() => handleStartWorkout(item.workoutId)}
-                  style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                >
-                  <View style={[styles.templateIcon, { backgroundColor: "#10b981" + "20" }]}>
-                    <Ionicons name={item.icon} size={24} color="#10b981" />
-                  </View>
-                  <View style={styles.templateInfo}>
-                    <Text style={[styles.templateName, { color: colors.foreground }]}>{item.name}</Text>
-                    <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
-                      {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
-                      {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
-                    </Text>
-                    <View style={styles.templateStats}>
-                      <View style={styles.templateStat}>
-                        <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
-                        <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
-                      </View>
-                      <View style={styles.templateStat}>
-                        <Ionicons name="flame-outline" size={12} color={colors.warning} />
-                        <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={{ gap: 6, alignItems: "center" }}>
-                    <View style={[styles.startBtn, { backgroundColor: colors.primary }]}>
-                      <Ionicons name="play" size={16} color={colors.primaryForeground} />
-                    </View>
+              {/* My Workouts */}
+              {filteredCustom.length > 0 && (
+                <>
+                  <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>My Workouts</Text>
+                  {filteredCustom.map((item) => (
                     <TouchableOpacity
-                      hitSlop={8}
-                      onPress={() => {
-                        Alert.alert("Delete Workout", `Delete "${item.name}"? This cannot be undone.`, [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: async () => {
-                              await deleteCustomWorkout(item.workoutId);
-                              setCustomWorkouts((prev) => prev.filter((w) => w.workoutId !== item.workoutId));
-                            },
-                          },
-                        ]);
-                      }}
+                      key={item.workoutId}
+                      activeOpacity={0.8}
+                      onPress={() => handleStartWorkout(item.workoutId)}
+                      style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                     >
-                      <Ionicons name="trash-outline" size={14} color={colors.destructive} />
+                      <View style={[styles.templateIcon, { backgroundColor: "#10b981" + "20" }]}>
+                        <Ionicons name={item.icon} size={24} color="#10b981" />
+                      </View>
+                      <View style={styles.templateInfo}>
+                        <HighlightText
+                          text={item.name}
+                          query={debouncedSearch}
+                          style={[styles.templateName, { color: colors.foreground }]}
+                          highlightColor={colors.primary}
+                        />
+                        <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
+                          {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
+                          {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
+                        </Text>
+                        <View style={styles.templateStats}>
+                          <View style={styles.templateStat}>
+                            <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
+                            <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
+                          </View>
+                          <View style={styles.templateStat}>
+                            <Ionicons name="flame-outline" size={12} color={colors.warning} />
+                            <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={{ gap: 6, alignItems: "center" }}>
+                        <View style={[styles.startBtn, { backgroundColor: colors.primary }]}>
+                          <Ionicons name="play" size={16} color={colors.primaryForeground} />
+                        </View>
+                        <TouchableOpacity
+                          hitSlop={8}
+                          onPress={() => {
+                            Alert.alert("Delete Workout", `Delete "${item.name}"? This cannot be undone.`, [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: async () => {
+                                  await deleteCustomWorkout(item.workoutId);
+                                  setCustomWorkouts((prev) => prev.filter((w) => w.workoutId !== item.workoutId));
+                                },
+                              },
+                            ]);
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={14} color={colors.destructive} />
+                        </TouchableOpacity>
+                      </View>
                     </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  ))}
+                </>
+              )}
+
+              {/* Templates */}
+              {filteredTemplates.length > 0 && (
+                <>
+                  <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>Templates</Text>
+                  {filteredTemplates.map((item) => (
+                    <TouchableOpacity
+                      key={item.workoutId}
+                      activeOpacity={0.8}
+                      onPress={() => handleStartWorkout(item.workoutId)}
+                      style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    >
+                      <View style={[styles.templateIcon, { backgroundColor: colors.primary + "20" }]}>
+                        <Ionicons name={item.icon} size={24} color={colors.primary} />
+                      </View>
+                      <View style={styles.templateInfo}>
+                        <HighlightText
+                          text={item.name}
+                          query={debouncedSearch}
+                          style={[styles.templateName, { color: colors.foreground }]}
+                          highlightColor={colors.primary}
+                        />
+                        <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
+                          {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
+                          {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
+                        </Text>
+                        <View style={styles.templateStats}>
+                          <View style={styles.templateStat}>
+                            <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
+                            <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
+                          </View>
+                          <View style={styles.templateStat}>
+                            <Ionicons name="flame-outline" size={12} color={colors.warning} />
+                            <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
+                          </View>
+                        </View>
+                      </View>
+                      <View style={[styles.startBtn, { backgroundColor: colors.primary }]}>
+                        <Ionicons name="play" size={16} color={colors.primaryForeground} />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
             </>
           )}
-
-          {/* Templates */}
-          <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>Templates</Text>
-          {WORKOUT_TEMPLATES.map((item) => (
-            <TouchableOpacity
-              key={item.workoutId}
-              activeOpacity={0.8}
-              onPress={() => handleStartWorkout(item.workoutId)}
-              style={[styles.templateCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <View style={[styles.templateIcon, { backgroundColor: colors.primary + "20" }]}>
-                <Ionicons name={item.icon} size={24} color={colors.primary} />
-              </View>
-              <View style={styles.templateInfo}>
-                <Text style={[styles.templateName, { color: colors.foreground }]}>{item.name}</Text>
-                <Text style={[styles.templateMeta, { color: colors.mutedForeground }]}>
-                  {item.exercises.slice(0, 3).map((e) => e.name).join(" · ")}
-                  {item.exercises.length > 3 ? ` +${item.exercises.length - 3}` : ""}
-                </Text>
-                <View style={styles.templateStats}>
-                  <View style={styles.templateStat}>
-                    <Ionicons name="time-outline" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>{item.duration}m</Text>
-                  </View>
-                  <View style={styles.templateStat}>
-                    <Ionicons name="flame-outline" size={12} color={colors.warning} />
-                    <Text style={[styles.templateStatText, { color: colors.mutedForeground }]}>~{item.calories} kcal</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={[styles.startBtn, { backgroundColor: colors.primary }]}>
-                <Ionicons name="play" size={16} color={colors.primaryForeground} />
-              </View>
-            </TouchableOpacity>
-          ))}
         </ScrollView>
       )}
 
@@ -1301,4 +1494,63 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   historyToggleLabel: { fontSize: 13 },
+});
+
+const libStyles = StyleSheet.create({
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+  chipRow: {
+    flexDirection: "row",
+    gap: 7,
+    paddingVertical: 2,
+  },
+  chip: {
+    paddingHorizontal: 13,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontFamily: "SpaceGrotesk_700Bold",
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  clearBtn: {
+    marginTop: 4,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  clearBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
 });
