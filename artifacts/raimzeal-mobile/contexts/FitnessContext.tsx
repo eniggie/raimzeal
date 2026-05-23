@@ -112,6 +112,8 @@ export interface OviaMessage {
 export type FavoriteFood = Omit<MealLog, "id" | "date"> & {
   /** Human-readable serving size label saved at star time (e.g. "150g", "1 cup") */
   servingLabel?: string;
+  /** Server-assigned UUID injected from API on GET/POST. Used for reliable id-based DELETE. */
+  _serverId?: string;
 };
 
 /** Matches web app store.ts AppState (subset relevant to mobile) */
@@ -166,6 +168,19 @@ interface FitnessContextType extends AppState {
 
 /** Same key as the web app — data schemas are compatible */
 const STORAGE_KEY = "raimzeal_fitness_data";
+const PENDING_REMOVES_KEY = "raimzeal_pending_fav_removes";
+
+type PendingRemove = { serverId: string; foodName: string };
+
+async function queuePendingRemove(serverId: string, foodName: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_REMOVES_KEY);
+    const existing: PendingRemove[] = raw ? (JSON.parse(raw) as PendingRemove[]) : [];
+    if (!existing.some((r) => r.serverId === serverId)) {
+      await AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify([...existing, { serverId, foodName }]));
+    }
+  } catch {}
+}
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
@@ -237,7 +252,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs, favouritesRemote] = await Promise.all([
+        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs, favouritesRemote, pendingRemovesRaw] = await Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
@@ -255,6 +270,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               return Array.isArray(body.foods) ? body.foods : [];
             } catch { return []; }
           })(),
+          AsyncStorage.getItem(PENDING_REMOVES_KEY).catch(() => null),
         ]);
         // Restore the camera-roll rationale flag to AsyncStorage so
         // PermissionsContext picks it up on this fresh install.
@@ -266,6 +282,39 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             AsyncStorage.removeItem("camera_roll_rationale_dismissed").catch(() => {});
           }
         }
+
+        // Process pending removes: foods the user removed locally but whose DELETE may have failed
+        const pendingRemoves: PendingRemove[] = (() => {
+          try { return pendingRemovesRaw ? (JSON.parse(pendingRemovesRaw) as PendingRemove[]) : []; }
+          catch { return []; }
+        })();
+        const pendingRemoveNames = new Set(pendingRemoves.map((r) => r.foodName));
+
+        // Retry pending removes in background (best-effort; queue cleared on success)
+        pendingRemoves
+          .filter((r) => favouritesRemote.some((f) => f.name === r.foodName))
+          .forEach(({ serverId, foodName }) => {
+            fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(serverId)}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            }).then((res) => {
+              if (res.ok) {
+                AsyncStorage.getItem(PENDING_REMOVES_KEY).then((raw) => {
+                  const cur: PendingRemove[] = raw ? (JSON.parse(raw) as PendingRemove[]) : [];
+                  AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify(cur.filter((r) => r.foodName !== foodName))).catch(() => {});
+                }).catch(() => {});
+              }
+            }).catch(() => {});
+          });
+
+        // True merge: local-only foods (not yet on server) + filtered server foods (pending removes excluded)
+        // Remote wins on conflict (same food name present both locally and on server).
+        const filteredServerFoods = favouritesRemote.filter((f) => !pendingRemoveNames.has(f.name));
+        const hydratedFavs: FavoriteFood[] = hydrated.favoriteFoods ?? [];
+        const remoteByName = new Map(filteredServerFoods.map((f) => [f.name, f]));
+        const localOnlyFoods = hydratedFavs.filter((lf) => !remoteByName.has(lf.name));
+        const mergedFavs = [...localOnlyFoods, ...filteredServerFoods];
+
         setState((prev) => {
           const remoteSettings = prefs?.appSettings;
           return {
@@ -285,7 +334,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             bodyMeasurements: bodyMeasurementsRemote.length > 0 ? bodyMeasurementsRemote : prev.bodyMeasurements,
             waterIntake: waterRemote.length > 0 ? waterRemote : prev.waterIntake,
             oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
-            favoriteFoods: favouritesRemote.length > 0 ? favouritesRemote : prev.favoriteFoods,
+            favoriteFoods: mergedFavs,
             // Merge cloud-backed settings (remote wins over local for synced fields)
             settings: {
               ...prev.settings,
@@ -298,6 +347,29 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                 : {}),
             },
           };
+        });
+
+        // Retry failed adds: push local-only foods to server and cache their server ids
+        localOnlyFoods.forEach((f) => {
+          fetch(`${getApiBase()}/user/favourite-foods`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ food: f }),
+          }).then(async (res) => {
+            if (res.ok) {
+              const body = await res.json() as { id?: string };
+              if (body.id) {
+                setState((prev) => {
+                  const favoriteFoods = prev.favoriteFoods.map((ff) =>
+                    ff.name === f.name ? { ...ff, _serverId: body.id } : ff
+                  );
+                  const next = { ...prev, favoriteFoods };
+                  persist(next);
+                  return next;
+                });
+              }
+            }
+          }).catch(() => {});
         });
       } catch {
         // Non-fatal: keep local data if Supabase sync fails
@@ -461,35 +533,53 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
 
   const toggleFavoriteFood = useCallback(
     (food: FavoriteFood) => {
+      let capturedExists = false;
+      let capturedServerId: string | undefined;
       setState((prev) => {
-        const exists = prev.favoriteFoods.some((f) => f.name === food.name);
-        const favoriteFoods = exists
+        capturedExists = prev.favoriteFoods.some((f) => f.name === food.name);
+        capturedServerId = (prev.favoriteFoods.find((f) => f.name === food.name) as (FavoriteFood & { _serverId?: string }) | undefined)?._serverId;
+        const favoriteFoods = capturedExists
           ? prev.favoriteFoods.filter((f) => f.name !== food.name)
           : [food, ...prev.favoriteFoods];
         const next = { ...prev, favoriteFoods };
         persist(next);
-        // Background sync with API
-        if (isSupabaseConfigured) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session?.access_token) return;
-            if (exists) {
-              fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(food.name)}`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              }).catch(() => {});
-            } else {
-              fetch(`${getApiBase()}/user/favourite-foods`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ food }),
-              }).catch(() => {});
-            }
-          });
-        }
         return next;
+      });
+      if (!isSupabaseConfigured) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) return;
+        if (capturedExists) {
+          // Delete by server id; food without a server id was never synced — no action needed
+          if (capturedServerId) {
+            fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(capturedServerId)}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            }).catch(() => {
+              void queuePendingRemove(capturedServerId!, food.name);
+            });
+          }
+        } else {
+          // Add: POST and persist the server id for reliable future deletes
+          fetch(`${getApiBase()}/user/favourite-foods`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ food }),
+          }).then(async (res) => {
+            if (res.ok) {
+              const body = await res.json() as { id?: string };
+              if (body.id) {
+                setState((prev) => {
+                  const favoriteFoods = prev.favoriteFoods.map((ff) =>
+                    ff.name === food.name ? { ...ff, _serverId: body.id } : ff
+                  );
+                  const next = { ...prev, favoriteFoods };
+                  persist(next);
+                  return next;
+                });
+              }
+            }
+          }).catch(() => {});
+        }
       });
     },
     [persist]
@@ -500,21 +590,33 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, favoriteFoods: foods };
         persist(next);
-        // Background sync with API
-        if (isSupabaseConfigured) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session?.access_token) return;
-            fetch(`${getApiBase()}/user/favourite-foods/reorder`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({ foods }),
-            }).catch(() => {});
-          });
-        }
         return next;
+      });
+      if (!isSupabaseConfigured) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.access_token) return;
+        fetch(`${getApiBase()}/user/favourite-foods/reorder`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ foods }),
+        }).then(async (res) => {
+          if (res.ok) {
+            const body = await res.json() as { foods?: (FavoriteFood & { _serverId?: string })[] };
+            if (Array.isArray(body.foods) && body.foods.length > 0) {
+              // Refresh _serverId for all foods (PUT reorder deletes+reinserts rows)
+              const serverIdMap = new Map(body.foods.map((f) => [f.name, f._serverId]));
+              setState((prev) => {
+                const favoriteFoods = prev.favoriteFoods.map((f) => ({
+                  ...f,
+                  _serverId: serverIdMap.get(f.name) ?? f._serverId,
+                }));
+                const next = { ...prev, favoriteFoods };
+                persist(next);
+                return next;
+              });
+            }
+          }
+        }).catch(() => {});
       });
     },
     [persist]
