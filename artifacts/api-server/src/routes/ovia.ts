@@ -64,6 +64,7 @@ function hasPromptInjection(text: string): boolean {
  *   ^--+                double/triple dash bullet lines
  *   ^- space            single-dash bullet lines
  *   ^* space            star bullet lines
+ *   ^N. space           numbered list prefixes (e.g. "1. ", "2. ")
  *   backtick runs       inline code and triple-backtick fences
  *   ~~text~~            strikethrough
  */
@@ -77,6 +78,7 @@ function cleanChunk(text: string): string {
     .replace(/^(\s*)--+\s*/gm, "$1")
     .replace(/^(\s*)-\s+/gm, "$1")
     .replace(/^(\s*)\*\s+/gm, "$1")
+    .replace(/^\d+\.\s+/gm, "")
     .replace(/`{1,3}[^`]*`{1,3}/g, "")
     .replace(/~~([^~]*)~~/g, "$1")
     .replace(/[–—]/g, " ")
