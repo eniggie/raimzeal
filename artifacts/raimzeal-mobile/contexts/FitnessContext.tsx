@@ -155,6 +155,10 @@ interface FitnessContextType extends AppState {
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
   getTodayWaterGlasses: () => number;
   getWeekCalories: () => { day: string; calories: number }[];
+  /** True once AsyncStorage has been read — prevents flash-redirect to onboarding */
+  stateHydrated: boolean;
+  /** Mark the user as having completed health onboarding */
+  markOnboarded: () => void;
 }
 
 /** Same key as the web app — data schemas are compatible */
@@ -201,6 +205,7 @@ const FitnessContext = createContext<FitnessContextType | null>(null);
 
 export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
+  const [stateHydrated, setStateHydrated] = useState(false);
 
   useEffect(() => {
     // Step 1: hydrate from AsyncStorage (fast, works offline)
@@ -221,6 +226,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         favoriteFoods: parsed.favoriteFoods ?? [],
       };
       setState(hydrated);
+      setStateHydrated(true);
 
       // Step 2: sync from Supabase (source of truth for authenticated users)
       if (!isSupabaseConfigured) return;
@@ -464,6 +470,14 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const markOnboarded = useCallback(() => {
+    setState((prev) => {
+      const next = { ...prev, isOnboarded: true };
+      persist(next);
+      return next;
+    });
+  }, [persist]);
+
   const updateSettings = useCallback(
     (updates: Partial<AppState["settings"]>) => {
       setState((prev) => {
@@ -557,6 +571,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         getTodayMacros,
         getTodayWaterGlasses,
         getWeekCalories,
+        stateHydrated,
+        markOnboarded,
       }}
     >
       {children}

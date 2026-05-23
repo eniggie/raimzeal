@@ -23,7 +23,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { FitnessProvider } from "@/contexts/FitnessContext";
+import { FitnessProvider, useFitness } from "@/contexts/FitnessContext";
 import { MacroGoalsProvider } from "@/contexts/MacroGoalsContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
 import { ThumbnailSizeProvider } from "@/hooks/useThumbnailSize";
@@ -61,6 +61,7 @@ function AuthGate() {
   const rationaleShown = useRef(false);
   const { cameraRollStatus, permissionsBootstrapped, hasSeenRationale, markRationaleDismissed, requestCameraRollPermission } = usePermissions();
   const [showRationale, setShowRationale] = useState(false);
+  const { isOnboarded, stateHydrated } = useFitness();
 
   useEffect(() => {
     if (loading) return;
@@ -69,8 +70,19 @@ function AuthGate() {
     const inAuthGroup = segments[0] === "auth";
     if (!session && !inAuthGroup) {
       router.replace("/auth/welcome");
-    } else if (session && inAuthGroup) {
-      router.replace("/(tabs)");
+    } else if (session && inAuthGroup && segments[1] !== "health-onboarding") {
+      // Wait for AsyncStorage to hydrate before checking onboarding status
+      if (!stateHydrated) return;
+      if (!isOnboarded) {
+        router.replace("/auth/health-onboarding");
+      } else {
+        router.replace("/(tabs)");
+      }
+    } else if (session && !inAuthGroup) {
+      // Already in app — redirect to onboarding if not yet completed
+      if (stateHydrated && !isOnboarded) {
+        router.replace("/auth/health-onboarding");
+      }
     }
 
     // Initialise notifications once per session
@@ -97,7 +109,7 @@ function AuthGate() {
       rationaleShown.current = true;
       setShowRationale(true);
     }
-  }, [session, loading, segments, cameraRollStatus, permissionsBootstrapped, hasSeenRationale]);
+  }, [session, loading, segments, cameraRollStatus, permissionsBootstrapped, hasSeenRationale, isOnboarded, stateHydrated]);
 
   const handleAllow = useCallback(() => {
     setShowRationale(false);

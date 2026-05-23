@@ -206,11 +206,19 @@ export function Membership() {
                   ))}
                 </ul>
                 <button
-                  disabled
-                  className="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-foreground/40 cursor-not-allowed"
-                  title="Subscription coming soon"
+                  onClick={() => {
+                    const go = window.confirm(
+                      `${plan.name} subscriptions are launching very soon!\n\nIn the meantime, a voluntary donation keeps RAIMZEAL free for everyone. Would you like to donate now?`
+                    );
+                    if (go) {
+                      const popup = window.open('about:blank', '_blank');
+                      if (popup) popup.location.href = STRIPE_DONATION_URL;
+                    }
+                  }}
+                  className={`w-full py-2.5 rounded-xl border text-sm font-semibold transition-opacity active:opacity-70 cursor-pointer ${plan.badge} border-current/30`}
+                  title="Subscriptions launching soon — support the mission now"
                 >
-                  Subscribe — Coming Soon
+                  Notify Me — Support Now
                 </button>
               </motion.div>
             );

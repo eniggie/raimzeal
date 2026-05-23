@@ -86,6 +86,8 @@ function buildOviaContext(
     age: user?.age ?? null,
     units: user?.units ?? "metric",
     fitnessLevel: user?.fitnessLevel ?? "intermediate",
+    bloodGroup: user?.bloodType && user?.rhFactor ? `${user.bloodType}${user.rhFactor}` : (user?.bloodType ?? null),
+    genotype: user?.genotype ?? null,
     streak,
     recentWorkouts: recent,
     todayCalories: todayCalories || null,

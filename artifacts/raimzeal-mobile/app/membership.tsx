@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -231,12 +232,27 @@ export default function MembershipScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.ctaBtn, { backgroundColor: plan.color + "18", borderColor: plan.color + "40", borderWidth: 1 }]}
-                  disabled
+                  style={[styles.ctaBtn, { backgroundColor: plan.color + "25", borderColor: plan.color + "60", borderWidth: 1 }]}
                   activeOpacity={0.8}
+                  onPress={() => {
+                    Alert.alert(
+                      `${plan.name} — Coming Soon`,
+                      "Subscriptions are launching very soon!\n\nIn the meantime, a voluntary donation helps keep RAIMZEAL free for everyone. You are never required to give — any amount is deeply appreciated.",
+                      [
+                        {
+                          text: "Donate Now",
+                          onPress: () =>
+                            Linking.openURL(STRIPE_DONATION_URL).catch(() =>
+                              Linking.openURL("mailto:support@raimzeal.com?subject=Donation")
+                            ),
+                        },
+                        { text: "Not Now", style: "cancel" },
+                      ]
+                    );
+                  }}
                 >
-                  <Text style={[styles.ctaText, { color: colors.mutedForeground }]}>
-                    Subscribe — Coming Soon
+                  <Text style={[styles.ctaText, { color: plan.color }]}>
+                    Notify Me — Support Now
                   </Text>
                 </TouchableOpacity>
               </LinearGradient>
