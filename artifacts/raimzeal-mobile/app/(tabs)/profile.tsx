@@ -31,7 +31,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
@@ -147,6 +147,21 @@ export default function ProfileScreen() {
       })
       .catch(() => {});
   }, [settings.showRestoreBadge]);
+
+  // Reconcile STORAGE_KEY_LONGPRESS_AND_RUN with the cloud-backed setting.
+  // When Supabase hydration delivers a value (e.g. on a fresh device), write
+  // it back to AsyncStorage so the modal's local fallback path is consistent.
+  useEffect(() => {
+    if (settings.longPressAndRun === undefined) return;
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(
+          STORAGE_KEY_LONGPRESS_AND_RUN,
+          settings.longPressAndRun ? "1" : "0"
+        ).catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.longPressAndRun]);
 
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
@@ -529,6 +544,8 @@ export default function ProfileScreen() {
         cardPreviewData={cardProps}
         onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
+        initialLongPressAndRun={settings.longPressAndRun}
+        onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
       />
 
       {/* Theme color flash confirmation — appears above everything when generating */}

@@ -537,6 +537,11 @@ export interface UserPreferences {
     reorderHintFrequency?: "never" | "monthly" | "weekly";
     /** Hint keys dismissed by the user — synced cross-device */
     dismissedHints?: string[];
+    /**
+     * Whether the "long-press also generates" toggle is on.
+     * Synced cross-device so the preference survives reinstalls.
+     */
+    longPressAndRun?: boolean;
     /** Customisable Quick-Add food list for the mobile Nutrition tab */
     quickFoods?: Array<{
       name: string;

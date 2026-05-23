@@ -154,6 +154,8 @@ export interface AppState {
     undoWindowSeconds: number;
     showRestoreBadge: boolean;
     reorderHintFrequency: "never" | "monthly" | "weekly";
+    /** Whether the "long-press also generates" toggle is on — synced cross-device. */
+    longPressAndRun?: boolean;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -394,6 +396,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.undoWindowSeconds != null ? { undoWindowSeconds: remoteSettings.undoWindowSeconds } : {}),
                     ...(remoteSettings.showRestoreBadge != null ? { showRestoreBadge: remoteSettings.showRestoreBadge } : {}),
                     ...(remoteSettings.reorderHintFrequency != null ? { reorderHintFrequency: remoteSettings.reorderHintFrequency } : {}),
+                    ...(remoteSettings.longPressAndRun != null ? { longPressAndRun: remoteSettings.longPressAndRun } : {}),
                   }
                 : {}),
             },
@@ -840,6 +843,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("undoWindowSeconds" in updates) appSettings.undoWindowSeconds = updates.undoWindowSeconds;
       if ("showRestoreBadge" in updates) appSettings.showRestoreBadge = updates.showRestoreBadge;
       if ("reorderHintFrequency" in updates) appSettings.reorderHintFrequency = updates.reorderHintFrequency;
+      if ("longPressAndRun" in updates) appSettings.longPressAndRun = updates.longPressAndRun;
       if (Object.keys(appSettings).length === 0) return;
       // Merge into existing preferences so unrelated keys are preserved
       supabase.auth.getSession().then(({ data: { session } }) => {

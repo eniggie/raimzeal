@@ -100,7 +100,7 @@ export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
-const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
+export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
 const DEFAULT_AUTO_TRIGGER_DELAY = 3;
 
@@ -191,6 +191,14 @@ interface Props {
    * AsyncStorage), ensuring cross-device consistency for authenticated users.
    */
   initialBadgeDismissed?: boolean;
+  /**
+   * Cloud-backed initial value of the long-press-and-run preference.
+   * When provided it overrides AsyncStorage on first open, ensuring the
+   * setting is restored correctly on a fresh device / reinstall.
+   */
+  initialLongPressAndRun?: boolean;
+  /** Called whenever the user toggles the long-press-and-run switch. */
+  onLongPressAndRunChange?: (val: boolean) => void;
 }
 
 
@@ -946,6 +954,8 @@ export default function CardCustomizationModal({
   cardPreviewData,
   onBadgeDismiss,
   initialBadgeDismissed,
+  initialLongPressAndRun,
+  onLongPressAndRunChange,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -1442,8 +1452,13 @@ export default function CardCustomizationModal({
         setDefaultAction(resolvedAction);
         setSelectedAction(resolvedAction);
 
-        // Long-press-and-run preference: null means the user has never changed it → default true
-        setLongPressAndRun(savedLpAndRun === null ? true : savedLpAndRun !== "0");
+        // Long-press-and-run preference: cloud value (initialLongPressAndRun) wins when
+        // provided (authenticated user on a fresh device); fall back to AsyncStorage.
+        if (initialLongPressAndRun !== undefined) {
+          setLongPressAndRun(initialLongPressAndRun);
+        } else {
+          setLongPressAndRun(savedLpAndRun === null ? true : savedLpAndRun !== "0");
+        }
 
         // Long-press hint: show for up to LONGPRESS_HINT_MAX_OPENS sessions, dismiss once user long-presses.
         // Skip entirely if the user already has a default set (they've already discovered the gesture).
@@ -3260,6 +3275,7 @@ export default function CardCustomizationModal({
                 onValueChange={(val) => {
                   setLongPressAndRun(val);
                   AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_AND_RUN, val ? "1" : "0").catch(() => {});
+                  onLongPressAndRunChange?.(val);
                 }}
                 trackColor={{ false: colors.muted, true: colors.primary + "99" }}
                 thumbColor={longPressAndRun ? colors.primary : colors.mutedForeground}
