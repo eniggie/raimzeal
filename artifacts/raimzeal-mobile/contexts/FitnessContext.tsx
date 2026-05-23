@@ -283,7 +283,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         oviaMessages: parsed.oviaMessages ?? defaultState.oviaMessages,
         favoriteFoods: parsed.favoriteFoods ?? [],
         dismissedHints: parsed.dismissedHints ?? [],
-        quickFoods: Array.isArray(parsed.quickFoods) ? (parsed.quickFoods as QuickFood[]) : DEFAULT_QUICK_FOODS,
+        quickFoods: Array.isArray(parsed.quickFoods) ? (parsed.quickFoods as QuickFood[]).slice(0, 8) : DEFAULT_QUICK_FOODS,
       };
       setState(hydrated);
       setStateHydrated(true);
@@ -401,7 +401,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               ? remoteSettings.dismissedHints
               : prev.dismissedHints,
             quickFoods: Array.isArray(remoteSettings?.quickFoods)
-              ? (remoteSettings.quickFoods as QuickFood[])
+              ? (remoteSettings.quickFoods as QuickFood[]).slice(0, 8)
               : prev.quickFoods,
           };
         });
@@ -703,8 +703,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuickFoods = useCallback(
     (foods: QuickFood[]) => {
+      const clamped = foods.slice(0, 8);
       setState((prev) => {
-        const next = { ...prev, quickFoods: foods };
+        const next = { ...prev, quickFoods: clamped };
         persist(next);
         return next;
       });

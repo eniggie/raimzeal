@@ -2144,7 +2144,7 @@ export default function NutritionScreen() {
   }, [isSearching, searchLoading, searchResults, nutritionFilters, activeFilters]);
 
   const quickList = React.useMemo<FoodListItem[]>(
-    () => (quickFoods.length > 0 ? quickFoods : QUICK_FOODS).map((f) => ({ ...f, _kind: "quick" as const })),
+    () => quickFoods.map((f) => ({ ...f, _kind: "quick" as const })),
     [quickFoods]
   );
   const listData: FoodListItem[] = isSearching ? filteredSearchResults : quickList;

@@ -322,17 +322,19 @@ export function QuickFoodsEditorSheet({
 
   const handleAdd = useCallback(
     (food: QuickFood) => {
+      if (localFoods.length >= MAX_QUICK_FOODS) {
+        showMaxToast();
+        return;
+      }
+      if (localFoods.some((f) => f.name === food.name)) return;
+      if (Platform.OS !== "web") Haptics.selectionAsync();
       setLocalFoods((prev) => {
-        if (prev.length >= MAX_QUICK_FOODS) {
-          showMaxToast();
-          return prev;
-        }
+        if (prev.length >= MAX_QUICK_FOODS) return prev;
         if (prev.some((f) => f.name === food.name)) return prev;
-        if (Platform.OS !== "web") Haptics.selectionAsync();
         return [...prev, food];
       });
     },
-    [showMaxToast]
+    [localFoods, showMaxToast]
   );
 
   // Debounced OFFs search
@@ -512,13 +514,16 @@ export function QuickFoodsEditorSheet({
                     return (
                       <TouchableOpacity
                         key={i}
-                        onPress={() => !alreadyAdded && !atMax && handleAdd(result)}
-                        activeOpacity={alreadyAdded || atMax ? 1 : 0.7}
+                        onPress={() => {
+                          if (alreadyAdded) return;
+                          handleAdd(result);
+                        }}
+                        activeOpacity={alreadyAdded ? 1 : 0.7}
                         style={[
                           styles.resultRow,
                           { borderBottomColor: colors.border },
                           i === searchResults.length - 1 && styles.resultRowLast,
-                          (alreadyAdded || atMax) && { opacity: 0.5 },
+                          alreadyAdded && { opacity: 0.5 },
                         ]}
                       >
                         <View style={styles.resultInfo}>
