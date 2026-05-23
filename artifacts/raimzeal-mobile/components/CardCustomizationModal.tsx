@@ -2424,7 +2424,7 @@ export default function CardCustomizationModal({
       const originCenterY = y + height / 2;
       const zoomCardW = CARD_WIDTH * zoomScale;
       const targetScale = width > 0 ? width / zoomCardW : cardScale / zoomScale;
-      const springConfig = { damping: 32, stiffness: 400, mass: 0.6, useNativeDriver: true as const };
+      const springConfig = { damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true as const };
       Animated.parallel([
         Animated.spring(zoomAnim, { toValue: 0, ...springConfig }),
         Animated.spring(zoomTranslateX, { toValue: originCenterX - screenW / 2, ...springConfig }),
