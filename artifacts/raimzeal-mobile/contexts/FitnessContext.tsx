@@ -554,6 +554,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             fetch(`${getApiBase()}/user/favourite-foods/${encodeURIComponent(capturedServerId)}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${session.access_token}` },
+            }).then((res) => {
+              if (!res.ok) {
+                void queuePendingRemove(capturedServerId!, food.name);
+              }
             }).catch(() => {
               void queuePendingRemove(capturedServerId!, food.name);
             });
