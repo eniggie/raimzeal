@@ -71,6 +71,7 @@ export default function HomeScreen() {
     getTodayWaterGlasses,
     updateWaterIntake,
     settings,
+    getWeekCalories,
   } = useFitness();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -221,6 +222,12 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
+
+          {/* Weekly calorie sparkline */}
+          <WeeklyCalorieTrend
+            data={getWeekCalories()}
+            goal={calorieGoal}
+          />
         </GlassCard>
       </AnimatedPressable>
 
@@ -546,6 +553,120 @@ export default function HomeScreen() {
     </ScrollView>
   );
 }
+
+function WeeklyCalorieTrend({
+  data,
+  goal,
+}: {
+  data: { day: string; calories: number }[];
+  goal: number;
+}) {
+  const colors = useColors();
+  const CHART_HEIGHT = 48;
+  const maxCal = Math.max(goal, ...data.map((d) => d.calories), 1);
+  const todayIdx = data.length - 1;
+
+  return (
+    <View style={sparkStyles.wrapper}>
+      <View style={[sparkStyles.divider, { backgroundColor: colors.border }]} />
+      <View style={sparkStyles.header}>
+        <Text style={[sparkStyles.title, { color: colors.mutedForeground }]}>
+          This week
+        </Text>
+        <Text style={[sparkStyles.goalLabel, { color: colors.mutedForeground }]}>
+          Goal: {goal} kcal
+        </Text>
+      </View>
+      <View style={[sparkStyles.chart, { height: CHART_HEIGHT }]}>
+        {/* Goal line */}
+        <View
+          style={[
+            sparkStyles.goalLine,
+            {
+              bottom: (goal / maxCal) * CHART_HEIGHT,
+              borderColor: colors.mutedForeground + "40",
+            },
+          ]}
+        />
+        {data.map((item, i) => {
+          const isToday = i === todayIdx;
+          const overGoal = goal > 0 && item.calories > goal;
+          const barColor = overGoal
+            ? colors.warning
+            : isToday
+            ? colors.primary
+            : colors.primary + "55";
+          const barHeight =
+            item.calories > 0
+              ? Math.max(3, (item.calories / maxCal) * CHART_HEIGHT)
+              : 3;
+
+          return (
+            <View key={i} style={sparkStyles.barCol}>
+              <View style={[sparkStyles.barTrack, { height: CHART_HEIGHT }]}>
+                <View
+                  style={[
+                    sparkStyles.bar,
+                    {
+                      height: barHeight,
+                      backgroundColor: barColor,
+                      borderRadius: isToday ? 4 : 3,
+                      opacity: isToday ? 1 : item.calories === 0 ? 0.25 : 0.75,
+                    },
+                  ]}
+                />
+              </View>
+              <Text
+                style={[
+                  sparkStyles.dayLabel,
+                  {
+                    color: isToday ? colors.primary : colors.mutedForeground,
+                    fontFamily: isToday
+                      ? "Inter_700Bold"
+                      : "Inter_400Regular",
+                  },
+                ]}
+              >
+                {item.day}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const sparkStyles = StyleSheet.create({
+  wrapper: { marginTop: 12 },
+  divider: { height: 1, marginBottom: 10 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  title: { fontSize: 11, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
+  goalLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  chart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 4,
+    position: "relative",
+  },
+  goalLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 0,
+    borderTopWidth: 1,
+    borderStyle: "dashed",
+  },
+  barCol: { flex: 1, alignItems: "center", gap: 4 },
+  barTrack: { width: "100%", justifyContent: "flex-end", alignItems: "center" },
+  bar: { width: "70%" },
+  dayLabel: { fontSize: 9, textAlign: "center" },
+});
 
 function RingStat({ color, label, value }: { color: string; label: string; value: number }) {
   const colors = useColors();
