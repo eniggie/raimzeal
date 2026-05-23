@@ -61,8 +61,61 @@ enrolledProgramRouter.post("/user/enrolled-program", requireAuth, async (req, re
   }
 });
 
+// Keywords drawn from program phase descriptions that indicate which muscle groups / training
+// modalities are expected for that phase. The set is intentionally broad so that minor naming
+// differences in custom workouts still match.
+const PHASE_KEYWORDS = new Set([
+  "chest", "shoulder", "shoulders", "tricep", "triceps",
+  "back", "bicep", "biceps", "lat", "lats",
+  "legs", "leg", "squat", "deadlift", "lunge", "glute", "glutes", "hamstring", "hamstrings", "calf", "calves",
+  "core", "abs", "plank",
+  "push", "pull", "upper", "lower",
+  "hiit", "cardio", "circuit", "full", "compound",
+  "bench", "press", "row", "curl", "extension", "dip", "raise",
+  "strength", "hypertrophy", "power", "endurance",
+]);
+
+/**
+ * Extract the relevant keywords from a phase focus text.
+ * Returns the set of known phase-keyword tokens found in the text.
+ * If fewer than 2 are found, the phase is considered "generic" and any
+ * workout is accepted (prevents locking out users on weeks like "Deload").
+ */
+function extractPhaseKeywords(focus: string): Set<string> {
+  const lower = focus.toLowerCase();
+  const found = new Set<string>();
+  for (const kw of PHASE_KEYWORDS) {
+    if (lower.includes(kw)) found.add(kw);
+  }
+  return found;
+}
+
+/**
+ * Returns true when the workout is considered a valid match for the given phase keywords.
+ * Matching rules:
+ *  - If the phase has fewer than 2 specific keywords → generic phase → any substantive workout matches.
+ *  - Otherwise at least one keyword must appear in the workout name or any exercise name.
+ */
+function workoutMatchesPhase(
+  workoutName: string,
+  exercises: { name: string }[],
+  phaseKeywords: Set<string>
+): boolean {
+  if (phaseKeywords.size < 2) return true; // generic / deload / test-week phases
+  const haystack = [
+    workoutName,
+    ...exercises.map((e) => e.name),
+  ].join(" ").toLowerCase();
+  for (const kw of phaseKeywords) {
+    if (haystack.includes(kw)) return true;
+  }
+  return false;
+}
+
 const AdvanceSchema = z.object({
   workout_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "workout_date must be YYYY-MM-DD"),
+  workout_name: z.string().min(1).max(300),
+  exercises: z.array(z.object({ name: z.string().min(1) })).min(1),
 });
 
 enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, res) => {
@@ -72,7 +125,7 @@ enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, r
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
     return;
   }
-  const { workout_date } = parse.data;
+  const { workout_date, workout_name, exercises } = parse.data;
   try {
     const { data: current, error: fetchErr } = await supabaseAdmin
       .from("enrolled_programs")
@@ -92,13 +145,34 @@ enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, r
       current_week: number;
       current_day: number;
       last_advance_date: string | null;
-      program_data: { durationWeeks?: number };
+      program_data: {
+        durationWeeks?: number;
+        schedule?: Array<{ week: string; phase: string; focus: string }> | null;
+      };
     };
 
     // Idempotency guard: only advance once per calendar day
     if (row.last_advance_date && row.last_advance_date >= workout_date) {
-      res.json({ enrollment: current, skipped: true });
+      res.json({ enrollment: current, skipped: true, reason: "already_advanced_today" });
       return;
+    }
+
+    // Phase-keyword match guard: validate the logged workout fits the current program phase.
+    // Find the phase entry whose week range covers current_week (e.g. "1–2", "3–4").
+    const schedule = row.program_data?.schedule ?? null;
+    if (schedule && schedule.length > 0) {
+      const currentPhase = schedule.find((s) => {
+        const [startStr, endStr] = s.week.split(/[–\-]/);
+        const start = parseInt(startStr ?? "1", 10);
+        const end = endStr ? parseInt(endStr, 10) : start;
+        return row.current_week >= start && row.current_week <= end;
+      }) ?? schedule[schedule.length - 1];
+
+      const phaseKeywords = extractPhaseKeywords(currentPhase?.focus ?? "");
+      if (!workoutMatchesPhase(workout_name, exercises, phaseKeywords)) {
+        res.json({ enrollment: current, skipped: true, reason: "no_phase_match" });
+        return;
+      }
     }
 
     const durationWeeks: number = row.program_data?.durationWeeks ?? 8;

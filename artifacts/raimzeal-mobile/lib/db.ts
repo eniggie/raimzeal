@@ -592,18 +592,25 @@ export async function enrollProgram(
 }
 
 /**
- * Advances the enrolled program by one day for the given workout date.
- * The server will skip the advance if the same date has already been used
- * (idempotency guard — one advance per calendar day).
+ * Attempts to advance the enrolled program progress for the given workout.
+ * The server validates:
+ *  1. workout_date is newer than last_advance_date (idempotency — once per calendar day)
+ *  2. The logged workout's name / exercises match the keywords expected for the
+ *     current program phase (e.g. push-day exercises for a "Push day" phase)
+ * Returns null when skipped or not enrolled.
  */
-export async function advanceEnrolledProgram(workoutDate: string): Promise<EnrolledProgram | null> {
+export async function advanceEnrolledProgram(
+  workoutDate: string,
+  workoutName: string,
+  exercises: { name: string }[]
+): Promise<EnrolledProgram | null> {
   if (!isSupabaseConfigured) return null;
   const token = await getAccessToken();
   if (!token) return null;
   const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ workout_date: workoutDate }),
+    body: JSON.stringify({ workout_date: workoutDate, workout_name: workoutName, exercises }),
   });
   if (!res.ok) return null;
   const body = await res.json() as { enrollment?: Record<string, unknown> | null };
