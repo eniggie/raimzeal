@@ -3546,27 +3546,32 @@ export default function CardCustomizationModal({
 
           {showPinchHint && (
             <Animated.View
-              pointerEvents="none"
+              pointerEvents="box-none"
               style={[
                 StyleSheet.absoluteFillObject,
                 styles.pinchHintOverlay,
                 { opacity: pinchHintAnim },
               ]}
             >
-              <View style={styles.pinchHintCard}>
-                <View style={styles.pinchIconRow}>
-                  <View style={styles.pinchFinger} />
-                  <View style={styles.pinchArrowLeft}>
-                    <Ionicons name="arrow-back" size={14} color="rgba(255,255,255,0.9)" />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={dismissPinchHintEarly}
+              >
+                <View style={styles.pinchHintCard}>
+                  <View style={styles.pinchIconRow}>
+                    <View style={styles.pinchFinger} />
+                    <View style={styles.pinchArrowLeft}>
+                      <Ionicons name="arrow-back" size={14} color="rgba(255,255,255,0.9)" />
+                    </View>
+                    <View style={styles.pinchArrowRight}>
+                      <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.9)" />
+                    </View>
+                    <View style={[styles.pinchFinger, { marginLeft: 18 }]} />
                   </View>
-                  <View style={styles.pinchArrowRight}>
-                    <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.9)" />
-                  </View>
-                  <View style={[styles.pinchFinger, { marginLeft: 18 }]} />
+                  <Text style={styles.pinchHintTitle}>Pinch to zoom</Text>
+                  <Text style={styles.pinchHintSub}>Double-tap to reset</Text>
                 </View>
-                <Text style={styles.pinchHintTitle}>Pinch to zoom</Text>
-                <Text style={styles.pinchHintSub}>Double-tap to reset</Text>
-              </View>
+              </TouchableOpacity>
             </Animated.View>
           )}
         </Animated.View>
