@@ -40,6 +40,7 @@ import {
   SWIPE_DELETE_HINT_STORAGE_KEY,
   HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
 } from "@/lib/hints";
+
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -797,7 +798,7 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt } = useFitness();
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -1280,7 +1281,7 @@ export default function NutritionScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start(() => setFilterHintVisible(false));
-    AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+    dismissHint(FILTER_HINT_STORAGE_KEY);
   }
 
   function dismissReorderHint() {
@@ -1294,7 +1295,7 @@ export default function NutritionScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start(() => setReorderHintVisible(false));
-    AsyncStorage.setItem(REORDER_HINT_STORAGE_KEY, String(Date.now())).catch(() => {});
+    dismissHint(REORDER_HINT_STORAGE_KEY, Date.now());
   }
 
   function dismissHistoryFilterHint() {
@@ -1308,7 +1309,7 @@ export default function NutritionScreen() {
       duration: 300,
       useNativeDriver: true,
     }).start(() => setHistoryFilterHintVisible(false));
-    AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+    dismissHint(HISTORY_FILTER_HINT_STORAGE_KEY);
   }
 
   function dismissPresetNudge() {
@@ -1318,7 +1319,7 @@ export default function NutritionScreen() {
       duration: 250,
       useNativeDriver: true,
     }).start(() => setPresetNudgeVisible(false));
-    AsyncStorage.setItem(PRESET_NUDGE_STORAGE_KEY, "1").catch(() => {});
+    dismissHint(PRESET_NUDGE_STORAGE_KEY);
   }
 
   function handleHistoryFilterHintPress() {
@@ -1345,26 +1346,24 @@ export default function NutritionScreen() {
       frequency === "weekly"
         ? 7 * 24 * 60 * 60 * 1000
         : 30 * 24 * 60 * 60 * 1000;
-    AsyncStorage.getItem(REORDER_HINT_STORAGE_KEY).then((val) => {
-      if (val) {
-        const dismissedAt = parseInt(val, 10);
-        if (!isNaN(dismissedAt) && Date.now() - dismissedAt < windowMs) {
-          reorderHintDismissedRef.current = true;
-          return;
-        }
-        reorderHintShownRef.current = false;
+    const dismissedAt = getHintDismissedAt(REORDER_HINT_STORAGE_KEY);
+    if (dismissedAt !== null) {
+      if (Date.now() - dismissedAt < windowMs) {
+        reorderHintDismissedRef.current = true;
+        return;
       }
-      if (reorderHintDismissedRef.current) return;
-      setReorderHintVisible(true);
-      Animated.timing(reorderHintFadeAnim, {
-        toValue: 1,
-        duration: 350,
-        useNativeDriver: true,
-      }).start();
-      reorderHintTimerRef.current = setTimeout(() => {
-        dismissReorderHint();
-      }, 4000);
-    }).catch(() => {});
+      reorderHintShownRef.current = false;
+    }
+    if (reorderHintDismissedRef.current) return;
+    setReorderHintVisible(true);
+    Animated.timing(reorderHintFadeAnim, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+    reorderHintTimerRef.current = setTimeout(() => {
+      dismissReorderHint();
+    }, 4000);
   }, [favoriteFoods.length, settings.reorderHintFrequency]);
 
   useEffect(() => {
@@ -1413,28 +1412,26 @@ export default function NutritionScreen() {
     if (activeTab !== "history") return;
     if (historyFilterHintShownRef.current) return;
     historyFilterHintShownRef.current = true;
-    AsyncStorage.getItem(HISTORY_FILTER_HINT_STORAGE_KEY).then((val) => {
-      if (val) return;
-      if (historyFilterHintDismissedRef.current) return;
-      historyFilterHintFadeAnim.setValue(0);
-      setHistoryFilterHintVisible(true);
+    if (isHintDismissed(HISTORY_FILTER_HINT_STORAGE_KEY)) return;
+    if (historyFilterHintDismissedRef.current) return;
+    historyFilterHintFadeAnim.setValue(0);
+    setHistoryFilterHintVisible(true);
+    Animated.timing(historyFilterHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    historyFilterHintTimerRef.current = setTimeout(() => {
+      historyFilterHintTimerRef.current = null;
       Animated.timing(historyFilterHintFadeAnim, {
-        toValue: 1,
+        toValue: 0,
         duration: 300,
         useNativeDriver: true,
-      }).start();
-      historyFilterHintTimerRef.current = setTimeout(() => {
-        historyFilterHintTimerRef.current = null;
-        Animated.timing(historyFilterHintFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setHistoryFilterHintVisible(false);
-          AsyncStorage.setItem(HISTORY_FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
-        });
-      }, 4000);
-    }).catch(() => {});
+      }).start(() => {
+        setHistoryFilterHintVisible(false);
+        dismissHint(HISTORY_FILTER_HINT_STORAGE_KEY);
+      });
+    }, 4000);
   }, [activeTab]);
 
   useEffect(() => {
@@ -2149,28 +2146,26 @@ export default function NutritionScreen() {
     if (activeTab !== "today" || !isSearching) return;
     if (filterHintShownRef.current) return;
     filterHintShownRef.current = true;
-    AsyncStorage.getItem(FILTER_HINT_STORAGE_KEY).then((val) => {
-      if (val) return;
-      if (filterHintDismissedRef.current) return;
-      filterHintFadeAnim.setValue(0);
-      setFilterHintVisible(true);
+    if (isHintDismissed(FILTER_HINT_STORAGE_KEY)) return;
+    if (filterHintDismissedRef.current) return;
+    filterHintFadeAnim.setValue(0);
+    setFilterHintVisible(true);
+    Animated.timing(filterHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    filterHintTimerRef.current = setTimeout(() => {
+      filterHintTimerRef.current = null;
       Animated.timing(filterHintFadeAnim, {
-        toValue: 1,
+        toValue: 0,
         duration: 300,
         useNativeDriver: true,
-      }).start();
-      filterHintTimerRef.current = setTimeout(() => {
-        filterHintTimerRef.current = null;
-        Animated.timing(filterHintFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setFilterHintVisible(false);
-          AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
-        });
-      }, 4000);
-    }).catch(() => {});
+      }).start(() => {
+        setFilterHintVisible(false);
+        dismissHint(FILTER_HINT_STORAGE_KEY);
+      });
+    }, 4000);
   }, [activeTab, isSearching]);
 
   useEffect(() => {
@@ -2178,17 +2173,15 @@ export default function NutritionScreen() {
     if (customPresets.length > 0) return;
     if (presetNudgeShownRef.current) return;
     presetNudgeShownRef.current = true;
-    AsyncStorage.getItem(PRESET_NUDGE_STORAGE_KEY).then((val) => {
-      if (val) return;
-      if (presetNudgeDismissedRef.current) return;
-      presetNudgeFadeAnim.setValue(0);
-      setPresetNudgeVisible(true);
-      Animated.timing(presetNudgeFadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }).catch(() => {});
+    if (isHintDismissed(PRESET_NUDGE_STORAGE_KEY)) return;
+    if (presetNudgeDismissedRef.current) return;
+    presetNudgeFadeAnim.setValue(0);
+    setPresetNudgeVisible(true);
+    Animated.timing(presetNudgeFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   }, [activeTab, isSearching, customPresets.length]);
 
   const shouldShowFilterSummary =
@@ -2305,7 +2298,7 @@ export default function NutritionScreen() {
           useNativeDriver: true,
         }).start(() => {
           setFilterHintVisible(false);
-          AsyncStorage.setItem(FILTER_HINT_STORAGE_KEY, "1").catch(() => {});
+          dismissHint(FILTER_HINT_STORAGE_KEY);
         });
       }, 4000);
     }
@@ -5464,27 +5457,26 @@ function MacroBar({
 
 function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean }) {
   const colors = useColors();
-  const { updateMealLog } = useFitness();
+  const { updateMealLog, dismissHint, isHintDismissed } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
 
   useEffect(() => {
     if (!isFirst) return;
+    if (isHintDismissed(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY)) return;
+    dismissHint(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY);
     let cancelled = false;
-    AsyncStorage.getItem(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY).then((seen) => {
-      if (seen || cancelled) return;
-      void AsyncStorage.setItem(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, "1");
-      const peekTimer = setTimeout(() => {
-        if (cancelled) return;
-        swipeableRef.current?.openRight();
-        const closeTimer = setTimeout(() => {
-          if (!cancelled) swipeableRef.current?.close();
-        }, 700);
-        return () => clearTimeout(closeTimer);
-      }, 600);
-      return () => clearTimeout(peekTimer);
-    });
-    return () => { cancelled = true; };
-  }, []);
+    const peekTimer = setTimeout(() => {
+      if (cancelled) return;
+      swipeableRef.current?.openRight();
+      setTimeout(() => {
+        if (!cancelled) swipeableRef.current?.close();
+      }, 700);
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(peekTimer);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({
@@ -5996,28 +5988,27 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
 
 function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean }) {
   const colors = useColors();
-  const { updateMealLog, favoriteFoods } = useFitness();
+  const { updateMealLog, favoriteFoods, dismissHint, isHintDismissed } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
 
   useEffect(() => {
     if (!isFirst) return;
+    if (isHintDismissed(SWIPE_DELETE_HINT_STORAGE_KEY)) return;
+    dismissHint(SWIPE_DELETE_HINT_STORAGE_KEY);
     let cancelled = false;
-    AsyncStorage.getItem(SWIPE_DELETE_HINT_STORAGE_KEY).then((seen) => {
-      if (seen || cancelled) return;
-      void AsyncStorage.setItem(SWIPE_DELETE_HINT_STORAGE_KEY, "1");
-      const peekTimer = setTimeout(() => {
-        if (cancelled) return;
-        swipeableRef.current?.openRight();
-        const closeTimer = setTimeout(() => {
-          if (!cancelled) swipeableRef.current?.close();
-        }, 700);
-        return () => clearTimeout(closeTimer);
-      }, 600);
-      return () => clearTimeout(peekTimer);
-    });
-    return () => { cancelled = true; };
-  }, []);
+    const peekTimer = setTimeout(() => {
+      if (cancelled) return;
+      swipeableRef.current?.openRight();
+      setTimeout(() => {
+        if (!cancelled) swipeableRef.current?.close();
+      }, 700);
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(peekTimer);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({

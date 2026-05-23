@@ -535,6 +535,8 @@ export interface UserPreferences {
     weightUnit?: "lbs" | "kg";
     undoWindowSeconds?: 3 | 5 | 10;
     reorderHintFrequency?: "never" | "monthly" | "weekly";
+    /** Hint keys dismissed by the user — synced cross-device */
+    dismissedHints?: string[];
   };
 }
 

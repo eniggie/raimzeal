@@ -24,7 +24,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
-import { resetAllHints } from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
@@ -63,6 +62,7 @@ export default function ProfileScreen() {
     favoriteFoods,
     updateSettings,
     resetState,
+    resetHints,
   } = useFitness();
   const { signOut } = useAuth();
   const { goals: macroGoals } = useMacroGoals();
@@ -238,8 +238,8 @@ export default function ProfileScreen() {
     );
   }
 
-  async function handleResetHints() {
-    await resetAllHints();
+  function handleResetHints() {
+    resetHints();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
       "Hints Reset",

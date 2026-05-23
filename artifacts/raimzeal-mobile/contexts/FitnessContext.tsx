@@ -144,6 +144,8 @@ export interface AppState {
   oviaMessages: OviaMessage[];
   /** Mobile-only extension: pinned favorite foods */
   favoriteFoods: FavoriteFood[];
+  /** Hint keys dismissed by the user — persisted and synced cross-device */
+  dismissedHints: string[];
 }
 
 interface FitnessContextType extends AppState {
@@ -158,6 +160,10 @@ interface FitnessContextType extends AppState {
   updateSettings: (updates: Partial<AppState["settings"]>) => void;
   toggleFavoriteFood: (food: FavoriteFood) => void;
   reorderFavoriteFoods: (foods: FavoriteFood[]) => void;
+  dismissHint: (key: string, timestamp?: number) => void;
+  isHintDismissed: (key: string) => boolean;
+  getHintDismissedAt: (key: string) => number | null;
+  resetHints: () => void;
   getTodayWorkouts: () => WorkoutLog[];
   getTodayMeals: () => MealLog[];
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
@@ -230,6 +236,7 @@ const defaultState: AppState = {
   },
   oviaMessages: INITIAL_OVIA_MESSAGES,
   favoriteFoods: [],
+  dismissedHints: [],
 };
 
 const FitnessContext = createContext<FitnessContextType | null>(null);
@@ -255,6 +262,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         settings: { ...defaultState.settings, ...(parsed.settings ?? {}) },
         oviaMessages: parsed.oviaMessages ?? defaultState.oviaMessages,
         favoriteFoods: parsed.favoriteFoods ?? [],
+        dismissedHints: parsed.dismissedHints ?? [],
       };
       setState(hydrated);
       setStateHydrated(true);
@@ -368,6 +376,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                   }
                 : {}),
             },
+            dismissedHints: remoteSettings?.dismissedHints != null && remoteSettings.dismissedHints.length > 0
+              ? remoteSettings.dismissedHints
+              : prev.dismissedHints,
           };
         });
 
@@ -666,6 +677,77 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const dismissHint = useCallback(
+    (key: string, timestamp?: number) => {
+      const entry = timestamp != null ? `${key}:${timestamp}` : key;
+      setState((prev) => {
+        const filtered = prev.dismissedHints.filter(
+          (h) => h !== key && !h.startsWith(`${key}:`)
+        );
+        const next = { ...prev, dismissedHints: [...filtered, entry] };
+        persist(next);
+        return next;
+      });
+      if (!isSupabaseConfigured) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: {
+                ...(existing?.appSettings ?? {}),
+                dismissedHints: [
+                  ...(existing?.appSettings?.dismissedHints ?? []).filter(
+                    (h) => h !== key && !h.startsWith(`${key}:`)
+                  ),
+                  entry,
+                ],
+              },
+            })
+          )
+          .catch(() => {});
+      });
+    },
+    [persist]
+  );
+
+  const isHintDismissed = useCallback(
+    (key: string): boolean =>
+      state.dismissedHints.some((h) => h === key || h.startsWith(`${key}:`)),
+    [state.dismissedHints]
+  );
+
+  const getHintDismissedAt = useCallback(
+    (key: string): number | null => {
+      const entry = state.dismissedHints.find((h) => h.startsWith(`${key}:`));
+      if (!entry) return null;
+      const ts = parseInt(entry.slice(key.length + 1), 10);
+      return isNaN(ts) ? null : ts;
+    },
+    [state.dismissedHints]
+  );
+
+  const resetHints = useCallback(() => {
+    setState((prev) => {
+      const next = { ...prev, dismissedHints: [] };
+      persist(next);
+      return next;
+    });
+    if (!isSupabaseConfigured) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      fetchUserPreferences(session.user.id)
+        .then((existing) =>
+          upsertUserPreferences(session.user.id, {
+            ...existing,
+            appSettings: { ...(existing?.appSettings ?? {}), dismissedHints: [] },
+          })
+        )
+        .catch(() => {});
+    });
+  }, [persist]);
+
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       setState((prev) => {
@@ -780,6 +862,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         updateSettings,
         toggleFavoriteFood,
         reorderFavoriteFoods,
+        dismissHint,
+        isHintDismissed,
+        getHintDismissedAt,
+        resetHints,
         getTodayWorkouts,
         getTodayMeals,
         getTodayMacros,
