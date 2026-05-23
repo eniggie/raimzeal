@@ -46,6 +46,14 @@ import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
 import NotFound from '@/pages/not-found';
 
+// ─── Redirect helper ──────────────────────────────────────────────────────────
+
+function Redirect({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to, { replace: true }); }, [navigate, to]);
+  return null;
+}
+
 // ─── Route wrappers (rendered inside WouterRouter so hooks work) ─────────────
 
 function SignupRoute() {
@@ -283,6 +291,18 @@ function App() {
               <Route path="/reset-password"><ResetPassword /></Route>
               <Route path="/auth/reset-password"><ResetPassword /></Route>
               <Route path="/auth/callback"><AuthCallback /></Route>
+              {/* Common route aliases — redirect to canonical paths */}
+              <Route path="/home"><Redirect to="/" /></Route>
+              <Route path="/ovia-ai"><Redirect to="/coach" /></Route>
+              <Route path="/progress"><Redirect to="/tracking" /></Route>
+              <Route path="/profile"><Redirect to="/settings" /></Route>
+              <Route path="/measurements"><Redirect to="/tracking" /></Route>
+              <Route path="/progress-photos"><Redirect to="/progress/photos" /></Route>
+              <Route path="/public-profile"><Redirect to="/settings/public-profile" /></Route>
+              <Route path="/pricing"><Redirect to="/membership" /></Route>
+              <Route path="/contact"><Redirect to="/support" /></Route>
+              <Route path="/privacy-policy"><Redirect to="/privacy" /></Route>
+              <Route path="/delete-account"><Redirect to="/settings/delete-account" /></Route>
               {/* All other routes — handled by AppContent based on auth state */}
               <Route><AppContent /></Route>
             </Switch>

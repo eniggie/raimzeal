@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 
@@ -59,6 +59,7 @@ const PAID_PLANS = [
     badge: 'bg-blue-400/20 text-blue-400',
     monthly: 9.99,
     yearly: 99.00,
+    yearlyEquiv: 8.25,
     popular: false,
     features: RISE_FEATURES,
   },
@@ -72,6 +73,7 @@ const PAID_PLANS = [
     badge: 'bg-purple-400/20 text-purple-400',
     monthly: 19.99,
     yearly: 199.00,
+    yearlyEquiv: 16.58,
     popular: true,
     features: REIGN_FEATURES,
   },
@@ -85,6 +87,7 @@ const PAID_PLANS = [
     badge: 'bg-yellow-400/20 text-yellow-400',
     monthly: 49.99,
     yearly: 499.00,
+    yearlyEquiv: 41.58,
     popular: false,
     features: LEGACY_FEATURES,
   },
@@ -93,9 +96,10 @@ const PAID_PLANS = [
 export function Membership() {
   const [donationError, setDonationError] = useState(false);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
       <div className="max-w-2xl mx-auto px-4 pt-6">
 
         <div className="flex items-center gap-3 mb-4">
@@ -174,7 +178,7 @@ export function Membership() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 + i * 0.04 }}
-                className={`relative rounded-2xl glass p-5 border ${plan.border}`}
+                className={`relative rounded-2xl glass p-5 border ${plan.border} opacity-80`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -186,7 +190,7 @@ export function Membership() {
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={`h-5 w-5 ${plan.color}`} />
                   <p className="font-bold text-foreground">{plan.name}</p>
-                  <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${plan.badge}`}>
+                  <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-foreground/10 text-foreground/50">
                     Coming Soon
                   </span>
                 </div>
@@ -194,31 +198,23 @@ export function Membership() {
                   <span className={`text-2xl font-extrabold ${plan.color}`}>${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}</span>
                   <span className="text-sm text-foreground/50 ml-1">{period}</span>
                   {billing === 'yearly' && (
-                    <span className="ml-2 text-xs text-foreground/40">(${plan.monthly.toFixed(2)}/mo equivalent)</span>
+                    <span className="ml-2 text-xs text-foreground/40">(${plan.yearlyEquiv.toFixed(2)}/mo equivalent)</span>
                   )}
                 </div>
                 <ul className="space-y-1.5 mb-4">
                   {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-foreground/80">
-                      <Check className={`h-4 w-4 mt-0.5 shrink-0 ${plan.color}`} />
+                    <li key={f} className="flex items-start gap-2 text-sm text-foreground/70">
+                      <Check className={`h-4 w-4 mt-0.5 shrink-0 ${plan.color} opacity-60`} />
                       {f}
                     </li>
                   ))}
                 </ul>
                 <button
-                  onClick={() => {
-                    const go = window.confirm(
-                      `${plan.name} subscriptions are launching very soon!\n\nIn the meantime, a voluntary donation keeps RAIMZEAL free for everyone. Would you like to donate now?`
-                    );
-                    if (go) {
-                      const popup = window.open('about:blank', '_blank');
-                      if (popup) popup.location.href = STRIPE_DONATION_URL;
-                    }
-                  }}
-                  className={`w-full py-2.5 rounded-xl border text-sm font-semibold transition-opacity active:opacity-70 cursor-pointer ${plan.badge} border-current/30`}
-                  title="Subscriptions launching soon — support the mission now"
+                  onClick={() => setNotifyPlan(plan.key)}
+                  className="w-full py-2.5 rounded-xl border border-foreground/20 text-sm font-semibold text-foreground/60 bg-foreground/5 hover:bg-foreground/10 transition-colors flex items-center justify-center gap-2"
                 >
-                  Notify Me — Support Now
+                  <Bell className="w-4 h-4" />
+                  Notify Me When Available
                 </button>
               </motion.div>
             );
@@ -233,41 +229,23 @@ export function Membership() {
           className="mb-6 p-4 rounded-2xl glass-emerald shimmer flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
+            <p className="text-sm font-semibold">Support the mission — keep RAIMZEAL free for everyone.</p>
             <p className="text-xs text-foreground/60 mt-1 leading-relaxed">
-              RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations keep the staff and platform running for everyone.
+              RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations help keep the platform and team running.
             </p>
           </div>
           {DONATION_ACTIVE ? (
             <div className="shrink-0 flex flex-col items-end gap-1">
-              <motion.button
-                onClick={async () => {
-                  const popup = window.open('about:blank', '_blank');
-                  if (!popup) {
-                    setDonationError(true);
-                    setTimeout(() => setDonationError(false), 5000);
-                    return;
-                  }
-                  try {
-                    const r = await fetch('/api/stripe/donation-health');
-                    const { ok } = await r.json() as { ok: boolean };
-                    if (!ok) throw new Error('unhealthy');
-                    popup.location.href = STRIPE_DONATION_URL;
-                    setDonationError(false);
-                  } catch {
-                    popup.close();
-                    setDonationError(true);
-                    setTimeout(() => setDonationError(false), 5000);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:opacity-80 cursor-pointer"
-                animate={{ scale: [1, 1.07, 1, 1.07, 1] }}
-                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 4 }}
+              <a
+                href={STRIPE_DONATION_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
                 aria-label="Make a donation"
               >
                 <Heart className="w-4 h-4 fill-current" />
                 Donate
-              </motion.button>
+              </a>
               {donationError && (
                 <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
               )}
@@ -306,6 +284,61 @@ export function Membership() {
         </motion.div>
 
       </div>
+
+      {/* Notify Me modal */}
+      <AnimatePresence>
+        {notifyPlan && (() => {
+          const plan = PAID_PLANS.find(p => p.key === notifyPlan);
+          if (!plan) return null;
+          return (
+            <motion.div
+              key="notify-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-8"
+              onClick={() => setNotifyPlan(null)}
+            >
+              <motion.div
+                initial={{ y: 60, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 60, opacity: 0 }}
+                transition={{ type: 'spring', damping: 24, stiffness: 300 }}
+                onClick={e => e.stopPropagation()}
+                className="w-full max-w-sm rounded-2xl glass p-6 space-y-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bell className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-base">{plan.name} — Coming Soon</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {plan.name} subscriptions are not yet live. Send us an email and we'll notify you the moment they launch.
+                    </p>
+                  </div>
+                  <button onClick={() => setNotifyPlan(null)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <a
+                  href={`mailto:support@raimzeal.com?subject=Notify me about the RAIMZEAL ${plan.name} plan&body=Hi, I'd like to be notified when the ${plan.name} plan launches. Thank you!`}
+                  className="block w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold text-center"
+                >
+                  Email Me When It Launches
+                </a>
+                <button
+                  onClick={() => setNotifyPlan(null)}
+                  className="block w-full py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground"
+                >
+                  Not Now
+                </button>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
       <BottomNav />
     </div>
   );

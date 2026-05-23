@@ -1,0 +1,256 @@
+RAIMZEAL PRODUCTION AUDIT AND FIX REQUEST
+
+Stop patching randomly. Audit the entire RAIMZEAL app as a production product before I submit it to Google Play.
+
+Current problems from live testing:
+
+1. Subscription and upgrade flow is broken
+- When users click upgrade, the app says “Rise subscriptions are launching very soon.”
+- Then it asks for a donation.
+- This is confusing and not production-ready.
+- If subscriptions are not live, disable all subscription purchase buttons.
+- Do not show a fake payment flow.
+- Do not open broken blank pages.
+- Do not trigger wrong popups.
+- If the button says “Notify Me,” it must collect the user email or open a working support/contact form.
+- If the button says “Support Now,” it must go to a working donation/support page only if it does not unlock digital features.
+- For Google Play release, remove any external payment flow for digital subscriptions unless Google Play Billing is implemented.
+
+2. Fix subscription pricing and labels
+- Monthly:
+  Rise: $9.99/mo
+  Reign: $19.99/mo
+  Legacy: $49.99/mo if shown
+- Yearly:
+  Rise: $99/yr
+  Reign: $199/yr
+  Legacy: $499/yr if shown
+- Correct yearly monthly equivalents:
+  Rise $99/yr = $8.25/mo equivalent
+  Reign $199/yr = $16.58/mo equivalent
+  Legacy $499/yr = $41.58/mo equivalent
+- Do not display wrong “equivalent” numbers.
+- If plans are coming soon, make all plan cards clearly disabled and label them “Coming Soon.”
+- The CTA should say “Notify Me” and must work.
+
+3. Fix footer and bottom navigation spacing
+- The footer is too close to the bottom nav/browser controls.
+- Add safe bottom spacing on every page.
+- Use proper mobile safe-area padding:
+  padding-bottom: calc(env(safe-area-inset-bottom) + 96px);
+- Make sure the bottom navigation never covers buttons, forms, cards, or footer text.
+- Test on iPhone Safari, Android Chrome, and installed PWA/TWA mode.
+
+4. Fix broken routes and 404 pages
+- Some buttons are opening a 404 page.
+- Some buttons open about:blank.
+- Audit every internal route and every CTA.
+- No button should open about:blank.
+- No active feature button should lead to 404.
+- If a feature is not ready, show a clean “Coming Soon” modal with the correct feature name.
+- Add proper route handling for:
+  /home
+  /workouts
+  /ovia-ai
+  /progress
+  /profile
+  /community
+  /measurements
+  /progress-photos
+  /public-profile
+  /pricing
+  /support
+  /contact
+  /privacy-policy
+  /terms
+  /delete-account
+
+5. Fix Community page loading
+- Community page says “Could not load posts.”
+- Investigate the real cause:
+  Supabase connection
+  missing env variables
+  wrong table name
+  Row Level Security policy
+  broken API endpoint
+  failed fetch
+  network timeout
+  auth/session issue
+- Posts must load.
+- Creating a post must work.
+- Question, Tip, Challenge, Win tabs must work.
+- Image upload in community must work or be disabled clearly.
+- The retry button must actually retry the request.
+- Add clean loading, empty, and error states.
+- If no posts exist, show “No posts yet. Be the first to share your progress.” not a red error.
+
+6. Fix Progress screen actions
+- The “Log” button must open a working modal/form.
+- The Weight tab must save weight entries.
+- The Workouts tab must load workout history.
+- The PRs tab must load or show a clean empty state.
+- Body Measurements button must open a working body measurements form.
+- Progress Photos button must open a working upload/view screen.
+- User must be able to upload a progress photo, preview it, save it, and view it later.
+- If storage is not configured, configure Supabase Storage or disable the feature and label it Coming Soon.
+
+7. Fix Body Measurements
+- Measurement button is not working.
+- Create or repair the body measurement form:
+  weight
+  chest
+  waist
+  hips
+  arms
+  thighs
+  notes
+  date
+- Save entries to Supabase or local storage if offline mode is intended.
+- Show history after saving.
+- Add edit and delete actions.
+- Add success and error messages.
+
+8. Fix Progress Photos
+- Photo button is not working properly.
+- User should be able to:
+  open Progress Photos
+  select/upload photo
+  preview photo
+  save photo
+  view photo history
+  delete photo
+- Use correct mobile camera/photo permissions.
+- Handle iPhone Safari and Android Chrome.
+- Use Supabase Storage or a working storage system.
+- If storage fails, show a specific error message, not a freeze.
+
+9. Fix Public Profile
+- Public profile page layout is broken and the footer/bottom nav overlaps.
+- The handle field says lowercase letters, numbers, underscores only. Enforce that correctly.
+- Validate handle length between 3 and 30 characters.
+- If user types invalid characters, show clear validation message.
+- Public profile toggle must save.
+- Public profile shareable link must generate and work.
+- No demo user data should appear.
+
+10. Fix Export Records
+- Export records is using an old demo logo.
+- Replace every old demo logo with the official RAIMZEAL logo.
+- Create one central brand asset source:
+  /public/brand/raimzeal-logo.png
+  /public/brand/raimzeal-icon.png
+- All exports must use the current official RAIMZEAL logo.
+- Export formats must include:
+  JSON
+  CSV
+  PDF if available
+- Export file name should be:
+  raimzeal-records-[date].csv
+  raimzeal-records-[date].json
+- Export header should say:
+  RAIMZEAL
+  Fitness • Food Therapy • Healthcare
+  www.raimzeal.com
+  Created and Powered by ECONTEUR LLC
+- Remove all old demo logo references.
+
+11. Fix old demo content and wrong messages
+- Search the full codebase for:
+  demo
+  placeholder
+  old logo
+  lorem
+  test
+  coming soon
+  about:blank
+  fake
+  mock
+  sample
+- Remove or replace anything that makes the app look fake.
+- Every popup must match the button clicked.
+- No wrong feature messages.
+- No “coming soon” popup on finished features.
+- No “support/donation” popup when the user clicked subscription upgrade unless that is the intentional action.
+
+12. Fix page freezes
+- Find why pages freeze after navigation or button clicks.
+- Check console errors.
+- Check uncaught promise rejections.
+- Check missing route components.
+- Check broken Supabase calls.
+- Check infinite loading states.
+- Add error boundaries.
+- Add timeout handling for network calls.
+- No screen should freeze with no feedback.
+
+13. Fix mobile UI consistency
+- All pages must work inside mobile browser and installed PWA/TWA.
+- Text must not overflow cards.
+- Buttons must not touch fixed bottom nav.
+- Cards must have enough bottom margin.
+- Forms must be scrollable.
+- Modals must fit mobile screens.
+- Dialog buttons must not be cut off.
+- Use safe-area insets.
+
+14. Google Play compliance
+- Do not include misleading payment, subscription, or donation wording.
+- If digital subscriptions unlock app features, Google Play Billing must be used in the Play Store version.
+- If Play Billing is not implemented yet, hide or disable paid upgrade flows for the release build.
+- Keep RAIMZEAL positioned as fitness, food therapy, wellness, and lifestyle support.
+- Do not present RAIMZEAL as medical diagnosis, emergency healthcare, prescription service, or telehealth.
+
+15. Required test checklist
+Run and verify every item before telling me it is fixed:
+
+Navigation:
+- Home works
+- Workouts works
+- Ovia AI works
+- Progress works
+- Profile works
+- Community works
+- Pricing works
+- Support/contact works
+
+Buttons:
+- Every visible button either performs its function or clearly says Coming Soon
+- No button opens about:blank
+- No button opens 404
+- No dead buttons
+
+Features:
+- Login works
+- Signup works
+- Profile works
+- Community posts load
+- Create post works
+- Measurements work
+- Progress photos work
+- Export records works
+- Logo in export is correct
+- Subscription buttons behave correctly
+- Monthly/yearly switch works
+- Footer spacing is fixed
+- Bottom nav does not overlap content
+
+Build checks:
+- npm install
+- npm run lint
+- npm run typecheck
+- npm run build
+- test production build locally
+- test mobile viewport
+- test installed PWA behavior
+- check browser console for errors
+- fix all errors before final response
+
+16. Final response required
+When finished, give me a clear report with:
+- Bugs found
+- Files changed
+- Features fixed
+- Any features still not ready
+- New test account if needed
+- Confirmation that there are no 404 links, no about:blank links, no dead buttons, and no old demo logos
+- Confirmation that RAIMZEAL is ready for Google Play internal testing

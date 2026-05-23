@@ -279,7 +279,7 @@ export function Community() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-24">
+    <div className="min-h-screen bg-background flex flex-col" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
       <div className="px-4 py-4 border-b border-border sticky top-0 bg-background/80 backdrop-blur z-10">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <Link href="/">

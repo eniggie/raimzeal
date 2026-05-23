@@ -86,8 +86,14 @@ export function PublicProfileSettings() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const handleError = handle.length > 0 && (handle.length < 3 || !/^[a-z0-9_]+$/.test(handle))
+    ? handle.length < 3
+      ? 'Handle must be at least 3 characters'
+      : 'Only lowercase letters, numbers, and underscores allowed'
+    : null;
+
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
       <div className="max-w-lg mx-auto px-4 pt-6">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/settings">
@@ -130,7 +136,10 @@ export function PublicProfileSettings() {
                 maxLength={30}
                 className="mb-2"
               />
-              <p className="text-xs text-muted-foreground">3–30 characters, lowercase letters, numbers, underscores only.</p>
+              {handleError
+                ? <p className="text-xs text-destructive">{handleError}</p>
+                : <p className="text-xs text-muted-foreground">3–30 characters, lowercase letters, numbers, underscores only.</p>
+              }
               {profileUrl && settings.public_profile_enabled && (
                 <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                   <span className="text-xs text-muted-foreground truncate flex-1">{profileUrl}</span>
@@ -141,7 +150,7 @@ export function PublicProfileSettings() {
               )}
             </Card>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full">
+            <Button onClick={handleSave} disabled={saving || !!handleError || (handle.length > 0 && handle.length < 3)} className="w-full">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
               Save Settings
             </Button>
