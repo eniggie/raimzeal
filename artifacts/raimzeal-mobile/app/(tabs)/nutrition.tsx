@@ -47,7 +47,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
-import { useFitness, MealLog, FavoriteFood } from "@/contexts/FitnessContext";
+import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
@@ -57,6 +57,7 @@ import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerMod
 import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 import { MacroRing } from "@/components/MacroRing";
+import { QuickFoodsEditorSheet } from "@/components/QuickFoodsEditorSheet";
 
 const DEBOUNCE_MS = 500;
 const PAGE_SIZE = 20;
@@ -283,7 +284,8 @@ type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
 type SearchItem = ScannedFood & { _kind: "search" };
 type FoodListItem = QuickItem | SearchItem;
 
-const QUICK_LIST: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
+// QUICK_LIST is kept as a fallback constant only; the rendered list uses quickFoods from context
+const QUICK_LIST_DEFAULT: FoodListItem[] = QUICK_FOODS.map((f) => ({ ...f, _kind: "quick" }));
 
 const DRAG_FAV_ITEM_HEIGHT = 80;
 const DRAG_PRESET_ITEM_HEIGHT = 58;
@@ -798,7 +800,7 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods } = useFitness();
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -1085,6 +1087,7 @@ export default function NutritionScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [showRecentScans, setShowRecentScans] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [showQuickEditor, setShowQuickEditor] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
@@ -2140,7 +2143,11 @@ export default function NutritionScreen() {
     return counts;
   }, [isSearching, searchLoading, searchResults, nutritionFilters, activeFilters]);
 
-  const listData: FoodListItem[] = isSearching ? filteredSearchResults : QUICK_LIST;
+  const quickList = React.useMemo<FoodListItem[]>(
+    () => (quickFoods.length > 0 ? quickFoods : QUICK_FOODS).map((f) => ({ ...f, _kind: "quick" as const })),
+    [quickFoods]
+  );
+  const listData: FoodListItem[] = isSearching ? filteredSearchResults : quickList;
 
   useEffect(() => {
     if (activeTab !== "today" || !isSearching) return;
@@ -3446,9 +3453,22 @@ export default function NutritionScreen() {
                   </>
                 )}
 
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  Quick Add
-                </Text>
+                <View style={styles.quickAddHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                    Quick Add
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowQuickEditor(true);
+                    }}
+                    activeOpacity={0.7}
+                    style={[styles.quickEditBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="pencil-outline" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.quickEditBtnText, { color: colors.mutedForeground }]}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
 
@@ -4140,6 +4160,14 @@ export default function NutritionScreen() {
             </TouchableOpacity>
           );
         }}
+      />
+
+      {/* Quick-Add Editor Sheet */}
+      <QuickFoodsEditorSheet
+        visible={showQuickEditor}
+        onClose={() => setShowQuickEditor(false)}
+        quickFoods={quickFoods}
+        onUpdate={updateQuickFoods}
       />
 
       {/* Barcode Scanner Modal */}
@@ -6863,6 +6891,25 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: "SpaceGrotesk_700Bold",
     marginTop: 4,
+  },
+  quickAddHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  quickEditBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  quickEditBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   foodCard: {
     flexDirection: "row",

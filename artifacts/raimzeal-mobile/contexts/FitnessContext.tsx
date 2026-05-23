@@ -110,6 +110,21 @@ export interface OviaMessage {
   timestamp: string;
 }
 
+/** A quick-add food item in the Nutrition tab quick-add row; same shape as a meal log entry without id/date */
+export type QuickFood = Omit<MealLog, "id" | "date">;
+
+/** Default quick-add foods shown to new users */
+export const DEFAULT_QUICK_FOODS: QuickFood[] = [
+  { name: "Protein Shake",        calories: 180, protein: 25, carbs: 10, fat:  4, mealType: "breakfast" },
+  { name: "Chicken Breast (150g)",calories: 248, protein: 46, carbs:  0, fat:  5, mealType: "lunch" },
+  { name: "Brown Rice (1 cup)",   calories: 215, protein:  5, carbs: 45, fat:  2, mealType: "lunch" },
+  { name: "Greek Yogurt",         calories: 130, protein: 17, carbs:  8, fat:  3, mealType: "snack" },
+  { name: "Banana",               calories:  89, protein:  1, carbs: 23, fat:  0, mealType: "snack" },
+  { name: "Almonds (30g)",        calories: 174, protein:  6, carbs:  6, fat: 15, mealType: "snack" },
+  { name: "Oatmeal (1 cup)",      calories: 147, protein:  5, carbs: 27, fat:  3, mealType: "breakfast" },
+  { name: "Salmon Fillet (150g)", calories: 312, protein: 43, carbs:  0, fat: 15, mealType: "dinner" },
+];
+
 /** A pinned food item; structurally identical to a MealLog entry without id/date */
 export type FavoriteFood = Omit<MealLog, "id" | "date"> & {
   /** Human-readable serving size label saved at star time (e.g. "150g", "1 cup") */
@@ -146,6 +161,8 @@ export interface AppState {
   favoriteFoods: FavoriteFood[];
   /** Hint keys dismissed by the user — persisted and synced cross-device */
   dismissedHints: string[];
+  /** Customisable Quick-Add food list in the Nutrition tab */
+  quickFoods: QuickFood[];
 }
 
 interface FitnessContextType extends AppState {
@@ -164,6 +181,8 @@ interface FitnessContextType extends AppState {
   isHintDismissed: (key: string) => boolean;
   getHintDismissedAt: (key: string) => number | null;
   resetHints: () => void;
+  /** Replace the Quick-Add food list and persist it */
+  updateQuickFoods: (foods: QuickFood[]) => void;
   getTodayWorkouts: () => WorkoutLog[];
   getTodayMeals: () => MealLog[];
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
@@ -237,6 +256,7 @@ const defaultState: AppState = {
   oviaMessages: INITIAL_OVIA_MESSAGES,
   favoriteFoods: [],
   dismissedHints: [],
+  quickFoods: DEFAULT_QUICK_FOODS,
 };
 
 const FitnessContext = createContext<FitnessContextType | null>(null);
@@ -263,6 +283,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         oviaMessages: parsed.oviaMessages ?? defaultState.oviaMessages,
         favoriteFoods: parsed.favoriteFoods ?? [],
         dismissedHints: parsed.dismissedHints ?? [],
+        quickFoods: Array.isArray(parsed.quickFoods) ? (parsed.quickFoods as QuickFood[]) : DEFAULT_QUICK_FOODS,
       };
       setState(hydrated);
       setStateHydrated(true);
@@ -379,6 +400,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             dismissedHints: Array.isArray(remoteSettings?.dismissedHints)
               ? remoteSettings.dismissedHints
               : prev.dismissedHints,
+            quickFoods: Array.isArray(remoteSettings?.quickFoods)
+              ? (remoteSettings.quickFoods as QuickFood[])
+              : prev.quickFoods,
           };
         });
 
@@ -677,6 +701,32 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const updateQuickFoods = useCallback(
+    (foods: QuickFood[]) => {
+      setState((prev) => {
+        const next = { ...prev, quickFoods: foods };
+        persist(next);
+        return next;
+      });
+      if (!isSupabaseConfigured) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: {
+                ...(existing?.appSettings ?? {}),
+                quickFoods: foods as NonNullable<UserPreferences["appSettings"]>["quickFoods"],
+              },
+            })
+          )
+          .catch(() => {});
+      });
+    },
+    [persist]
+  );
+
   const dismissHint = useCallback(
     (key: string, timestamp?: number) => {
       const entry = timestamp != null ? `${key}:${timestamp}` : key;
@@ -862,6 +912,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         updateSettings,
         toggleFavoriteFood,
         reorderFavoriteFoods,
+        updateQuickFoods,
         dismissHint,
         isHintDismissed,
         getHintDismissedAt,

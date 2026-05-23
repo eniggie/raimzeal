@@ -537,6 +537,18 @@ export interface UserPreferences {
     reorderHintFrequency?: "never" | "monthly" | "weekly";
     /** Hint keys dismissed by the user — synced cross-device */
     dismissedHints?: string[];
+    /** Customisable Quick-Add food list for the mobile Nutrition tab */
+    quickFoods?: Array<{
+      name: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      mealType: string;
+      amountGrams?: number;
+      nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
+      servingLabel?: string;
+    }>;
   };
 }
 
