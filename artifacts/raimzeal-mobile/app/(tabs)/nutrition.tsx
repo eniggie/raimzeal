@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -538,6 +539,7 @@ function DraggablePresetItem({
 }
 
 export default function NutritionScreen() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings } = useFitness();
@@ -3293,6 +3295,7 @@ export default function NutritionScreen() {
                       }
                       highlightedDate={highlightedDate}
                       onBarPress={handleChartBarPress}
+                      onEditGoals={() => router.push("/macro-goals")}
                       colors={colors}
                     />
                   </View>

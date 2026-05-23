@@ -15,6 +15,7 @@ interface CalorieTrendChartProps {
   accentColor: string;
   highlightedDate: string | null;
   onBarPress: (date: string) => void;
+  onEditGoals?: () => void;
   colors: {
     primary: string;
     secondary: string;
@@ -49,6 +50,7 @@ export function CalorieTrendChart({
   accentColor,
   highlightedDate,
   onBarPress,
+  onEditGoals,
   colors,
 }: CalorieTrendChartProps) {
   const screenWidth = Dimensions.get("window").width;
@@ -291,6 +293,29 @@ export function CalorieTrendChart({
             Goal ({goal} {unit})
           </Text>
         </View>
+        {onEditGoals && (
+          <TouchableOpacity
+            onPress={onEditGoals}
+            activeOpacity={0.7}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 3,
+              marginLeft: "auto",
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: colors.warning + "55",
+              backgroundColor: colors.warning + "12",
+            }}
+          >
+            <Text style={{ fontSize: 11, color: colors.warning }}>✎</Text>
+            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.warning }}>
+              Edit goals
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
