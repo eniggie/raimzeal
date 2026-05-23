@@ -1181,6 +1181,7 @@ export default function CardCustomizationModal({
   const [confirmActionFn, setConfirmActionFn] = useState<(() => void) | null>(null);
   const [confirmActionLabel, setConfirmActionLabel] = useState<string | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
+  const confirmTranslateY = useRef(new Animated.Value(8)).current;
 
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
@@ -1190,7 +1191,9 @@ export default function CardCustomizationModal({
 
   function dismissConfirmToast() {
     confirmOpacity.stopAnimation();
+    confirmTranslateY.stopAnimation();
     confirmOpacity.setValue(0);
+    confirmTranslateY.setValue(8);
     setConfirmMessage(null);
     setConfirmRetryFn(null);
     setConfirmActionFn(null);
@@ -1207,6 +1210,7 @@ export default function CardCustomizationModal({
     holdDurationOverrideMs?: number,
   ) {
     confirmOpacity.stopAnimation();
+    confirmTranslateY.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
@@ -1214,18 +1218,27 @@ export default function CardCustomizationModal({
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
+    confirmTranslateY.setValue(8);
     const holdDuration = holdDurationOverrideMs ?? ((retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600);
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
+      confirmTranslateY.setValue(0);
       setTimeout(() => {
         confirmOpacity.setValue(0);
+        confirmTranslateY.setValue(8);
         setConfirmMessage(null);
       }, holdDuration);
     } else {
       Animated.sequence([
-        Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]),
         Animated.delay(holdDuration),
-        Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: 8, duration: 400, useNativeDriver: true }),
+        ]),
       ]).start(({ finished }) => {
         if (finished) setConfirmMessage(null);
       });
@@ -3147,7 +3160,7 @@ export default function CardCustomizationModal({
             </View>
           )}
           {confirmMessage && (
-            <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity }]}>
+            <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity, transform: [{ translateY: confirmTranslateY }] }]}>
               <View
                 style={[
                   styles.confirmToast,
