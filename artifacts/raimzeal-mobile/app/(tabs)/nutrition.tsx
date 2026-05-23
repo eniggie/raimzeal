@@ -24,6 +24,8 @@ import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
 
 if (Platform.OS === "android") {
@@ -761,6 +763,35 @@ const calStyles = StyleSheet.create({
   applyBtn: {},
   btnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });
+
+function AnimatedCountdown({ value, style }: { value: number; style?: object }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const prevValue = useRef(value);
+
+  useEffect(() => {
+    if (value !== prevValue.current) {
+      prevValue.current = value;
+      scale.value = withSequence(
+        withTiming(1.4, { duration: 80 }),
+        withSpring(1, { damping: 6, stiffness: 300 })
+      );
+      opacity.value = withSequence(
+        withTiming(0.4, { duration: 60 }),
+        withTiming(1, { duration: 120 })
+      );
+    }
+  }, [value]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Reanimated.Text style={[style, animatedStyle]}>{value}</Reanimated.Text>
+  );
+}
 
 export default function NutritionScreen() {
   const router = useRouter();
@@ -5089,7 +5120,7 @@ export default function NutritionScreen() {
           <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
             "{undoMeal.name}" deleted
           </Text>
-          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{undoCountdown}</Text>
+          <AnimatedCountdown value={undoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoDelete}
             activeOpacity={0.75}
@@ -5178,7 +5209,7 @@ export default function NutritionScreen() {
           <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
             Preset "{deletedPreset.name}" deleted
           </Text>
-          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{presetUndoCountdown}</Text>
+          <AnimatedCountdown value={presetUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoPresetDelete}
             activeOpacity={0.75}
@@ -5212,7 +5243,7 @@ export default function NutritionScreen() {
           <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
             Preset renamed to "{renamedPreset.newName}"
           </Text>
-          <Text style={[styles.undoCountdownText, { color: colors.mutedForeground }]}>{presetRenameUndoCountdown}</Text>
+          <AnimatedCountdown value={presetRenameUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoPresetRename}
             activeOpacity={0.75}
