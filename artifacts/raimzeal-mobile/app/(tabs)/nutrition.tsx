@@ -3701,7 +3701,13 @@ export default function NutritionScreen() {
                   >
                     {[
                       `${filteredHistoryDays.length} day${filteredHistoryDays.length !== 1 ? "s" : ""} found`,
-                      historyDateRange !== "all" ? (historyDateRange === "7d" ? "Last 7 days" : "Last 30 days") : null,
+                      historyDateRange === "7d"
+                        ? "Last 7 days"
+                        : historyDateRange === "30d"
+                        ? "Last 30 days"
+                        : historyDateRange === "custom" && customDateRange
+                        ? formatCustomRangeLabel(customDateRange.start, customDateRange.end)
+                        : null,
                       historyMealFilter !== "all"
                         ? `${historyMealFilter.charAt(0).toUpperCase() + historyMealFilter.slice(1)} only`
                         : null,
