@@ -158,9 +158,9 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           className="rounded-2xl glass-emerald shimmer px-4 py-3 flex items-center justify-between gap-3"
         >
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-primary">The Foundation Plan is free forever — no subscription, no catch.</p>
+            <p className="text-sm font-semibold text-primary">Foundation — Free forever. Rise, Reign & Legacy are optional.</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Donations keep the staff and platform running for everyone. Books · Music · Courses · Coaching: <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">linktr.ee/Raimzy</a>
+              RAIMZEAL is free forever. Rise, Reign, and Legacy are optional support/donation identities — never required. A voluntary donation keeps the staff and platform running for everyone. <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">linktr.ee/Raimzy</a>
             </p>
           </div>
           {DONATION_ACTIVE ? (

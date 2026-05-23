@@ -42,13 +42,12 @@ export async function getUserTier(userId: string): Promise<Tier> {
 
 /**
  * Normalises a raw Stripe-metadata tier string to a canonical Tier.
- * Handles legacy "athlete" / "premium" / "pro" values.
+ * Maps any unrecognised or deprecated metadata values to "rise" as a safe fallback.
  */
 export function normaliseTier(raw: string | null | undefined): Tier {
   if (!raw) return "rise";
   const s = raw.toLowerCase().trim();
   if (s === "rise" || s === "reign" || s === "legacy") return s;
-  if (s === "athlete" || s === "premium" || s === "pro") return "rise";
   return "rise";
 }
 

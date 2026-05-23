@@ -724,10 +724,16 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
           <Card className="p-4 glass-emerald shimmer">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
+                <p className="text-sm font-semibold">Support the Mission</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Donations keep the staff and platform running for everyone.
+                  RAIMZEAL is free forever. Foundation is free for everyone. Rise, Reign, and Legacy are optional support/donation identities — they unlock higher Ovia AI limits and supporter badges for members who choose to contribute. No subscription is ever required.
                 </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary">Foundation — Free</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-400">Rise</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-400">Reign</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400">Legacy</span>
+                </div>
                 <a
                   href={RAIMZY_LINKTREE}
                   target="_blank"
