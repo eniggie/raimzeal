@@ -197,6 +197,21 @@ export async function upsertMealLog(userId: string, meal: MealLog) {
 
 // ─── Body Measurements ─────────────────────────────────────────────────────
 
+export async function insertBodyMeasurement(userId: string, m: BodyMeasurement) {
+  if (!isSupabaseConfigured) return;
+  await supabase.from("body_measurements").upsert({
+    id: m.id,
+    user_id: userId,
+    date: m.date,
+    weight: m.weight,
+    chest: m.chest ?? null,
+    waist: m.waist ?? null,
+    hips: m.hips ?? null,
+    arms: m.arms ?? null,
+    thighs: m.thighs ?? null,
+  });
+}
+
 export async function syncBodyMeasurements(userId: string, items: BodyMeasurement[]) {
   if (!isSupabaseConfigured || items.length === 0) return;
   await supabase.from("body_measurements").upsert(

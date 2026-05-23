@@ -361,7 +361,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 
         {/* Profile Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="p-4" data-testid="card-profile">
+          <Card className="p-4 glass-hover" data-testid="card-profile">
             {!editingProfile ? (
               <div className="flex items-center gap-4">
                 <Avatar className="w-16 h-16">
@@ -539,7 +539,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 
         {/* Stats */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="p-4" data-testid="card-stats">
+          <Card className="p-4 glass-hover" data-testid="card-stats">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-primary">{state.streak}</div>
@@ -579,7 +579,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
         {/* Health Tools */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Health Tools</h3>
-          <Card className="divide-y divide-border">
+          <Card className="divide-y divide-border glass-hover">
             <Link href="/settings/macros">
               <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -634,7 +634,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
         {/* Preferences */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Preferences</h3>
-          <Card className="divide-y divide-border">
+          <Card className="divide-y divide-border glass-hover">
             <div className="flex items-center gap-3 p-4" data-testid="setting-dark-mode">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                 <Moon className="w-5 h-5 text-muted-foreground" />
@@ -691,7 +691,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
         {/* Units */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Units</h3>
-          <Card className="divide-y divide-border">
+          <Card className="divide-y divide-border glass-hover">
             <div className="flex items-center gap-3 p-4" data-testid="setting-weight-unit">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                 <Scale className="w-5 h-5 text-muted-foreground" />
@@ -721,7 +721,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
 
         {/* Support the Mission */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
-          <Card className="p-4 border-primary/20 bg-primary/5">
+          <Card className="p-4 glass-emerald shimmer">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
@@ -805,7 +805,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
         {/* Profile & Account */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.295 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Profile & Account</h3>
-          <Card className="divide-y divide-border">
+          <Card className="divide-y divide-border glass-hover">
             <Link href="/settings/public-profile">
               <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">

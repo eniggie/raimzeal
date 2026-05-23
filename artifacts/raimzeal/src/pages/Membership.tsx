@@ -114,7 +114,7 @@ export function Membership() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 rounded-2xl border border-primary/30 bg-primary/5 p-5"
+          className="mb-4 rounded-2xl glass-emerald shimmer p-5"
         >
           <div className="flex items-center gap-2 mb-3">
             <Shield className="h-5 w-5 text-primary" />
@@ -143,7 +143,7 @@ export function Membership() {
           transition={{ delay: 0.04 }}
           className="flex items-center justify-center mb-4"
         >
-          <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+          <div className="inline-flex items-center gap-1 p-1 rounded-xl glass">
             <button
               onClick={() => setBilling('monthly')}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${billing === 'monthly' ? 'bg-primary text-primary-foreground' : 'text-foreground/60 hover:text-foreground'}`}
@@ -174,7 +174,7 @@ export function Membership() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 + i * 0.04 }}
-                className={`relative rounded-2xl border ${plan.border} ${plan.bg} p-5`}
+                className={`relative rounded-2xl glass p-5 border ${plan.border}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -222,7 +222,7 @@ export function Membership() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.22 }}
-          className="mb-6 p-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between gap-4"
+          className="mb-6 p-4 rounded-2xl glass-emerald shimmer flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
@@ -274,7 +274,7 @@ export function Membership() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.26 }}
-          className="p-4 rounded-2xl border border-secondary/20 bg-secondary/5"
+          className="p-4 rounded-2xl glass-royal"
         >
           <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP</p>
           <p className="text-xs text-foreground/60 leading-relaxed mb-3">

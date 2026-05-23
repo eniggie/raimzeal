@@ -113,7 +113,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           </div>
           <div className="flex flex-col items-end gap-1">
             <motion.div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20"
+              className="flex items-center gap-2 px-3 py-1.5 glass-pill"
               whileHover={{ scale: 1.05 }}
             >
               <Flame className="w-4 h-4 text-primary" />
@@ -155,7 +155,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3"
+          className="rounded-2xl glass-emerald shimmer px-4 py-3 flex items-center justify-between gap-3"
         >
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-primary">The Foundation Plan is free forever — no subscription, no catch.</p>
@@ -302,7 +302,7 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             {quickActions.map((action, i) => (
               <Link key={action.label} href={action.href}>
                 <motion.div
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-card border border-border hover:border-primary/30 cursor-pointer glass-hover"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl glass glass-hover cursor-pointer"
                   whileTap={{ scale: 0.95 }}
                   data-testid={`action-${action.label.toLowerCase().replace(' ', '-')}`}
                 >

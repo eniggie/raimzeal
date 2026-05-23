@@ -1078,7 +1078,7 @@ const styles = StyleSheet.create({
   profileEmail: { fontSize: 13, fontFamily: "Inter_400Regular" },
   profileGoal: { fontSize: 13, fontFamily: "Inter_400Regular" },
   profileStats: { flexDirection: "row", gap: 10 },
-  profileStatItem: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, alignItems: "center", gap: 4 },
+  profileStatItem: { flex: 1, padding: 12, borderRadius: 18, borderWidth: 1, alignItems: "center", gap: 4 },
   profileStatValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
   profileStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   infoCard: { padding: 0, overflow: "hidden" },

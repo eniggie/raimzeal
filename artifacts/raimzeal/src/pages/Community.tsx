@@ -134,7 +134,7 @@ export function Community() {
       <div className="px-4 pt-4 max-w-lg mx-auto w-full space-y-3">
 
         {/* RAIMZY Resources Card */}
-        <Card className="p-4 border-secondary/30 bg-secondary/5">
+        <Card className="p-4 glass shimmer">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-secondary/20 flex items-center justify-center shrink-0">
               <BookOpen className="w-4 h-4 text-secondary" />
@@ -159,11 +159,11 @@ export function Community() {
 
         {/* Support Prompts */}
         <div className="grid grid-cols-2 gap-2">
-          <Card className="p-3 border-primary/20 bg-primary/5 text-center">
+          <Card className="p-3 glass text-center">
             <p className="text-xs font-semibold text-primary">Share Your Win</p>
             <p className="text-xs text-muted-foreground mt-1">Post a result, a milestone, or just show up. Every story matters.</p>
           </Card>
-          <Card className="p-3 border-accent/20 bg-accent/5 text-center">
+          <Card className="p-3 glass text-center">
             <p className="text-xs font-semibold text-accent">Ask the Community</p>
             <p className="text-xs text-muted-foreground mt-1">Questions welcome. This community lifts each other up.</p>
           </Card>
@@ -201,15 +201,15 @@ export function Community() {
           ];
           return (
             <div className="space-y-2">
-              <Card className="p-3 border-secondary/20 bg-secondary/5">
+              <Card className="p-3 glass">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-1">Food Therapy Tip of the Day</p>
                 <p className="text-xs text-foreground/80 leading-relaxed">{foodTherapyTips[day]}</p>
               </Card>
-              <Card className="p-3 border-accent/20 bg-accent/5">
+              <Card className="p-3 glass">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Daily Health Question</p>
                 <p className="text-xs text-foreground/80 leading-relaxed">{healthQuestions[day]}</p>
               </Card>
-              <Card className="p-3 border-primary/20 bg-primary/5">
+              <Card className="p-3 glass">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Weekly Fitness Challenge</p>
                 <p className="text-xs text-foreground/80 leading-relaxed">{challenges[day]}</p>
               </Card>
@@ -218,7 +218,7 @@ export function Community() {
         })()}
 
         {/* Donation Prompt */}
-        <Card className="p-3 border-primary/20 flex items-center justify-between gap-3">
+        <Card className="p-3 glass flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
             <p className="text-xs text-muted-foreground mt-0.5">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. Books · Music · Courses · Coaching: <span className="font-semibold">linktr.ee/Raimzy</span></p>
@@ -354,7 +354,7 @@ export function Community() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.04, 0.4) }}
             >
-              <Card className="p-4" data-testid={`post-${post.id}`}>
+              <Card className="p-4 glass-hover" data-testid={`post-${post.id}`}>
                 <div className="flex items-start gap-3">
                   <Avatar>
                     <AvatarFallback>

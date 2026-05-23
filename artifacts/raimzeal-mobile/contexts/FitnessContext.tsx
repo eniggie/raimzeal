@@ -24,9 +24,13 @@ import {
   fetchProfile,
   fetchWorkoutLogs,
   fetchMealLogs,
+  fetchBodyMeasurements,
+  fetchWaterIntake,
   upsertProfile,
   insertWorkoutLog,
   insertMealLog,
+  insertBodyMeasurement,
+  upsertWaterIntake,
   fetchOviaMessages,
   insertOviaMessage,
   fetchUserPreferences,
@@ -224,10 +228,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals, oviaRemote, prefs] = await Promise.all([
+        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs] = await Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
+          fetchBodyMeasurements(userId),
+          fetchWaterIntake(userId),
           fetchOviaMessages(userId),
           fetchUserPreferences(userId),
         ]);
@@ -257,6 +263,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               : {}),
             workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
             mealLogs: meals.length > 0 ? meals : prev.mealLogs,
+            bodyMeasurements: bodyMeasurementsRemote.length > 0 ? bodyMeasurementsRemote : prev.bodyMeasurements,
+            waterIntake: waterRemote.length > 0 ? waterRemote : prev.waterIntake,
             oviaMessages: oviaRemote.length > 0 ? oviaRemote : prev.oviaMessages,
             // Merge cloud-backed settings (remote wins over local for synced fields)
             settings: {
@@ -354,6 +362,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, bodyMeasurements: [m, ...prev.bodyMeasurements] };
         persist(next);
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) insertBodyMeasurement(session.user.id, m).catch(() => {});
+          });
+        }
         return next;
       });
     },
@@ -397,6 +410,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           : [{ date: today, glasses }, ...prev.waterIntake];
         const next = { ...prev, waterIntake };
         persist(next);
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) upsertWaterIntake(session.user.id, today, glasses).catch(() => {});
+          });
+        }
         return next;
       });
     },
