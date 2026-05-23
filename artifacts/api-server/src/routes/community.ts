@@ -222,4 +222,93 @@ communityRouter.post(
   }
 );
 
+// ── DELETE /api/community/posts/:postId ──────────────────────────────────────
+// Permanently deletes a post owned by the authenticated user.
+// Cascades to comments and likes via the FK constraints defined in the schema.
+communityRouter.delete(
+  "/community/posts/:postId",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const userId = (req as any).userId as string;
+    const { postId } = req.params;
+
+    const supabase = getAdminClient();
+
+    // Verify ownership before deleting
+    const { data: post } = await supabase
+      .from("community_posts")
+      .select("user_id")
+      .eq("id", postId)
+      .maybeSingle();
+
+    if (!post) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+    if (post.user_id !== userId) {
+      res.status(403).json({ error: "You can only delete your own posts" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("community_posts")
+      .delete()
+      .eq("id", postId)
+      .eq("user_id", userId);   // belt-and-suspenders: scope to owner
+
+    if (error) {
+      req.log.error({ error }, "Failed to delete community post");
+      res.status(500).json({ error: "Failed to delete post" });
+      return;
+    }
+    res.json({ deleted: true });
+  }
+);
+
+// ── DELETE /api/community/posts/:postId/comments/:commentId ──────────────────
+// Permanently deletes a comment owned by the authenticated user.
+communityRouter.delete(
+  "/community/posts/:postId/comments/:commentId",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const userId = (req as any).userId as string;
+    const { postId, commentId } = req.params;
+
+    const supabase = getAdminClient();
+
+    const { data: comment } = await supabase
+      .from("community_comments")
+      .select("user_id")
+      .eq("id", commentId)
+      .eq("post_id", postId)
+      .maybeSingle();
+
+    if (!comment) {
+      res.status(404).json({ error: "Comment not found" });
+      return;
+    }
+    if (comment.user_id !== userId) {
+      res.status(403).json({ error: "You can only delete your own comments" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("community_comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("post_id", postId)
+      .eq("user_id", userId);   // scope to owner
+
+    if (error) {
+      req.log.error({ error }, "Failed to delete community comment");
+      res.status(500).json({ error: "Failed to delete comment" });
+      return;
+    }
+    res.json({ deleted: true });
+  }
+);
+
 export default communityRouter;
+

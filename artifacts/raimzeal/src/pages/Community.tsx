@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import {
-  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw, ExternalLink, BookOpen,
-  ImagePlus, X,
+  ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw,
+  ExternalLink, BookOpen, ImagePlus, X, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/con
 
 interface LivePost {
   id: string;
+  user_id: string;
   user_name: string;
   content: string;
   post_type: string;
@@ -26,6 +27,16 @@ interface LivePost {
   image_url?: string | null;
   _localLiked?: boolean;
   _localLikes?: number;
+  _localCommentCount?: number;
+}
+
+interface LiveComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  user_name: string;
+  content: string;
+  created_at: string;
 }
 
 function formatTime(dateStr: string): string {
@@ -53,6 +64,13 @@ export function Community() {
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Comments state
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [commentsMap, setCommentsMap] = useState<Record<string, LiveComment[]>>({});
+  const [commentsLoading, setCommentsLoading] = useState<Set<string>>(new Set());
+  const [newComments, setNewComments] = useState<Record<string, string>>({});
+  const [commentPosting, setCommentPosting] = useState<Set<string>>(new Set());
+
   const loadPosts = useCallback(async () => {
     if (!supabaseConfigured) { setLoading(false); return; }
     setLoading(true);
@@ -60,11 +78,16 @@ export function Community() {
     try {
       const { data, error } = await supabase
         .from('community_posts')
-        .select('id, user_name, content, post_type, likes_count, comments_count, created_at, image_url')
+        .select('id, user_id, user_name, content, post_type, likes_count, comments_count, created_at, image_url')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
-      setPosts((data ?? []).map(p => ({ ...p, _localLiked: false, _localLikes: p.likes_count })));
+      setPosts((data ?? []).map(p => ({
+        ...p,
+        _localLiked: false,
+        _localLikes: p.likes_count,
+        _localCommentCount: p.comments_count,
+      })));
     } catch {
       setFetchError("Couldn't load posts. Check your connection and try again.");
     } finally {
@@ -82,6 +105,114 @@ export function Community() {
     }));
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+
+    setPosts(prev => prev.filter(p => p.id !== postId));
+
+    try {
+      await fetch(`/api/community/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch { }
+  };
+
+  const loadComments = useCallback(async (postId: string) => {
+    if (!supabaseConfigured) return;
+    setCommentsLoading(prev => new Set(prev).add(postId));
+    try {
+      const { data, error } = await supabase
+        .from('community_comments')
+        .select('id, post_id, user_id, user_name, content, created_at')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      if (!error) {
+        setCommentsMap(prev => ({ ...prev, [postId]: data ?? [] }));
+      }
+    } finally {
+      setCommentsLoading(prev => { const s = new Set(prev); s.delete(postId); return s; });
+    }
+  }, []);
+
+  const toggleComments = async (postId: string) => {
+    setExpandedPosts(prev => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+        if (!commentsMap[postId]) {
+          loadComments(postId);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleAddComment = async (postId: string) => {
+    const content = (newComments[postId] ?? '').trim();
+    if (!content || !user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+
+    const displayName = (user.user_metadata?.name as string | undefined)?.split(' ')[0]
+      || user.email?.split('@')[0]
+      || 'Member';
+
+    setNewComments(prev => ({ ...prev, [postId]: '' }));
+    setCommentPosting(prev => new Set(prev).add(postId));
+
+    try {
+      const res = await fetch(`/api/community/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userName: displayName, content }),
+      });
+      if (res.ok) {
+        const { comment } = await res.json() as { comment: LiveComment };
+        setCommentsMap(prev => ({
+          ...prev,
+          [postId]: [...(prev[postId] ?? []), comment],
+        }));
+        setPosts(prev => prev.map(p =>
+          p.id === postId
+            ? { ...p, _localCommentCount: (p._localCommentCount ?? p.comments_count) + 1 }
+            : p
+        ));
+      }
+    } catch { }
+    setCommentPosting(prev => { const s = new Set(prev); s.delete(postId); return s; });
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+
+    setCommentsMap(prev => ({
+      ...prev,
+      [postId]: (prev[postId] ?? []).filter(c => c.id !== commentId),
+    }));
+    setPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, _localCommentCount: Math.max(0, (p._localCommentCount ?? p.comments_count) - 1) }
+        : p
+    ));
+
+    try {
+      await fetch(`/api/community/posts/${postId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch { }
+  };
+
   const handlePost = async () => {
     if (!newPost.trim() || !user) return;
     const content = newPost.trim();
@@ -95,7 +226,6 @@ export function Community() {
         || user.email?.split('@')[0]
         || 'Member';
 
-      // Upload image if attached — best-effort; post goes through even if upload fails
       let imageUrl: string | null = null;
       if (pendingImageFile) {
         setImageUploading(true);
@@ -115,7 +245,7 @@ export function Community() {
             });
             if (putRes.ok) imageUrl = publicUrl;
           }
-        } catch { /* best-effort */ }
+        } catch { }
         setImageUploading(false);
       }
       setPendingImageFile(null);
@@ -131,6 +261,7 @@ export function Community() {
         const d = json.post;
         setPosts(prev => [{
           id: d.id as string,
+          user_id: d.user_id as string,
           user_name: d.user_name as string,
           content: d.content as string,
           post_type: d.post_type as string,
@@ -140,6 +271,7 @@ export function Community() {
           image_url: d.image_url as string | null | undefined,
           _localLiked: false,
           _localLikes: 0,
+          _localCommentCount: 0,
         }, ...prev]);
       }
     } catch { }
@@ -319,65 +451,65 @@ export function Community() {
               ))}
             </div>
             <div className="flex gap-3">
-                <Avatar>
-                  <AvatarFallback>
-                    {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={postType === 'win' ? 'Share your win or milestone...' : postType === 'question' ? 'Ask the community a health question...' : postType === 'tip' ? 'Share a food therapy or fitness tip...' : postType === 'challenge' ? 'Post a challenge for the community...' : 'Share your progress...'}
-                      value={newPost}
-                      onChange={e => setNewPost(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
-                      data-testid="input-new-post"
-                    />
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        setPendingImageFile(file);
-                        setPendingImagePreview(URL.createObjectURL(file));
-                        e.target.value = '';
-                      }}
-                    />
-                    <Button
-                      variant="ghost" size="icon" type="button"
-                      title="Attach image"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {imageUploading
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <ImagePlus className="w-4 h-4" />
-                      }
-                    </Button>
-                    <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
-                      {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                  {pendingImagePreview && (
-                    <div className="relative inline-flex self-start">
-                      <img
-                        src={pendingImagePreview}
-                        alt="Attachment preview"
-                        className="h-20 w-auto rounded-lg object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => { setPendingImageFile(null); setPendingImagePreview(null); }}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
-                      >
-                        <X className="w-3 h-3 text-white" />
-                      </button>
-                    </div>
-                  )}
+              <Avatar>
+                <AvatarFallback>
+                  {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={postType === 'win' ? 'Share your win or milestone...' : postType === 'question' ? 'Ask the community a health question...' : postType === 'tip' ? 'Share a food therapy or fitness tip...' : postType === 'challenge' ? 'Post a challenge for the community...' : 'Share your progress...'}
+                    value={newPost}
+                    onChange={e => setNewPost(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
+                    data-testid="input-new-post"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setPendingImageFile(file);
+                      setPendingImagePreview(URL.createObjectURL(file));
+                      e.target.value = '';
+                    }}
+                  />
+                  <Button
+                    variant="ghost" size="icon" type="button"
+                    title="Attach image"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {imageUploading
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <ImagePlus className="w-4 h-4" />
+                    }
+                  </Button>
+                  <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">
+                    {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
                 </div>
+                {pendingImagePreview && (
+                  <div className="relative inline-flex self-start">
+                    <img
+                      src={pendingImagePreview}
+                      alt="Attachment preview"
+                      className="h-20 w-auto rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setPendingImageFile(null); setPendingImagePreview(null); }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
           </div>
         </div>
       )}
@@ -422,74 +554,184 @@ export function Community() {
             </div>
           )}
 
-          {!loading && !fetchError && posts.map((post, i) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <Card className="p-4 glass-hover" data-testid={`post-${post.id}`}>
-                <div className="flex items-start gap-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      {post.user_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-semibold text-sm truncate max-w-[140px]">{post.user_name}</span>
-                      {post.post_type && post.post_type !== 'post' && (() => {
-                        const t = post.post_type.toLowerCase();
-                        const map: Record<string, { label: string; cls: string }> = {
-                          win:      { label: '🏆 Win',       cls: 'bg-primary/15 text-primary' },
-                          question: { label: '❓ Q&A',       cls: 'bg-secondary/20 text-secondary' },
-                          tip:      { label: '💡 Tip',       cls: 'bg-accent/20 text-accent' },
-                          challenge:{ label: '🔥 Challenge', cls: 'bg-destructive/15 text-destructive' },
-                        };
-                        const entry = map[t];
-                        return entry ? (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${entry.cls}`}>
-                            {entry.label}
-                          </span>
-                        ) : null;
-                      })()}
-                      <span className="text-xs text-muted-foreground ml-auto shrink-0">
-                        {formatTime(post.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap mb-3 leading-relaxed">{post.content}</p>
-                    {post.image_url && (
-                      <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-muted">
-                        <div className="absolute inset-0 bg-muted animate-pulse" />
-                        <img
-                          src={post.image_url}
-                          alt="Post attachment"
-                          className="relative w-full h-full object-cover"
-                          loading="lazy"
-                          onLoad={(e) => { (e.currentTarget.previousElementSibling as HTMLElement).style.display = 'none'; }}
-                        />
+          {!loading && !fetchError && posts.map((post, i) => {
+            const isOwn = user?.id === post.user_id;
+            const isExpanded = expandedPosts.has(post.id);
+            const comments = commentsMap[post.id] ?? [];
+            const loadingComments = commentsLoading.has(post.id);
+            const commentCount = post._localCommentCount ?? post.comments_count;
+
+            return (
+              <motion.div
+                key={post.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.04, 0.4) }}
+              >
+                <Card className="p-4 glass-hover" data-testid={`post-${post.id}`}>
+                  <div className="flex items-start gap-3">
+                    <Avatar>
+                      <AvatarFallback>
+                        {post.user_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-semibold text-sm truncate max-w-[140px]">{post.user_name}</span>
+                        {post.post_type && post.post_type !== 'post' && (() => {
+                          const t = post.post_type.toLowerCase();
+                          const map: Record<string, { label: string; cls: string }> = {
+                            win:       { label: '🏆 Win',       cls: 'bg-primary/15 text-primary' },
+                            question:  { label: '❓ Q&A',       cls: 'bg-secondary/20 text-secondary' },
+                            tip:       { label: '💡 Tip',       cls: 'bg-accent/20 text-accent' },
+                            challenge: { label: '🔥 Challenge', cls: 'bg-destructive/15 text-destructive' },
+                          };
+                          const entry = map[t];
+                          return entry ? (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${entry.cls}`}>
+                              {entry.label}
+                            </span>
+                          ) : null;
+                        })()}
+                        <span className="text-xs text-muted-foreground ml-auto shrink-0">
+                          {formatTime(post.created_at)}
+                        </span>
+                        {isOwn && (
+                          <button
+                            type="button"
+                            title="Delete post"
+                            onClick={() => handleDeletePost(post.id)}
+                            className="ml-1 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            data-testid={`delete-post-${post.id}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                    )}
-                    <div className="flex items-center gap-4">
-                      <Button
-                        variant="ghost" size="sm" className="h-8 px-2"
-                        onClick={() => handleLike(post.id)}
-                        data-testid={`like-${post.id}`}
-                      >
-                        <Heart className={cn('w-4 h-4 mr-1', post._localLiked && 'fill-destructive text-destructive')} />
-                        <span className="text-xs">{post._localLikes ?? post.likes_count}</span>
-                      </Button>
-                      <div className="flex items-center gap-1 text-muted-foreground px-2">
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="text-xs">{post.comments_count}</span>
+                      <p className="text-sm whitespace-pre-wrap mb-3 leading-relaxed">{post.content}</p>
+                      {post.image_url && (
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-muted">
+                          <div className="absolute inset-0 bg-muted animate-pulse" />
+                          <img
+                            src={post.image_url}
+                            alt="Post attachment"
+                            className="relative w-full h-full object-cover"
+                            loading="lazy"
+                            onLoad={(e) => { (e.currentTarget.previousElementSibling as HTMLElement).style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant="ghost" size="sm" className="h-8 px-2"
+                          onClick={() => handleLike(post.id)}
+                          data-testid={`like-${post.id}`}
+                        >
+                          <Heart className={cn('w-4 h-4 mr-1', post._localLiked && 'fill-destructive text-destructive')} />
+                          <span className="text-xs">{post._localLikes ?? post.likes_count}</span>
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => toggleComments(post.id)}
+                          className="flex items-center gap-1 h-8 px-2 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+                          data-testid={`toggle-comments-${post.id}`}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>{commentCount}</span>
+                          {isExpanded
+                            ? <ChevronUp className="w-3 h-3 ml-0.5" />
+                            : <ChevronDown className="w-3 h-3 ml-0.5" />
+                          }
+                        </button>
                       </div>
+
+                      {/* Comments section */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="mt-3 pt-3 border-t border-border overflow-hidden"
+                          >
+                            {loadingComments && (
+                              <div className="flex items-center justify-center py-4">
+                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                              </div>
+                            )}
+                            {!loadingComments && comments.length === 0 && (
+                              <p className="text-xs text-muted-foreground py-2 text-center">No comments yet — be the first.</p>
+                            )}
+                            {!loadingComments && comments.length > 0 && (
+                              <div className="space-y-2 mb-3">
+                                {comments.map(comment => (
+                                  <div key={comment.id} className="flex items-start gap-2 group">
+                                    <Avatar className="w-6 h-6 shrink-0">
+                                      <AvatarFallback className="text-[10px]">
+                                        {comment.user_name[0]?.toUpperCase() ?? '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0 bg-muted/40 rounded-lg px-2.5 py-1.5">
+                                      <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="text-xs font-semibold truncate max-w-[100px]">{comment.user_name}</span>
+                                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{formatTime(comment.created_at)}</span>
+                                        {user?.id === comment.user_id && (
+                                          <button
+                                            type="button"
+                                            title="Delete comment"
+                                            onClick={() => handleDeleteComment(post.id, comment.id)}
+                                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-destructive transition-all"
+                                            data-testid={`delete-comment-${comment.id}`}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                      <p className="text-xs leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {user && (
+                              <div className="flex gap-2 mt-2">
+                                <Avatar className="w-6 h-6 shrink-0">
+                                  <AvatarFallback className="text-[10px]">
+                                    {((user.user_metadata?.name as string | undefined)?.[0] || user.email?.[0] || 'Y').toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 flex gap-1.5">
+                                  <Input
+                                    className="h-7 text-xs"
+                                    placeholder="Write a comment..."
+                                    value={newComments[post.id] ?? ''}
+                                    onChange={e => setNewComments(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleAddComment(post.id)}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    disabled={!(newComments[post.id] ?? '').trim() || commentPosting.has(post.id)}
+                                    onClick={() => handleAddComment(post.id)}
+                                  >
+                                    {commentPosting.has(post.id)
+                                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                                      : <Send className="w-3 h-3" />
+                                    }
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+                </Card>
+              </motion.div>
+            );
+          })}
 
           {/* Footer encouragement */}
           {!loading && (
