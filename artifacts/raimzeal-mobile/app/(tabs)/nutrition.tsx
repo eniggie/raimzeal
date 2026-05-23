@@ -5086,6 +5086,27 @@ export default function NutritionScreen() {
                               <Text style={[styles.breakdownMacroLabel, { color: colors.mutedForeground }]}>Fat</Text>
                             </View>
                           </View>
+                          {(() => {
+                            const totalDayCal = dayData.totals.calories;
+                            const calShare = totalDayCal > 0 ? Math.min(mealCal / totalDayCal, 1) : 0;
+                            const protCal = mealProt * 4;
+                            const carbCal = mealCarbs * 4;
+                            const fatCal = mealFat * 9;
+                            const macroTotal = protCal + carbCal + fatCal;
+                            const protFrac = macroTotal > 0 ? protCal / macroTotal : 0;
+                            const carbFrac = macroTotal > 0 ? carbCal / macroTotal : 0;
+                            const fatFrac = macroTotal > 0 ? fatCal / macroTotal : 0;
+                            return (
+                              <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
+                                <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
+                                  <View style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary }]} />
+                                  <View style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning }]} />
+                                  <View style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent }]} />
+                                </View>
+                                <View style={{ flex: 1 - calShare }} />
+                              </View>
+                            );
+                          })()}
                           {entries.map((log) => (
                             <View key={log.id} style={[styles.breakdownFoodRow, { borderTopColor: colors.border }]}>
                               <Text style={[styles.breakdownFoodName, { color: colors.foreground }]} numberOfLines={1}>
@@ -7566,6 +7587,21 @@ const styles = StyleSheet.create({
   breakdownMacroLabel: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  breakdownMiniBarTrack: {
+    flexDirection: "row",
+    height: 4,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  breakdownMiniBarFill: {
+    flexDirection: "row",
+    overflow: "hidden",
+  },
+  breakdownMiniBarSegment: {
+    height: 4,
   },
   breakdownFoodRow: {
     flexDirection: "row",
