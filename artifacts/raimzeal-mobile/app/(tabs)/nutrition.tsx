@@ -5156,12 +5156,13 @@ export default function NutritionScreen() {
                 {
                   translateY: restoredAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [100, 0],
+                    outputRange: [-100, 0],
                   }),
                 },
               ],
               opacity: restoredAnim,
-              bottom: insets.bottom + 16,
+              top: insets.top + 16,
+              bottom: undefined,
             },
           ]}
         >
