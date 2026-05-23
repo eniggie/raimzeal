@@ -18,6 +18,7 @@ import {
   Switch,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  PanResponder,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Reanimated, {
@@ -1182,6 +1183,7 @@ export default function CardCustomizationModal({
   const [confirmActionLabel, setConfirmActionLabel] = useState<string | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
   const confirmTranslateY = useRef(new Animated.Value(8)).current;
+  const confirmSwipeY = useRef(new Animated.Value(0)).current;
 
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
@@ -1192,13 +1194,69 @@ export default function CardCustomizationModal({
   function dismissConfirmToast() {
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
+    confirmSwipeY.stopAnimation();
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(8);
+    confirmSwipeY.setValue(0);
     setConfirmMessage(null);
     setConfirmRetryFn(null);
     setConfirmActionFn(null);
     setConfirmActionLabel(null);
   }
+
+  function dismissConfirmToastAnimated() {
+    confirmOpacity.stopAnimation();
+    confirmTranslateY.stopAnimation();
+    confirmSwipeY.stopAnimation();
+    Animated.parallel([
+      Animated.timing(confirmOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(confirmSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
+      confirmOpacity.setValue(0);
+      confirmTranslateY.setValue(8);
+      confirmSwipeY.setValue(0);
+      setConfirmMessage(null);
+      setConfirmRetryFn(null);
+      setConfirmActionFn(null);
+      setConfirmActionLabel(null);
+    });
+  }
+
+  const confirmToastPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) =>
+        gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+      onPanResponderMove: (_evt, gestureState) => {
+        if (gestureState.dy < 0) {
+          confirmSwipeY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          if (reduceMotionRef.current) {
+            dismissConfirmToast();
+          } else {
+            dismissConfirmToastAnimated();
+          }
+        } else {
+          Animated.spring(confirmSwipeY, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 20,
+            stiffness: 300,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(confirmSwipeY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 300,
+        }).start();
+      },
+    })
+  ).current;
 
   function showConfirmation(
     msg: string,
@@ -1211,6 +1269,7 @@ export default function CardCustomizationModal({
   ) {
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
+    confirmSwipeY.stopAnimation();
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
@@ -1219,6 +1278,7 @@ export default function CardCustomizationModal({
     setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(8);
+    confirmSwipeY.setValue(0);
     const holdDuration = holdDurationOverrideMs ?? ((retryFn || actionFn) ? 4500 : variant === "error" ? 2200 : 1600);
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
@@ -3168,7 +3228,10 @@ export default function CardCustomizationModal({
             </View>
           )}
           {confirmMessage && (
-            <Animated.View style={[styles.confirmToastWrap, { opacity: confirmOpacity, transform: [{ translateY: confirmTranslateY }] }]}>
+            <Animated.View
+              style={[styles.confirmToastWrap, { opacity: confirmOpacity, transform: [{ translateY: Animated.add(confirmTranslateY, confirmSwipeY) }] }]}
+              {...confirmToastPanResponder.panHandlers}
+            >
               <View
                 style={[
                   styles.confirmToast,
