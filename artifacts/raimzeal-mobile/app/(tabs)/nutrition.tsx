@@ -1209,6 +1209,7 @@ export default function NutritionScreen() {
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
   ).current;
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
+  const chipGlowAnims = useRef<Record<string, Animated.Value>>({});
   const presetChipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
   const historyChipFadeAnims = useRef(
@@ -2357,8 +2358,13 @@ export default function NutritionScreen() {
     if (!chipScaleAnims.current[key]) {
       chipScaleAnims.current[key] = new Animated.Value(1);
     }
+    if (!chipGlowAnims.current[key]) {
+      chipGlowAnims.current[key] = new Animated.Value(0);
+    }
     const scaleAnim = chipScaleAnims.current[key];
+    const glowAnim = chipGlowAnims.current[key];
     scaleAnim.setValue(1);
+    glowAnim.setValue(0);
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.15,
@@ -2372,6 +2378,10 @@ export default function NutritionScreen() {
         bounciness: 8,
         useNativeDriver: true,
       }),
+    ]).start();
+    Animated.sequence([
+      Animated.timing(glowAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
     ]).start();
     if (filterHintVisible && !filterHintDismissedRef.current) {
       if (filterHintTimerRef.current) {
@@ -2973,7 +2983,11 @@ export default function NutritionScreen() {
                       if (!chipScaleAnims.current[filter.key]) {
                         chipScaleAnims.current[filter.key] = new Animated.Value(1);
                       }
+                      if (!chipGlowAnims.current[filter.key]) {
+                        chipGlowAnims.current[filter.key] = new Animated.Value(0);
+                      }
                       const chipScale = chipScaleAnims.current[filter.key];
+                      const chipGlow = chipGlowAnims.current[filter.key];
                       return (
                         <Animated.View
                           key={filter.key}
@@ -3015,9 +3029,22 @@ export default function NutritionScreen() {
                                 ? colors.border + "60"
                                 : colors.border,
                               opacity: isZeroCount ? 0.5 : 1,
+                              overflow: "hidden",
                             },
                           ]}
                         >
+                          <Animated.View
+                            pointerEvents="none"
+                            style={{
+                              position: "absolute",
+                              top: 0, left: 0, right: 0, bottom: 0,
+                              borderRadius: 20,
+                              backgroundColor: active
+                                ? colors.primaryForeground + "60"
+                                : colors.primary + "55",
+                              opacity: chipGlow,
+                            }}
+                          />
                           <Ionicons
                             name={filter.icon}
                             size={13}
