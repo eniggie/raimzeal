@@ -131,20 +131,48 @@ export default function MembershipScreen() {
     setCheckoutError((prev) => ({ ...prev, [tier]: "" }));
 
     try {
+      // Check auth first — endpoint requires a signed-in user
       const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+      if (!session?.access_token) {
+        Alert.alert(
+          "Sign In Required",
+          "Please sign in to your RAIMZEAL account to subscribe.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
 
-      const res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ tier, interval }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ tier, interval }),
+        });
+      } catch {
+        // Network error — server may be temporarily restarting
+        const msg = "Server temporarily unavailable. Please wait a moment and try again.";
+        setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
+        Alert.alert("Connection Error", msg);
+        return;
+      }
 
-      const data = await res.json() as { url?: string; error?: string };
+      // Parse response — guard against non-JSON error pages
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = await res.json() as { url?: string; error?: string };
+      } catch {
+        // Response was not JSON (proxy/gateway error page)
+      }
 
       if (!res.ok || !data.url) {
-        const msg = data.error ?? "Could not start checkout. Please try again.";
+        const msg =
+          res.status === 401
+            ? "Please sign in and try again."
+            : (data.error ?? `Could not start checkout (${res.status}). Please try again.`);
         setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
         Alert.alert("Checkout Error", msg);
         return;
@@ -152,9 +180,9 @@ export default function MembershipScreen() {
 
       await Linking.openURL(data.url);
     } catch {
-      const msg = "Network error. Please check your connection and try again.";
+      const msg = "Something went wrong. Please try again.";
       setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
-      Alert.alert("Connection Error", msg);
+      Alert.alert("Error", msg);
     } finally {
       setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
     }
