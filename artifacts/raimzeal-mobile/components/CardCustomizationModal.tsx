@@ -2249,13 +2249,17 @@ export default function CardCustomizationModal({
       handleGenerate(action);
     } else {
       // "Set-only" mode: show confirmation alert before setting default
+      const currentLabel = defaultAction === "share" ? "Share" : defaultAction === "save" ? "Save" : defaultAction === "copy" ? "Copy" : defaultAction === "both" ? "Both" : null;
+      const isSwitching = defaultAction !== null && currentLabel !== null;
       Alert.alert(
-        "Set as preferred",
-        `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
+        isSwitching ? "Switch preferred action" : "Set as preferred",
+        isSwitching
+          ? `Replace ★ ${currentLabel} with ${label}?`
+          : `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
         [
           { text: "Cancel", style: "cancel" },
           {
-            text: "Set as preferred",
+            text: isSwitching ? "Switch" : "Set as preferred",
             onPress: () => {
               setDefaultAction(action);
               setSelectedAction(action);
