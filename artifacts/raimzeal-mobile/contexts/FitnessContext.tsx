@@ -50,6 +50,7 @@ export interface WorkoutLog {
   duration: number;
   caloriesBurned: number;
   exercises: { name: string; sets: number; reps: number; weight?: number }[];
+  notes?: string;
 }
 
 /** Matches web app store.ts MealLog exactly */

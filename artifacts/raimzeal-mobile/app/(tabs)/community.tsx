@@ -412,8 +412,11 @@ export default function CommunityScreen() {
             style={[
               styles.postTypeBadge,
               {
-                backgroundColor: isQuestion
-                  ? colors.secondary + "20"
+                backgroundColor:
+                  item.postType === "question" ? colors.secondary + "20"
+                  : item.postType === "win"      ? "#f59e0b20"
+                  : item.postType === "tip"      ? "#10b98120"
+                  : item.postType === "challenge"? "#8b5cf620"
                   : colors.primary + "20",
               },
             ]}
@@ -421,10 +424,21 @@ export default function CommunityScreen() {
             <Text
               style={[
                 styles.postTypeBadgeText,
-                { color: isQuestion ? colors.secondary : colors.primary },
+                {
+                  color:
+                    item.postType === "question" ? colors.secondary
+                    : item.postType === "win"      ? "#f59e0b"
+                    : item.postType === "tip"      ? "#10b981"
+                    : item.postType === "challenge"? "#8b5cf6"
+                    : colors.primary,
+                },
               ]}
             >
-              {isQuestion ? "QUESTION" : "POST"}
+              {item.postType === "question" ? "QUESTION"
+               : item.postType === "win"      ? "WIN"
+               : item.postType === "tip"      ? "TIP"
+               : item.postType === "challenge"? "CHALLENGE"
+               : "POST"}
             </Text>
           </View>
         </View>

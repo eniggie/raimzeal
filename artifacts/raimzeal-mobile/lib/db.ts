@@ -279,7 +279,7 @@ export interface CommunityPost {
   userId: string;
   userName: string;
   content: string;
-  postType: "post" | "question";
+  postType: "post" | "question" | "win" | "tip" | "challenge";
   imageUrl?: string | null;
   likesCount: number;
   commentsCount: number;
@@ -298,7 +298,7 @@ export interface CommunityComment {
 // ─── Community CRUD ─────────────────────────────────────────────────────────
 
 export async function fetchCommunityPosts(
-  postType?: "post" | "question",
+  postType?: "post" | "question" | "win" | "tip" | "challenge",
   limit = 30
 ): Promise<CommunityPost[]> {
   if (!isSupabaseConfigured) return [];
@@ -319,7 +319,7 @@ export async function fetchCommunityPosts(
       userId: r.user_id,
       userName: r.user_name,
       content: r.content,
-      postType: r.post_type as "post" | "question",
+      postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
       imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
       likesCount: raw.community_likes?.[0]?.count ?? 0,
       commentsCount: raw.community_comments?.[0]?.count ?? 0,
@@ -332,7 +332,7 @@ export async function createCommunityPost(
   _userId: string,
   userName: string,
   content: string,
-  postType: "post" | "question",
+  postType: "post" | "question" | "win" | "tip" | "challenge",
   imageUrl?: string | null
 ): Promise<CommunityPost | null> {
   if (!isSupabaseConfigured) return null;
@@ -355,7 +355,7 @@ export async function createCommunityPost(
       userId: d.user_id as string,
       userName: d.user_name as string,
       content: d.content as string,
-      postType: d.post_type as "post" | "question",
+      postType: d.post_type as "post" | "question" | "win" | "tip" | "challenge",
       imageUrl: (d.image_url as string | null | undefined) ?? null,
       likesCount: 0,
       commentsCount: 0,

@@ -707,6 +707,44 @@ export default function WorkoutsScreen() {
             })}
           </ScrollView>
 
+          {/* Outdoor Workout button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/outdoor-workout");
+            }}
+            style={[styles.buildBtn, { backgroundColor: "#10b98115", borderColor: "#10b98140" }]}
+          >
+            <View style={[styles.buildBtnIcon, { backgroundColor: "#10b98120" }]}>
+              <Ionicons name="location-outline" size={22} color="#10b981" />
+            </View>
+            <View style={styles.buildBtnText}>
+              <Text style={[styles.templateName, { color: "#10b981" }]}>Outdoor Workout</Text>
+              <Text style={[styles.templateMeta, { color: "#10b98199" }]}>GPS run, walk or cycle tracker</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#10b981" />
+          </TouchableOpacity>
+
+          {/* Rep Counter button */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push("/rep-counter");
+            }}
+            style={[styles.buildBtn, { backgroundColor: "#8b5cf615", borderColor: "#8b5cf640" }]}
+          >
+            <View style={[styles.buildBtnIcon, { backgroundColor: "#8b5cf620" }]}>
+              <Ionicons name="fitness-outline" size={22} color="#8b5cf6" />
+            </View>
+            <View style={styles.buildBtnText}>
+              <Text style={[styles.templateName, { color: "#8b5cf6" }]}>Rep Counter</Text>
+              <Text style={[styles.templateMeta, { color: "#8b5cf699" }]}>Motion sensor counts your reps</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#8b5cf6" />
+          </TouchableOpacity>
+
           {/* Build Workout button */}
           <TouchableOpacity
             activeOpacity={0.85}
