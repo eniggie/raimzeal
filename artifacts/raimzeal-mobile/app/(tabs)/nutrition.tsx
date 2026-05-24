@@ -3028,7 +3028,7 @@ export default function NutritionScreen() {
                                 : isZeroCount
                                 ? colors.border + "60"
                                 : colors.border,
-                              opacity: isZeroCount ? 0.5 : 1,
+                              opacity: isZeroCount || searchLoading ? 0.5 : 1,
                               overflow: "hidden",
                             },
                           ]}
