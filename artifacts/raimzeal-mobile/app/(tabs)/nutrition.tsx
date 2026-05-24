@@ -5659,11 +5659,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
   }
 
   function handleDelete() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
     onDelete(log);
   }
 
   function handleLogTodayPress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     swipeableRef.current?.close();
     onLogToday(log);
   }

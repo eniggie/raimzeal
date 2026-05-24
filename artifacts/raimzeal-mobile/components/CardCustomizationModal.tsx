@@ -633,8 +633,14 @@ function ZoomableCard({
         Math.abs(e.translationX) > 60 &&
         Math.abs(e.translationX) > Math.abs(e.translationY) * 1.5
       ) {
-        if (e.translationX < 0 && onSwipeLeft) runOnJS(onSwipeLeft)();
-        if (e.translationX > 0 && onSwipeRight) runOnJS(onSwipeRight)();
+        if (e.translationX < 0 && onSwipeLeft) {
+          runOnJS(Haptics.selectionAsync)();
+          runOnJS(onSwipeLeft)();
+        }
+        if (e.translationX > 0 && onSwipeRight) {
+          runOnJS(Haptics.selectionAsync)();
+          runOnJS(onSwipeRight)();
+        }
       }
     });
 
@@ -646,6 +652,7 @@ function ZoomableCard({
     })
     .onEnd(() => {
       "worklet";
+      runOnJS(Haptics.selectionAsync)();
       if (reduceMotionShared.value) {
         scale.value = 1;
         translateX.value = 0;
@@ -2741,6 +2748,7 @@ export default function CardCustomizationModal({
   }
 
   function onPresetLongPress() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setReorderMode(true);
   }
 

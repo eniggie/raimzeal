@@ -160,6 +160,9 @@ function DragItem({
           )
         );
         dragY.value = withSpring(0, SPRING);
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
         onDropRef.current(indexRef.current, to);
       },
       onPanResponderTerminate: () => {
@@ -211,7 +214,12 @@ function DragItem({
       </View>
       <Text style={[styles.itemCal, { color: colors.primary }]}>{food.calories}</Text>
       <Pressable
-        onPress={() => onRemove(indexRef.current)}
+        onPress={() => {
+          if (Platform.OS !== "web") {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+          onRemove(indexRef.current);
+        }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={styles.removeBtn}
       >
