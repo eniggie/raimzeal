@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -487,31 +487,42 @@ export default function ProfileScreen() {
   }
 
   // Compute card props (sort measurements by date so first=oldest, last=newest)
-  const sortedMeasurements = [...bodyMeasurements].sort((a, b) =>
-    a.date.localeCompare(b.date)
-  );
-  const startWeight = sortedMeasurements[0]?.weight ?? user?.weight ?? 0;
-  const latestWeight =
-    sortedMeasurements[sortedMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
-  const weightDelta = startWeight > 0 ? +(startWeight - latestWeight).toFixed(1) : 0;
-  const cardProps = {
-    userName: user?.name ?? "Champion",
-    goalLabel: (user?.goals?.[0] ?? "improve_fitness")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase()),
+  const cardProps = useMemo(() => {
+    const sortedMeasurements = [...bodyMeasurements].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+    const startWeight = sortedMeasurements[0]?.weight ?? user?.weight ?? 0;
+    const latestWeight =
+      sortedMeasurements[sortedMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
+    const weightDelta = startWeight > 0 ? +(startWeight - latestWeight).toFixed(1) : 0;
+    return {
+      userName: user?.name ?? "Champion",
+      goalLabel: (user?.goals?.[0] ?? "improve_fitness")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
+      streak,
+      totalWorkouts: workoutLogs.length,
+      totalCalBurned: workoutLogs.reduce((s, l) => s + l.caloriesBurned, 0),
+      totalMinutes: workoutLogs.reduce((s, l) => s + l.duration, 0),
+      weightDelta,
+      weightUnit: settings.weightUnit,
+      topPR: personalRecords[0] ?? null,
+      date: new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    };
+  }, [
+    bodyMeasurements,
+    user?.name,
+    user?.weight,
+    user?.goals,
     streak,
-    totalWorkouts: workoutLogs.length,
-    totalCalBurned: workoutLogs.reduce((s, l) => s + l.caloriesBurned, 0),
-    totalMinutes: workoutLogs.reduce((s, l) => s + l.duration, 0),
-    weightDelta,
-    weightUnit: settings.weightUnit,
-    topPR: personalRecords[0] ?? null,
-    date: new Date().toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }),
-  };
+    workoutLogs,
+    settings.weightUnit,
+    personalRecords,
+  ]);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>

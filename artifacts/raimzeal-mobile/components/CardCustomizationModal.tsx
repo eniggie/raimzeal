@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import {
   Animated,
   Easing,
@@ -1016,6 +1016,34 @@ export default function CardCustomizationModal({
     reduceMotionRef.current = reduceMotion;
     reduceMotionShared.value = reduceMotion;
   }, [reduceMotion]);
+
+  // Stabilise the cardPreviewData object reference so memoized thumbnail
+  // children (ThemeSwatchItem, PresetChipItem) can short-circuit on reference
+  // equality rather than deep-field comparison on every render.
+  const stableCardPreviewData = useMemo<typeof cardPreviewData>(
+    () => ({
+      ...cardPreviewData,
+    }),
+    [
+      cardPreviewData.userName,
+      cardPreviewData.goalLabel,
+      cardPreviewData.streak,
+      cardPreviewData.totalWorkouts,
+      cardPreviewData.totalCalBurned,
+      cardPreviewData.totalMinutes,
+      cardPreviewData.weightDelta,
+      cardPreviewData.weightUnit,
+      cardPreviewData.topPR?.exercise,
+      cardPreviewData.topPR?.weight,
+      cardPreviewData.date,
+      cardPreviewData.renderScale,
+      cardPreviewData.backgroundPhotoUri,
+      cardPreviewData.backgroundPhotoDimLevel,
+      cardPreviewData.backgroundPhotoCrop?.scale,
+      cardPreviewData.backgroundPhotoCrop?.panX,
+      cardPreviewData.backgroundPhotoCrop?.panY,
+    ]
+  );
 
   const [visibleStats, setVisibleStats] = useState<CardVisibleStats>({
     ...DEFAULT_VISIBLE_STATS,
@@ -2980,7 +3008,7 @@ export default function CardCustomizationModal({
                       key={preset.id}
                       preset={preset}
                       isActive={preset.id === activePresetId}
-                      cardPreviewData={cardPreviewData}
+                      cardPreviewData={stableCardPreviewData}
                       colors={colors}
                       onPress={stableOpenPresetPreview}
                       onLongPress={stableOnPresetLongPress}
@@ -3233,7 +3261,7 @@ export default function CardCustomizationModal({
                     isSelected={selectedThemeId === theme.id}
                     visibleStats={visibleStats}
                     customMessage={customMessage.trim()}
-                    cardPreviewData={cardPreviewData}
+                    cardPreviewData={stableCardPreviewData}
                     estimatedHeight={estimateThumbnailHeight(visibleStats, customMessage.trim().length > 0, thumbnailSize)}
                     colors={colors}
                     onSelect={stableHandleThemeChange}
