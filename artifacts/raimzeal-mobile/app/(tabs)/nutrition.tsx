@@ -6142,12 +6142,20 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     if (!isNaN(n) && n > 0) {
       setEditGrams(n);
       if (perGramRef.current) {
-        setEditBase({
+        const newBase = {
           calories: perGramRef.current.calories * n,
           protein: perGramRef.current.protein * n,
           carbs: perGramRef.current.carbs * n,
           fat: perGramRef.current.fat * n,
-        });
+        };
+        setEditBase(newBase);
+        setEditForm(f => ({
+          ...f,
+          calories: String(Math.round(newBase.calories)),
+          protein: String(Math.round(newBase.protein * 10) / 10),
+          carbs: String(Math.round(newBase.carbs * 10) / 10),
+          fat: String(Math.round(newBase.fat * 10) / 10),
+        }));
         setEditServings(1);
         setEditServingsText("1");
       }
@@ -6174,6 +6182,23 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
       });
       setEditServings(1);
       setEditServingsText("1");
+    }
+  }
+
+  function handleMacroDirectEdit(field: 'calories' | 'protein' | 'carbs' | 'fat', text: string) {
+    setEditForm(f => ({ ...f, [field]: text }));
+    const n = parseFloat(text);
+    if (!isNaN(n) && n >= 0) {
+      const newBase = { ...editBase, [field]: n };
+      setEditBase(newBase);
+      if (editGrams !== undefined && editGrams > 0) {
+        perGramRef.current = {
+          calories: newBase.calories / editGrams,
+          protein: newBase.protein / editGrams,
+          carbs: newBase.carbs / editGrams,
+          fat: newBase.fat / editGrams,
+        };
+      }
     }
   }
 
@@ -6468,30 +6493,40 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}
             </Text>
 
             <View style={styles.modalNutrients}>
-              <NutrientChip
-                label="Calories"
-                value={`${Math.round(editBase.calories * editServings)}`}
-                color={colors.primary}
-              />
-              <NutrientChip
-                label="Protein"
-                value={`${Math.round(editBase.protein * editServings * 10) / 10}g`}
-                color={colors.secondary}
-              />
-              <NutrientChip
-                label="Carbs"
-                value={`${Math.round(editBase.carbs * editServings * 10) / 10}g`}
-                color={colors.warning}
-              />
-              <NutrientChip
-                label="Fat"
-                value={`${Math.round(editBase.fat * editServings * 10) / 10}g`}
-                color="#ef4444"
-              />
+              {(
+                [
+                  { field: 'calories' as const, label: 'Calories', color: colors.primary, suffix: 'kcal' },
+                  { field: 'protein' as const, label: 'Protein', color: colors.secondary, suffix: 'g' },
+                  { field: 'carbs' as const, label: 'Carbs', color: colors.warning, suffix: 'g' },
+                  { field: 'fat' as const, label: 'Fat', color: '#ef4444', suffix: 'g' },
+                ]
+              ).map(({ field, label, color, suffix }) => (
+                <View key={field} style={[styles.nutrientChip, { backgroundColor: color + "15", borderColor: color + "40" }]}>
+                  <Text style={[styles.nutrientChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+                  <TextInput
+                    value={editForm[field]}
+                    onChangeText={(v) => handleMacroDirectEdit(field, v.replace(/[^0-9.]/g, ""))}
+                    onBlur={() => {
+                      const n = parseFloat(editForm[field]);
+                      const formatted = isNaN(n) || n < 0
+                        ? "0"
+                        : field === 'calories'
+                          ? String(Math.round(n))
+                          : String(Math.round(n * 10) / 10);
+                      setEditForm(f => ({ ...f, [field]: formatted }));
+                    }}
+                    keyboardType="decimal-pad"
+                    selectTextOnFocus
+                    returnKeyType="done"
+                    style={[styles.nutrientChipValue, { color, textAlign: 'center', minWidth: 36 }]}
+                  />
+                  <Text style={[styles.nutrientChipLabel, { color: colors.mutedForeground }]}>{suffix}</Text>
+                </View>
+              ))}
             </View>
 
             {(() => {
@@ -6677,12 +6712,20 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     if (!isNaN(n) && n > 0) {
       setEditGrams(n);
       if (perGramRef.current) {
-        setEditBase({
+        const newBase = {
           calories: perGramRef.current.calories * n,
           protein: perGramRef.current.protein * n,
           carbs: perGramRef.current.carbs * n,
           fat: perGramRef.current.fat * n,
-        });
+        };
+        setEditBase(newBase);
+        setEditForm(f => ({
+          ...f,
+          calories: String(Math.round(newBase.calories)),
+          protein: String(Math.round(newBase.protein * 10) / 10),
+          carbs: String(Math.round(newBase.carbs * 10) / 10),
+          fat: String(Math.round(newBase.fat * 10) / 10),
+        }));
         setEditServings(1);
         setEditServingsText("1");
       }
@@ -6711,6 +6754,23 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
       });
       setEditServings(1);
       setEditServingsText("1");
+    }
+  }
+
+  function handleMacroDirectEdit(field: 'calories' | 'protein' | 'carbs' | 'fat', text: string) {
+    setEditForm(f => ({ ...f, [field]: text }));
+    const n = parseFloat(text);
+    if (!isNaN(n) && n >= 0) {
+      const newBase = { ...editBase, [field]: n };
+      setEditBase(newBase);
+      if (editGrams !== undefined && editGrams > 0) {
+        perGramRef.current = {
+          calories: newBase.calories / editGrams,
+          protein: newBase.protein / editGrams,
+          carbs: newBase.carbs / editGrams,
+          fat: newBase.fat / editGrams,
+        };
+      }
     }
   }
 
@@ -6999,30 +7059,40 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}
             </Text>
 
             <View style={styles.modalNutrients}>
-              <NutrientChip
-                label="Calories"
-                value={`${Math.round(editBase.calories * editServings)}`}
-                color={colors.primary}
-              />
-              <NutrientChip
-                label="Protein"
-                value={`${Math.round(editBase.protein * editServings * 10) / 10}g`}
-                color={colors.secondary}
-              />
-              <NutrientChip
-                label="Carbs"
-                value={`${Math.round(editBase.carbs * editServings * 10) / 10}g`}
-                color={colors.warning}
-              />
-              <NutrientChip
-                label="Fat"
-                value={`${Math.round(editBase.fat * editServings * 10) / 10}g`}
-                color="#ef4444"
-              />
+              {(
+                [
+                  { field: 'calories' as const, label: 'Calories', color: colors.primary, suffix: 'kcal' },
+                  { field: 'protein' as const, label: 'Protein', color: colors.secondary, suffix: 'g' },
+                  { field: 'carbs' as const, label: 'Carbs', color: colors.warning, suffix: 'g' },
+                  { field: 'fat' as const, label: 'Fat', color: '#ef4444', suffix: 'g' },
+                ]
+              ).map(({ field, label, color, suffix }) => (
+                <View key={field} style={[styles.nutrientChip, { backgroundColor: color + "15", borderColor: color + "40" }]}>
+                  <Text style={[styles.nutrientChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
+                  <TextInput
+                    value={editForm[field]}
+                    onChangeText={(v) => handleMacroDirectEdit(field, v.replace(/[^0-9.]/g, ""))}
+                    onBlur={() => {
+                      const n = parseFloat(editForm[field]);
+                      const formatted = isNaN(n) || n < 0
+                        ? "0"
+                        : field === 'calories'
+                          ? String(Math.round(n))
+                          : String(Math.round(n * 10) / 10);
+                      setEditForm(f => ({ ...f, [field]: formatted }));
+                    }}
+                    keyboardType="decimal-pad"
+                    selectTextOnFocus
+                    returnKeyType="done"
+                    style={[styles.nutrientChipValue, { color, textAlign: 'center', minWidth: 36 }]}
+                  />
+                  <Text style={[styles.nutrientChipLabel, { color: colors.mutedForeground }]}>{suffix}</Text>
+                </View>
+              ))}
             </View>
 
             {(() => {
