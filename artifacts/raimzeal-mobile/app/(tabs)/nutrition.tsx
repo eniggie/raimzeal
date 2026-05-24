@@ -2807,6 +2807,39 @@ export default function NutritionScreen() {
     );
   }
 
+  function handleResetFoodDefaults(foodName: string) {
+    Alert.alert(
+      "Reset Defaults",
+      `Clear the remembered gram amount and meal for "${foodName}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            delete lastUsedMealMapRef.current[foodName];
+            AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
+              .then((raw) => {
+                const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+                delete map[foodName];
+                return AsyncStorage.setItem(LAST_USED_GRAMS_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
+            AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+              .then((raw) => {
+                const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+                delete map[foodName];
+                return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
+            showPresetSavedToast(`Defaults cleared for "${foodName}"`);
+          },
+        },
+      ]
+    );
+  }
+
   function resetSingleThreshold() {
     if (!thresholdEditKey) return;
     const def = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
@@ -3879,7 +3912,21 @@ export default function NutritionScreen() {
                             <TouchableOpacity
                               activeOpacity={0.8}
                               onPress={() => handleAddFood(food)}
-                              onLongPress={favoriteFoods.length > 1 ? enterReorderMode : undefined}
+                              onLongPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                const options: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [
+                                  { text: "Cancel", style: "cancel" },
+                                  {
+                                    text: "Reset Defaults",
+                                    style: "destructive",
+                                    onPress: () => handleResetFoodDefaults(food.name),
+                                  },
+                                ];
+                                if (favoriteFoods.length > 1) {
+                                  options.splice(1, 0, { text: "Reorder Favorites", onPress: enterReorderMode });
+                                }
+                                Alert.alert(food.name, undefined, options);
+                              }}
                               delayLongPress={500}
                               style={[
                                 styles.foodCard,
@@ -3930,6 +3977,22 @@ export default function NutritionScreen() {
                         key={`recent-${food.name}-${idx}`}
                         activeOpacity={0.8}
                         onPress={() => handleAddFood(food)}
+                        onLongPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          Alert.alert(
+                            food.name,
+                            undefined,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Reset Defaults",
+                                style: "destructive",
+                                onPress: () => handleResetFoodDefaults(food.name),
+                              },
+                            ]
+                          );
+                        }}
+                        delayLongPress={500}
                         style={[
                           styles.foodCard,
                           { backgroundColor: colors.card, borderColor: colors.primary + "40" },
