@@ -13,7 +13,7 @@ const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via ov
 
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
 // The Foundation Plan is free forever — all users are on the Foundation Plan.
-// Capped at 15 Ovia AI messages per day on gpt-4o-mini.
+// Capped at 10 Ovia AI messages per day on gpt-4o-mini.
 // Each entry auto-expires after 24 h; the Map stays small because it only grows
 // by one entry per active user per day.
 const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
@@ -363,7 +363,7 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     }
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
-    // Limits are tier-based: Foundation=15, Rise=200, Reign=500, Legacy=unlimited.
+    // Limits are tier-based: Foundation=10, Rise=200, Reign=500, Legacy=unlimited.
     const userId = (req as any).userId as string;
     const oviaModel = "gpt-4o-mini";
     const userTier = await getUserTier(userId);
@@ -371,12 +371,12 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
       userTier === "legacy" ? 100_000 :
       userTier === "reign"  ? 500 :
       userTier === "rise"   ? 200 :
-      15;
+      10;
     const oviaLimitLabel =
       userTier === "legacy" ? "unlimited" :
       userTier === "reign"  ? "500" :
       userTier === "rise"   ? "200" :
-      "15";
+      "10";
     const quota = consumeUserDailyQuota(userId, oviaLimit);
     if (!quota.allowed) {
       res.status(429).json({

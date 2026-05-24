@@ -18,6 +18,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, BodyMeasurement } from "@/contexts/FitnessContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTier } from "@/hooks/useTier";
 
 function generateId(): string {
   return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -67,6 +69,10 @@ export default function BodyMeasurementsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ add?: string }>();
   const { bodyMeasurements, addBodyMeasurement, user, settings } = useFitness();
+
+  const { user: authUser } = useAuth();
+  const { tier } = useTier(authUser?.id ?? null);
+  const isReign = tier === "reign" || tier === "legacy";
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const unitLabel = settings.weightUnit === "lbs" ? "lbs" : "kg";
@@ -325,6 +331,49 @@ export default function BodyMeasurementsScreen() {
               </View>
             </View>
 
+            {/* Body Composition Insights — Reign+ exclusive */}
+            {isReign && sortedMeasurements.length >= 2 ? (() => {
+              const oldest = sortedMeasurements[sortedMeasurements.length - 1];
+              const daysDiff = Math.max(1, (new Date(latest!.date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24));
+              const totalChange = latest!.weight - oldest.weight;
+              const weeklyRate = (totalChange / daysDiff) * 7;
+              const direction = weeklyRate < -0.05 ? "losing" : weeklyRate > 0.05 ? "gaining" : "maintaining";
+              const rateStr = Math.abs(weeklyRate).toFixed(2);
+              return (
+                <View style={[styles.insightsCard, { backgroundColor: colors.card, borderColor: colors.primary + "44" }]}>
+                  <View style={styles.insightsHeader}>
+                    <Ionicons name="analytics" size={16} color={colors.primary} />
+                    <Text style={[styles.insightsTitle, { color: colors.primary }]}>Body Composition Insights</Text>
+                  </View>
+                  <Text style={[styles.insightRow, { color: colors.foreground }]}>
+                    📈 You are <Text style={{ fontFamily: "Inter_600SemiBold" }}>{direction}</Text> weight at ~{rateStr} {unitLabel}/week
+                  </Text>
+                  <Text style={[styles.insightRow, { color: colors.foreground }]}>
+                    ⚖️ Total change since first entry: <Text style={{ fontFamily: "Inter_600SemiBold" }}>{totalChange >= 0 ? "+" : ""}{totalChange.toFixed(1)} {unitLabel}</Text>
+                  </Text>
+                  {bmiValue && bmiInfo && (
+                    <Text style={[styles.insightRow, { color: colors.foreground }]}>
+                      🩺 BMI <Text style={{ fontFamily: "Inter_600SemiBold", color: bmiInfo.color }}>{bmiValue.toFixed(1)} — {bmiInfo.label}</Text>
+                      {bmiValue < 18.5 ? " (aim for 18.5–24.9)" : bmiValue < 25 ? " — great range to maintain" : bmiValue < 30 ? " (aim for below 25)" : " (consult a healthcare professional)"}
+                    </Text>
+                  )}
+                  <Text style={[styles.insightRow, { color: colors.mutedForeground }]}>
+                    📅 Tracked over {Math.round(daysDiff)} days across {sortedMeasurements.length} entries
+                  </Text>
+                </View>
+              );
+            })() : !isReign ? (
+              <View style={[styles.insightsCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <View style={styles.insightsHeader}>
+                  <Ionicons name="lock-closed" size={16} color={colors.mutedForeground} />
+                  <Text style={[styles.insightsTitle, { color: colors.mutedForeground }]}>Body Composition Insights</Text>
+                </View>
+                <Text style={[styles.insightRow, { color: colors.mutedForeground }]}>
+                  Weight trends, BMI analysis, weekly rate of change and progress insights. Available on Reign & Legacy plans.
+                </Text>
+              </View>
+            ) : null}
+
             {sortedMeasurements.length > 0 && (
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                 History
@@ -526,6 +575,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "SpaceGrotesk_700Bold",
     marginTop: 4,
+  },
+  insightsCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+    gap: 8,
+  },
+  insightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  insightsTitle: {
+    fontSize: 14,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  insightRow: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
   },
   measureCard: {
     borderRadius: 14,

@@ -19,6 +19,8 @@ import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
 import { computeSuggestedGoals, primaryGoalLabel } from "@/lib/tdee";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTier } from "@/hooks/useTier";
 
 interface GoalField {
   key: "calories" | "protein" | "carbs" | "fat";
@@ -34,6 +36,9 @@ export default function MacroGoalsScreen() {
   const router = useRouter();
   const { goals, setGoals, loaded } = useMacroGoals();
   const { user } = useFitness();
+  const { user: authUser } = useAuth();
+  const { tier } = useTier(authUser?.id ?? null);
+  const isReign = tier === "reign" || tier === "legacy";
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());
@@ -147,35 +152,52 @@ export default function MacroGoalsScreen() {
           Set your personal daily nutrition targets. These are used for progress rings and macro tracking across the app.
         </Text>
 
-        {/* Suggested for you banner */}
+        {/* Suggested for you banner — Reign+ exclusive feature */}
         {suggested && (
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={applySuggestion}
-            style={[
-              styles.suggestionBanner,
-              { backgroundColor: colors.primary + "18", borderColor: colors.primary + "55" },
-            ]}
-          >
-            <View style={styles.suggestionIconWrap}>
-              <Ionicons name="sparkles" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.suggestionBody}>
-              <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
-                Suggested for you
-              </Text>
-              <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
-                Based on your profile &amp; {goalLabel} — tap to pre-fill
-              </Text>
-              <View style={styles.suggestionPills}>
-                <SuggestionPill label={`${suggested.calories} kcal`} color={colors.primary} />
-                <SuggestionPill label={`${suggested.protein}g protein`} color={colors.secondary} />
-                <SuggestionPill label={`${suggested.carbs}g carbs`} color={colors.warning} />
-                <SuggestionPill label={`${suggested.fat}g fat`} color={colors.accent} />
+          isReign ? (
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={applySuggestion}
+              style={[
+                styles.suggestionBanner,
+                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "55" },
+              ]}
+            >
+              <View style={styles.suggestionIconWrap}>
+                <Ionicons name="sparkles" size={18} color={colors.primary} />
               </View>
+              <View style={styles.suggestionBody}>
+                <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
+                  Suggested for you
+                </Text>
+                <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
+                  Based on your profile & {goalLabel} — tap to pre-fill
+                </Text>
+                <View style={styles.suggestionPills}>
+                  <SuggestionPill label={`${suggested.calories} kcal`} color={colors.primary} />
+                  <SuggestionPill label={`${suggested.protein}g protein`} color={colors.secondary} />
+                  <SuggestionPill label={`${suggested.carbs}g carbs`} color={colors.warning} />
+                  <SuggestionPill label={`${suggested.fat}g fat`} color={colors.accent} />
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginTop: 2 }} />
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.suggestionBanner, { backgroundColor: colors.muted, borderColor: colors.border, opacity: 0.9 }]}>
+              <View style={[styles.suggestionIconWrap, { backgroundColor: colors.border }]}>
+                <Ionicons name="lock-closed" size={18} color={colors.mutedForeground} />
+              </View>
+              <View style={styles.suggestionBody}>
+                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
+                  Custom Macro Recommendations
+                </Text>
+                <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
+                  Personalised TDEE-based macro targets calculated from your profile. Available on Reign & Legacy plans.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-          </TouchableOpacity>
+          )
         )}
 
         {/* Goal inputs */}
