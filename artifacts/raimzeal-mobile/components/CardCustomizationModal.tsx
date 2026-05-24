@@ -1081,6 +1081,7 @@ export default function CardCustomizationModal({
   const [savingPreset, setSavingPreset] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
+  const inlineSaveRef = useRef<View>(null);
 
   // Inline-save expand/collapse animation
   const INLINE_SAVE_EXPANDED_H = 118;
@@ -2282,7 +2283,24 @@ export default function CardCustomizationModal({
       setPresetNameInput(activePreset ? activePreset.name : "");
     }
     setShowInlineSave(true);
-    setTimeout(() => presetNameRef.current?.focus(), 100);
+    setTimeout(() => {
+      presetNameRef.current?.focus();
+      // After the keyboard finishes animating in, scroll the input into view
+      setTimeout(() => {
+        if (inlineSaveRef.current && modalScrollRef.current) {
+          inlineSaveRef.current.measureLayout(
+            modalScrollRef.current.getScrollableNode(),
+            (_x: number, y: number) => {
+              modalScrollRef.current?.scrollTo({ y, animated: true });
+            },
+            () => {
+              // Fallback: best-effort scroll toward the bottom of the presets area
+              modalScrollRef.current?.scrollTo({ y: 9999, animated: true });
+            }
+          );
+        }
+      }, 350);
+    }, 100);
   }
 
   async function handleSavePreset() {
@@ -2875,7 +2893,7 @@ export default function CardCustomizationModal({
             )}
 
             <Reanimated.View style={inlineSaveAnimStyle}>
-              <View style={[styles.inlineSaveWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View ref={inlineSaveRef} style={[styles.inlineSaveWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.inlineSaveLabel, { color: colors.foreground }]}>
                   {activePresetId ? "Update preset name" : "Name this preset"}
                 </Text>
