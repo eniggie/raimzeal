@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import type { AppState } from '@/lib/store';
 import { workouts } from '@/lib/store';
 
-import { STRIPE_DONATION_URL, DONATION_ACTIVE } from '@/lib/constants';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 interface HomeProps {
   state: AppState;
@@ -459,8 +459,21 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
             </p>
 
             {/* Identity challenge */}
-            <p className="text-xs font-semibold text-foreground/80 mb-4 italic">
+            <p className="text-xs font-semibold text-foreground/80 mb-2 italic">
               "You've already used it. Now you know what it's worth to you."
+            </p>
+
+            {/* Linktree — Books, Music, Courses by Dr. Oviawe */}
+            <p className="text-xs text-muted-foreground mb-4">
+              Books · Music · Courses · Coaching by Dr. Ephraim Oviawe:{' '}
+              <a
+                href={RAIMZY_LINKTREE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-secondary hover:underline"
+              >
+                linktr.ee/Raimzy
+              </a>
             </p>
 
             {/* CTA */}

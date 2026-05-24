@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   InteractionManager,
   Linking,
   Modal,
@@ -31,7 +32,19 @@ import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+
+// Default card background — bundled at build time so no camera-roll permission needed.
+// Image.resolveAssetSource converts the static require into a local-file URI that
+// react-native-view-shot can render during the off-screen capture.
+const DEFAULT_CARD_BG_ASSET = require("@/assets/images/card-bg-default.jpeg");
+function resolveDefaultCardBgUri(): string | null {
+  try {
+    return Image.resolveAssetSource(DEFAULT_CARD_BG_ASSET).uri;
+  } catch {
+    return null;
+  }
+}
 
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
@@ -122,12 +135,33 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction, savedDelay] = await Promise.all([
+        const [savedTheme, savedAction, savedDelay, savedBgPhoto] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
+          AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
         ]);
         if (!cancelled) {
+          // Seed the default bundled background photo the first time (no saved photo yet).
+          // The CardCustomizationModal reads the same key on open, so it will pre-populate
+          // with the default image automatically without requiring camera-roll permission.
+          if (!savedBgPhoto) {
+            const defaultUri = resolveDefaultCardBgUri();
+            if (defaultUri) {
+              const payload = JSON.stringify({ uri: defaultUri, dimLevel: 0.62, blurRadius: 18 });
+              AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+              setCardBgPhotoUri(defaultUri);
+            }
+          } else {
+            try {
+              const parsed = JSON.parse(savedBgPhoto) as { uri?: string };
+              if (parsed.uri) setCardBgPhotoUri(parsed.uri);
+            } catch {
+              if (savedBgPhoto.startsWith("http") || savedBgPhoto.startsWith("file")) {
+                setCardBgPhotoUri(savedBgPhoto);
+              }
+            }
+          }
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
           if (isValidTheme) setCardThemeId(savedTheme as CardThemeId);
           const validActions: CardAction[] = ["share", "save", "both", "copy"];

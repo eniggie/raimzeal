@@ -399,7 +399,7 @@ export default function OviaScreen() {
       setInterimText("Transcribing…");
 
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: "base64",
       });
 
       const response = await fetch(`${getApiBase()}/ovia/transcribe`, {
