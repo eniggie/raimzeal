@@ -5,6 +5,7 @@ import {
   AppState,
   Dimensions,
   Image,
+  Keyboard,
   Linking,
   Modal,
   View,
@@ -1641,7 +1642,7 @@ export default function CardCustomizationModal({
   }
 
   function toggleStat(key: keyof CardVisibleStats) {
-    if (showInlineSave) setShowInlineSave(false);
+    if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     Haptics.selectionAsync();
     setVisibleStats((prev) => {
       const next = { ...prev, [key]: !prev[key] };
@@ -1682,7 +1683,7 @@ export default function CardCustomizationModal({
   }
 
   function handleThemeChange(themeId: CardThemeId) {
-    if (showInlineSave) setShowInlineSave(false);
+    if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     setSelectedThemeId(themeId);
     setActivePresetId(null);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
@@ -2045,7 +2046,7 @@ export default function CardCustomizationModal({
   }
 
   async function handlePickBackgroundPhoto() {
-    if (showInlineSave) setShowInlineSave(false);
+    if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
@@ -2106,7 +2107,7 @@ export default function CardCustomizationModal({
   }
 
   function handleRemoveBackgroundPhoto() {
-    if (showInlineSave) setShowInlineSave(false);
+    if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
     setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
@@ -2306,6 +2307,7 @@ export default function CardCustomizationModal({
       if (presets.length >= MAX_PRESETS) {
         setSavingPreset(false);
         setShowInlineSave(false);
+        Keyboard.dismiss();
         Alert.alert(
           "Preset limit reached",
           `You can save up to ${MAX_PRESETS} presets. Delete one to make room.`
@@ -2751,11 +2753,11 @@ export default function CardCustomizationModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={!reorderMode}
-            onScrollBeginDrag={() => { if (showInlineSave) setShowInlineSave(false); }}
+            onScrollBeginDrag={() => { if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); } }}
           >
             <View
               onStartShouldSetResponder={() => showInlineSave}
-              onResponderRelease={() => setShowInlineSave(false)}
+              onResponderRelease={() => { setShowInlineSave(false); Keyboard.dismiss(); }}
             >
             {/* ── Presets section ── */}
             <View style={styles.presetsHeader}>
