@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAuth } from "../middleware/auth";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
 import { randomUUID } from "crypto";
+import { getUserTier } from "../lib/tier";
 
 // Supabase project URL — fall back to the known project ref if the env var
 // contains the anon key value instead of the URL (a common misconfiguration).
@@ -40,6 +41,13 @@ communityRouter.post(
   communityMutateLimitHeavy,
   async (req, res) => {
     const userId = (req as any).userId as string;
+
+    const userTier = await getUserTier(userId);
+    if (userTier === "foundation") {
+      res.status(403).json({ error: "UPGRADE_REQUIRED", message: "Image uploads in community posts require a Rise, Reign, or Legacy plan." });
+      return;
+    }
+
     const { ext } = req.body as { ext?: unknown };
 
     const safeExt = typeof ext === "string" && /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";

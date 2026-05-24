@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
-  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download,
+  LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
   Target, Trophy, Globe, Trash2, Camera,
   Wind, Calculator, ChefHat, ListChecks, Pill
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -30,9 +31,21 @@ interface SettingsProps {
 export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
   const [exportLoading, setExportLoading] = useState(false);
+  const [canExport, setCanExport] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', session.user.id).single();
+      const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
+      setCanExport(t === 'rise' || t === 'reign' || t === 'legacy');
+    })();
+  }, []);
 
   async function handleExportData() {
     if (exportLoading) return;
+    if (!canExport) return;
     setExportLoading(true);
     try {
       let logoDataUrl = '';
@@ -852,15 +865,21 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                   Download a full report of your workouts, meals, measurements, water intake, and personal records.
                 </p>
               </div>
-              <button
-                onClick={handleExportData}
-                disabled={exportLoading}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
-                aria-label="Export your fitness data"
-              >
-                <Download className="w-3.5 h-3.5" />
-                {exportLoading ? 'Generating…' : 'Export'}
-              </button>
+              {canExport ? (
+                <button
+                  onClick={handleExportData}
+                  disabled={exportLoading}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
+                  aria-label="Export your fitness data"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  {exportLoading ? 'Generating…' : 'Export'}
+                </button>
+              ) : (
+                <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground text-xs font-semibold">
+                  <Lock className="w-3.5 h-3.5" /> Rise+ Required
+                </div>
+              )}
             </div>
           </Card>
         </motion.div>

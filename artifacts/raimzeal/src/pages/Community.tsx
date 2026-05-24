@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw,
-  ExternalLink, BookOpen, ImagePlus, X, Trash2, ChevronDown, ChevronUp,
+  ExternalLink, BookOpen, ImagePlus, X, Trash2, ChevronDown, ChevronUp, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -565,12 +565,20 @@ export function Community() {
                   />
                   <Button
                     variant="ghost" size="icon" type="button"
-                    title="Attach image"
-                    onClick={() => fileInputRef.current?.click()}
+                    title={userTier === 'foundation' ? 'Image attachments require Rise+' : 'Attach image'}
+                    onClick={() => {
+                      if (userTier === 'foundation') {
+                        alert('Image attachments in community posts require a Rise, Reign, or Legacy plan. Upgrade to unlock this feature.');
+                        return;
+                      }
+                      fileInputRef.current?.click();
+                    }}
                   >
                     {imageUploading
                       ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <ImagePlus className="w-4 h-4" />
+                      : userTier === 'foundation'
+                        ? <Lock className="w-4 h-4 text-muted-foreground" />
+                        : <ImagePlus className="w-4 h-4" />
                     }
                   </Button>
                   <Button onClick={handlePost} disabled={!newPost.trim() || posting} data-testid="button-post">

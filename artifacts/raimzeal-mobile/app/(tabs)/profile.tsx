@@ -560,6 +560,10 @@ export default function ProfileScreen() {
 
   function handleExportPdf() {
     if (pdfLoading) return;
+    if (tier === "foundation") {
+      Alert.alert("Rise+ Feature", "Data export is available on Rise, Reign, and Legacy plans. Upgrade to download your full health report.", [{ text: "OK" }]);
+      return;
+    }
     Alert.alert(
       "Choose Date Range",
       "Which period should the report cover?",

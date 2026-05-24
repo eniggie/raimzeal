@@ -972,6 +972,10 @@ export default function CommunityScreen() {
               <TouchableOpacity
                 style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
                 onPress={() => {
+                  if (tier === "foundation") {
+                    Alert.alert("Rise+ Feature", "Attaching images to community posts is available on Rise, Reign, and Legacy plans. Upgrade to unlock this feature.", [{ text: "OK" }]);
+                    return;
+                  }
                   Alert.alert(
                     "Add a photo",
                     undefined,
