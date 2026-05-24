@@ -96,12 +96,38 @@ export function Community() {
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
-  const handleLike = (postId: string) => {
+  const handleLike = async (postId: string) => {
+    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+
+    // Optimistic update
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p;
       const wasLiked = p._localLiked ?? false;
       return { ...p, _localLiked: !wasLiked, _localLikes: (p._localLikes ?? p.likes_count) + (wasLiked ? -1 : 1) };
     }));
+
+    try {
+      const res = await fetch(`/api/community/posts/${postId}/likes`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json() as { liked: boolean; count: number };
+      // Reconcile with authoritative server count
+      setPosts(prev => prev.map(p =>
+        p.id !== postId ? p : { ...p, _localLiked: data.liked, _localLikes: data.count }
+      ));
+    } catch {
+      // Revert on failure
+      setPosts(prev => prev.map(p => {
+        if (p.id !== postId) return p;
+        const wasLiked = p._localLiked ?? false;
+        return { ...p, _localLiked: !wasLiked, _localLikes: (p._localLikes ?? p.likes_count) + (wasLiked ? -1 : 1) };
+      }));
+    }
   };
 
   const handleDeletePost = async (postId: string) => {

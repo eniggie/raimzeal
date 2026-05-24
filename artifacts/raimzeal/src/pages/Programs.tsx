@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { ChevronLeft, ChevronRight, Clock, Target, Dumbbell, CheckCircle2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Target, Dumbbell, CheckCircle2, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { programs } from '@/lib/store';
 import { BottomNav } from '@/components/BottomNav';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 const difficultyColors: Record<string, string> = {
   beginner: 'bg-success/20 text-success',
@@ -23,22 +25,81 @@ const goalColors: Record<string, string> = {
 
 type ProgramId = (typeof programs)[number]['id'];
 
+async function getToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
 export function Programs() {
+  const { toast } = useToast();
   const [enrolledIds, setEnrolledIds] = useState<Set<ProgramId>>(new Set());
   const [confirmedId, setConfirmedId] = useState<ProgramId | null>(null);
+  const [enrolling, setEnrolling] = useState<ProgramId | null>(null);
 
-  function handleStart(id: ProgramId, name: string) {
-    setEnrolledIds((prev) => new Set([...prev, id]));
-    setConfirmedId(id);
-    setTimeout(() => setConfirmedId(null), 3000);
+  useEffect(() => {
+    async function loadEnrollment() {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const res = await fetch('/api/user/enrolled-program', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json() as { enrollment: { program_id: string } | null };
+        if (data.enrollment?.program_id) {
+          setEnrolledIds(new Set([data.enrollment.program_id as ProgramId]));
+        }
+      } catch { }
+    }
+    loadEnrollment();
+  }, []);
+
+  async function handleStart(id: ProgramId, name: string) {
+    const token = await getToken();
+    if (!token) { toast({ title: 'Please sign in to start a program', variant: 'destructive' }); return; }
+    setEnrolling(id);
+    try {
+      const program = programs.find(p => p.id === id)!;
+      const res = await fetch('/api/user/enrolled-program', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          program_id: id,
+          program_name: name,
+          program_data: program,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      setEnrolledIds(new Set([id]));
+      setConfirmedId(id);
+      setTimeout(() => setConfirmedId(null), 3000);
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : 'Could not start program', variant: 'destructive' });
+    } finally {
+      setEnrolling(null);
+    }
   }
 
-  function handleUnenroll(id: ProgramId) {
+  async function handleUnenroll(id: ProgramId) {
+    const token = await getToken();
+    if (!token) return;
     setEnrolledIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
+    try {
+      await fetch('/api/user/enrolled-program', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      setEnrolledIds((prev) => new Set([...prev, id]));
+      toast({ title: 'Could not drop program — please try again', variant: 'destructive' });
+    }
   }
 
   return (
@@ -175,10 +236,13 @@ export function Programs() {
                           <Button
                             size="sm"
                             className="glow-sm"
+                            disabled={enrolling === program.id}
                             onClick={() => handleStart(program.id, program.name)}
                           >
-                            Start
-                            <ChevronRight className="w-4 h-4 ml-1" />
+                            {enrolling === program.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <><span>Start</span><ChevronRight className="w-4 h-4 ml-1" /></>
+                            }
                           </Button>
                         )}
                       </div>

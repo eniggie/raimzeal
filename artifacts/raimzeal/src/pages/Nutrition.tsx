@@ -304,7 +304,17 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
             </DialogContent>
           </Dialog>
 
-          <Button variant="outline" className="px-4" data-testid="button-scan">
+          <Button
+            variant="outline"
+            className="px-4"
+            data-testid="button-scan"
+            onClick={() => {
+              setAnalyzedMeal(null);
+              setAnalyzeError('');
+              setIsDialogOpen(true);
+              setTimeout(() => photoInputRef.current?.click(), 120);
+            }}
+          >
             <Scan className="w-4 h-4 mr-2" />
             Scan
           </Button>
