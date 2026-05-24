@@ -1287,6 +1287,25 @@ export default function NutritionScreen() {
     dismissHint(FILTER_HINT_STORAGE_KEY);
   }
 
+  function extendFilterHint() {
+    if (filterHintVisible && !filterHintDismissedRef.current) {
+      if (filterHintTimerRef.current) {
+        clearTimeout(filterHintTimerRef.current);
+      }
+      filterHintTimerRef.current = setTimeout(() => {
+        filterHintTimerRef.current = null;
+        Animated.timing(filterHintFadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setFilterHintVisible(false);
+          dismissHint(FILTER_HINT_STORAGE_KEY);
+        });
+      }, 4000);
+    }
+  }
+
   function dismissReorderHint() {
     if (reorderHintTimerRef.current) {
       clearTimeout(reorderHintTimerRef.current);
@@ -2026,11 +2045,19 @@ export default function NutritionScreen() {
 
   function openThresholdEdit(key: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    dismissFilterHint();
+    if (filterHintTimerRef.current) {
+      clearTimeout(filterHintTimerRef.current);
+      filterHintTimerRef.current = null;
+    }
     const def = FILTER_DEFS.find((d) => d.key === key);
     const current = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
     setThresholdEditKey(key);
     setThresholdEditValue(String(current));
+  }
+
+  function closeThresholdEdit() {
+    extendFilterHint();
+    setThresholdEditKey(null);
   }
 
   function saveThreshold() {
@@ -2041,7 +2068,7 @@ export default function NutritionScreen() {
     setFilterThresholds(next);
     AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setThresholdEditKey(null);
+    closeThresholdEdit();
   }
 
   function adjustThreshold(delta: number) {
@@ -2366,7 +2393,7 @@ export default function NutritionScreen() {
             setFilterThresholds(next);
             AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setThresholdEditKey(null);
+            closeThresholdEdit();
           },
         },
       ]
@@ -4337,7 +4364,7 @@ export default function NutritionScreen() {
         visible={thresholdEditKey !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setThresholdEditKey(null)}
+        onRequestClose={closeThresholdEdit}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -4423,7 +4450,7 @@ export default function NutritionScreen() {
 
                   <View style={styles.modalBtns}>
                     <TouchableOpacity
-                      onPress={() => setThresholdEditKey(null)}
+                      onPress={closeThresholdEdit}
                       style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                     >
                       <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
