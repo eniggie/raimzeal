@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
 import { getUncachableStripeClient } from "../stripeClient";
@@ -7,9 +7,6 @@ import { getPriceId } from "../lib/tier";
 const stripeRouter = Router();
 
 // GET /api/stripe/donation-health — public, no auth
-// Server-side HEAD check of the Stripe donation URL so clients can confirm
-// it is reachable before navigating the user's browser there.
-// Returns { ok: true } when the page responds with a 2xx or redirect, { ok: false } otherwise.
 const STRIPE_DONATION_URL = "https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00";
 stripeRouter.get("/stripe/donation-health", async (_req, res) => {
   try {
@@ -25,14 +22,16 @@ stripeRouter.get("/stripe/donation-health", async (_req, res) => {
   }
 });
 
-// POST /api/stripe/checkout-session — auth required
-// Creates a Stripe Checkout Session for a subscription plan.
-// Body: { tier: "rise" | "reign" | "legacy", interval: "monthly" | "yearly" }
-// Returns: { url: string } — the Stripe-hosted checkout URL to redirect the user to.
-stripeRouter.post("/stripe/checkout-session", requireAuth, async (req, res) => {
+// Shared handler used by both route aliases below.
+// Accepts { tier, interval } — both are required.
+async function handleCheckoutSession(req: Request, res: Response) {
   const userId = (req as any).userId as string;
   const userEmail = (req as any).userEmail as string | undefined;
-  const { tier, interval } = req.body as { tier?: string; interval?: string };
+  const body = req.body as Record<string, unknown>;
+
+  // Support legacy field names used by older cached bundles
+  const tier     = (body["tier"]     ?? body["plan"]     ?? body["planKey"]) as string | undefined;
+  const interval = (body["interval"] ?? body["billing"]  ?? body["billingCycle"]) as string | undefined;
 
   if (!tier || !interval) {
     res.status(400).json({ error: "tier and interval are required." });
@@ -52,14 +51,10 @@ stripeRouter.post("/stripe/checkout-session", requireAuth, async (req, res) => {
     interval as "monthly" | "yearly"
   );
   if (!priceId) {
-    res
-      .status(404)
-      .json({ error: "This plan is not yet available for purchase. Please check back soon." });
+    res.status(404).json({ error: "This plan is not yet available for purchase. Please check back soon." });
     return;
   }
 
-  // Derive the app's public origin from the request so success/cancel URLs
-  // work correctly in both development (Replit preview) and production (raimzeal.com).
   const origin =
     req.headers.origin ??
     `${req.protocol}://${req.get("host")}`;
@@ -89,6 +84,12 @@ stripeRouter.post("/stripe/checkout-session", requireAuth, async (req, res) => {
     logger.error({ err, userId, tier, interval }, "Stripe checkout session creation failed");
     res.status(500).json({ error: "Could not create checkout session. Please try again." });
   }
-});
+}
+
+// POST /api/stripe/checkout-session — canonical path (current bundles)
+stripeRouter.post("/stripe/checkout-session", requireAuth, handleCheckoutSession);
+
+// POST /api/billing/create-checkout-session — legacy alias (older cached bundles)
+stripeRouter.post("/billing/create-checkout-session", requireAuth, handleCheckoutSession);
 
 export default stripeRouter;
