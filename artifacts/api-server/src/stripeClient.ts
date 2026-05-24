@@ -1,6 +1,29 @@
 import Stripe from "stripe";
 import { StripeSync } from "stripe-replit-sync";
 
+async function fetchConnection(hostname: string, token: string, env: string) {
+  const url = new URL(`https://${hostname}/api/v2/connection`);
+  url.searchParams.set("include_secrets", "true");
+  url.searchParams.set("connector_names", "stripe");
+  url.searchParams.set("environment", env);
+
+  const resp = await fetch(url.toString(), {
+    headers: { Accept: "application/json", "X-Replit-Token": token },
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!resp.ok) return null;
+
+  const data = await resp.json() as {
+    items?: Array<{ settings?: { publishable?: string; secret?: string } }>
+  };
+
+  const settings = data.items?.[0]?.settings;
+  if (!settings?.secret || !settings?.publishable) return null;
+
+  return { publishableKey: settings.publishable, secretKey: settings.secret };
+}
+
 async function getCredentials(): Promise<{ publishableKey: string; secretKey: string }> {
   const hostname = process.env["REPLIT_CONNECTORS_HOSTNAME"];
   const xReplitToken = process.env["REPL_IDENTITY"]
@@ -17,36 +40,22 @@ async function getCredentials(): Promise<{ publishableKey: string; secretKey: st
   }
 
   const isProduction = process.env["REPLIT_DEPLOYMENT"] === "1";
-  const targetEnvironment = isProduction ? "production" : "development";
 
-  const url = new URL(`https://${hostname}/api/v2/connection`);
-  url.searchParams.set("include_secrets", "true");
-  url.searchParams.set("connector_names", "stripe");
-  url.searchParams.set("environment", targetEnvironment);
-
-  const resp = await fetch(url.toString(), {
-    headers: { Accept: "application/json", "X-Replit-Token": xReplitToken },
-    signal: AbortSignal.timeout(10_000),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch Stripe credentials: ${resp.status} ${resp.statusText}`);
-  }
-
-  const data = await resp.json() as {
-    items?: Array<{ settings?: { publishable?: string; secret?: string } }>
-  };
-
-  const settings = data.items?.[0]?.settings;
-
-  if (!settings?.secret || !settings?.publishable) {
+  if (isProduction) {
+    const prod = await fetchConnection(hostname, xReplitToken, "production");
+    if (prod) return prod;
+    const dev = await fetchConnection(hostname, xReplitToken, "development");
+    if (dev) return dev;
     throw new Error(
-      `Stripe ${targetEnvironment} connection not found. ` +
-      "Connect Stripe via the Integrations tab first."
+      "Stripe connection not found. Connect Stripe via the Integrations tab first."
     );
   }
 
-  return { publishableKey: settings.publishable, secretKey: settings.secret };
+  const dev = await fetchConnection(hostname, xReplitToken, "development");
+  if (dev) return dev;
+  throw new Error(
+    "Stripe development connection not found. Connect Stripe via the Integrations tab first."
+  );
 }
 
 /**
