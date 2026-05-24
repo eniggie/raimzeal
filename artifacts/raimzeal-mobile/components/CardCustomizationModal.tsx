@@ -1294,6 +1294,8 @@ export default function CardCustomizationModal({
   const confirmOpacity = useRef(new Animated.Value(0)).current;
   const confirmTranslateY = useRef(new Animated.Value(8)).current;
   const confirmSwipeY = useRef(new Animated.Value(0)).current;
+  const confirmProgressAnim = useRef(new Animated.Value(1)).current;
+  const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
 
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
@@ -1305,9 +1307,12 @@ export default function CardCustomizationModal({
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
+    confirmProgressAnim.stopAnimation();
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(8);
     confirmSwipeY.setValue(0);
+    confirmProgressAnim.setValue(1);
+    setConfirmHasCountdown(false);
     setConfirmMessage(null);
     setConfirmRetryFn(null);
     setConfirmActionFn(null);
@@ -1318,6 +1323,7 @@ export default function CardCustomizationModal({
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
+    confirmProgressAnim.stopAnimation();
     Animated.parallel([
       Animated.timing(confirmOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(confirmSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
@@ -1325,6 +1331,8 @@ export default function CardCustomizationModal({
       confirmOpacity.setValue(0);
       confirmTranslateY.setValue(8);
       confirmSwipeY.setValue(0);
+      confirmProgressAnim.setValue(1);
+      setConfirmHasCountdown(false);
       setConfirmMessage(null);
       setConfirmRetryFn(null);
       setConfirmActionFn(null);
@@ -1389,8 +1397,12 @@ export default function CardCustomizationModal({
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(8);
     confirmSwipeY.setValue(0);
+    confirmProgressAnim.stopAnimation();
+    confirmProgressAnim.setValue(1);
     const holdDuration = holdDurationOverrideMs ?? (retryFn ? 4500 : variant === "error" ? 2200 : 1600);
     const noAutoDismiss = !holdDurationOverrideMs && !!actionFn;
+    const showProgress = !!holdDurationOverrideMs && !reduceMotionRef.current;
+    setConfirmHasCountdown(!!holdDurationOverrideMs);
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       confirmTranslateY.setValue(0);
@@ -1398,6 +1410,8 @@ export default function CardCustomizationModal({
         setTimeout(() => {
           confirmOpacity.setValue(0);
           confirmTranslateY.setValue(8);
+          confirmProgressAnim.setValue(1);
+          setConfirmHasCountdown(false);
           setConfirmMessage(null);
         }, holdDuration);
       }
@@ -1407,6 +1421,13 @@ export default function CardCustomizationModal({
         Animated.timing(confirmTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start();
     } else {
+      if (showProgress) {
+        Animated.timing(confirmProgressAnim, {
+          toValue: 0,
+          duration: holdDuration,
+          useNativeDriver: false,
+        }).start();
+      }
       Animated.sequence([
         Animated.parallel([
           Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -1418,7 +1439,11 @@ export default function CardCustomizationModal({
           Animated.timing(confirmTranslateY, { toValue: 8, duration: 400, useNativeDriver: true }),
         ]),
       ]).start(({ finished }) => {
-        if (finished) setConfirmMessage(null);
+        if (finished) {
+          confirmProgressAnim.setValue(1);
+          setConfirmHasCountdown(false);
+          setConfirmMessage(null);
+        }
       });
     }
   }
@@ -3557,46 +3582,84 @@ export default function CardCustomizationModal({
                   confirmVariant === "error"
                     ? { backgroundColor: "#ff443618", borderColor: "#ff443640" }
                     : { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+                  confirmHasCountdown && {
+                    flexDirection: "column",
+                    gap: 0,
+                    paddingHorizontal: 0,
+                    paddingVertical: 0,
+                    overflow: "hidden",
+                  },
                 ]}
               >
-                <Ionicons
-                  name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
-                  size={14}
-                  color={confirmVariant === "error" ? "#ff4436" : colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.confirmToastText,
-                    { color: confirmVariant === "error" ? "#ff4436" : colors.primary },
-                  ]}
+                <View
+                  style={
+                    confirmHasCountdown
+                      ? { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 7, gap: 6 }
+                      : { flexDirection: "row", alignItems: "center", gap: 6 }
+                  }
                 >
-                  {confirmMessage}
-                </Text>
-                {confirmVariant === "error" && confirmActionFn && confirmActionLabel && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const fn = confirmActionFn;
-                      dismissConfirmToast();
-                      fn();
-                    }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.confirmRetryBtn}
+                  <Ionicons
+                    name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
+                    size={14}
+                    color={confirmVariant === "error" ? "#ff4436" : colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.confirmToastText,
+                      { color: confirmVariant === "error" ? "#ff4436" : colors.primary },
+                    ]}
                   >
-                    <Text style={styles.confirmRetryText}>{confirmActionLabel}</Text>
-                  </TouchableOpacity>
-                )}
-                {confirmVariant === "error" && confirmRetryFn && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const fn = confirmRetryFn;
-                      dismissConfirmToast();
-                      fn();
+                    {confirmMessage}
+                  </Text>
+                  {confirmActionFn && confirmActionLabel && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const fn = confirmActionFn;
+                        dismissConfirmToast();
+                        fn();
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={[
+                        styles.confirmRetryBtn,
+                        confirmVariant !== "error" && { borderLeftColor: colors.primary + "40" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.confirmRetryText,
+                          confirmVariant !== "error" && { color: colors.primary },
+                        ]}
+                      >
+                        {confirmActionLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {confirmVariant === "error" && confirmRetryFn && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const fn = confirmRetryFn;
+                        dismissConfirmToast();
+                        fn();
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={styles.confirmRetryBtn}
+                    >
+                      <Text style={styles.confirmRetryText}>Retry</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {confirmHasCountdown && (
+                  <Animated.View
+                    style={{
+                      height: 3,
+                      width: confirmProgressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 400],
+                      }),
+                      backgroundColor: colors.primary,
+                      opacity: 0.7,
                     }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.confirmRetryBtn}
-                  >
-                    <Text style={styles.confirmRetryText}>Retry</Text>
-                  </TouchableOpacity>
+                  />
                 )}
               </View>
             </Animated.View>
