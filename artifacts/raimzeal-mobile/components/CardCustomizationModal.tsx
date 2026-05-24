@@ -3169,6 +3169,7 @@ export default function CardCustomizationModal({
                 activePresetId={activePresetId}
                 onLoadPreset={loadPreset}
                 onDeletePreset={(id) => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   handleDeletePreset(id);
                   showConfirmation("Preset deleted");
                   if (presets.length <= 1) setReorderMode(false);
