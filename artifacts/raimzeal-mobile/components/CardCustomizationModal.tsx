@@ -3518,6 +3518,15 @@ export default function CardCustomizationModal({
                   inputRange: [0, 1],
                   outputRange: [colors.mutedForeground, colors.primaryForeground],
                 });
+                const iconWrapBg = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.muted, colors.primary + "20"],
+                });
+                const iconOnOpacity = pillColorAnims[item.key];
+                const iconOffOpacity = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0],
+                });
                 return (
                   <TouchableOpacity
                     key={item.key}
@@ -3531,18 +3540,27 @@ export default function CardCustomizationModal({
                       },
                     ]}
                   >
-                    <View
+                    <Animated.View
                       style={[
                         styles.toggleIconWrap,
-                        { backgroundColor: isOn ? colors.primary + "20" : colors.muted },
+                        { backgroundColor: iconWrapBg },
                       ]}
                     >
-                      <Ionicons
-                        name={item.icon}
-                        size={17}
-                        color={isOn ? colors.primary : colors.mutedForeground}
-                      />
-                    </View>
+                      <Animated.View style={{ opacity: iconOffOpacity, position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons
+                          name={item.icon}
+                          size={17}
+                          color={colors.mutedForeground}
+                        />
+                      </Animated.View>
+                      <Animated.View style={{ opacity: iconOnOpacity }}>
+                        <Ionicons
+                          name={item.icon}
+                          size={17}
+                          color={colors.primary}
+                        />
+                      </Animated.View>
+                    </Animated.View>
                     <View style={styles.toggleTextWrap}>
                       <Text style={[styles.toggleLabel, { color: colors.foreground }]}>
                         {item.label}
