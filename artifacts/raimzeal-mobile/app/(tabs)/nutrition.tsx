@@ -2354,7 +2354,7 @@ export default function NutritionScreen() {
     const def = FILTER_DEFS.find((d) => d.key === thresholdEditKey);
     if (!def) return;
     Alert.alert(
-      "Reset to Default",
+      `Reset ${def.label} to Default?`,
       `This will restore the ${def.label} threshold to its default value.`,
       [
         { text: "Cancel", style: "cancel" },
