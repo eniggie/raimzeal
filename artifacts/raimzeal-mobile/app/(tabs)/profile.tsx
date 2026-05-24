@@ -516,7 +516,12 @@ export default function ProfileScreen() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
-            // Sign out from Supabase FIRST — if it fails, local state stays intact
+            // Reset hints BEFORE signing out so the active session is still
+            // available to clear remote dismissedHints in Supabase preferences.
+            // resetHints() is fire-and-forget for the remote path — local state
+            // is cleared synchronously regardless of network outcome.
+            resetHints();
+            // Sign out from Supabase. If it fails, local state stays intact
             // so the user is not left in a ghost session.
             try {
               await signOut();
