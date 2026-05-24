@@ -2433,6 +2433,16 @@ export default function NutritionScreen() {
             const defaults = getDefaultThresholds();
             setFilterThresholds(defaults);
             AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
+            if (isSupabaseConfigured) {
+              supabase.auth.getSession().then(({ data: { session } }) => {
+                if (!session?.user) return;
+                upsertUserPreferences(session.user.id, {
+                  activeFilters: Array.from(activeFilters),
+                  customPresets,
+                  filterThresholds: defaults,
+                }).catch(() => {});
+              });
+            }
           },
         },
       ]
