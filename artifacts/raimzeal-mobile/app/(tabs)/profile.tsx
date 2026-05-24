@@ -260,6 +260,11 @@ export default function ProfileScreen() {
   function handlePhotoAccessPress() {
     if (cameraRollStatus === "granted") {
       Alert.alert("Photo Library Access", "Access is active. RAIMZEAL can save progress cards to your photo library.");
+    } else if (cameraRollStatus === "restricted") {
+      Alert.alert(
+        "Access Restricted",
+        "Photo library access has been restricted by a device or organisational policy. Contact your administrator to change this setting."
+      );
     } else if (cameraRollStatus === "denied") {
       Linking.openSettings();
     } else {
@@ -841,6 +846,8 @@ export default function ProfileScreen() {
               sublabel={
                 cameraRollStatus === "granted"
                   ? "Tap to confirm — needed to save progress cards"
+                  : cameraRollStatus === "restricted"
+                  ? "Restricted by device policy — contact your admin"
                   : cameraRollStatus === "denied"
                   ? "Permanently blocked — tap to open Settings"
                   : "Tap to enable saving cards to your photo library"
@@ -853,6 +860,8 @@ export default function ProfileScreen() {
               value={
                 cameraRollStatus === "granted"
                   ? "Active"
+                  : cameraRollStatus === "restricted"
+                  ? "Restricted"
                   : cameraRollStatus === "denied"
                   ? "Open Settings"
                   : "Not granted"
@@ -869,6 +878,14 @@ export default function ProfileScreen() {
                 <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
                 <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
                   Access was permanently denied — the reset option is unavailable. Open Settings above to re-enable it.
+                </Text>
+              </View>
+            )}
+            {cameraRollStatus === "restricted" && (
+              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
+                  This restriction is enforced by your organisation or device management policy and cannot be changed from Settings.
                 </Text>
               </View>
             )}

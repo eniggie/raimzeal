@@ -5,7 +5,7 @@ import * as MediaLibrary from "expo-media-library";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 
-export type CameraRollPermissionStatus = "granted" | "denied" | "undetermined";
+export type CameraRollPermissionStatus = "granted" | "denied" | "undetermined" | "restricted";
 
 const RATIONALE_DISMISSED_KEY = "camera_roll_rationale_dismissed";
 
