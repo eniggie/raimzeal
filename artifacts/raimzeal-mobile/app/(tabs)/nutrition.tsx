@@ -1127,6 +1127,8 @@ export default function NutritionScreen() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
+  const undoTimerStartRef = useRef<number>(0);
+  const undoTotalDurationMsRef = useRef<number>(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
 
@@ -1150,6 +1152,8 @@ export default function NutritionScreen() {
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetUndoCountdown, setPresetUndoCountdown] = useState(0);
+  const presetUndoTimerStartRef = useRef<number>(0);
+  const presetUndoTotalDurationMsRef = useRef<number>(0);
   const presetUndoAnim = useRef(new Animated.Value(0)).current;
   const presetUndoProgressAnim = useRef(new Animated.Value(1)).current;
 
@@ -1157,6 +1161,8 @@ export default function NutritionScreen() {
   const presetRenameUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetRenameUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetRenameUndoCountdown, setPresetRenameUndoCountdown] = useState(0);
+  const presetRenameUndoTimerStartRef = useRef<number>(0);
+  const presetRenameUndoTotalDurationMsRef = useRef<number>(0);
   const presetRenameUndoAnim = useRef(new Animated.Value(0)).current;
   const presetRenameUndoProgressAnim = useRef(new Animated.Value(1)).current;
 
@@ -1536,18 +1542,46 @@ export default function NutritionScreen() {
     if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
     if (presetUndoCountdownIntervalRef.current) clearInterval(presetUndoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
+    const durationMs = durationSec * 1000;
     setDeletedPreset(preset);
     setPresetUndoCountdown(durationSec);
     presetUndoAnim.setValue(0);
     presetUndoProgressAnim.setValue(1);
+    presetUndoTimerStartRef.current = Date.now();
+    presetUndoTotalDurationMsRef.current = durationMs;
     Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    Animated.timing(presetUndoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
+    Animated.timing(presetUndoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     presetUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
     presetUndoTimerRef.current = setTimeout(() => {
       dismissPresetUndoToast();
-    }, durationSec * 1000);
+    }, durationMs);
+  }
+
+  function handlePresetUndoPressIn() {
+    if (!presetUndoTimerRef.current && !presetUndoCountdownIntervalRef.current) return;
+    const elapsed = Date.now() - presetUndoTimerStartRef.current;
+    const remaining = Math.max(0, presetUndoTotalDurationMsRef.current - elapsed);
+    presetUndoTotalDurationMsRef.current = remaining;
+    if (presetUndoTimerRef.current) { clearTimeout(presetUndoTimerRef.current); presetUndoTimerRef.current = null; }
+    if (presetUndoCountdownIntervalRef.current) { clearInterval(presetUndoCountdownIntervalRef.current); presetUndoCountdownIntervalRef.current = null; }
+    presetUndoProgressAnim.stopAnimation();
+  }
+
+  function handlePresetUndoPressOut() {
+    const remaining = presetUndoTotalDurationMsRef.current;
+    if (remaining <= 0 || deletedPreset === null) return;
+    presetUndoTimerStartRef.current = Date.now();
+    presetUndoProgressAnim.stopAnimation(() => {
+      Animated.timing(presetUndoProgressAnim, { toValue: 0, duration: remaining, useNativeDriver: false }).start();
+    });
+    presetUndoCountdownIntervalRef.current = setInterval(() => {
+      setPresetUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    presetUndoTimerRef.current = setTimeout(() => {
+      dismissPresetUndoToast();
+    }, remaining);
   }
 
   function dismissPresetUndoToast() {
@@ -1594,18 +1628,46 @@ export default function NutritionScreen() {
     if (presetRenameUndoTimerRef.current) clearTimeout(presetRenameUndoTimerRef.current);
     if (presetRenameUndoCountdownIntervalRef.current) clearInterval(presetRenameUndoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
+    const durationMs = durationSec * 1000;
     setRenamedPreset({ old: oldPreset, newName });
     setPresetRenameUndoCountdown(durationSec);
     presetRenameUndoAnim.setValue(0);
     presetRenameUndoProgressAnim.setValue(1);
+    presetRenameUndoTimerStartRef.current = Date.now();
+    presetRenameUndoTotalDurationMsRef.current = durationMs;
     Animated.spring(presetRenameUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    Animated.timing(presetRenameUndoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
+    Animated.timing(presetRenameUndoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     presetRenameUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetRenameUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
     presetRenameUndoTimerRef.current = setTimeout(() => {
       dismissPresetRenameUndoToast();
-    }, durationSec * 1000);
+    }, durationMs);
+  }
+
+  function handlePresetRenameUndoPressIn() {
+    if (!presetRenameUndoTimerRef.current && !presetRenameUndoCountdownIntervalRef.current) return;
+    const elapsed = Date.now() - presetRenameUndoTimerStartRef.current;
+    const remaining = Math.max(0, presetRenameUndoTotalDurationMsRef.current - elapsed);
+    presetRenameUndoTotalDurationMsRef.current = remaining;
+    if (presetRenameUndoTimerRef.current) { clearTimeout(presetRenameUndoTimerRef.current); presetRenameUndoTimerRef.current = null; }
+    if (presetRenameUndoCountdownIntervalRef.current) { clearInterval(presetRenameUndoCountdownIntervalRef.current); presetRenameUndoCountdownIntervalRef.current = null; }
+    presetRenameUndoProgressAnim.stopAnimation();
+  }
+
+  function handlePresetRenameUndoPressOut() {
+    const remaining = presetRenameUndoTotalDurationMsRef.current;
+    if (remaining <= 0 || renamedPreset === null) return;
+    presetRenameUndoTimerStartRef.current = Date.now();
+    presetRenameUndoProgressAnim.stopAnimation(() => {
+      Animated.timing(presetRenameUndoProgressAnim, { toValue: 0, duration: remaining, useNativeDriver: false }).start();
+    });
+    presetRenameUndoCountdownIntervalRef.current = setInterval(() => {
+      setPresetRenameUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    presetRenameUndoTimerRef.current = setTimeout(() => {
+      dismissPresetRenameUndoToast();
+    }, remaining);
   }
 
   function handleUndoPresetRename() {
@@ -1624,17 +1686,45 @@ export default function NutritionScreen() {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     if (undoCountdownIntervalRef.current) clearInterval(undoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
+    const durationMs = durationSec * 1000;
     setUndoMeal(meal);
     setUndoCountdown(durationSec);
     undoProgressAnim.setValue(1);
+    undoTimerStartRef.current = Date.now();
+    undoTotalDurationMsRef.current = durationMs;
     Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    Animated.timing(undoProgressAnim, { toValue: 0, duration: durationSec * 1000, useNativeDriver: false }).start();
+    Animated.timing(undoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     undoCountdownIntervalRef.current = setInterval(() => {
       setUndoCountdown((prev) => Math.max(0, prev - 1));
     }, 1000);
     undoTimerRef.current = setTimeout(() => {
       dismissUndoToast();
-    }, durationSec * 1000);
+    }, durationMs);
+  }
+
+  function handleUndoPressIn() {
+    if (!undoTimerRef.current && !undoCountdownIntervalRef.current) return;
+    const elapsed = Date.now() - undoTimerStartRef.current;
+    const remaining = Math.max(0, undoTotalDurationMsRef.current - elapsed);
+    undoTotalDurationMsRef.current = remaining;
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+    if (undoCountdownIntervalRef.current) { clearInterval(undoCountdownIntervalRef.current); undoCountdownIntervalRef.current = null; }
+    undoProgressAnim.stopAnimation();
+  }
+
+  function handleUndoPressOut() {
+    const remaining = undoTotalDurationMsRef.current;
+    if (remaining <= 0 || undoMeal === null) return;
+    undoTimerStartRef.current = Date.now();
+    undoProgressAnim.stopAnimation((currentValue) => {
+      Animated.timing(undoProgressAnim, { toValue: 0, duration: remaining, useNativeDriver: false }).start();
+    });
+    undoCountdownIntervalRef.current = setInterval(() => {
+      setUndoCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    undoTimerRef.current = setTimeout(() => {
+      dismissUndoToast();
+    }, remaining);
   }
 
   function dismissUndoToast() {
@@ -5314,6 +5404,8 @@ export default function NutritionScreen() {
           <AnimatedCountdown value={undoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoDelete}
+            onPressIn={handleUndoPressIn}
+            onPressOut={handleUndoPressOut}
             activeOpacity={0.75}
             style={[styles.undoBtn, { backgroundColor: colors.primary }]}
           >
@@ -5413,6 +5505,8 @@ export default function NutritionScreen() {
           <AnimatedCountdown value={presetUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoPresetDelete}
+            onPressIn={handlePresetUndoPressIn}
+            onPressOut={handlePresetUndoPressOut}
             activeOpacity={0.75}
             style={[styles.undoBtn, { backgroundColor: colors.primary }]}
           >
@@ -5456,6 +5550,8 @@ export default function NutritionScreen() {
           <AnimatedCountdown value={presetRenameUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
           <TouchableOpacity
             onPress={handleUndoPresetRename}
+            onPressIn={handlePresetRenameUndoPressIn}
+            onPressOut={handlePresetRenameUndoPressOut}
             activeOpacity={0.75}
             style={[styles.undoBtn, { backgroundColor: colors.primary }]}
           >
