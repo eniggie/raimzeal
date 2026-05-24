@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   ChevronLeft, Plus, Search, Scan, Utensils, 
-  Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle
+  Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,10 @@ import { BottomNav } from '@/components/BottomNav';
 interface NutritionProps {
   state: AppState;
   onAddMeal: (meal: MealLog) => void;
+  onUpdateWater: (glasses: number) => void;
 }
 
-export function Nutrition({ state, onAddMeal }: NutritionProps) {
+export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -77,6 +78,8 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
   }
 
   const today = new Date().toISOString().split('T')[0];
+  const todayWater = state.waterIntake.find(w => w.date === today)?.glasses ?? 0;
+  const waterGoal = 8;
   const todayMeals = state.mealLogs.filter(m => m.date === today);
   
   const totals = todayMeals.reduce((acc, meal) => ({
@@ -191,6 +194,76 @@ export function Nutrition({ state, onAddMeal }: NutritionProps) {
                 <span className="text-xs text-muted-foreground">{totals.fat}g / {goals.fat}g</span>
               </div>
             </div>
+          </Card>
+        </motion.div>
+
+        {/* Water Tracking */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-cyan-400" />
+                <h2 className="font-semibold">Water Intake</h2>
+              </div>
+              <span className="text-sm text-muted-foreground">{todayWater} / {waterGoal} glasses</span>
+            </div>
+
+            {/* Glass icons row */}
+            <div className="flex items-center justify-between gap-1 mb-4">
+              {Array.from({ length: waterGoal }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => onUpdateWater(i < todayWater ? i : i + 1)}
+                  className="flex-1 flex flex-col items-center gap-0.5 group"
+                  title={`Set to ${i + 1} glass${i + 1 > 1 ? 'es' : ''}`}
+                >
+                  <Droplets
+                    className={cn(
+                      'w-6 h-6 transition-all',
+                      i < todayWater
+                        ? 'text-cyan-400 scale-110'
+                        : 'text-muted-foreground/30 group-hover:text-cyan-400/50'
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => onUpdateWater(Math.max(0, todayWater - 1))}
+                disabled={todayWater === 0}
+                data-testid="button-water-minus"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </Button>
+              <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-cyan-400 rounded-full transition-all duration-300"
+                  style={{ width: `${(todayWater / waterGoal) * 100}%` }}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => onUpdateWater(Math.min(waterGoal, todayWater + 1))}
+                disabled={todayWater >= waterGoal}
+                data-testid="button-water-plus"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            {todayWater >= waterGoal && (
+              <p className="text-xs text-cyan-400 text-center mt-2 font-medium">💧 Daily goal reached! Great job!</p>
+            )}
           </Card>
         </motion.div>
 

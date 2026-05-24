@@ -213,7 +213,7 @@ function AppContent() {
         <Calendar state={state} onScheduleWorkout={scheduleWorkout} />
       </Route>
       <Route path="/nutrition">
-        <Nutrition state={state} onAddMeal={addMealLog} />
+        <Nutrition state={state} onAddMeal={addMealLog} onUpdateWater={updateWaterIntake} />
       </Route>
       <Route path="/programs">
         <Programs />
