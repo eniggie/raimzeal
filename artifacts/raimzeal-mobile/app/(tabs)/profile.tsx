@@ -792,6 +792,7 @@ export default function ProfileScreen() {
             <SettingPickerRow
               icon="layers-outline"
               label="Default card action"
+              sublabel="What happens when you tap Generate"
               value={
                 defaultCardAction === "share" ? "Share" :
                 defaultCardAction === "save" ? "Save" :
@@ -806,6 +807,7 @@ export default function ProfileScreen() {
               <SettingPickerRow
                 icon="hourglass-outline"
                 label="Auto-generate countdown"
+                sublabel="How long before the card auto-creates"
                 value={autoTriggerDelay === "off" ? "Off" : `${autoTriggerDelay}s`}
                 color={colors.accent}
                 onPress={handlePickAutoTriggerDelay}
@@ -814,6 +816,7 @@ export default function ProfileScreen() {
             <SettingPickerRow
               icon="timer-outline"
               label="Undo window duration"
+              sublabel="Time to reverse a meal deletion"
               value={`${settings.undoWindowSeconds ?? 3}s`}
               color={colors.secondary}
               onPress={handlePickUndoWindow}
