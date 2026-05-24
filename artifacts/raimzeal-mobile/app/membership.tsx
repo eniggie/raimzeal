@@ -198,7 +198,7 @@ export default function MembershipScreen() {
       // Subscriptions not yet wired up — inform without an alarming error.
       Alert.alert(
         "Coming Soon",
-        "Paid subscriptions are not yet active.\n\nAll features are free for now — enjoy RAIMZEAL at no cost!",
+        "Paid subscriptions are not yet active — check back soon to upgrade to Rise, Reign or Legacy.",
         [{ text: "Got it" }]
       );
       setSubscriptionsAvailable(false);
@@ -346,7 +346,7 @@ export default function MembershipScreen() {
                   <View style={[styles.comingSoonBanner, { borderColor: plan.borderColor + "40", backgroundColor: plan.color + "10" }]}>
                     <Ionicons name="time-outline" size={14} color={plan.color} />
                     <Text style={[styles.comingSoonText, { color: plan.color }]}>
-                      Subscriptions coming soon — all features are free for now!
+                      Subscriptions launching soon — tap back when ready to upgrade.
                     </Text>
                   </View>
                 ) : (
