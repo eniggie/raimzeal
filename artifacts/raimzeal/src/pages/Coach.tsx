@@ -73,6 +73,10 @@ function buildUserContext(state: AppState) {
     duration: w.duration,
   }));
 
+  const bloodGroup = state.user?.bloodType && state.user?.rhFactor
+    ? `${state.user.bloodType}${state.user.rhFactor}`
+    : (state.user?.bloodType ?? null);
+
   return {
     name: state.user?.name ?? '',
     goals: state.user?.goals ?? [],
@@ -81,6 +85,8 @@ function buildUserContext(state: AppState) {
     age: state.user?.age ?? null,
     units: state.user?.units ?? 'imperial',
     fitnessLevel: state.user?.fitnessLevel ?? 'intermediate',
+    bloodGroup,
+    genotype: state.user?.genotype ?? null,
     streak: state.streak,
     recentWorkouts,
     todayCalories: todayCalories || null,
