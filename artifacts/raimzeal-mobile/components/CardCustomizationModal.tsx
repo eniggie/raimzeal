@@ -63,6 +63,10 @@ const DEFAULT_DIM_LEVEL = 0.62;
 const DIM_MIN = 0.25;
 const DIM_MAX = 0.88;
 
+const DEFAULT_BLUR_RADIUS = 18;
+const BLUR_MIN = 0;
+const BLUR_MAX = 24;
+
 const THUMB_SCALE = 72 / CARD_WIDTH;
 const PRESET_THUMB_SCALE = 44 / CARD_WIDTH;
 
@@ -126,6 +130,7 @@ export interface CardPreset {
   createdAt: number;
   backgroundPhotoUri?: string;
   backgroundPhotoDimLevel?: number;
+  backgroundPhotoBlurRadius?: number;
   backgroundPhotoCrop?: CropData;
 }
 
@@ -178,6 +183,7 @@ export interface CardCustomizationResult {
   backgroundPhotoUri?: string;
   backgroundPhotoCrop?: CropData;
   backgroundPhotoDimLevel?: number;
+  backgroundPhotoBlurRadius?: number;
 }
 
 export type CardPreviewData = Omit<ShareProgressCardProps, "visibleStats" | "customMessage" | "themeId">;
@@ -806,6 +812,128 @@ function DimLevelSlider({ value, onChange, colors }: DimLevelSliderProps) {
   );
 }
 
+interface BlurLevelSliderProps {
+  value: number;
+  onChange: (v: number) => void;
+  colors: ReturnType<typeof useColors>;
+}
+
+function BlurLevelSlider({ value, onChange, colors }: BlurLevelSliderProps) {
+  const trackWidthSV = useSharedValue(0);
+  const knobX = useSharedValue(0);
+  const savedX = useSharedValue(0);
+
+  useEffect(() => {
+    const w = trackWidthSV.value;
+    if (w === 0) return;
+    const ratio = (value - BLUR_MIN) / (BLUR_MAX - BLUR_MIN);
+    const x = ratio * w;
+    knobX.value = x;
+    savedX.value = x;
+  }, [value, trackWidthSV.value]);
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-6, 6])
+    .onUpdate((e) => {
+      "worklet";
+      const w = trackWidthSV.value;
+      if (w === 0) return;
+      const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
+      knobX.value = x;
+      const ratio = x / w;
+      const newVal = Math.round(BLUR_MIN + ratio * (BLUR_MAX - BLUR_MIN));
+      runOnJS(onChange)(newVal);
+    })
+    .onEnd((e) => {
+      "worklet";
+      const w = trackWidthSV.value;
+      if (w === 0) return;
+      const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
+      savedX.value = x;
+      knobX.value = x;
+    });
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: knobX.value,
+  }));
+
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: knobX.value - 12 }],
+  }));
+
+  function handleTrackLayout(w: number) {
+    trackWidthSV.value = w;
+    const ratio = (value - BLUR_MIN) / (BLUR_MAX - BLUR_MIN);
+    const x = ratio * w;
+    knobX.value = x;
+    savedX.value = x;
+  }
+
+  const blurLabel = value <= 4 ? "Sharp" : value <= 12 ? "Light" : value <= 18 ? "Medium" : "Blurry";
+
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8, alignItems: "center" }}>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+          Blur
+        </Text>
+        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+          {blurLabel}
+        </Text>
+      </View>
+      <View
+        style={{ height: 36, justifyContent: "center" }}
+        onLayout={(e) => handleTrackLayout(e.nativeEvent.layout.width)}
+      >
+        <View
+          style={{
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: colors.border,
+            width: "100%",
+            overflow: "visible",
+          }}
+        >
+          <Reanimated.View
+            style={[
+              { height: 4, borderRadius: 2, backgroundColor: colors.primary },
+              fillStyle,
+            ]}
+          />
+        </View>
+        <GestureDetector gesture={pan}>
+          <Reanimated.View
+            style={[
+              {
+                position: "absolute",
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: colors.primary,
+                top: 6,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 3,
+                elevation: 3,
+              },
+              knobStyle,
+            ]}
+          />
+        </GestureDetector>
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          Sharp
+        </Text>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          Blurry
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 interface ThemeSwatchItemProps {
   theme: typeof CARD_THEMES[0];
   isSelected: boolean;
@@ -1068,6 +1196,7 @@ export default function CardCustomizationModal({
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [backgroundPhotoCrop, setBackgroundPhotoCrop] = useState<CropData | null>(null);
   const [backgroundPhotoDimLevel, setBackgroundPhotoDimLevel] = useState(DEFAULT_DIM_LEVEL);
+  const [backgroundPhotoBlurRadius, setBackgroundPhotoBlurRadius] = useState(DEFAULT_BLUR_RADIUS);
   const dimPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
@@ -1594,7 +1723,7 @@ export default function CardCustomizationModal({
         setCustomMessage(effectiveMessage);
         if (savedBgPhoto) {
           try {
-            const parsed = JSON.parse(savedBgPhoto) as { uri: string; scale?: number; panX?: number; panY?: number; dimLevel?: number };
+            const parsed = JSON.parse(savedBgPhoto) as { uri: string; scale?: number; panX?: number; panY?: number; dimLevel?: number; blurRadius?: number };
             setBackgroundPhotoUri(parsed.uri);
             if (parsed.scale != null) {
               setBackgroundPhotoCrop({ scale: parsed.scale, panX: parsed.panX ?? 0, panY: parsed.panY ?? 0 });
@@ -1602,16 +1731,19 @@ export default function CardCustomizationModal({
               setBackgroundPhotoCrop(null);
             }
             setBackgroundPhotoDimLevel(parsed.dimLevel ?? DEFAULT_DIM_LEVEL);
+            setBackgroundPhotoBlurRadius(parsed.blurRadius ?? DEFAULT_BLUR_RADIUS);
           } catch {
             // Legacy: plain URI string stored before crop was introduced
             setBackgroundPhotoUri(savedBgPhoto);
             setBackgroundPhotoCrop(null);
             setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+            setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
           }
         } else {
           setBackgroundPhotoUri(null);
           setBackgroundPhotoCrop(null);
           setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+          setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
         }
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
@@ -1703,20 +1835,20 @@ export default function CardCustomizationModal({
     }
   }, [selectedAction]);
 
-  // Persist the dim level to AsyncStorage (debounced) whenever the user moves the slider.
+  // Persist the dim/blur level to AsyncStorage (debounced) whenever the user moves the sliders.
   useEffect(() => {
     if (!backgroundPhotoUri) return;
     if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
     dimPersistTimerRef.current = setTimeout(() => {
       const payload = backgroundPhotoCrop
-        ? JSON.stringify({ uri: backgroundPhotoUri, ...backgroundPhotoCrop, dimLevel: backgroundPhotoDimLevel })
-        : JSON.stringify({ uri: backgroundPhotoUri, dimLevel: backgroundPhotoDimLevel });
+        ? JSON.stringify({ uri: backgroundPhotoUri, ...backgroundPhotoCrop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius })
+        : JSON.stringify({ uri: backgroundPhotoUri, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
       AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
     }, 250);
     return () => {
       if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
     };
-  }, [backgroundPhotoDimLevel, backgroundPhotoUri, backgroundPhotoCrop]);
+  }, [backgroundPhotoDimLevel, backgroundPhotoBlurRadius, backgroundPhotoUri, backgroundPhotoCrop]);
 
   useEffect(() => {
     if (!visible) return;
@@ -1830,7 +1962,8 @@ export default function CardCustomizationModal({
     themeId: CardThemeId,
     bgUri: string | null,
     bgCrop: CropData | null,
-    dimLevel: number
+    dimLevel: number,
+    blurRadius: number
   ) {
     try {
       const ops: Promise<void>[] = [
@@ -1840,8 +1973,8 @@ export default function CardCustomizationModal({
       ];
       if (bgUri) {
         const payload = bgCrop
-          ? JSON.stringify({ uri: bgUri, ...bgCrop, dimLevel })
-          : JSON.stringify({ uri: bgUri, dimLevel });
+          ? JSON.stringify({ uri: bgUri, ...bgCrop, dimLevel, blurRadius })
+          : JSON.stringify({ uri: bgUri, dimLevel, blurRadius });
         ops.push(AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload));
       } else {
         ops.push(AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO));
@@ -1866,14 +1999,14 @@ export default function CardCustomizationModal({
 
   async function handleGenerate(action: CardAction) {
     cancelAutoTrigger();
-    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop, backgroundPhotoDimLevel);
+    await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop, backgroundPhotoDimLevel, backgroundPhotoBlurRadius);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
     });
     setDefaultAction(action);
     setSelectedAction(action);
     try {
-      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined });
+      await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined });
       const msg =
         action === "save"
           ? "Saved to camera roll"
@@ -2199,7 +2332,7 @@ export default function CardCustomizationModal({
     setActivePresetId(null);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
-    const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel });
+    const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
     AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
   }
 
@@ -2220,11 +2353,18 @@ export default function CardCustomizationModal({
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
   }
 
+  function handleBlurRadiusChange(radius: number) {
+    setBackgroundPhotoBlurRadius(radius);
+    setActivePresetId(null);
+    AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+  }
+
   function handleRemoveBackgroundPhoto() {
     if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
     setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+    setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
     setActivePresetId(null);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
@@ -2244,6 +2384,7 @@ export default function CardCustomizationModal({
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
     setBackgroundPhotoCrop(preset.backgroundPhotoCrop ?? null);
     setBackgroundPhotoDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
+    setBackgroundPhotoBlurRadius(preset.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
     resetZoomPosition();
     dismissCardChip();
   }
@@ -2448,7 +2589,7 @@ export default function CardCustomizationModal({
       }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
-          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined }
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined, backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined }
           : p
       );
     } else {
@@ -2471,6 +2612,7 @@ export default function CardCustomizationModal({
         createdAt: Date.now(),
         backgroundPhotoUri: backgroundPhotoUri ?? undefined,
         backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined,
+        backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined,
         backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined,
       };
       updatedPresets = [...presets, newPreset];
@@ -3209,6 +3351,7 @@ export default function CardCustomizationModal({
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                     backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                     backgroundPhotoDimLevel={backgroundPhotoDimLevel}
+                    backgroundPhotoBlurRadius={backgroundPhotoBlurRadius}
                   />
                 </View>
               </Animated.View>
@@ -3502,6 +3645,11 @@ export default function CardCustomizationModal({
                 <DimLevelSlider
                   value={backgroundPhotoDimLevel}
                   onChange={handleDimLevelChange}
+                  colors={colors}
+                />
+                <BlurLevelSlider
+                  value={backgroundPhotoBlurRadius}
+                  onChange={handleBlurRadiusChange}
                   colors={colors}
                 />
               </>
@@ -3961,6 +4109,7 @@ export default function CardCustomizationModal({
                   backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                   backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                   backgroundPhotoDimLevel={backgroundPhotoDimLevel}
+                  backgroundPhotoBlurRadius={backgroundPhotoBlurRadius}
                 />
               ) : (
                 // Narrow screen: scale down to fit, same approach as the modal preview.
@@ -3981,6 +4130,7 @@ export default function CardCustomizationModal({
                     backgroundPhotoUri={backgroundPhotoUri ?? undefined}
                     backgroundPhotoCrop={backgroundPhotoCrop ?? undefined}
                     backgroundPhotoDimLevel={backgroundPhotoDimLevel}
+                    backgroundPhotoBlurRadius={backgroundPhotoBlurRadius}
                   />
                 </View>
               )}

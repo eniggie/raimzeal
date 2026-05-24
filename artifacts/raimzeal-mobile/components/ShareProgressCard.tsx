@@ -153,6 +153,11 @@ export interface ShareProgressCardProps {
    * Range: 0–1. Defaults to 0.62 when not specified.
    */
   backgroundPhotoDimLevel?: number;
+  /**
+   * Blur radius applied to the background photo.
+   * Range: 0–24. Defaults to 18 when not specified.
+   */
+  backgroundPhotoBlurRadius?: number;
 }
 
 // Cache scaled StyleSheet objects to avoid re-creation on every render.
@@ -362,6 +367,7 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
       backgroundPhotoUri,
       backgroundPhotoCrop,
       backgroundPhotoDimLevel,
+      backgroundPhotoBlurRadius,
     },
     ref
   ) => {
@@ -429,7 +435,7 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
                   : undefined,
               ]}
               resizeMode="cover"
-              blurRadius={18}
+              blurRadius={backgroundPhotoBlurRadius ?? 18}
             />
             <View
               style={[
