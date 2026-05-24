@@ -409,9 +409,26 @@ export default function CommunityScreen() {
             </Text>
           </View>
           <View style={styles.postMeta}>
-            <Text style={[styles.postUserName, { color: colors.foreground }]}>
-              {item.userName}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[styles.postUserName, { color: colors.foreground }]}>
+                {item.userName}
+              </Text>
+              {item.authorTier === "rise" && (
+                <View style={{ backgroundColor: "#3b82f620", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ color: "#60a5fa", fontSize: 9, fontWeight: "700", letterSpacing: 0.3 }}>RISE</Text>
+                </View>
+              )}
+              {item.authorTier === "reign" && (
+                <View style={{ backgroundColor: "#a855f720", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ color: "#c084fc", fontSize: 9, fontWeight: "700", letterSpacing: 0.3 }}>REIGN</Text>
+                </View>
+              )}
+              {item.authorTier === "legacy" && (
+                <View style={{ backgroundColor: "#eab30820", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ color: "#fbbf24", fontSize: 9, fontWeight: "700", letterSpacing: 0.3 }}>LEGACY</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.postTime, { color: colors.mutedForeground }]}>
               {timeAgo(item.createdAt)}
             </Text>

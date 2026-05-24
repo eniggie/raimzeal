@@ -284,6 +284,7 @@ export interface CommunityPost {
   likesCount: number;
   commentsCount: number;
   createdAt: string;
+  authorTier?: "foundation" | "rise" | "reign" | "legacy";
 }
 
 export interface CommunityComment {
@@ -311,7 +312,24 @@ export async function fetchCommunityPosts(
     .limit(limit);
   if (postType) query = (query as typeof query).eq("post_type", postType);
   const { data } = await query;
-  return (data ?? []).map((r) => {
+  const rows = data ?? [];
+
+  const uniqueUserIds = [...new Set(rows.map((r) => r.user_id as string))];
+  const tierMap: Record<string, "foundation" | "rise" | "reign" | "legacy"> = {};
+  if (uniqueUserIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, subscription_tier")
+      .in("id", uniqueUserIds);
+    for (const p of profiles ?? []) {
+      const raw = p as Record<string, unknown>;
+      const t = raw["subscription_tier"] as string | null;
+      tierMap[raw["id"] as string] =
+        t === "rise" || t === "reign" || t === "legacy" ? t : "foundation";
+    }
+  }
+
+  return rows.map((r) => {
     const raw = r as typeof r & {
       community_likes: Array<{ count: number }>;
       community_comments: Array<{ count: number }>;
@@ -326,6 +344,7 @@ export async function fetchCommunityPosts(
       likesCount: raw.community_likes?.[0]?.count ?? 0,
       commentsCount: raw.community_comments?.[0]?.count ?? 0,
       createdAt: r.created_at,
+      authorTier: tierMap[r.user_id] ?? "foundation",
     };
   });
 }

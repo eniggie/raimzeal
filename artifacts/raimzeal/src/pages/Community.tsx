@@ -25,6 +25,7 @@ interface LivePost {
   comments_count: number;
   created_at: string;
   image_url?: string | null;
+  author_tier?: string;
   _localLiked?: boolean;
   _localLikes?: number;
   _localCommentCount?: number;
@@ -100,8 +101,24 @@ export function Community() {
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
-      setPosts((data ?? []).map(p => ({
+      const rows = data ?? [];
+
+      const uniqueUserIds = [...new Set(rows.map(p => p.user_id as string))];
+      const tierMap: Record<string, string> = {};
+      if (uniqueUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, subscription_tier')
+          .in('id', uniqueUserIds);
+        for (const p of profiles ?? []) {
+          const raw = p as Record<string, unknown>;
+          tierMap[raw['id'] as string] = (raw['subscription_tier'] as string | null) ?? 'foundation';
+        }
+      }
+
+      setPosts(rows.map(p => ({
         ...p,
+        author_tier: tierMap[p.user_id] ?? 'foundation',
         _localLiked: false,
         _localLikes: p.likes_count,
         _localCommentCount: p.comments_count,
@@ -646,6 +663,15 @@ export function Community() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-semibold text-sm truncate max-w-[140px]">{post.user_name}</span>
+                        {post.author_tier === 'rise' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 bg-blue-400/15 text-blue-400 tracking-wide">RISE</span>
+                        )}
+                        {post.author_tier === 'reign' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 bg-purple-400/15 text-purple-400 tracking-wide">REIGN</span>
+                        )}
+                        {post.author_tier === 'legacy' && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 bg-yellow-400/15 text-yellow-400 tracking-wide">LEGACY</span>
+                        )}
                         {post.post_type && post.post_type !== 'post' && (() => {
                           const t = post.post_type.toLowerCase();
                           const map: Record<string, { label: string; cls: string }> = {

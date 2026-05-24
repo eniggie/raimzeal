@@ -14,7 +14,7 @@ const TIERS = [
     bg: 'bg-primary/10',
     badge: 'bg-primary/20 text-primary',
     label: 'Free Forever',
-    desc: 'Full access to every feature — workouts, nutrition, Ovia AI (15/day), community, analytics, export. No subscription. No catch.',
+    desc: 'Full access to every feature — workouts, nutrition, Ovia AI (10/day), community, analytics, export. No subscription. No catch.',
   },
   {
     icon: Zap,
@@ -23,7 +23,7 @@ const TIERS = [
     bg: 'bg-blue-400/10',
     badge: 'bg-blue-400/20 text-blue-400',
     label: 'Support Tier',
-    desc: 'Optional donation identity. Unlocks 200 Ovia AI messages/day, priority badge, and extended history. Coming soon.',
+    desc: 'Unlocks 200 Ovia AI messages/day, voice notes in Ovia AI, priority community badge, extended workout history (500 entries), and weekly AI digest email.',
   },
   {
     icon: Star,
@@ -32,7 +32,7 @@ const TIERS = [
     bg: 'bg-purple-400/10',
     badge: 'bg-purple-400/20 text-purple-400',
     label: 'Support Tier',
-    desc: 'Optional donation identity. Unlocks 500 Ovia AI messages/day, AI meal plans, and advanced analytics. Coming soon.',
+    desc: 'Unlocks 500 Ovia AI messages/day, body composition insights, custom macro goal recommendations, AI-powered meal plan guidance, and Reign supporter badge.',
   },
   {
     icon: Crown,
@@ -41,7 +41,7 @@ const TIERS = [
     bg: 'bg-yellow-400/10',
     badge: 'bg-yellow-400/20 text-yellow-400',
     label: 'Support Tier',
-    desc: 'Optional donation identity. Unlimited Ovia AI, 1-on-1 coaching access, and Legacy founder badge. Coming soon.',
+    desc: 'Unlimited Ovia AI, Private Inner Circle, Legacy Leaderboard, Monthly AI Health Report, Coaching Plan, Accountability Partner, Founding Member Certificate, and Legacy founder badge.',
   },
 ];
 

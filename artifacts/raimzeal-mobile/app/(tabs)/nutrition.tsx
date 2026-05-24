@@ -47,6 +47,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTier } from "@/hooks/useTier";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -801,7 +802,8 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user } = useFitness();
+  const { tier: userTierNutrition } = useTier(user?.id ?? null);
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -927,6 +929,14 @@ export default function NutritionScreen() {
       } else {
         inRange.push({ date, value: val });
       }
+    }
+    if (userTierNutrition === "foundation") {
+      Alert.alert(
+        "Rise+ Feature",
+        "Advanced macro drilldown is available on Rise, Reign, and Legacy plans. Upgrade to see your per-day breakdown.",
+        [{ text: "OK" }]
+      );
+      return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setMacroDrillDown({ label, macro, goal, color, badge, avgValue: avg, outOfRangeDays: outOfRange, inRangeDays: inRange });
