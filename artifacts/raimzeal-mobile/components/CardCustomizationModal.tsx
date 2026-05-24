@@ -2269,8 +2269,10 @@ export default function CardCustomizationModal({
   }
 
   function openInlineSave() {
-    const activePreset = presets.find((p) => p.id === activePresetId);
-    setPresetNameInput(activePreset ? activePreset.name : "");
+    if (!presetNameInput) {
+      const activePreset = presets.find((p) => p.id === activePresetId);
+      setPresetNameInput(activePreset ? activePreset.name : "");
+    }
     setShowInlineSave(true);
     setTimeout(() => presetNameRef.current?.focus(), 100);
   }
@@ -2330,6 +2332,7 @@ export default function CardCustomizationModal({
     setPresets(updatedPresets);
     setSavingPreset(false);
     setShowInlineSave(false);
+    setPresetNameInput("");
     showConfirmation(activePresetId ? (isRename ? "Preset renamed" : `"${name}" updated`) : `"${name}" saved`, "success");
   }
 
@@ -2763,6 +2766,7 @@ export default function CardCustomizationModal({
                 onPress={() => {
                   if (showInlineSave) {
                     setShowInlineSave(false);
+                    setPresetNameInput("");
                   } else {
                     openInlineSave();
                   }
