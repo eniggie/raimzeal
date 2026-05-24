@@ -219,7 +219,7 @@ function AppContent() {
         <Programs />
       </Route>
       <Route path="/coach">
-        <Coach state={state} />
+        <Coach state={state} onUpdateProfile={updateProfile} />
       </Route>
       <Route path="/community">
         <Community />

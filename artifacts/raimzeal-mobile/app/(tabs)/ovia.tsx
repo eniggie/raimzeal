@@ -126,6 +126,7 @@ export default function OviaScreen() {
     bodyMeasurements,
     waterIntake,
     personalRecords,
+    updateProfile,
   } = useFitness();
 
   const [chatInput, setChatInput] = useState("");
@@ -290,9 +291,25 @@ export default function OviaScreen() {
               error?: string;
               quotaRemaining?: number;
               searching?: string;
+              profileUpdated?: Record<string, unknown>;
             };
             if (typeof json.quotaRemaining === "number") {
               setQuotaRemaining(json.quotaRemaining);
+            }
+            if (json.profileUpdated) {
+              const p = json.profileUpdated;
+              updateProfile({
+                ...(p["name"] ? { name: p["name"] as string } : {}),
+                ...(p["age"] !== undefined ? { age: p["age"] as number } : {}),
+                ...(p["weight"] !== undefined ? { weight: p["weight"] as number } : {}),
+                ...(p["height"] !== undefined ? { height: p["height"] as number } : {}),
+                ...(p["blood_type"] ? { bloodType: p["blood_type"] as "A" | "B" | "AB" | "O" } : {}),
+                ...(p["rh_factor"] ? { rhFactor: p["rh_factor"] as "+" | "-" } : {}),
+                ...(p["genotype"] ? { genotype: p["genotype"] as "AA" | "AS" | "AC" | "SS" | "SC" } : {}),
+                ...(p["fitness_level"] ? { fitnessLevel: p["fitness_level"] as "beginner" | "intermediate" | "advanced" } : {}),
+                ...(p["goals"] ? { goals: p["goals"] as string[] } : {}),
+                ...(p["units"] ? { units: p["units"] as "metric" | "imperial" } : {}),
+              });
             }
             if (json.content) {
               accumulated += json.content;

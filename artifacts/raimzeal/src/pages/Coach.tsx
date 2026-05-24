@@ -8,13 +8,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { AppState } from '@/lib/store';
+import type { AppState, UserProfile } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
 import { coachMessagesApi } from '@/lib/apiClient';
 import { supabaseConfigured } from '@/lib/supabase';
 
 interface CoachProps {
   state: AppState;
+  onUpdateProfile?: (updates: Partial<UserProfile>) => void;
 }
 
 interface Message {
@@ -155,7 +156,7 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-export function Coach({ state }: CoachProps) {
+export function Coach({ state, onUpdateProfile }: CoachProps) {
   const { session } = useAuth();
   const firstName = state.user?.name?.split(' ')[0] ?? 'Champion';
 
@@ -456,7 +457,24 @@ export function Coach({ state }: CoachProps) {
               searching?: string;
               done?: boolean;
               error?: string;
+              profileUpdated?: Record<string, unknown>;
             };
+
+            if (json.profileUpdated) {
+              const p = json.profileUpdated;
+              onUpdateProfile?.({
+                ...(p['name'] ? { name: p['name'] as string } : {}),
+                ...(p['age'] !== undefined ? { age: p['age'] as number } : {}),
+                ...(p['weight'] !== undefined ? { weight: p['weight'] as number } : {}),
+                ...(p['height'] !== undefined ? { height: p['height'] as number } : {}),
+                ...(p['blood_type'] ? { bloodType: p['blood_type'] as 'A' | 'B' | 'AB' | 'O' } : {}),
+                ...(p['rh_factor'] ? { rhFactor: p['rh_factor'] as '+' | '-' } : {}),
+                ...(p['genotype'] ? { genotype: p['genotype'] as 'AA' | 'AS' | 'AC' | 'SS' | 'SC' } : {}),
+                ...(p['fitness_level'] ? { fitnessLevel: p['fitness_level'] as 'beginner' | 'intermediate' | 'advanced' } : {}),
+                ...(p['goals'] ? { goals: p['goals'] as string[] } : {}),
+                ...(p['units'] ? { units: p['units'] as 'metric' | 'imperial' } : {}),
+              });
+            }
 
             if (json.searching) setSearchingFor(json.searching);
 

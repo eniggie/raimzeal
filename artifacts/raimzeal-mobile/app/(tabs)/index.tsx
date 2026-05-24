@@ -582,6 +582,36 @@ export default function HomeScreen() {
           </Text>
         </AnimatedPressable>
       )}
+      {/* Membership Upgrade Banner */}
+      <AnimatedPressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push("/membership");
+        }}
+        style={[{
+          marginHorizontal: 16,
+          marginBottom: 10,
+          borderRadius: 16,
+          borderWidth: 1,
+          padding: 14,
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: 12,
+          backgroundColor: colors.card,
+          borderColor: "#F59E0B40",
+        }]}
+        scale={0.97}
+      >
+        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#F59E0B20", alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="star" size={18} color="#F59E0B" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>Rise · Reign · Legacy 👑</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>Optional support plans from $9.99/mo — tap to explore</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
+      </AnimatedPressable>
+
       <Text style={{ fontSize: 10, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 24, paddingVertical: 14, lineHeight: 15 }}>
         RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
       </Text>

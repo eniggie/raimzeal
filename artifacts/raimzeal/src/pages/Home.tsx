@@ -182,6 +182,26 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           )}
         </motion.div>
 
+        {/* Membership Upgrade Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+        >
+          <Link href="/membership">
+            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-yellow-500/10 transition-colors group">
+              <div className="w-9 h-9 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                <Crown className="w-4 h-4 text-yellow-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Rise · Reign · Legacy 👑</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">Optional support plans from $9.99/mo — Foundation is always free</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-yellow-400 transition-colors shrink-0" />
+            </div>
+          </Link>
+        </motion.div>
+
         {scheduledWorkout && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

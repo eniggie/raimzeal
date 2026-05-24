@@ -2,6 +2,7 @@ import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const oviaRouter = Router();
 
@@ -158,7 +159,10 @@ If weight, age, height, blood group, or genotype are missing, ask 2 to 3 targete
 - Missing age: "How old are you? Your age directly affects your metabolic rate and recovery needs."
 - All data present: Skip intake. Give personalised analysis immediately.
 
-After receiving answers: Confirm metrics back clearly, then say: "Great! Update your RAIMZEAL profile with this info so I can track your progress and refine your plan over time."
+After receiving answers: Immediately call the update_profile tool to save their data to their profile automatically — no manual update needed. Then confirm warmly: "Saved to your profile ✅ Now let me put that data to work for you right now." Then give personalised advice immediately.
+
+UPDATE PROFILE TOOL — USE PROACTIVELY:
+The moment ${firstName} shares their name, age, weight, height, blood type (A/B/AB/O), Rh factor (+/-), genotype, fitness level, goals, or units preference during conversation — call the update_profile tool immediately to save it. Never say "go update your profile manually." You handle it. Silently. Seamlessly. After the tool saves, give one warm short acknowledgment and immediately launch into personalised advice using their updated data. This is how you truly have their back. 🙌
 
 FOOD PLAN DESIGNER — THIS IS YOUR MOST IMPORTANT CAPABILITY:
 You are a world-class personalised food plan designer. You draw knowledge from:
@@ -439,6 +443,30 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
           },
         },
       },
+      {
+        type: "function",
+        function: {
+          name: "update_profile",
+          description:
+            "Silently save information to the user's RAIMZEAL profile the moment they share it in conversation. Call this tool immediately whenever the user provides any of: their name, age, weight, height, blood type (A/B/AB/O), Rh factor (+/-), genotype (AA/AS/SS/AC/SC), fitness level (beginner/intermediate/advanced), goals (array of strings), or units preference (metric/imperial). Never tell them to go update their profile manually — do it for them right now. After saving, acknowledge briefly and dive straight into personalised advice using their new data.",
+          parameters: {
+            type: "object" as const,
+            properties: {
+              name: { type: "string", description: "User's full name" },
+              age: { type: "number", description: "Age in years (integer)" },
+              weight: { type: "number", description: "Body weight in their preferred unit" },
+              height: { type: "number", description: "Height in their preferred unit" },
+              blood_type: { type: "string", enum: ["A", "B", "AB", "O"], description: "ABO blood group" },
+              rh_factor: { type: "string", enum: ["+", "-"], description: "Rh factor" },
+              genotype: { type: "string", enum: ["AA", "AS", "AC", "SS", "SC"], description: "Haemoglobin genotype" },
+              fitness_level: { type: "string", enum: ["beginner", "intermediate", "advanced"], description: "Fitness experience level" },
+              goals: { type: "array", items: { type: "string" }, description: "Fitness goals e.g. ['muscle gain', 'fat loss', 'endurance']" },
+              units: { type: "string", enum: ["metric", "imperial"], description: "Preferred measurement units" },
+            },
+            required: [],
+          },
+        },
+      },
     ];
 
     const stream = await openai.chat.completions.create({
@@ -509,6 +537,53 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         });
 
         for await (const c of continuation) {
+          const cnt = c.choices[0]?.delta?.content;
+          if (cnt) {
+            const cleaned = cleanChunk(cnt);
+            if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
+        }
+      } else if (chunk.choices[0]?.finish_reason === "tool_calls" && toolCallName === "update_profile") {
+        let profileUpdates: Record<string, unknown> = {};
+        try { profileUpdates = JSON.parse(toolCallArgs) as Record<string, unknown>; } catch { /* ignore */ }
+
+        const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (profileUpdates["name"]) dbUpdates["name"] = profileUpdates["name"];
+        if (profileUpdates["age"] !== undefined) dbUpdates["age"] = profileUpdates["age"];
+        if (profileUpdates["weight"] !== undefined) dbUpdates["weight"] = profileUpdates["weight"];
+        if (profileUpdates["height"] !== undefined) dbUpdates["height"] = profileUpdates["height"];
+        if (profileUpdates["blood_type"]) dbUpdates["blood_type"] = profileUpdates["blood_type"];
+        if (profileUpdates["rh_factor"]) dbUpdates["rh_factor"] = profileUpdates["rh_factor"];
+        if (profileUpdates["genotype"]) dbUpdates["genotype"] = profileUpdates["genotype"];
+        if (profileUpdates["fitness_level"]) dbUpdates["fitness_level"] = profileUpdates["fitness_level"];
+        if (profileUpdates["goals"]) dbUpdates["goals"] = profileUpdates["goals"];
+        if (profileUpdates["units"]) dbUpdates["units"] = profileUpdates["units"];
+
+        try {
+          const { error } = await supabaseAdmin.from("profiles").update(dbUpdates).eq("id", userId);
+          if (!error) res.write(`data: ${JSON.stringify({ profileUpdated: profileUpdates })}\n\n`);
+        } catch { /* silent — conversation continues regardless */ }
+
+        const profileContinuation = await openai.chat.completions.create({
+          model: oviaModel,
+          max_completion_tokens: 1024,
+          messages: [
+            ...chatMessages,
+            {
+              role: "assistant" as const,
+              content: null as unknown as string,
+              tool_calls: [{ id: toolCallId, type: "function" as const, function: { name: "update_profile", arguments: toolCallArgs } }],
+            },
+            {
+              role: "tool" as const,
+              tool_call_id: toolCallId,
+              content: "Profile updated successfully.",
+            } as Parameters<typeof openai.chat.completions.create>[0]["messages"][0],
+          ],
+          stream: true,
+        });
+
+        for await (const c of profileContinuation) {
           const cnt = c.choices[0]?.delta?.content;
           if (cnt) {
             const cleaned = cleanChunk(cnt);
