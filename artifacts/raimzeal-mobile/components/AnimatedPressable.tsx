@@ -28,7 +28,7 @@ export function AnimatedPressable({
   style,
   children,
   disabled = false,
-  scale = 0.95,
+  scale = 0.96,
   activeOpacity = 1,
   hitSlop,
 }: AnimatedPressableProps) {
@@ -37,21 +37,23 @@ export function AnimatedPressable({
 
   function handlePressIn() {
     if (reduceMotion) return;
+    // Fluid "press into glass" — slightly slower descent, no bounce
     Animated.spring(scaleAnim, {
       toValue: disabled ? 1 : scale,
       useNativeDriver: USE_NATIVE_DRIVER,
-      speed: 60,
+      speed: 50,
       bounciness: 0,
     }).start();
   }
 
   function handlePressOut() {
     if (reduceMotion) return;
+    // Liquid spring rebound — gentle overshoot on release
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: USE_NATIVE_DRIVER,
-      speed: 30,
-      bounciness: 4,
+      speed: 28,
+      bounciness: 7,
     }).start();
   }
 
