@@ -368,68 +368,12 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
           </div>
         </motion.div>
 
-        {state.workoutLogs.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold font-display">Recent Activity</h2>
-              <Link href="/tracking">
-                <Button variant="ghost" size="sm">
-                  See all
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {state.workoutLogs.slice(0, 3).map((log, i) => (
-                <Card key={log.id} className="p-3 glass-hover" data-testid={`card-activity-${i}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Dumbbell className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{log.workoutName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {log.duration} min · {log.caloriesBurned} cal burned
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(log.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {state.personalRecords.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h2 className="text-lg font-semibold font-display mb-3">Personal Records</h2>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-              {state.personalRecords.map((pr, i) => (
-                <Card key={i} className="p-3 min-w-[140px] shrink-0 glass-hover" data-testid={`card-pr-${i}`}>
-                  <Trophy className="w-5 h-5 text-warning mb-2" />
-                  <div className="font-bold">{pr.weight} lbs</div>
-                  <div className="text-sm text-muted-foreground">{pr.exercise}</div>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-        )}
         {/* Donation CTA — dark psychology */}
         {DONATION_ACTIVE && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55, duration: 0.5 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
             className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-secondary/5 px-5 py-5"
           >
             {/* Ambient glow blobs */}
@@ -502,6 +446,63 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
             <p className="mt-2.5 text-center text-[10px] text-muted-foreground/60">
               Secure · No account required · Any amount helps · 100% goes to the team
             </p>
+          </motion.div>
+        )}
+
+        {state.workoutLogs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold font-display">Recent Activity</h2>
+              <Link href="/tracking">
+                <Button variant="ghost" size="sm">
+                  See all
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {state.workoutLogs.slice(0, 3).map((log, i) => (
+                <Card key={log.id} className="p-3 glass-hover" data-testid={`card-activity-${i}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Dumbbell className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{log.workoutName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {log.duration} min · {log.caloriesBurned} cal burned
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(log.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {state.personalRecords.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+          >
+            <h2 className="text-lg font-semibold font-display mb-3">Personal Records</h2>
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+              {state.personalRecords.map((pr, i) => (
+                <Card key={i} className="p-3 min-w-[140px] shrink-0 glass-hover" data-testid={`card-pr-${i}`}>
+                  <Trophy className="w-5 h-5 text-warning mb-2" />
+                  <div className="font-bold">{pr.weight} lbs</div>
+                  <div className="text-sm text-muted-foreground">{pr.exercise}</div>
+                </Card>
+              ))}
+            </div>
           </motion.div>
         )}
 

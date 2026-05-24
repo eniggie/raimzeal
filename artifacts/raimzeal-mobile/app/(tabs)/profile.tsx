@@ -116,7 +116,17 @@ export default function ProfileScreen() {
   const profileScrollRef = useRef<ScrollView>(null);
   const settingsCardYRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
-  const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
+  const { scrollTo, openCard } = useLocalSearchParams<{ scrollTo?: string; openCard?: string }>();
+
+  // Auto-open the card customisation modal when navigated here with openCard=1
+  // (e.g. from the "My Card" quick action on the home tab).
+  useEffect(() => {
+    if (openCard !== "1") return;
+    const timeout = setTimeout(() => {
+      setShowCustomizeModal(true);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [openCard]);
 
   useEffect(() => {
     if (scrollTo !== "countdown") return;

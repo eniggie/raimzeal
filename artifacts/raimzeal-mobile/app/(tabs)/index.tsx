@@ -551,7 +551,7 @@ export default function HomeScreen() {
             bg="#38bdf820"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/ovia");
+              router.navigate({ pathname: "/(tabs)/profile", params: { openCard: "1" } });
             }}
           />
         </View>
