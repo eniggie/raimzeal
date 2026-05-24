@@ -2591,6 +2591,11 @@ export default function CardCustomizationModal({
   const themeContentWidth = useRef(0);
   const [presetScrollAtEnd, setPresetScrollAtEnd] = useState(false);
   const [presetHasOverflow, setPresetHasOverflow] = useState(false);
+  useEffect(() => {
+    if (presets.length <= 1) {
+      setPresetHasOverflow(false);
+    }
+  }, [presets.length]);
   const presetContainerWidth = useRef(0);
   const presetContentWidth = useRef(0);
   const zoomAnim = useRef(new Animated.Value(0)).current;
