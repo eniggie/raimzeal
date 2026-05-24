@@ -4,6 +4,7 @@ import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, emailUnsubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
+import { getUserTier } from "../lib/tier";
 
 const emailRouter = Router();
 
@@ -553,10 +554,17 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
   if (!email || !userName) { res.status(400).json({ error: "email and userName are required." }); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "Invalid email address." }); return; }
 
+  const userId = (req as any).userId as string;
+  const tier = await getUserTier(userId);
+  if (tier === "foundation") {
+    res.status(403).json({ error: "The weekly digest is available on Rise, Reign, and Legacy plans.", code: "UPGRADE_REQUIRED" });
+    return;
+  }
+
   try {
     await db.insert(digestSubscribers).values({ email, userName, active: true })
       .onConflictDoUpdate({ target: digestSubscribers.email, set: { userName, active: true } });
-    req.log.info({ email }, "Digest subscriber added");
+    req.log.info({ email, tier }, "Digest subscriber added");
     res.json({ success: true, message: "Subscribed to weekly digest." });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });

@@ -351,7 +351,7 @@ export function Membership() {
               The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations help keep the platform and team running.
             </p>
           </div>
-          {DONATION_ACTIVE ? (
+          {DONATION_ACTIVE && (
             <div className="shrink-0">
               <a
                 href={STRIPE_DONATION_URL}
@@ -364,8 +364,6 @@ export function Membership() {
                 Donate
               </a>
             </div>
-          ) : (
-            <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
           )}
         </motion.div>
 
