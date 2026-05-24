@@ -1058,7 +1058,7 @@ export default function CardCustomizationModal({
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
-  const sizeLabelOpacity = useSharedValue(0);
+  const sizeLabelOpacity = useSharedValue(thumbnailSize !== "m" ? 1 : 0);
   const sizeLabelAnimatedStyle = useAnimatedStyle(() => ({
     opacity: sizeLabelOpacity.value,
   }));
