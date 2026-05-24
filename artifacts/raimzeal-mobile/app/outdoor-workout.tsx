@@ -387,7 +387,7 @@ export default function OutdoorWorkoutScreen() {
           <View style={[styles.summaryBadge, { backgroundColor: selectedActivity.color + "18" }]}>
             <Ionicons name={selectedActivity.icon as keyof typeof Ionicons.glyphMap} size={36} color={selectedActivity.color} />
             <Text style={[styles.summaryActivityName, { color: selectedActivity.color }]}>
-              {selectedActivity.label} Complete
+              {selectedActivity.label} Complete!
             </Text>
           </View>
 

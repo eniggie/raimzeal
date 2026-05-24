@@ -11,7 +11,7 @@ interface WorkoutCardProps {
 
 export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const colors = useColors();
-  const exerciseNames = workout.exercises.map((e) => e.name);
+  const exerciseNames = (workout.exercises ?? []).map((e) => e.name);
 
   return (
     <TouchableOpacity

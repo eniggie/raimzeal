@@ -21,7 +21,7 @@ mealPhotoRouter.post("/user/meal-photo/analyze", requireAuth, async (req, res) =
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: "gpt-4o",
       max_completion_tokens: 512,
       messages: [
         {

@@ -239,7 +239,7 @@ export default function WorkoutStatsScreen() {
             {stats.top5.length > 0 && (
               <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  Favourite Workouts
+                  Favorite Workouts
                 </Text>
                 <View style={styles.topList}>
                   {stats.top5.map(([name, count], i) => {

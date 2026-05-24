@@ -50,28 +50,10 @@ streakFreezeRouter.post("/user/streak/freeze", requireAuth, async (req, res) => 
   }
 });
 
-streakFreezeRouter.post("/user/streak/grant-freeze", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
-  try {
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("streak_freezes_available")
-      .eq("id", userId)
-      .single();
-    const row = profile as { streak_freezes_available: number | null } | null;
-    const current = row?.streak_freezes_available ?? 0;
-    const newCount = Math.min(current + 1, 5);
-
-    await supabaseAdmin
-      .from("profiles")
-      .update({ streak_freezes_available: newCount })
-      .eq("id", userId);
-
-    res.json({ success: true, streak_freezes_available: newCount });
-  } catch (err) {
-    logger.error({ err }, "POST /user/streak/grant-freeze error");
-    res.status(500).json({ error: "Could not grant streak freeze." });
-  }
+// grant-freeze is reserved for server-side reward flows (e.g. milestone achievements).
+// Direct user calls are blocked to prevent self-granting abuse.
+streakFreezeRouter.post("/user/streak/grant-freeze", requireAuth, (_req, res) => {
+  res.status(403).json({ error: "Streak freezes are awarded automatically through in-app milestones." });
 });
 
 export default streakFreezeRouter;

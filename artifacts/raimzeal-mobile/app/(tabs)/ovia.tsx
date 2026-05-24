@@ -198,7 +198,8 @@ export default function OviaScreen() {
           body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const reader = response.body!.getReader();
+        if (!response.body) throw new Error("No response body from Ovia");
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         let fullContent = "";

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -203,7 +204,11 @@ export default function HabitTrackerScreen() {
     return streak;
   }
 
-  if (loading) return null;
+  if (loading) return (
+    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
