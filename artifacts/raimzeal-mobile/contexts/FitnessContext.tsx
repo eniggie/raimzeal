@@ -157,6 +157,8 @@ export interface AppState {
     reorderHintFrequency: "never" | "monthly" | "weekly";
     /** Whether the "long-press also generates" toggle is on — synced cross-device. */
     longPressAndRun?: boolean;
+    /** Auto-generate countdown duration ("off" | "2" | "3" | "5") — synced cross-device. */
+    autoTriggerDelay?: string;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -398,6 +400,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.showRestoreBadge != null ? { showRestoreBadge: remoteSettings.showRestoreBadge } : {}),
                     ...(remoteSettings.reorderHintFrequency != null ? { reorderHintFrequency: remoteSettings.reorderHintFrequency } : {}),
                     ...(remoteSettings.longPressAndRun != null ? { longPressAndRun: remoteSettings.longPressAndRun } : {}),
+                    ...(remoteSettings.autoTriggerDelay != null ? { autoTriggerDelay: remoteSettings.autoTriggerDelay } : {}),
                   }
                 : {}),
             },
@@ -845,6 +848,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("showRestoreBadge" in updates) appSettings.showRestoreBadge = updates.showRestoreBadge;
       if ("reorderHintFrequency" in updates) appSettings.reorderHintFrequency = updates.reorderHintFrequency;
       if ("longPressAndRun" in updates) appSettings.longPressAndRun = updates.longPressAndRun;
+      if ("autoTriggerDelay" in updates) appSettings.autoTriggerDelay = updates.autoTriggerDelay;
       if (Object.keys(appSettings).length === 0) return;
       // Merge into existing preferences so unrelated keys are preserved
       supabase.auth.getSession().then(({ data: { session } }) => {

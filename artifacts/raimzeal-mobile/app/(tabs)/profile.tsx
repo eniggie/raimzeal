@@ -163,6 +163,25 @@ export default function ProfileScreen() {
       .catch(() => {});
   }, [settings.longPressAndRun]);
 
+  // Reconcile STORAGE_KEY_AUTO_TRIGGER_DELAY with the cloud-backed setting.
+  // When Supabase hydration delivers a value (e.g. on a fresh device / reinstall),
+  // update local state so the UI reflects the synced preference immediately and
+  // write it back to AsyncStorage so CardCustomizationModal's local read stays consistent.
+  useEffect(() => {
+    if (settings.autoTriggerDelay === undefined) return;
+    const validDelays = ["off", "2", "3", "5"];
+    if (!validDelays.includes(settings.autoTriggerDelay)) return;
+    setAutoTriggerDelay(settings.autoTriggerDelay);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(
+          STORAGE_KEY_AUTO_TRIGGER_DELAY,
+          settings.autoTriggerDelay!
+        ).catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.autoTriggerDelay]);
+
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
     try {
@@ -197,6 +216,7 @@ export default function ProfileScreen() {
 
   async function handleSetAutoTriggerDelay(value: string) {
     setAutoTriggerDelay(value);
+    updateSettings({ autoTriggerDelay: value });
     try {
       const AsyncStorage = (
         await import("@react-native-async-storage/async-storage")

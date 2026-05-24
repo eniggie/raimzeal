@@ -542,6 +542,11 @@ export interface UserPreferences {
      * Synced cross-device so the preference survives reinstalls.
      */
     longPressAndRun?: boolean;
+    /**
+     * Auto-generate countdown duration preference ("off" | "2" | "3" | "5").
+     * Synced cross-device so the setting survives reinstalls.
+     */
+    autoTriggerDelay?: string;
     /** Customisable Quick-Add food list for the mobile Nutrition tab */
     quickFoods?: Array<{
       name: string;
