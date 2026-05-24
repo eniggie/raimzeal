@@ -379,7 +379,15 @@ function SortablePresetItem({
             <Ionicons name="reorder-three-outline" size={22} color={colors.mutedForeground} />
           </View>
         </GestureDetector>
-        <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+        {preset.backgroundPhotoUri ? (
+          <Image
+            source={{ uri: preset.backgroundPhotoUri }}
+            style={[styles.presetRowPhoto, { borderColor: theme.accent }]}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
+        )}
         <Text
           style={{
             flex: 1,
@@ -962,6 +970,13 @@ const PresetChipItem = memo(function PresetChipItem({
             renderScale={PRESET_THUMB_SCALE}
           />
         </View>
+        {preset.backgroundPhotoUri ? (
+          <Image
+            source={{ uri: preset.backgroundPhotoUri }}
+            style={styles.presetThumbnailPhoto}
+            resizeMode="cover"
+          />
+        ) : null}
         {isActive && (
           <View style={[styles.presetThumbnailCheck, { backgroundColor: theme.accent }]}>
             <Ionicons name="checkmark" size={8} color="#fff" />
@@ -4457,6 +4472,22 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  presetRowPhoto: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1.5,
+  },
+  presetThumbnailPhoto: {
+    position: "absolute",
+    bottom: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
   },
   presetChipText: {
     fontSize: 11,
