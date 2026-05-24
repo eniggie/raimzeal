@@ -3602,7 +3602,6 @@ export default function CardCustomizationModal({
                           return;
                         }
                         setSelectedAction(action);
-                        handleGenerate(action);
                       }}
                       onLongPress={() => {
                         if (!anyStatEnabled) {
