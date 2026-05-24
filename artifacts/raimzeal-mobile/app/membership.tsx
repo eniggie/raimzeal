@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -124,67 +124,102 @@ export default function MembershipScreen() {
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
-  const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
+  const [subscriptionsAvailable, setSubscriptionsAvailable] = useState<boolean | null>(null);
+  // intentionally no checkoutError state — each case now uses specific Alert dialogs
+
+  // Check on mount whether the server has Stripe price IDs configured.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/stripe/status`, {
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) { if (!cancelled) setSubscriptionsAvailable(false); return; }
+        const json = await res.json() as { available?: boolean };
+        if (!cancelled) setSubscriptionsAvailable(json.available ?? false);
+      } catch {
+        if (!cancelled) setSubscriptionsAvailable(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleCheckout(tier: string, interval: "monthly" | "yearly") {
     setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
-    setCheckoutError((prev) => ({ ...prev, [tier]: "" }));
+
+    // 1 — Verify auth session (guarded separately so a Supabase hiccup
+    //     doesn't land in the generic outer catch).
+    let accessToken: string | null = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      accessToken = data.session?.access_token ?? null;
+    } catch {
+      Alert.alert("Sign In Required", "Please sign in to your RAIMZEAL account to subscribe.");
+      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+      return;
+    }
+
+    if (!accessToken) {
+      Alert.alert("Sign In Required", "Please sign in to your RAIMZEAL account to subscribe.");
+      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+      return;
+    }
+
+    // 2 — Call the checkout-session endpoint.
+    let res: Response;
+    try {
+      res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ tier, interval }),
+      });
+    } catch {
+      Alert.alert("Connection Error", "Server temporarily unavailable. Please wait a moment and try again.");
+      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+      return;
+    }
+
+    // 3 — Parse the response body (guard against non-JSON gateway pages).
+    let data: { url?: string; error?: string; code?: string } = {};
+    try {
+      data = await res.json() as typeof data;
+    } catch {
+      // non-JSON response (proxy/gateway error page) — treat as unavailable
+    }
+
+    setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+
+    // 4 — Handle each outcome.
+    if (res.status === 503 || data.code === "STRIPE_NOT_CONFIGURED") {
+      // Subscriptions not yet wired up — inform without an alarming error.
+      Alert.alert(
+        "Coming Soon",
+        "Paid subscriptions are not yet active.\n\nAll features are free for now — enjoy RAIMZEAL at no cost!",
+        [{ text: "Got it" }]
+      );
+      setSubscriptionsAvailable(false);
+      return;
+    }
+
+    if (res.status === 401) {
+      Alert.alert("Session Expired", "Please sign out, sign back in, and try again.");
+      return;
+    }
+
+    if (!res.ok || !data.url) {
+      const msg = data.error ?? `Could not start checkout (${res.status}). Please try again.`;
+      Alert.alert("Checkout Error", msg);
+      return;
+    }
 
     try {
-      // Check auth first — endpoint requires a signed-in user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        Alert.alert(
-          "Sign In Required",
-          "Please sign in to your RAIMZEAL account to subscribe.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-
-      let res: Response;
-      try {
-        res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ tier, interval }),
-        });
-      } catch {
-        // Network error — server may be temporarily restarting
-        const msg = "Server temporarily unavailable. Please wait a moment and try again.";
-        setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
-        Alert.alert("Connection Error", msg);
-        return;
-      }
-
-      // Parse response — guard against non-JSON error pages
-      let data: { url?: string; error?: string } = {};
-      try {
-        data = await res.json() as { url?: string; error?: string };
-      } catch {
-        // Response was not JSON (proxy/gateway error page)
-      }
-
-      if (!res.ok || !data.url) {
-        const msg =
-          res.status === 401
-            ? "Please sign in and try again."
-            : (data.error ?? `Could not start checkout (${res.status}). Please try again.`);
-        setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
-        Alert.alert("Checkout Error", msg);
-        return;
-      }
-
       await Linking.openURL(data.url);
     } catch {
-      const msg = "Something went wrong. Please try again.";
-      setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
-      Alert.alert("Error", msg);
-    } finally {
-      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+      Alert.alert("Error", "Could not open the checkout page. Please try again.");
     }
   }
 
@@ -263,7 +298,7 @@ export default function MembershipScreen() {
           const price = billing === "monthly" ? plan.monthly : plan.yearly;
           const period = billing === "monthly" ? "/mo" : "/yr";
           const isLoading = checkoutLoading[plan.key] ?? false;
-          const error = checkoutError[plan.key] ?? "";
+          const comingSoon = subscriptionsAvailable === false;
 
           return (
             <View key={plan.key}>
@@ -307,36 +342,43 @@ export default function MembershipScreen() {
                   ))}
                 </View>
 
-                {error ? (
-                  <Text style={[styles.errorText, { color: "#f87171" }]}>{error}</Text>
-                ) : null}
-
-                <TouchableOpacity
-                  style={[
-                    styles.ctaBtn,
-                    {
-                      backgroundColor: plan.color + "25",
-                      borderColor: plan.color + "60",
-                      borderWidth: 1,
-                      opacity: isLoading ? 0.7 : 1,
-                    },
-                  ]}
-                  activeOpacity={0.8}
-                  disabled={isLoading}
-                  onPress={() => handleCheckout(plan.key, billing)}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={plan.color} />
-                  ) : (
-                    <Text style={[styles.ctaText, { color: plan.color }]}>
-                      {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
+                {comingSoon ? (
+                  <View style={[styles.comingSoonBanner, { borderColor: plan.borderColor + "40", backgroundColor: plan.color + "10" }]}>
+                    <Ionicons name="time-outline" size={14} color={plan.color} />
+                    <Text style={[styles.comingSoonText, { color: plan.color }]}>
+                      Subscriptions coming soon — all features are free for now!
                     </Text>
-                  )}
-                </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.ctaBtn,
+                      {
+                        backgroundColor: plan.color + "25",
+                        borderColor: plan.color + "60",
+                        borderWidth: 1,
+                        opacity: isLoading ? 0.7 : 1,
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                    disabled={isLoading}
+                    onPress={() => handleCheckout(plan.key, billing)}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={plan.color} />
+                    ) : (
+                      <Text style={[styles.ctaText, { color: plan.color }]}>
+                        {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
 
-                <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
-                  Secure checkout via Stripe · Cancel anytime
-                </Text>
+                {!comingSoon && (
+                  <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
+                    Secure checkout via Stripe · Cancel anytime
+                  </Text>
+                )}
               </LinearGradient>
             </View>
           );
@@ -471,6 +513,15 @@ const styles = StyleSheet.create({
   featureRow:  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   checkIcon:   { marginTop: 1 },
   featureText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  comingSoonBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  comingSoonText: { fontSize: 12, fontWeight: "600", flex: 1, lineHeight: 17 },
   errorText:   { fontSize: 12, textAlign: "center" },
   ctaBtn: {
     borderRadius: 14,

@@ -6,6 +6,20 @@ import { getPriceId } from "../lib/tier";
 
 const stripeRouter = Router();
 
+// GET /api/stripe/status — public, tells clients if subscription checkout is live
+stripeRouter.get("/stripe/status", (_req, res) => {
+  const PRICE_KEYS = [
+    "STRIPE_PRICE_RISE_MONTHLY",
+    "STRIPE_PRICE_RISE_YEARLY",
+    "STRIPE_PRICE_REIGN_MONTHLY",
+    "STRIPE_PRICE_REIGN_YEARLY",
+    "STRIPE_PRICE_LEGACY_MONTHLY",
+    "STRIPE_PRICE_LEGACY_YEARLY",
+  ];
+  const available = PRICE_KEYS.every((k) => !!process.env[k]);
+  return res.json({ available });
+});
+
 // GET /api/stripe/donation-health — public, no auth
 const STRIPE_DONATION_URL = "https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00";
 stripeRouter.get("/stripe/donation-health", async (_req, res) => {
@@ -51,7 +65,7 @@ async function handleCheckoutSession(req: Request, res: Response) {
     interval as "monthly" | "yearly"
   );
   if (!priceId) {
-    res.status(404).json({ error: "This plan is not yet available for purchase. Please check back soon." });
+    res.status(503).json({ error: "Subscriptions are not yet active. All features are free for now — check back soon!", code: "STRIPE_NOT_CONFIGURED" });
     return;
   }
 
@@ -87,8 +101,20 @@ async function handleCheckoutSession(req: Request, res: Response) {
     logger.info({ userId, tier, interval, sessionId: session.id }, "Stripe checkout session created");
     res.json({ url: session.url });
   } catch (err) {
-    logger.error({ err, userId, tier, interval }, "Stripe checkout session creation failed");
-    res.status(500).json({ error: "Could not create checkout session. Please try again." });
+    const message = err instanceof Error ? err.message : String(err);
+    const isNotConfigured =
+      message.includes("not found") ||
+      message.includes("Connect Stripe") ||
+      message.includes("integration") ||
+      message.includes("Missing Replit");
+
+    if (isNotConfigured) {
+      logger.warn({ userId, tier, interval }, "Stripe not connected — returning 503");
+      res.status(503).json({ error: "Subscriptions are not yet active. All features are free for now — check back soon!", code: "STRIPE_NOT_CONFIGURED" });
+    } else {
+      logger.error({ err, userId, tier, interval }, "Stripe checkout session creation failed");
+      res.status(500).json({ error: "Could not create checkout session. Please try again." });
+    }
   }
 }
 
