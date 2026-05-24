@@ -1204,10 +1204,12 @@ export default function NutritionScreen() {
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyFilterScrollRef = useRef<ScrollView>(null);
-  const historyChipHighlightAnim = useRef(new Animated.Value(0)).current;
+  const HISTORY_CHIP_COUNT = 8;
+  const historyChipHighlightAnims = useRef(
+    Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
+  ).current;
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
-  const HISTORY_CHIP_COUNT = 8;
   const historyChipFadeAnims = useRef(
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
   ).current;
@@ -1346,12 +1348,21 @@ export default function NutritionScreen() {
 
   function handleHistoryFilterHintPress() {
     historyFilterScrollRef.current?.scrollTo({ x: 0, animated: true });
-    Animated.sequence([
-      Animated.timing(historyChipHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
-      Animated.delay(400),
-      Animated.timing(historyChipHighlightAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
-    ]).start();
-    dismissHistoryFilterHint();
+    const STAGGER_MS = 60;
+    const PER_CHIP_DURATION = 200 + 300 + 400;
+    const HINT_FADE_DURATION = 300;
+    const totalAnimMs = (HISTORY_CHIP_COUNT - 1) * STAGGER_MS + PER_CHIP_DURATION;
+    const dismissDelayMs = totalAnimMs - HINT_FADE_DURATION;
+    historyChipHighlightAnims.forEach((anim, i) => {
+      anim.setValue(0);
+      Animated.sequence([
+        Animated.delay(i * STAGGER_MS),
+        Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: false }),
+        Animated.delay(300),
+        Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: false }),
+      ]).start();
+    });
+    setTimeout(dismissHistoryFilterHint, dismissDelayMs);
   }
 
   useEffect(() => {
@@ -3538,32 +3549,19 @@ export default function NutritionScreen() {
                           </Text>
                         </TouchableOpacity>
                       );
-                      if (idx === 0) {
-                        return (
-                          <Animated.View
-                            key={range}
-                            style={{
-                              borderRadius: 20,
-                              shadowColor: colors.primary,
-                              shadowOffset: { width: 0, height: 0 },
-                              shadowRadius: 8,
-                              shadowOpacity: historyChipHighlightAnim,
-                              elevation: historyChipHighlightAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 6],
-                              }),
-                              opacity: historyChipFadeAnims[idx],
-                              transform: [{ translateX: historyChipSlideAnims[idx] }],
-                            }}
-                          >
-                            {chip}
-                          </Animated.View>
-                        );
-                      }
                       return (
                         <Animated.View
                           key={range}
                           style={{
+                            borderRadius: 20,
+                            shadowColor: colors.primary,
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowRadius: 8,
+                            shadowOpacity: historyChipHighlightAnims[idx],
+                            elevation: historyChipHighlightAnims[idx].interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, 6],
+                            }),
                             opacity: historyChipFadeAnims[idx],
                             transform: [{ translateX: historyChipSlideAnims[idx] }],
                           }}
@@ -3631,6 +3629,15 @@ export default function NutritionScreen() {
                         <Animated.View
                           key={`meal-${meal}`}
                           style={{
+                            borderRadius: 20,
+                            shadowColor: colors.primary,
+                            shadowOffset: { width: 0, height: 0 },
+                            shadowRadius: 8,
+                            shadowOpacity: historyChipHighlightAnims[chipIdx],
+                            elevation: historyChipHighlightAnims[chipIdx].interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, 6],
+                            }),
                             opacity: historyChipFadeAnims[chipIdx],
                             transform: [{ translateX: historyChipSlideAnims[chipIdx] }],
                           }}
