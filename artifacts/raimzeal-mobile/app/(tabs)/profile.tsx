@@ -970,10 +970,31 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>
           <GlassCard style={styles.actionsCard}>
             <ActionRow
-              icon="star-outline"
-              label="Membership Plans — Rise, Reign & Legacy"
-              sublabel="Foundation is free forever · Tap to see all plans"
+              icon="shield-checkmark-outline"
+              label="Foundation — Free Forever"
+              sublabel="Your current plan · All core features included"
               color="#2E8B57"
+              onPress={() => router.push("/membership")}
+            />
+            <ActionRow
+              icon="flash-outline"
+              label="Rise — $9.99/mo"
+              sublabel="200 AI messages/day · Priority badge · Advanced analytics"
+              color="#60a5fa"
+              onPress={() => router.push("/membership")}
+            />
+            <ActionRow
+              icon="star-outline"
+              label="Reign — $19.99/mo"
+              sublabel="500 AI messages/day · Meal plans · Body composition"
+              color="#c084fc"
+              onPress={() => router.push("/membership")}
+            />
+            <ActionRow
+              icon="trophy-outline"
+              label="Legacy — $49.99/mo"
+              sublabel="Unlimited AI · 1-on-1 coaching · Founder badge"
+              color="#fbbf24"
               onPress={() => router.push("/membership")}
               isLast
             />

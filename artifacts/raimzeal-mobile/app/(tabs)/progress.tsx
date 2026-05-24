@@ -467,12 +467,31 @@ export default function ProgressScreen() {
         }}
         style={[styles.navCard, { backgroundColor: colors.card, borderColor: colors.border }]}
       >
-        <View style={[styles.navCardIcon, { backgroundColor: "#8b5cf6" + "20" }]}>
+        <View style={[styles.navCardIcon, { backgroundColor: "#8b5cf620" }]}>
           <Ionicons name="moon-outline" size={24} color="#8b5cf6" />
         </View>
         <View style={styles.navCardText}>
           <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Sleep Tracker</Text>
           <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Log duration · Quality · 7-day view</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
+      {/* Membership upgrade card */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/membership");
+        }}
+        style={[styles.navCard, { backgroundColor: "#F59E0B08", borderColor: "#F59E0B40" }]}
+      >
+        <View style={[styles.navCardIcon, { backgroundColor: "#F59E0B20" }]}>
+          <Ionicons name="star" size={24} color="#F59E0B" />
+        </View>
+        <View style={styles.navCardText}>
+          <Text style={[styles.navCardTitle, { color: colors.foreground }]}>Rise · Reign · Legacy</Text>
+          <Text style={[styles.navCardSubtitle, { color: colors.mutedForeground }]}>Advanced analytics · AI insights · Body composition</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
       </TouchableOpacity>

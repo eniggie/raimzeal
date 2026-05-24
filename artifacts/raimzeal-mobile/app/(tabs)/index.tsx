@@ -517,6 +517,16 @@ export default function HomeScreen() {
               router.navigate("/(tabs)/progress");
             }}
           />
+          <QuickAction
+            icon="star"
+            label="Plans"
+            color="#F59E0B"
+            bg="#F59E0B20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/membership");
+            }}
+          />
         </View>
 
       </View>

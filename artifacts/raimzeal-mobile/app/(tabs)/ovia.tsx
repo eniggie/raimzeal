@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
@@ -121,6 +122,7 @@ function buildOviaContext(
 export default function OviaScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuth();
   const {
     user,
@@ -491,6 +493,24 @@ export default function OviaScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Membership upgrade hint */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/membership");
+                }}
+                style={[styles.upgradeHint, { backgroundColor: "#F59E0B10", borderColor: "#F59E0B40" }]}
+              >
+                <Ionicons name="star" size={14} color="#F59E0B" />
+                <Text style={[styles.upgradeHintText, { color: colors.mutedForeground }]}>
+                  Rise — 200 msgs/day · Reign — 500 · Legacy — unlimited
+                </Text>
+                <Text style={{ fontSize: 11, color: "#F59E0B", fontFamily: "Inter_600SemiBold" }}>
+                  Upgrade →
+                </Text>
+              </TouchableOpacity>
             </View>
           }
           renderItem={({ item }) => <ChatBubble message={item} />}
@@ -654,4 +674,6 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, height: 44, borderRadius: 22, paddingHorizontal: 16, fontSize: 15, fontFamily: "Inter_400Regular", borderWidth: 1 },
   micBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  upgradeHint: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, marginHorizontal: 4, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  upgradeHintText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
 });
