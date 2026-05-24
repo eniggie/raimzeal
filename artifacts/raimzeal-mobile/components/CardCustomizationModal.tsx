@@ -1086,6 +1086,7 @@ export default function CardCustomizationModal({
   const INLINE_SAVE_EXPANDED_H = 118;
   const inlineSaveHeight = useSharedValue(0);
   const inlineSaveOpacity = useSharedValue(0);
+  const activePresetBannerOpacity = useSharedValue(1);
   const inlineSaveOpen = useRef(false);
   useEffect(() => {
     const open = showInlineSave && !reorderMode;
@@ -1097,14 +1098,20 @@ export default function CardCustomizationModal({
     if (reduceMotion) {
       inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
       inlineSaveOpacity.value = open ? 1 : 0;
+      activePresetBannerOpacity.value = open ? 0 : 1;
     } else if (open) {
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
       inlineSaveOpacity.value = withTiming(1, { duration: 180 });
+      activePresetBannerOpacity.value = withTiming(0, { duration: 120 });
     } else {
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
+      activePresetBannerOpacity.value = withTiming(1, { duration: 180 });
     }
   }, [showInlineSave, reorderMode, reduceMotion]);
+  const activePresetBannerAnimStyle = useAnimatedStyle(() => ({
+    opacity: activePresetBannerOpacity.value,
+  }));
   const inlineSaveAnimStyle = useAnimatedStyle(() => ({
     height: inlineSaveHeight.value,
     opacity: inlineSaveOpacity.value,
@@ -2916,13 +2923,13 @@ export default function CardCustomizationModal({
               </View>
             </Reanimated.View>
 
-            {activePreset && !reorderMode && !showInlineSave && (
-              <View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+            {activePreset && !reorderMode && (
+              <Reanimated.View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }, activePresetBannerAnimStyle]}>
                 <Ionicons name="bookmark" size={12} color={colors.primary} />
                 <Text style={[styles.activePresetBannerText, { color: colors.primary }]}>
                   Viewing "{activePreset.name}" — edit below to update it
                 </Text>
-              </View>
+              </Reanimated.View>
             )}
 
             {/* Live card preview */}
