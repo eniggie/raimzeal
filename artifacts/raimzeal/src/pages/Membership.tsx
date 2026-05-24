@@ -172,6 +172,7 @@ export function Membership() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
           className="mb-4 rounded-2xl glass-emerald shimmer p-5"
         >
           <div className="flex items-center gap-2 mb-3">
@@ -198,7 +199,7 @@ export function Membership() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
+          transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.04 }}
           className="flex items-center justify-center mb-4"
         >
           <div className="inline-flex items-center gap-1 p-1 rounded-xl glass">
@@ -235,7 +236,7 @@ export function Membership() {
                 key={plan.key}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.06 + i * 0.04 }}
+                transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.06 + i * 0.04 }}
                 className={`relative rounded-2xl glass p-5 border ${plan.border} ${!plan.hasPrice ? 'opacity-80' : ''}`}
               >
                 {plan.popular && (
@@ -327,7 +328,7 @@ export function Membership() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
+          transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.22 }}
           className="mb-6 p-4 rounded-2xl glass-emerald shimmer flex items-center justify-between gap-4"
         >
           <div className="flex-1 min-w-0">
@@ -356,9 +357,9 @@ export function Membership() {
 
         {/* RAIMZY Resources */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.26 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.26 }}
           className="p-4 rounded-2xl glass-royal"
         >
           <p className="text-sm font-semibold mb-1">RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP</p>
