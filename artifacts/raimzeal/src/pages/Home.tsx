@@ -424,6 +424,74 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
             </div>
           </motion.div>
         )}
+        {/* Donation CTA — dark psychology */}
+        {DONATION_ACTIVE && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55, duration: 0.5 }}
+            className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-secondary/5 px-5 py-5"
+          >
+            {/* Ambient glow blobs */}
+            <div className="pointer-events-none absolute -top-8 -left-8 w-32 h-32 rounded-full bg-primary/20 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-6 -right-6 w-24 h-24 rounded-full bg-secondary/15 blur-2xl" />
+
+            {/* Badge */}
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[10px] font-bold tracking-widest text-primary uppercase">Support the Mission</span>
+            </div>
+
+            {/* Headline */}
+            <p className="text-base font-bold leading-snug text-foreground mb-1">
+              Someone funded this session.<br />
+              <span className="text-primary">It wasn't you.</span>
+            </p>
+
+            {/* Body */}
+            <p className="text-xs text-muted-foreground leading-relaxed mb-1">
+              Every ad deal, every investor pitch, every sponsorship — we said no. All of it.
+              To keep this completely free for you.
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              RAIMZEAL runs on voluntary donations from the few who decide the mission is worth
+              protecting. Most people never give. The ones who do are the reason everyone else can.
+            </p>
+
+            {/* Identity challenge */}
+            <p className="text-xs font-semibold text-foreground/80 mb-4 italic">
+              "You've already used it. Now you know what it's worth to you."
+            </p>
+
+            {/* CTA */}
+            <motion.a
+              href={STRIPE_DONATION_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/30 overflow-hidden"
+              animate={{ boxShadow: ['0 0 0px #2E8B57', '0 0 22px #2E8B5788', '0 0 0px #2E8B57'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="Donate to support RAIMZEAL"
+            >
+              <Heart className="w-4 h-4 fill-current shrink-0" />
+              I'll support the mission — any amount
+              <motion.span
+                className="pointer-events-none absolute inset-0 bg-white/10"
+                initial={{ x: '-100%' }}
+                animate={{ x: '200%' }}
+                transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+              />
+            </motion.a>
+
+            {/* Trust line */}
+            <p className="mt-2.5 text-center text-[10px] text-muted-foreground/60">
+              Secure · No account required · Any amount helps · 100% goes to the team
+            </p>
+          </motion.div>
+        )}
+
         <p className="text-xs text-muted-foreground/50 text-center px-2 pt-4 pb-2 leading-relaxed">
           RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
         </p>
