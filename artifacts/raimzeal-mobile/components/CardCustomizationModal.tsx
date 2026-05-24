@@ -1244,6 +1244,8 @@ export default function CardCustomizationModal({
   const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
   const defaultActionPulseAnim = useRef(new Animated.Value(1)).current;
   const hasPulsedDefaultRef = useRef(false);
+  const hasUserTappedRef = useRef(false);
+  const secondPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1646,6 +1648,11 @@ export default function CardCustomizationModal({
     if (!visible) {
       // Reset pulse so next open can animate again
       hasPulsedDefaultRef.current = false;
+      hasUserTappedRef.current = false;
+      if (secondPulseTimerRef.current !== null) {
+        clearTimeout(secondPulseTimerRef.current);
+        secondPulseTimerRef.current = null;
+      }
       defaultActionPulseAnim.setValue(1);
       // Clean up any pending auto-trigger when the modal closes
       if (autoTriggerIntervalRef.current !== null) {
@@ -1822,6 +1829,7 @@ export default function CardCustomizationModal({
   }, [visible]);
 
   // Pulse the default action button once when the modal opens with a saved default.
+  // A softer follow-up pulse (1 → 1.03 → 1) fires ~1.5 s later if the user hasn't tapped yet.
   useEffect(() => {
     if (!visible || defaultAction === null) return;
     if (hasPulsedDefaultRef.current) return;
@@ -1832,6 +1840,16 @@ export default function CardCustomizationModal({
       Animated.timing(defaultActionPulseAnim, { toValue: 1.06, duration: 150, useNativeDriver: true }),
       Animated.timing(defaultActionPulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
+    // Schedule the softer follow-up pulse
+    secondPulseTimerRef.current = setTimeout(() => {
+      secondPulseTimerRef.current = null;
+      if (hasUserTappedRef.current) return;
+      if (reduceMotionRef.current) return;
+      Animated.sequence([
+        Animated.timing(defaultActionPulseAnim, { toValue: 1.03, duration: 200, useNativeDriver: true }),
+        Animated.timing(defaultActionPulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }, 1500);
   }, [defaultAction, visible]);
 
   // When the user switches their selected action while a countdown is running, immediately
@@ -3803,6 +3821,11 @@ export default function CardCustomizationModal({
                     >
                     <TouchableOpacity
                       onPress={() => {
+                        hasUserTappedRef.current = true;
+                        if (secondPulseTimerRef.current !== null) {
+                          clearTimeout(secondPulseTimerRef.current);
+                          secondPulseTimerRef.current = null;
+                        }
                         if (!anyStatEnabled) {
                           showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
                           return;
