@@ -19,24 +19,36 @@ const ThumbnailSizeContext = createContext<ThumbnailSizeContextType | null>(null
  * exposes shared state to all consumers.  Wrap the app root with this provider
  * so the preference is available app-wide without per-component AsyncStorage
  * round-trips.
+ *
+ * Renders nothing until the stored value has been read so that children never
+ * see the default "m" before the real preference is known, preventing a
+ * visible size flash on first load.
  */
 export function ThumbnailSizeProvider({ children }: { children: React.ReactNode }) {
-  const [thumbnailSize, setThumbnailSizeState] = useState<ThumbnailSize>(DEFAULT_SIZE);
+  const [thumbnailSize, setThumbnailSizeState] = useState<ThumbnailSize | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((saved) => {
         if (saved && VALID_SIZES.includes(saved as ThumbnailSize)) {
           setThumbnailSizeState(saved as ThumbnailSize);
+        } else {
+          setThumbnailSizeState(DEFAULT_SIZE);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setThumbnailSizeState(DEFAULT_SIZE);
+      });
   }, []);
 
   const setThumbnailSize = useCallback((size: ThumbnailSize) => {
     setThumbnailSizeState(size);
     AsyncStorage.setItem(STORAGE_KEY, size).catch(() => {});
   }, []);
+
+  if (thumbnailSize === null) {
+    return null;
+  }
 
   return React.createElement(
     ThumbnailSizeContext.Provider,
