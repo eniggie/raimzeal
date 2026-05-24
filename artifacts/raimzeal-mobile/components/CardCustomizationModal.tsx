@@ -38,6 +38,7 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import CropPhotoModal, { CropData } from "@/components/CropPhotoModal";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFitness } from "@/contexts/FitnessContext";
 import { useColors } from "@/hooks/useColors";
@@ -1158,6 +1159,7 @@ export default function CardCustomizationModal({
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const reduceMotion = useReduceMotion();
   const { settings } = useFitness();
   const { cameraRollStatus } = usePermissions();
@@ -3736,6 +3738,16 @@ export default function CardCustomizationModal({
               <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
                 {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
               </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  cancelAutoTrigger();
+                  onClose();
+                  router.navigate({ pathname: "/(tabs)/profile", params: { scrollTo: "countdown" } });
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[styles.autoTriggerChangeLink, { color: colors.primary }]}>Change</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close-circle" size={16} color={colors.primary} />
               </TouchableOpacity>
@@ -4932,6 +4944,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  autoTriggerChangeLink: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textDecorationLine: "underline",
+    opacity: 0.75,
   },
   autoTriggerBar: {
     position: "absolute",

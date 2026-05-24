@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -98,6 +98,22 @@ export default function ProfileScreen() {
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
   const [showFlashOverlay, setShowFlashOverlay] = useState(false);
+
+  const profileScrollRef = useRef<ScrollView>(null);
+  const settingsCardYRef = useRef<number>(0);
+  const countdownRowYRef = useRef<number>(0);
+  const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
+
+  useEffect(() => {
+    if (scrollTo !== "countdown") return;
+    const timeout = setTimeout(() => {
+      profileScrollRef.current?.scrollTo({
+        y: settingsCardYRef.current + countdownRowYRef.current,
+        animated: true,
+      });
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [scrollTo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -667,6 +683,7 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView
+        ref={profileScrollRef}
         contentContainerStyle={[
           styles.profileContent,
           { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 },
@@ -763,6 +780,7 @@ export default function ProfileScreen() {
 
           {/* Settings */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Settings</Text>
+          <View onLayout={(e) => { settingsCardYRef.current = e.nativeEvent.layout.y; }}>
           <GlassCard style={styles.actionsCard}>
             <ActionRow
               icon="nutrition-outline"
@@ -784,13 +802,15 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={handlePickDefaultCardAction}
             />
-            <SettingPickerRow
-              icon="hourglass-outline"
-              label="Auto-generate countdown"
-              value={autoTriggerDelay === "off" ? "Off" : `${autoTriggerDelay}s`}
-              color={colors.accent}
-              onPress={handlePickAutoTriggerDelay}
-            />
+            <View onLayout={(e) => { countdownRowYRef.current = e.nativeEvent.layout.y; }}>
+              <SettingPickerRow
+                icon="hourglass-outline"
+                label="Auto-generate countdown"
+                value={autoTriggerDelay === "off" ? "Off" : `${autoTriggerDelay}s`}
+                color={colors.accent}
+                onPress={handlePickAutoTriggerDelay}
+              />
+            </View>
             <SettingPickerRow
               icon="timer-outline"
               label="Undo window duration"
@@ -880,6 +900,7 @@ export default function ProfileScreen() {
               />
             )}
           </GlassCard>
+          </View>
 
           {/* Tools & Wellness */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tools & Wellness</Text>
