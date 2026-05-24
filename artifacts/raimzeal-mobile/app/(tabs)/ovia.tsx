@@ -24,6 +24,12 @@ const SUGGESTIONS = [
   "What vitamins do I need? 💊",
   "Design my workout plan 💪",
   "How do I recover faster? ⚡",
+  "Help me sleep better 😴",
+  "What should I eat for fat loss? 🔥",
+  "Check my protein intake 🥩",
+  "Give me a breathing exercise 🌬️",
+  "Explain genotype diets for AS 🧬",
+  "What's my BMI and is it healthy? 📊",
 ];
 
 function stripMarkdown(text: string): string {

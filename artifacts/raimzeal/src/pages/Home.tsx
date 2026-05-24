@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
-  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart, Snowflake
+  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart, Snowflake,
+  Moon, Sun, Wind, BedDouble
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +21,7 @@ import { STRIPE_DONATION_URL, DONATION_ACTIVE } from '@/lib/constants';
 interface HomeProps {
   state: AppState;
   onUpdateWater: (glasses: number) => void;
+  onUpdateSettings?: (s: Partial<AppState['settings']>) => void;
 }
 
 function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; proteinGoal: number } {
@@ -38,7 +41,7 @@ function calcDailyGoals(user: AppState['user']): { caloriesGoal: number; protein
   };
 }
 
-export function Home({ state, onUpdateWater }: HomeProps) {
+export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
   const [streakFreezes, setStreakFreezes] = useState(0);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [freezeMsg, setFreezeMsg] = useState('');
@@ -88,12 +91,25 @@ export function Home({ state, onUpdateWater }: HomeProps) {
   const { caloriesGoal, proteinGoal } = calcDailyGoals(state.user);
   const waterGoal = 8;
 
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split('T')[0];
+    const dayMeals = state.mealLogs.filter(m => m.date === dateStr);
+    return {
+      day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),
+      isToday: dateStr === today,
+    };
+  });
+
   const quickActions = [
-    { icon: Dumbbell, label: 'Start Workout', href: '/workouts', color: 'bg-primary/20 text-primary' },
+    { icon: Dumbbell, label: 'Workout', href: '/workouts', color: 'bg-primary/20 text-primary' },
     { icon: MessageCircle, label: 'Ovia AI', href: '/coach', color: 'bg-secondary/20 text-secondary' },
     { icon: Users, label: 'Community', href: '/community', color: 'bg-accent/20 text-accent' },
     { icon: Zap, label: 'Programs', href: '/programs', color: 'bg-warning/20 text-warning' },
-    { icon: Crown, label: 'Support Us', href: '/membership', color: 'bg-yellow-500/20 text-yellow-400' },
+    { icon: Wind, label: 'Breathe', href: '/breathing', color: 'bg-cyan-500/20 text-cyan-400' },
+    { icon: BedDouble, label: 'Sleep', href: '/sleep', color: 'bg-indigo-500/20 text-indigo-400' },
   ];
 
   return (
@@ -111,6 +127,17 @@ export function Home({ state, onUpdateWater }: HomeProps) {
             </h1>
           </div>
           <div className="flex flex-col items-end gap-1">
+            {onUpdateSettings && (
+              <button
+                onClick={() => onUpdateSettings({ darkMode: !state.settings.darkMode })}
+                className="mb-1 p-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors"
+                title={state.settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {state.settings.darkMode
+                  ? <Sun className="w-4 h-4 text-yellow-400" />
+                  : <Moon className="w-4 h-4 text-muted-foreground" />}
+              </button>
+            )}
             <motion.div
               className="flex items-center gap-2 px-3 py-1.5 glass-pill"
               whileHover={{ scale: 1.05 }}
@@ -292,13 +319,38 @@ export function Home({ state, onUpdateWater }: HomeProps) {
           </Card>
         </motion.div>
 
+        {/* 7-day calorie trend */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Card className="p-4 glass-card">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold">7-Day Calorie Trend</h2>
+              <span className="text-xs text-muted-foreground">{caloriesGoal} kcal goal</span>
+            </div>
+            <ResponsiveContainer width="100%" height={72}>
+              <BarChart data={last7Days} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 11 }}
+                  formatter={(v: number) => [`${v} kcal`, 'Calories']}
+                />
+                <ReferenceLine y={caloriesGoal} stroke="hsl(var(--primary))" strokeDasharray="3 3" strokeOpacity={0.5} />
+                <Bar dataKey="calories" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} opacity={0.85} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
           <h2 className="text-lg font-semibold font-display mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {quickActions.map((action, i) => (
               <Link key={action.label} href={action.href}>
                 <motion.div

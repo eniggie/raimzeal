@@ -26,6 +26,7 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
   const [newWeight, setNewWeight] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const [bodyMeasOpen, setBodyMeasOpen] = useState(false);
+  const [workoutRange, setWorkoutRange] = useState<'week' | 'month'>('week');
   const [measFields, setMeasFields] = useState({
     weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '',
   });
@@ -234,30 +235,87 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
             </TabsContent>
 
             <TabsContent value="workouts" className="mt-4 space-y-3">
-              {state.workoutLogs.slice(0, 10).map((log, i) => (
-                <Card key={log.id} className="p-3" data-testid={`card-workout-log-${i}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Dumbbell className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{log.workoutName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {log.duration} min · {log.caloriesBurned} cal
+              {/* Range toggle */}
+              <div className="flex gap-2">
+                {(['week', 'month'] as const).map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setWorkoutRange(r)}
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-medium transition-colors border ${workoutRange === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 text-muted-foreground border-border'}`}
+                  >
+                    {r === 'week' ? 'Last 7 Days' : 'Last 30 Days'}
+                  </button>
+                ))}
+              </div>
+
+              {(() => {
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - (workoutRange === 'week' ? 7 : 30));
+                const filtered = state.workoutLogs.filter(l => new Date(l.date) >= cutoff);
+                const totalMins = filtered.reduce((s, l) => s + l.duration, 0);
+                const totalCal = filtered.reduce((s, l) => s + l.caloriesBurned, 0);
+
+                const muscles = filtered.flatMap(l => l.exercises?.map(e => e.name ?? '') ?? []);
+                const topMuscle = muscles.length > 0
+                  ? Object.entries(muscles.reduce<Record<string, number>>((acc, m) => ({ ...acc, [m]: (acc[m] ?? 0) + 1 }), {}))
+                      .sort((a, b) => b[1] - a[1])[0]?.[0]
+                  : null;
+
+                return (
+                  <>
+                    {filtered.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <Card className="p-3">
+                          <div className="text-xl font-bold text-primary">{filtered.length}</div>
+                          <div className="text-xs text-muted-foreground">Sessions</div>
+                        </Card>
+                        <Card className="p-3">
+                          <div className="text-xl font-bold">{totalMins}</div>
+                          <div className="text-xs text-muted-foreground">Minutes</div>
+                        </Card>
+                        <Card className="p-3">
+                          <div className="text-xl font-bold text-secondary">{totalCal}</div>
+                          <div className="text-xs text-muted-foreground">Cal Burned</div>
+                        </Card>
                       </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
-                  </div>
-                </Card>
-              ))}
-              {state.workoutLogs.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Dumbbell className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No workouts logged yet</p>
-                </div>
-              )}
+                    )}
+                    {topMuscle && (
+                      <Card className="p-3 flex items-center gap-3">
+                        <Dumbbell className="w-5 h-5 text-primary shrink-0" />
+                        <div>
+                          <div className="text-xs text-muted-foreground">Top Focus</div>
+                          <div className="font-medium text-sm">{topMuscle}</div>
+                        </div>
+                      </Card>
+                    )}
+                    {filtered.map((log, i) => (
+                      <Card key={log.id} className="p-3" data-testid={`card-workout-log-${i}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Dumbbell className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium">{log.workoutName}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {log.duration} min · {log.caloriesBurned} cal
+                              {log.notes ? ` · ${log.notes}` : ''}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                    {filtered.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Dumbbell className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No workouts in the last {workoutRange === 'week' ? '7' : '30'} days</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="prs" className="mt-4 space-y-3">

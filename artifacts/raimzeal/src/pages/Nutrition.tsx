@@ -2,9 +2,11 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
-  ChevronLeft, Plus, Search, Scan, Utensils, 
-  Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus
+  ChevronLeft, ChevronRight, Plus, Search, Scan, Utensils, 
+  Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus,
+  CalendarDays
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,6 +29,9 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [manualEntry, setManualEntry] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+  const [dialogTab, setDialogTab] = useState<'search' | 'manual'>('search');
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState('');
@@ -64,7 +69,7 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
     if (!analyzedMeal) return;
     const meal: MealLog = {
       id: crypto.randomUUID(),
-      date: today,
+      date: selectedDate,
       name: analyzedMeal.name,
       calories: analyzedMeal.calories,
       protein: analyzedMeal.protein_g,
@@ -80,9 +85,9 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
   const today = new Date().toISOString().split('T')[0];
   const todayWater = state.waterIntake.find(w => w.date === today)?.glasses ?? 0;
   const waterGoal = 8;
-  const todayMeals = state.mealLogs.filter(m => m.date === today);
+  const mealsForDate = state.mealLogs.filter(m => m.date === selectedDate);
   
-  const totals = todayMeals.reduce((acc, meal) => ({
+  const totals = mealsForDate.reduce((acc, meal) => ({
     calories: acc.calories + meal.calories,
     protein: acc.protein + meal.protein,
     carbs: acc.carbs + meal.carbs,
@@ -111,7 +116,7 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
   const handleAddFood = (food: typeof quickFoods[0]) => {
     const meal: MealLog = {
       id: crypto.randomUUID(),
-      date: today,
+      date: selectedDate,
       name: food.name,
       calories: food.calories,
       protein: food.protein,
@@ -124,12 +129,49 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
     setSearch('');
   };
 
+  function handleManualEntry() {
+    const cal = parseFloat(manualEntry.calories);
+    const name = manualEntry.name.trim();
+    if (!name || !cal) return;
+    const meal: MealLog = {
+      id: crypto.randomUUID(),
+      date: selectedDate,
+      name,
+      calories: cal,
+      protein: parseFloat(manualEntry.protein) || 0,
+      carbs: parseFloat(manualEntry.carbs) || 0,
+      fat: parseFloat(manualEntry.fat) || 0,
+      mealType: selectedMealType,
+    };
+    onAddMeal(meal);
+    setManualEntry({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+    setIsDialogOpen(false);
+  }
+
+  const last7DaysCalories = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().split('T')[0];
+    const dayMeals = state.mealLogs.filter(m => m.date === dateStr);
+    return {
+      day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      calories: dayMeals.reduce((s, m) => s + m.calories, 0),
+    };
+  });
+
   const mealsByType = {
-    breakfast: todayMeals.filter(m => m.mealType === 'breakfast'),
-    lunch: todayMeals.filter(m => m.mealType === 'lunch'),
-    dinner: todayMeals.filter(m => m.mealType === 'dinner'),
-    snack: todayMeals.filter(m => m.mealType === 'snack'),
+    breakfast: mealsForDate.filter(m => m.mealType === 'breakfast'),
+    lunch: mealsForDate.filter(m => m.mealType === 'lunch'),
+    dinner: mealsForDate.filter(m => m.mealType === 'dinner'),
+    snack: mealsForDate.filter(m => m.mealType === 'snack'),
   };
+
+  function navigateDate(dir: -1 | 1) {
+    const d = new Date(selectedDate + 'T12:00:00');
+    d.setDate(d.getDate() + dir);
+    const next = d.toISOString().split('T')[0];
+    if (next <= today) setSelectedDate(next);
+  }
 
   return (
     <div className="min-h-screen bg-background pb-nav">
@@ -144,7 +186,22 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
               <ChevronLeft className="w-6 h-6" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold font-display">Nutrition</h1>
+          <h1 className="text-2xl font-bold font-display flex-1">Nutrition</h1>
+          {/* Date navigation */}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateDate(-1)}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50">
+              <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium">
+                {selectedDate === today ? 'Today' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigateDate(1)} disabled={selectedDate >= today}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         </motion.div>
 
         <motion.div
@@ -155,7 +212,7 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Daily Summary</h2>
               <span className="text-sm text-muted-foreground">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                {selectedDate === today ? new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) : new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
               </span>
             </div>
 
@@ -267,13 +324,31 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
           </Card>
         </motion.div>
 
+        {/* 7-day calorie trend chart */}
+        {last7DaysCalories.some(d => d.calories > 0) && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold mb-3">7-Day Calorie Trend</h3>
+              <ResponsiveContainer width="100%" height={100}>
+                <BarChart data={last7DaysCalories} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: number) => [`${v} cal`, '']} />
+                  <ReferenceLine y={goals.calories} stroke="hsl(var(--primary))" strokeDasharray="3 3" strokeWidth={1.5} />
+                  <Bar dataKey="calories" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.8} />
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-muted-foreground text-center mt-1">Dashed line = daily goal ({goals.calories} cal)</p>
+            </Card>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="flex gap-2"
         >
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setDialogTab('search'); }}>
             <DialogTrigger asChild>
               <Button className="flex-1 glow-sm" data-testid="button-add-food">
                 <Plus className="w-4 h-4 mr-2" />
@@ -285,6 +360,7 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
                 <DialogTitle>Add Food</DialogTitle>
               </DialogHeader>
               
+              {/* Meal type selector */}
               <Tabs value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as any)} className="mt-2">
                 <TabsList className="w-full">
                   <TabsTrigger value="breakfast" className="flex-1">Breakfast</TabsTrigger>
@@ -294,6 +370,65 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
                 </TabsList>
               </Tabs>
 
+              {/* Search vs Manual toggle */}
+              <div className="flex gap-1.5 mt-3">
+                {(['search', 'manual'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setDialogTab(t)}
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-medium transition-colors border ${dialogTab === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 text-muted-foreground border-border'}`}
+                  >
+                    {t === 'search' ? '🔍 Search / AI Scan' : '✏️ Manual Entry'}
+                  </button>
+                ))}
+              </div>
+
+              {dialogTab === 'manual' ? (
+                <div className="mt-3 space-y-3 flex-1 overflow-y-auto">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Food name *"
+                      value={manualEntry.name}
+                      onChange={e => setManualEntry(p => ({ ...p, name: e.target.value }))}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Calories *"
+                        type="number"
+                        value={manualEntry.calories}
+                        onChange={e => setManualEntry(p => ({ ...p, calories: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="Protein (g)"
+                        type="number"
+                        value={manualEntry.protein}
+                        onChange={e => setManualEntry(p => ({ ...p, protein: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="Carbs (g)"
+                        type="number"
+                        value={manualEntry.carbs}
+                        onChange={e => setManualEntry(p => ({ ...p, carbs: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="Fat (g)"
+                        type="number"
+                        value={manualEntry.fat}
+                        onChange={e => setManualEntry(p => ({ ...p, fat: e.target.value }))}
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={handleManualEntry}
+                      disabled={!manualEntry.name.trim() || !manualEntry.calories}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add to {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Photo Scan */}
               <input
                 ref={photoInputRef}
@@ -374,6 +509,8 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
                   </Card>
                 ))}
               </div>
+              </>
+              )}
             </DialogContent>
           </Dialog>
 

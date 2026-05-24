@@ -41,6 +41,8 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
   const [isRunning, setIsRunning] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [startTime] = useState(Date.now());
+  const [pendingLog, setPendingLog] = useState<WorkoutLog | null>(null);
+  const [rpe, setRpe] = useState<number | null>(null);
 
   const allExercises: ExerciseStep[] = workout ? [
     ...workout.warmup.map(e => ({ 
@@ -111,7 +113,7 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
           reps: e.reps,
         })),
       };
-      onComplete(log);
+      setPendingLog(log);
     }
   }, [exerciseIndex, allExercises, speak, startTime, workout, onComplete]);
 
@@ -177,7 +179,7 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-sm"
+          className="text-center max-w-sm w-full"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -188,9 +190,9 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
             <CheckCircle className="w-12 h-12 text-primary" />
           </motion.div>
           <h1 className="text-3xl font-bold font-display mb-2">Workout Complete!</h1>
-          <p className="text-muted-foreground mb-8">Great job finishing {workout.name}</p>
+          <p className="text-muted-foreground mb-6">Great job finishing {workout.name}</p>
 
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <Card className="p-4 text-center">
               <Clock className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
               <div className="text-2xl font-bold">{Math.max(duration, 1)}</div>
@@ -203,13 +205,44 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
             </Card>
           </div>
 
+          {/* RPE Score */}
+          <Card className="p-4 mb-6 text-left">
+            <p className="text-sm font-semibold mb-1">Rate of Perceived Exertion (RPE)</p>
+            <p className="text-xs text-muted-foreground mb-3">How hard did this feel? 1 = very easy · 10 = max effort</p>
+            <div className="grid grid-cols-5 gap-1.5 mb-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setRpe(n)}
+                  className={`rounded-xl py-2 text-sm font-bold transition-all ${
+                    rpe === n
+                      ? 'bg-primary text-primary-foreground scale-110'
+                      : 'bg-muted text-muted-foreground hover:bg-primary/20'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            {rpe && (
+              <p className="text-xs text-center text-primary font-medium">
+                {rpe <= 3 ? '😊 Light effort' : rpe <= 5 ? '💪 Moderate effort' : rpe <= 7 ? '🔥 Hard effort' : '🥵 Maximum effort'}
+              </p>
+            )}
+          </Card>
+
           <Button
             size="lg"
             className="w-full glow"
-            onClick={() => navigate('/')}
+            onClick={() => {
+              if (pendingLog) {
+                onComplete({ ...pendingLog, ...(rpe ? { notes: `RPE: ${rpe}/10` } : {}) });
+              }
+              navigate('/');
+            }}
             data-testid="button-finish"
           >
-            Back to Home
+            {rpe ? `Save & Finish (RPE ${rpe})` : 'Skip & Finish'}
           </Button>
         </motion.div>
       </div>

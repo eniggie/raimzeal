@@ -45,6 +45,11 @@ import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
 import { Welcome } from '@/pages/Welcome';
+import { Breathing } from '@/pages/Breathing';
+import { Calculators } from '@/pages/Calculators';
+import { Recipes } from '@/pages/Recipes';
+import { HabitTracker } from '@/pages/HabitTracker';
+import { Supplements } from '@/pages/Supplements';
 import NotFound from '@/pages/not-found';
 
 // ─── Redirect helper ──────────────────────────────────────────────────────────
@@ -189,7 +194,7 @@ function AppContent() {
       )}
     <Switch>
       <Route path="/">
-        <Home state={state} onUpdateWater={updateWaterIntake} />
+        <Home state={state} onUpdateWater={updateWaterIntake} onUpdateSettings={updateSettings} />
       </Route>
       <Route path="/workouts">
         <Workouts />
@@ -258,6 +263,21 @@ function AppContent() {
       </Route>
       <Route path="/u/:handle">
         <PublicProfile />
+      </Route>
+      <Route path="/breathing">
+        <Breathing />
+      </Route>
+      <Route path="/calculators">
+        <Calculators />
+      </Route>
+      <Route path="/recipes">
+        <Recipes />
+      </Route>
+      <Route path="/habits">
+        <HabitTracker />
+      </Route>
+      <Route path="/supplements">
+        <Supplements />
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
-import { AlertTriangle, ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Send, User, Globe, Sparkles, Mic, MicOff, Zap } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,17 @@ import type { AppState, UserProfile } from '@/lib/store';
 import { useAuth } from '@/contexts/AuthContext';
 import { coachMessagesApi } from '@/lib/apiClient';
 import { supabaseConfigured } from '@/lib/supabase';
+
+const PROMPT_CHIPS = [
+  '🥗 Build me a 7-day meal plan',
+  '🩸 What should I eat for my blood type?',
+  '💪 Give me a 30-min home workout',
+  '🔥 Help me with fat loss',
+  '😴 How do I sleep better?',
+  '🧬 Explain genotype diets',
+  '💊 What vitamins do I need?',
+  '✨ Who are you, Ovia?',
+];
 
 interface CoachProps {
   state: AppState;
@@ -774,6 +785,22 @@ export function Coach({ state, onUpdateProfile }: CoachProps) {
             <p className="text-xs text-amber-400 text-center">
               Voice input is not supported in this browser. Try Chrome or Edge.
             </p>
+          )}
+
+          {/* Suggested prompt chips */}
+          {messages.length <= 1 && !input && (
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+              {PROMPT_CHIPS.map(chip => (
+                <button
+                  key={chip}
+                  onClick={() => setInput(chip)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-1"
+                >
+                  <Zap className="w-3 h-3 shrink-0" />
+                  {chip}
+                </button>
+              ))}
+            </div>
           )}
 
           {/* Text input row */}

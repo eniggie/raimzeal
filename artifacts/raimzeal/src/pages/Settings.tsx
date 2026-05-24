@@ -4,7 +4,8 @@ import { Link } from 'wouter';
 import {
   ChevronRight, Moon, Type, Bell,
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download,
-  Target, Trophy, Globe, Trash2, Camera
+  Target, Trophy, Globe, Trash2, Camera,
+  Wind, Calculator, ChefHat, ListChecks, Pill
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -634,6 +635,73 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="flex-1">
                   <div className="font-medium">Progress Photos</div>
                   <div className="text-sm text-muted-foreground">Visual transformation timeline</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+          </Card>
+        </motion.div>
+
+        {/* Wellness Tools */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+          <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Wellness Tools</h3>
+          <Card className="divide-y divide-border glass-hover">
+            <Link href="/breathing">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                  <Wind className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Breathing Exercises</div>
+                  <div className="text-sm text-muted-foreground">Box, 4-7-8 and deep breathing</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/calculators">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Calculator className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Calculators</div>
+                  <div className="text-sm text-muted-foreground">BMI, TDEE and macro split</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/recipes">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                  <ChefHat className="w-5 h-5 text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Healthy Recipes</div>
+                  <div className="text-sm text-muted-foreground">Curated meals for your health profile</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/habits">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <ListChecks className="w-5 h-5 text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Habit Tracker</div>
+                  <div className="text-sm text-muted-foreground">Daily habits that compound into results</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/supplements">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Pill className="w-5 h-5 text-purple-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Supplements</div>
+                  <div className="text-sm text-muted-foreground">Track daily vitamins and supplements</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>

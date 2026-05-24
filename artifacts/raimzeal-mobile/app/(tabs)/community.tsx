@@ -98,7 +98,7 @@ export default function CommunityScreen() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [showNewPost, setShowNewPost] = useState(false);
-  const [newPostType, setNewPostType] = useState<"post" | "question">("post");
+  const [newPostType, setNewPostType] = useState<"post" | "question" | "win" | "tip" | "challenge">("post");
   const [newPostContent, setNewPostContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [newPostImageUri, setNewPostImageUri] = useState<string | null>(null);
@@ -823,26 +823,30 @@ export default function CommunityScreen() {
                   { backgroundColor: colors.muted, borderColor: colors.border },
                 ]}
               >
-                {(["post", "question"] as const).map((t) => (
+                {(
+                  [
+                    { id: "post", label: "Update", icon: "megaphone-outline", color: colors.primary },
+                    { id: "question", label: "Question", icon: "help-circle-outline", color: colors.secondary },
+                    { id: "win", label: "Win 🏆", icon: "trophy-outline", color: "#f59e0b" },
+                    { id: "tip", label: "Tip 💡", icon: "bulb-outline", color: "#10b981" },
+                    { id: "challenge", label: "Challenge 🔥", icon: "flash-outline", color: "#ef4444" },
+                  ] as const
+                ).map((t) => (
                   <TouchableOpacity
-                    key={t}
-                    onPress={() => setNewPostType(t)}
+                    key={t.id}
+                    onPress={() => setNewPostType(t.id)}
                     style={[
                       styles.typeBtn,
-                      newPostType === t && {
-                        backgroundColor: t === "question" ? colors.secondary : colors.primary,
+                      newPostType === t.id && {
+                        backgroundColor: t.color,
                       },
                     ]}
                   >
                     <Ionicons
-                      name={
-                        t === "post"
-                          ? "megaphone-outline"
-                          : "help-circle-outline"
-                      }
+                      name={t.icon}
                       size={15}
                       color={
-                        newPostType === t
+                        newPostType === t.id
                           ? colors.primaryForeground
                           : colors.mutedForeground
                       }
@@ -852,24 +856,24 @@ export default function CommunityScreen() {
                         styles.typeBtnText,
                         {
                           color:
-                            newPostType === t
+                            newPostType === t.id
                               ? colors.primaryForeground
                               : colors.mutedForeground,
                           fontFamily:
-                            newPostType === t
+                            newPostType === t.id
                               ? "Inter_600SemiBold"
                               : "Inter_400Regular",
                         },
                       ]}
                     >
-                      {t === "post" ? "Share Update" : "Ask Question"}
+                      {t.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>
-                {newPostType === "post" ? "YOUR POST" : "YOUR QUESTION"}
+                {newPostType === "win" ? "SHARE YOUR WIN" : newPostType === "tip" ? "YOUR TIP" : newPostType === "challenge" ? "ISSUE THE CHALLENGE" : newPostType === "question" ? "YOUR QUESTION" : "YOUR POST"}
               </Text>
               <TextInput
                 value={newPostContent}
