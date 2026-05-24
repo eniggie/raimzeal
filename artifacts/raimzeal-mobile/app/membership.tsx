@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -124,26 +124,7 @@ export default function MembershipScreen() {
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
-  const [subscriptionsAvailable, setSubscriptionsAvailable] = useState<boolean | null>(null);
   // intentionally no checkoutError state — each case now uses specific Alert dialogs
-
-  // Check on mount whether the server has Stripe price IDs configured.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`${getApiBase()}/stripe/status`, {
-          signal: AbortSignal.timeout(6000),
-        });
-        if (!res.ok) { if (!cancelled) setSubscriptionsAvailable(false); return; }
-        const json = await res.json() as { available?: boolean };
-        if (!cancelled) setSubscriptionsAvailable(json.available ?? false);
-      } catch {
-        if (!cancelled) setSubscriptionsAvailable(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   async function handleCheckout(tier: string, interval: "monthly" | "yearly") {
     setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
@@ -195,13 +176,11 @@ export default function MembershipScreen() {
 
     // 4 — Handle each outcome.
     if (res.status === 503 || data.code === "STRIPE_NOT_CONFIGURED") {
-      // Subscriptions not yet wired up — inform without an alarming error.
       Alert.alert(
-        "Coming Soon",
-        "Paid subscriptions are not yet active — check back soon to upgrade to Rise, Reign or Legacy.",
-        [{ text: "Got it" }]
+        "Temporarily Unavailable",
+        "Checkout is temporarily unavailable. Please try again in a moment.",
+        [{ text: "OK" }]
       );
-      setSubscriptionsAvailable(false);
       return;
     }
 
@@ -298,7 +277,6 @@ export default function MembershipScreen() {
           const price = billing === "monthly" ? plan.monthly : plan.yearly;
           const period = billing === "monthly" ? "/mo" : "/yr";
           const isLoading = checkoutLoading[plan.key] ?? false;
-          const comingSoon = subscriptionsAvailable === false;
 
           return (
             <View key={plan.key}>
@@ -342,43 +320,32 @@ export default function MembershipScreen() {
                   ))}
                 </View>
 
-                {comingSoon ? (
-                  <View style={[styles.comingSoonBanner, { borderColor: plan.borderColor + "40", backgroundColor: plan.color + "10" }]}>
-                    <Ionicons name="time-outline" size={14} color={plan.color} />
-                    <Text style={[styles.comingSoonText, { color: plan.color }]}>
-                      Subscriptions launching soon — tap back when ready to upgrade.
+                <TouchableOpacity
+                  style={[
+                    styles.ctaBtn,
+                    {
+                      backgroundColor: plan.color + "25",
+                      borderColor: plan.color + "60",
+                      borderWidth: 1,
+                      opacity: isLoading ? 0.7 : 1,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  disabled={isLoading}
+                  onPress={() => handleCheckout(plan.key, billing)}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={plan.color} />
+                  ) : (
+                    <Text style={[styles.ctaText, { color: plan.color }]}>
+                      {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
                     </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={[
-                      styles.ctaBtn,
-                      {
-                        backgroundColor: plan.color + "25",
-                        borderColor: plan.color + "60",
-                        borderWidth: 1,
-                        opacity: isLoading ? 0.7 : 1,
-                      },
-                    ]}
-                    activeOpacity={0.8}
-                    disabled={isLoading}
-                    onPress={() => handleCheckout(plan.key, billing)}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={plan.color} />
-                    ) : (
-                      <Text style={[styles.ctaText, { color: plan.color }]}>
-                        {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
+                  )}
+                </TouchableOpacity>
 
-                {!comingSoon && (
-                  <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
-                    Secure checkout via Stripe · Cancel anytime
-                  </Text>
-                )}
+                <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
+                  Secure checkout via Stripe · Cancel anytime
+                </Text>
               </LinearGradient>
             </View>
           );
