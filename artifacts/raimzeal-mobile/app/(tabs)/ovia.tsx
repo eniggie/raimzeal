@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system";
 import {
   Alert,
   FlatList,
@@ -144,14 +146,15 @@ export default function OviaScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [interimText, setInterimText] = useState("");
   const flatListRef = useRef<FlatList>(null);
-  const recognitionRef = useRef<unknown>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
-  // Stop recognition when the screen unmounts (e.g. user switches tabs mid-recording)
+  // Stop any active recording when the screen unmounts or the user switches tabs
   useEffect(() => {
     return () => {
-      const rec = recognitionRef.current as Record<string, unknown> | null;
-      if (rec) {
-        try { (rec["stop"] as () => void)(); } catch { /* ignore */ }
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+        recordingRef.current = null;
       }
     };
   }, []);
@@ -350,72 +353,79 @@ export default function OviaScreen() {
 
   // Called by the send button and keyboard return
   async function handleSend() {
-    if (isRecording) stopVoice();
+    if (isRecording) return; // let the user finish recording first
     await handleSendMessage(chatInput.trim());
   }
 
-  function stopVoice() {
-    const rec = recognitionRef.current as Record<string, unknown> | null;
-    if (rec) (rec["stop"] as () => void)();
-    setIsRecording(false);
-    setInterimText("");
+  async function startRecording() {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert(
+          "Microphone Access",
+          "Allow microphone access in Settings to use voice input.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {
+      Alert.alert("Microphone Error", "Could not start recording. Please check microphone permissions in Settings.");
+    }
   }
 
-  function toggleVoice() {
-    if (Platform.OS !== "web") {
-      Alert.alert(
-        "Voice Input",
-        "Tap the microphone key on your keyboard to dictate, or type your message below.",
-        [{ text: "Got it" }]
-      );
-      return;
+  const stopRecordingAndTranscribe = useCallback(async () => {
+    const recording = recordingRef.current;
+    if (!recording) { setIsRecording(false); return; }
+    setIsRecording(false);
+    recordingRef.current = null;
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recording.getURI();
+      if (!uri || !session?.access_token) return;
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setInterimText("Transcribing…");
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const response = await fetch(`${getApiBase()}/ovia/transcribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ audio: base64, mimeType: "audio/m4a" }),
+      });
+
+      setInterimText("");
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json() as { text?: string; error?: string };
+      if (data.text) setChatInput(data.text);
+    } catch {
+      setInterimText("");
+      Alert.alert("Voice Input", "Could not transcribe audio. Please try again.");
     }
+  }, [session?.access_token]);
 
-    type AnyRec = Record<string, unknown>;
-    const w = window as unknown as AnyRec;
-    const SR = (w["SpeechRecognition"] ?? w["webkitSpeechRecognition"]) as
-      | (new () => AnyRec)
-      | undefined;
-
-    if (!SR) {
-      Alert.alert("Not Supported", "Voice input is not supported in this browser.");
-      return;
+  function handleVoice() {
+    if (isRecording) {
+      stopRecordingAndTranscribe();
+    } else {
+      startRecording();
     }
-
-    if (isRecording) { stopVoice(); return; }
-
-    const rec: AnyRec = new SR();
-    rec["continuous"] = true;
-    rec["interimResults"] = true;
-    rec["lang"] = "en-US";
-
-    rec["onresult"] = (e: unknown) => {
-      const event = e as AnyRec;
-      const results = event["results"] as {
-        [i: number]: { [j: number]: { transcript: string }; isFinal: boolean };
-        length: number;
-      };
-      const startIdx = event["resultIndex"] as number;
-      let interim = "";
-      for (let i = startIdx; i < results.length; i++) {
-        const r = results[i];
-        if (r.isFinal) {
-          const t = r[0].transcript.trim();
-          if (t) setChatInput((prev) => (prev ? `${prev} ${t}` : t));
-          setInterimText("");
-        } else {
-          interim += r[0].transcript;
-        }
-      }
-      if (interim) setInterimText(interim);
-    };
-
-    rec["onend"] = () => { setIsRecording(false); setInterimText(""); };
-    rec["onerror"] = () => { setIsRecording(false); setInterimText(""); };
-
-    recognitionRef.current = rec;
-    (rec["start"] as () => void)();
-    setIsRecording(true);
   }
 
   return (
@@ -566,7 +576,7 @@ export default function OviaScreen() {
         >
           {/* Mic button */}
           <TouchableOpacity
-            onPress={toggleVoice}
+            onPress={handleVoice}
             style={[
               styles.micBtn,
               {
@@ -583,13 +593,19 @@ export default function OviaScreen() {
           </TouchableOpacity>
 
           <TextInput
-            value={isRecording && interimText ? interimText : chatInput}
-            onChangeText={isRecording ? undefined : setChatInput}
+            value={isRecording ? "" : (interimText || chatInput)}
+            onChangeText={isRecording || interimText ? undefined : setChatInput}
             onSubmitEditing={handleSend}
             returnKeyType="send"
-            editable={!isRecording}
-            placeholder={isRecording ? "🎙 Listening..." : "Ask Ovia about fitness, nutrition, health..."}
-            placeholderTextColor={isRecording ? colors.accent : colors.mutedForeground}
+            editable={!isRecording && !interimText}
+            placeholder={
+              isRecording
+                ? "🎙 Recording… tap mic to finish"
+                : interimText
+                ? interimText
+                : "Ask Ovia about fitness, nutrition, health..."
+            }
+            placeholderTextColor={isRecording || interimText ? colors.accent : colors.mutedForeground}
             style={[
               styles.chatInput,
               {

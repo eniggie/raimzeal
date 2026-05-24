@@ -32,12 +32,13 @@ function useTodaySleep(): { hours: number | null; quality: number | null } {
   const [quality, setQuality] = useState<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       try {
         const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
         const todayKey = new Date().toISOString().split("T")[0];
         const raw = await AsyncStorage.getItem(SLEEP_STORAGE_PREFIX + todayKey);
-        if (!raw) return;
+        if (!raw || cancelled) return;
         const entry = JSON.parse(raw) as {
           bedHour: number; bedMin: number;
           wakeHour: number; wakeMin: number;
@@ -47,11 +48,14 @@ function useTodaySleep(): { hours: number | null; quality: number | null } {
         const wakeMins = entry.wakeHour * 60 + entry.wakeMin;
         let diff = wakeMins - bedMins;
         if (diff < 0) diff += 24 * 60;
-        setHours(parseFloat((diff / 60).toFixed(1)));
-        setQuality(entry.quality);
+        if (!cancelled) {
+          setHours(parseFloat((diff / 60).toFixed(1)));
+          setQuality(entry.quality);
+        }
       } catch {}
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
   return { hours, quality };

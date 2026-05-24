@@ -106,6 +106,10 @@ export default function BodyMeasurementsScreen() {
       Alert.alert("Weight required", "Please enter a valid weight to log your measurement.");
       return;
     }
+    if (w > 700) {
+      Alert.alert("Check your value", "Weight seems unusually high. Please double-check the number.");
+      return;
+    }
     setSaving(true);
     const measurement: BodyMeasurement = {
       id: generateId(),

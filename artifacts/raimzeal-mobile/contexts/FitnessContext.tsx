@@ -222,7 +222,9 @@ async function queuePendingRemove(serverId: string, foodId: string, userId: stri
     if (!existing.some((r) => r.serverId === serverId)) {
       await AsyncStorage.setItem(PENDING_REMOVES_KEY, JSON.stringify([...existing, { serverId, foodId, userId }]));
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[FitnessContext] addPendingRemove failed:", err);
+  }
 }
 
 const todayStr = () => new Date().toISOString().split("T")[0];
