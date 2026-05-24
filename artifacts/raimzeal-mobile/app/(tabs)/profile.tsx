@@ -828,16 +828,19 @@ export default function ProfileScreen() {
               sublabel="Reset saved grams & meal type for all foods"
               color={colors.warning}
               onPress={handleClearMealDefaults}
+              isLast={settings.showRestoreBadge !== false}
             />
-            <SettingToggleRow
-              icon="refresh-circle-outline"
-              label="Show restore badge"
-              sublabel="'Restored from last time' indicator"
-              color={colors.primary}
-              value={settings.showRestoreBadge ?? true}
-              onValueChange={handleToggleRestoreBadge}
-              isLast
-            />
+            {settings.showRestoreBadge === false && (
+              <SettingToggleRow
+                icon="refresh-circle-outline"
+                label="Show restore badge"
+                sublabel="Re-show the 'Restored from last time' indicator"
+                color={colors.primary}
+                value={false}
+                onValueChange={handleToggleRestoreBadge}
+                isLast
+              />
+            )}
           </GlassCard>
 
           {/* Tools & Wellness */}
