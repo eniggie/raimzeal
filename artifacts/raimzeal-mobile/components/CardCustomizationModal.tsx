@@ -101,6 +101,7 @@ export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay";
 const STORAGE_KEY_ACTIVE_PRESET = "@raimzeal_active_preset_id";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
+const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
@@ -2228,6 +2229,13 @@ export default function CardCustomizationModal({
         launchAnimation(0, 0, 0.85);
       }
     }
+    if (presets.length > 1) {
+      AsyncStorage.getItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN).then((seen) => {
+        if (!seen) {
+          setTimeout(triggerSwipeHint, 500);
+        }
+      }).catch(() => {});
+    }
   }
 
   function closePresetPreview() {
@@ -2270,6 +2278,7 @@ export default function CardCustomizationModal({
     const newIdx = presetPreviewIndexRef.current + dir;
     if (newIdx < 0 || newIdx >= currentPresets.length) return;
     const nextPreset = currentPresets[newIdx];
+    dismissSwipeHintEarly();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     pinchScale.value = 1;
     pinchSavedScale.value = 1;
@@ -2561,6 +2570,47 @@ export default function CardCustomizationModal({
 
   const [showPinchHint, setShowPinchHint] = useState(false);
   const pinchHintAnim = useRef(new Animated.Value(0)).current;
+
+  const [showSwipeHint, setShowSwipeHint] = useState(false);
+  const swipeHintAnim = useRef(new Animated.Value(0)).current;
+
+  function triggerSwipeHint() {
+    setShowSwipeHint(true);
+    if (reduceMotionRef.current) {
+      swipeHintAnim.setValue(1);
+      setTimeout(() => {
+        setShowSwipeHint(false);
+        AsyncStorage.setItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN, "1").catch(() => {});
+      }, 2000);
+    } else {
+      swipeHintAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(swipeHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.delay(1800),
+        Animated.timing(swipeHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setShowSwipeHint(false);
+          AsyncStorage.setItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN, "1").catch(() => {});
+        }
+      });
+    }
+  }
+
+  function dismissSwipeHintEarly() {
+    if (!showSwipeHint) return;
+    swipeHintAnim.stopAnimation();
+    Animated.timing(swipeHintAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowSwipeHint(false);
+        AsyncStorage.setItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN, "1").catch(() => {});
+      }
+    });
+  }
 
   function triggerPinchHint() {
     setShowPinchHint(true);
@@ -4094,6 +4144,32 @@ export default function CardCustomizationModal({
                   <Text style={styles.presetPreviewLoadBtnText}>Load preset</Text>
                 </TouchableOpacity>
               </Animated.View>
+
+              {showSwipeHint && (
+                <Animated.View
+                  pointerEvents="box-none"
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    styles.swipeHintOverlay,
+                    { opacity: swipeHintAnim },
+                  ]}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={dismissSwipeHintEarly}
+                  >
+                    <View style={styles.swipeHintCard}>
+                      <View style={styles.swipeHintIconRow}>
+                        <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.9)" />
+                        <View style={styles.swipeHintFinger} />
+                        <Ionicons name="arrow-forward" size={22} color="rgba(255,255,255,0.9)" />
+                      </View>
+                      <Text style={styles.swipeHintTitle}>Swipe to browse presets</Text>
+                      <Text style={styles.swipeHintSub}>Tap to dismiss</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
             </>
           )}
         </Animated.View>
@@ -4737,6 +4813,44 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   pinchHintSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.6)",
+  },
+  swipeHintOverlay: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  swipeHintCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 36,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  swipeHintIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    height: 36,
+    gap: 12,
+  },
+  swipeHintFinger: {
+    width: 18,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: "rgba(255,255,255,0.85)",
+  },
+  swipeHintTitle: {
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_700Bold",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  swipeHintSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.6)",
