@@ -6,6 +6,11 @@ import { Download, Share2, Copy, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import type { AppState } from '@/lib/store';
 
+const isClipboardImageSupported =
+  typeof ClipboardItem !== 'undefined' &&
+  typeof navigator !== 'undefined' &&
+  typeof navigator.clipboard?.write === 'function';
+
 interface ProgressShareCardProps {
   open: boolean;
   onClose: () => void;
@@ -51,6 +56,13 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
 
   const handleCopy = async () => {
     if (!cardRef.current) return;
+    if (!isClipboardImageSupported) {
+      toast({
+        description: 'Copy not supported — try Download instead.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
       const blob = await (await fetch(dataUrl)).blob();
@@ -61,7 +73,20 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
       setTimeout(() => setCopied(false), 2000);
       toast({ description: 'Copied to clipboard' });
     } catch (err) {
-      console.error('Failed to copy image', err);
+      const isApiError =
+        err instanceof Error &&
+        (err.name === 'NotAllowedError' || err.name === 'TypeError');
+      if (isApiError) {
+        toast({
+          description: 'Copy not supported — try Download instead.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          description: 'Failed to copy image.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -212,7 +237,13 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
             <Download className="w-4 h-4 mr-2" />
             Download
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleCopy}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleCopy}
+            disabled={!isClipboardImageSupported}
+            title={!isClipboardImageSupported ? 'Copy not supported — try Download instead.' : undefined}
+          >
             {copied ? (
               <>
                 <Check className="w-4 h-4 mr-2 text-green-500" />
