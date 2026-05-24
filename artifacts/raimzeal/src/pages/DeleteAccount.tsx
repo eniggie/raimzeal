@@ -62,7 +62,7 @@ export function DeleteAccount() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       <div className="max-w-lg mx-auto px-4 pt-6">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/settings">

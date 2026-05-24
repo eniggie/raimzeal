@@ -6,7 +6,7 @@ import { BottomNav } from '@/components/BottomNav';
 
 export function Welcome() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 pb-32">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 pb-nav">
       <motion.div
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}

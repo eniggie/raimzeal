@@ -640,6 +640,21 @@ input[type="number"]::-webkit-outer-spin-button {
 .text-size-medium { font-size: 16px; }
 .text-size-large { font-size: 18px; }
 
+/*
+ * pb-nav — universal bottom clearance for pages that render <BottomNav />.
+ *
+ * The nav bar is h-16 (4rem) tall and sits at
+ *   bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px))
+ * so it occupies  5.5rem + safe-area-inset-bottom  from the viewport bottom.
+ * We add 0.5rem breathing room → 6rem + safe-area-inset-bottom.
+ *
+ * Replace any ad-hoc  pb-24 / style={{paddingBottom:…}}  on page root divs
+ * with this single class so it stays consistent everywhere.
+ */
+.pb-nav {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
 input[type="number"] {
   -moz-appearance: textfield;
 }

@@ -93,7 +93,7 @@ export function PublicProfileSettings() {
     : null;
 
   return (
-    <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
+    <div className="min-h-screen bg-background pb-nav">
       <div className="max-w-lg mx-auto px-4 pt-6">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/settings">

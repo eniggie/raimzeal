@@ -363,7 +363,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
   };
 
   return (
-    <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
+    <div className="min-h-screen bg-background pb-nav">
       <div className="px-4 pt-6 pb-4 space-y-6 max-w-lg mx-auto">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-bold font-display">Profile</h1>

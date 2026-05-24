@@ -28,7 +28,7 @@ export function WorkoutDetail() {
   const totalExercises = workout.main.length;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       <div className="relative h-48 bg-gradient-to-br from-primary/30 via-secondary/20 to-accent/10">
         <Link href="/workouts">
           <Button

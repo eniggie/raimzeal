@@ -57,7 +57,7 @@ export function Calendar({ state, onScheduleWorkout }: CalendarProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-nav">
       <div className="px-4 pt-6 pb-4 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
