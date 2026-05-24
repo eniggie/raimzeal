@@ -1263,6 +1263,7 @@ export default function NutritionScreen() {
   const [hoverReorderIdx, setHoverReorderIdx] = useState(-1);
   const indexRefsRef = useRef<React.MutableRefObject<number>[]>([]);
   const itemHeightRef = useRef(DRAG_FAV_ITEM_HEIGHT);
+  const lastUsedMealMapRef = useRef<Record<string, string>>({});
 
   const [undoMeal, setUndoMeal] = useState<MealLog | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1649,6 +1650,14 @@ export default function NutritionScreen() {
     return () => {
       if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+      .then((raw) => {
+        if (raw) lastUsedMealMapRef.current = JSON.parse(raw) as Record<string, string>;
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -2882,6 +2891,9 @@ export default function NutritionScreen() {
     setSelectedFoodNutrients100g(undefined);
     setModalShowPer100g(false);
 
+    const storedMeal = lastUsedMealMapRef.current[food.name] as MealType | undefined;
+    setSelectedMeal(storedMeal ?? food.mealType);
+
     let restoredServings = 1;
     try {
       const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
@@ -2894,18 +2906,6 @@ export default function NutritionScreen() {
     }
     setServings(restoredServings);
     setServingsText(String(restoredServings));
-
-    let mealType = food.mealType;
-    try {
-      const raw = await AsyncStorage.getItem(LAST_USED_MEAL_KEY);
-      if (raw) {
-        const map: Record<string, string> = JSON.parse(raw);
-        if (map[food.name]) mealType = map[food.name] as typeof mealType;
-      }
-    } catch {
-      // ignore
-    }
-    setSelectedMeal(mealType);
 
     setShowModal(true);
   }
@@ -3033,6 +3033,7 @@ export default function NutritionScreen() {
         .catch(() => {});
     }
 
+    lastUsedMealMapRef.current[name] = selectedMeal;
     AsyncStorage.getItem(LAST_USED_MEAL_KEY)
       .then((raw) => {
         const map: Record<string, string> = raw ? JSON.parse(raw) : {};
@@ -3083,6 +3084,7 @@ export default function NutritionScreen() {
     };
     addMealLog(meal);
 
+    lastUsedMealMapRef.current[name] = manualMeal;
     AsyncStorage.getItem(LAST_USED_MEAL_KEY)
       .then((raw) => {
         const map: Record<string, string> = raw ? JSON.parse(raw) : {};
