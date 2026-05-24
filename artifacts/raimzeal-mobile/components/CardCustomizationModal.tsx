@@ -1439,6 +1439,12 @@ export default function CardCustomizationModal({
         AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1").catch(() => {});
         onBadgeDismiss?.();
       }
+      // Reset badge animation synchronously so a rapid reopen never shows a
+      // stale non-zero opacity before the badge effect can run.
+      badgeFadeAnim.stopAnimation();
+      badgeSlideAnim.stopAnimation();
+      badgeFadeAnim.setValue(0);
+      badgeSlideAnim.setValue(5);
       return;
     }
     setRestoredFromStorage(false);
@@ -2691,8 +2697,8 @@ export default function CardCustomizationModal({
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
                 Choose what to show on your progress card
               </Text>
-              {restoredFromStorage && !badgeDismissed && (
-                <Animated.View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40", opacity: badgeFadeAnim, transform: [{ translateY: badgeSlideAnim }] }]}>
+              {restoredFromStorage && (
+                <Animated.View style={[styles.restoredBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40", opacity: badgeFadeAnim, transform: [{ translateY: badgeSlideAnim }] }]} pointerEvents={badgeDismissed ? "none" : "auto"}>
                   <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
                   <Text style={[styles.restoredBadgeText, { color: colors.primary }]}>
                     Restored from last time
