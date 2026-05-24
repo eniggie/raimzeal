@@ -126,6 +126,7 @@ export interface CardPreset {
   createdAt: number;
   backgroundPhotoUri?: string;
   backgroundPhotoDimLevel?: number;
+  backgroundPhotoCrop?: CropData;
 }
 
 const STAT_TOGGLES: StatToggleConfig[] = [
@@ -2226,7 +2227,7 @@ export default function CardCustomizationModal({
     AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, preset.id).catch(() => {});
     setRestoredFromStorage(false);
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
-    setBackgroundPhotoCrop(null);
+    setBackgroundPhotoCrop(preset.backgroundPhotoCrop ?? null);
     setBackgroundPhotoDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
     resetZoomPosition();
     dismissCardChip();
@@ -2427,7 +2428,7 @@ export default function CardCustomizationModal({
       }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
-          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined }
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined }
           : p
       );
     } else {
@@ -2450,6 +2451,7 @@ export default function CardCustomizationModal({
         createdAt: Date.now(),
         backgroundPhotoUri: backgroundPhotoUri ?? undefined,
         backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined,
+        backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined,
       };
       updatedPresets = [...presets, newPreset];
       setActivePresetId(newPreset.id);
