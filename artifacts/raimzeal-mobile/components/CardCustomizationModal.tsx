@@ -1302,6 +1302,8 @@ export default function CardCustomizationModal({
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoRemainingMsRef = useRef<number>(0);
+  const undoSegmentStartRef = useRef<number>(0);
 
   function dismissConfirmToast() {
     confirmOpacity.stopAnimation();
@@ -2412,6 +2414,36 @@ export default function CardCustomizationModal({
     }
   }
 
+  function pauseUndoToast() {
+    const elapsed = Date.now() - undoSegmentStartRef.current;
+    undoRemainingMsRef.current = Math.max(0, undoRemainingMsRef.current - elapsed);
+    if (undoTimerRef.current !== null) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    undoProgressAnim.stopAnimation();
+  }
+
+  function resumeUndoToast() {
+    const remaining = undoRemainingMsRef.current;
+    if (remaining <= 0) {
+      dismissUndoToast();
+      return;
+    }
+    undoSegmentStartRef.current = Date.now();
+    if (!reduceMotionRef.current) {
+      Animated.timing(undoProgressAnim, {
+        toValue: 0,
+        duration: remaining,
+        useNativeDriver: false,
+      }).start();
+    }
+    undoTimerRef.current = setTimeout(() => {
+      undoTimerRef.current = null;
+      dismissUndoToast();
+    }, remaining);
+  }
+
   function showUndoToast(preset: CardPreset, index: number) {
     const undoMs = (settings.undoWindowSeconds ?? 3) * 1000;
     if (undoTimerRef.current !== null) {
@@ -2422,6 +2454,8 @@ export default function CardCustomizationModal({
     undoProgressAnim.stopAnimation();
     setUndoDeleteState({ preset, index });
     undoProgressAnim.setValue(1);
+    undoRemainingMsRef.current = undoMs;
+    undoSegmentStartRef.current = Date.now();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(1);
     } else {
@@ -3690,7 +3724,12 @@ export default function CardCustomizationModal({
                   >
                     "{undoDeleteState.preset.name}" deleted
                   </Text>
-                  <TouchableOpacity onPress={handleUndoDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity
+                    onPress={handleUndoDelete}
+                    onPressIn={pauseUndoToast}
+                    onPressOut={resumeUndoToast}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
                     <Text
                       style={[
                         styles.confirmToastText,
