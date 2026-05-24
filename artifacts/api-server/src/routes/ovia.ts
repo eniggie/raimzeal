@@ -647,7 +647,17 @@ async function performWebSearch(query: string): Promise<string> {
 }
 
 // POST /api/ovia/transcribe — converts voice audio to text via OpenAI Whisper
+// Requires Rise or above (voice notes are a paid feature).
 oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+  const voiceTier = await getUserTier(userId);
+  if (voiceTier === "foundation") {
+    res.status(403).json({
+      error: "Voice notes require a Rise, Reign, or Legacy plan.",
+      code: "UPGRADE_REQUIRED",
+    });
+    return;
+  }
   try {
     const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
     if (!audio) {

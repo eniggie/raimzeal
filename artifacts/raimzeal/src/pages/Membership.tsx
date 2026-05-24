@@ -24,6 +24,7 @@ const FOUNDATION_FEATURES = [
 const RISE_FEATURES = [
   'Everything in Foundation',
   'Ovia AI coaching — 200 messages/day',
+  'Voice notes in Ovia AI (speak your check-in)',
   'Priority community badge',
   'Advanced nutrition analytics',
   'Extended workout history (unlimited)',
@@ -43,10 +44,14 @@ const REIGN_FEATURES = [
 const LEGACY_FEATURES = [
   'Everything in Reign',
   'Ovia AI coaching — unlimited messages',
-  '1-on-1 coaching session access',
+  'Private Inner Circle Community (Legacy-only feed)',
+  'Legacy Leaderboard — see your rank among founders',
+  'Monthly AI Health Report (personalised by Ovia)',
+  'Personalised 4-week Coaching Plan from Ovia AI',
+  'Accountability Partner Matching with another Legacy member',
+  'Founding Member Certificate — Legacy Founder #',
+  'Legacy founder badge + lifetime community recognition',
   'Dedicated priority support',
-  'Legacy founder badge',
-  'Lifetime recognition in the RAIMZEAL community',
 ];
 
 const PAID_PLANS = [

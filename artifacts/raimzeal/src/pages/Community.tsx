@@ -63,6 +63,24 @@ export function Community() {
   const [imageUploading, setImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Inner Circle tab
+  const [communityTab, setCommunityTab] = useState<'feed' | 'inner-circle'>('feed');
+  const [userTier, setUserTier] = useState<'foundation' | 'rise' | 'reign' | 'legacy'>('foundation');
+
+  useEffect(() => {
+    if (!supabaseConfigured || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).single();
+        if (cancelled) return;
+        const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
+        setUserTier((t === 'rise' || t === 'reign' || t === 'legacy') ? t : 'foundation');
+      } catch { /* stay on foundation */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   // Comments state
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [commentsMap, setCommentsMap] = useState<Record<string, LiveComment[]>>({});
@@ -70,7 +88,7 @@ export function Community() {
   const [newComments, setNewComments] = useState<Record<string, string>>({});
   const [commentPosting, setCommentPosting] = useState<Set<string>>(new Set());
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (tab: 'feed' | 'inner-circle' = communityTab) => {
     if (!supabaseConfigured) { setLoading(false); return; }
     setLoading(true);
     setFetchError('');
@@ -78,6 +96,7 @@ export function Community() {
       const { data, error } = await supabase
         .from('community_posts')
         .select('id, user_id, user_name, content, post_type, likes_count, comments_count, created_at, image_url')
+        .eq('is_legacy_post', tab === 'inner-circle')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -92,7 +111,7 @@ export function Community() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [communityTab]);
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
 
@@ -314,7 +333,7 @@ export function Community() {
           </Link>
           <h1 className="text-xl font-bold font-display flex-1">Community</h1>
           {!loading && supabaseConfigured && (
-            <Button variant="ghost" size="icon" onClick={loadPosts} title="Refresh">
+            <Button variant="ghost" size="icon" onClick={() => loadPosts()} title="Refresh">
               <RefreshCw className="w-4 h-4" />
             </Button>
           )}
@@ -322,6 +341,51 @@ export function Community() {
       </div>
 
       {/* Resources + Support Section */}
+      {/* Community / Inner Circle tab toggle */}
+      <div className="px-4 py-2 border-b border-border bg-muted/20">
+        <div className="flex gap-1 max-w-lg mx-auto">
+          {(['feed', 'inner-circle'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => {
+                setCommunityTab(t);
+                loadPosts(t);
+              }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                communityTab === t
+                  ? t === 'inner-circle' ? 'bg-yellow-900/50 text-yellow-400' : 'bg-card text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {t === 'inner-circle' ? '🏆' : '💬'}
+              {t === 'feed' ? 'Community Feed' : 'Inner Circle'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Inner Circle gate for non-Legacy */}
+      {communityTab === 'inner-circle' && userTier !== 'legacy' && (
+        <div className="flex-1 flex items-center justify-center px-8 py-16">
+          <div className="text-center max-w-sm space-y-4">
+            <div className="w-14 h-14 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto">
+              <span className="text-3xl">🏆</span>
+            </div>
+            <h2 className="text-xl font-bold font-display">Legacy Members Only</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              The Inner Circle is a private space for Legacy founders to connect, share insights, and support each other.
+            </p>
+            <Link href="/membership">
+              <Button className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold w-full">
+                Upgrade to Legacy
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {(communityTab !== 'inner-circle' || userTier === 'legacy') && (<>
       <div className="px-4 pt-4 max-w-lg mx-auto w-full space-y-3">
 
         {/* RAIMZY Resources Card */}
@@ -543,7 +607,7 @@ export function Community() {
               <WifiOff className="w-12 h-12 text-destructive/60" />
               <h3 className="font-semibold">Could not load posts</h3>
               <p className="text-muted-foreground text-sm max-w-xs">{fetchError}</p>
-              <Button variant="outline" size="sm" onClick={loadPosts}>
+              <Button variant="outline" size="sm" onClick={() => loadPosts()}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Try again
               </Button>
@@ -756,6 +820,7 @@ export function Community() {
           )}
         </div>
       </div>
+      </>)}
 
       <BottomNav />
     </div>

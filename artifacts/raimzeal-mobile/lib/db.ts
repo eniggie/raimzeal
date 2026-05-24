@@ -299,12 +299,14 @@ export interface CommunityComment {
 
 export async function fetchCommunityPosts(
   postType?: "post" | "question" | "win" | "tip" | "challenge",
-  limit = 30
+  limit = 30,
+  legacyOnly = false
 ): Promise<CommunityPost[]> {
   if (!isSupabaseConfigured) return [];
   let query = supabase
     .from("community_posts")
     .select("*, community_likes(count), community_comments(count)")
+    .eq("is_legacy_post", legacyOnly)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (postType) query = (query as typeof query).eq("post_type", postType);
@@ -340,6 +342,44 @@ export async function createCommunityPost(
   if (!token) return null;
   try {
     const res = await fetch(`${getApiBase()}/community/posts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ userName, content, postType, imageUrl: imageUrl ?? undefined }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { post: Record<string, unknown> };
+    const d = json.post;
+    return {
+      id: d.id as string,
+      userId: d.user_id as string,
+      userName: d.user_name as string,
+      content: d.content as string,
+      postType: d.post_type as "post" | "question" | "win" | "tip" | "challenge",
+      imageUrl: (d.image_url as string | null | undefined) ?? null,
+      likesCount: 0,
+      commentsCount: 0,
+      createdAt: d.created_at as string,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function createLegacyCommunityPost(
+  _userId: string,
+  userName: string,
+  content: string,
+  postType: "post" | "question" | "win" | "tip" | "challenge",
+  imageUrl?: string | null
+): Promise<CommunityPost | null> {
+  if (!isSupabaseConfigured) return null;
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${getApiBase()}/legacy/community/posts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, pgTable, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,7 @@ export const communityPosts = pgTable("community_posts", {
   imageUrl: text("image_url"),
   likesCount: integer("likes_count").notNull().default(0),
   commentsCount: integer("comments_count").notNull().default(0),
+  isLegacyPost: boolean("is_legacy_post").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

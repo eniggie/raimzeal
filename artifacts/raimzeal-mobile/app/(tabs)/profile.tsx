@@ -28,6 +28,7 @@ import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
+import { useTier } from "@/hooks/useTier";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -80,7 +81,8 @@ export default function ProfileScreen() {
     resetHints,
     clearAllData,
   } = useFitness();
-  const { signOut } = useAuth();
+  const { signOut, user: authUser } = useAuth();
+  const { tier } = useTier(authUser?.id ?? null);
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
     cameraRollStatus,
@@ -1123,6 +1125,51 @@ export default function ProfileScreen() {
               isLast
             />
           </GlassCard>
+
+          {/* Legacy Inner Circle — only shown to Legacy members */}
+          {tier === "legacy" && (
+            <>
+              <Text style={[styles.sectionTitle, { color: "#fbbf24" }]}>Legacy Inner Circle</Text>
+              <GlassCard style={[styles.actionsCard, { borderColor: "#fbbf2430" }]}>
+                <ActionRow
+                  icon="trophy"
+                  label="Legacy Leaderboard"
+                  sublabel="See how you rank among Legacy founders"
+                  color="#fbbf24"
+                  onPress={() => router.push("/legacy")}
+                />
+                <ActionRow
+                  icon="document-text-outline"
+                  label="Monthly Health Report"
+                  sublabel="AI-generated personalised analysis"
+                  color="#34d399"
+                  onPress={() => router.push("/legacy")}
+                />
+                <ActionRow
+                  icon="fitness-outline"
+                  label="Personalised Coaching Plan"
+                  sublabel="4-week AI plan built for your goals"
+                  color="#a78bfa"
+                  onPress={() => router.push("/legacy")}
+                />
+                <ActionRow
+                  icon="people-outline"
+                  label="Accountability Partner"
+                  sublabel="Get matched with another Legacy member"
+                  color="#60a5fa"
+                  onPress={() => router.push("/legacy")}
+                />
+                <ActionRow
+                  icon="ribbon-outline"
+                  label="Founding Member Certificate"
+                  sublabel="Your official Legacy founder recognition"
+                  color="#fbbf24"
+                  onPress={() => router.push("/legacy")}
+                  isLast
+                />
+              </GlassCard>
+            </>
+          )}
 
           {/* Membership */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Membership</Text>

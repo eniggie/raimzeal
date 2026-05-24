@@ -31,6 +31,7 @@ import { Nutrition } from '@/pages/Nutrition';
 import { Programs } from '@/pages/Programs';
 import { Coach } from '@/pages/Coach';
 import { Community } from '@/pages/Community';
+import { Legacy } from '@/pages/Legacy';
 import { Settings } from '@/pages/Settings';
 import { Membership } from '@/pages/Membership';
 import { WorkoutCreator } from '@/pages/WorkoutCreator';
@@ -228,6 +229,9 @@ function AppContent() {
       </Route>
       <Route path="/community">
         <Community />
+      </Route>
+      <Route path="/legacy">
+        <Legacy />
       </Route>
       <Route path="/settings">
         <Settings

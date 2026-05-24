@@ -15,7 +15,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
+import { useTier } from "@/hooks/useTier";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -28,6 +30,7 @@ import {
   CommunityComment,
   fetchCommunityPosts,
   createCommunityPost,
+  createLegacyCommunityPost,
   fetchComments,
   createComment,
   toggleLike,
@@ -38,7 +41,7 @@ import {
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
 
-type FeedTab = "feed" | "questions";
+type FeedTab = "feed" | "questions" | "inner-circle";
 
 interface PostState extends CommunityPost {
   liked: boolean;
@@ -84,6 +87,7 @@ function timeAgo(dateString: string): string {
 }
 
 export default function CommunityScreen() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useFitness();
@@ -96,6 +100,7 @@ export default function CommunityScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const { tier } = useTier(userId);
 
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPostType, setNewPostType] = useState<"post" | "question" | "win" | "tip" | "challenge">("post");
@@ -117,8 +122,9 @@ export default function CommunityScreen() {
   const loadPosts = useCallback(
     async (tab: FeedTab = feedTab) => {
       try {
+        const isInnerCircle = tab === "inner-circle";
         const filter = tab === "questions" ? "question" : undefined;
-        let fetched: CommunityPost[] = await fetchCommunityPosts(filter);
+        let fetched: CommunityPost[] = await fetchCommunityPosts(filter, 30, isInnerCircle);
 
         if (!isSupabaseConfigured) {
           fetched = [];
@@ -340,7 +346,9 @@ export default function CommunityScreen() {
 
     if (isSupabaseConfigured && userId) {
       try {
-        const saved = await createCommunityPost(userId, userName, content, newPostType, uploadedImageUrl);
+        const saved = feedTab === "inner-circle"
+          ? await createLegacyCommunityPost(userId, userName, content, newPostType, uploadedImageUrl)
+          : await createCommunityPost(userId, userName, content, newPostType, uploadedImageUrl);
         if (saved) {
           setPosts((prev) =>
             prev.map((p) =>
@@ -655,46 +663,76 @@ export default function CommunityScreen() {
       </View>
 
       <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
-        {(["feed", "questions"] as FeedTab[]).map((t) => (
-          <TouchableOpacity
-            key={t}
-            onPress={() => {
-              Haptics.selectionAsync();
-              setFeedTab(t);
-            }}
-            style={[
-              styles.tabBtn,
-              feedTab === t && { backgroundColor: colors.card },
-            ]}
-          >
-            <Ionicons
-              name={
-                t === "feed"
-                  ? feedTab === t
-                    ? "people"
-                    : "people-outline"
-                  : feedTab === t
-                  ? "help-circle"
-                  : "help-circle-outline"
-              }
-              size={15}
-              color={feedTab === t ? colors.foreground : colors.mutedForeground}
-            />
-            <Text
+        {(["feed", "questions", "inner-circle"] as FeedTab[]).map((t) => {
+          const isActive = feedTab === t;
+          const isIC = t === "inner-circle";
+          return (
+            <TouchableOpacity
+              key={t}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setFeedTab(t);
+              }}
               style={[
-                styles.tabLabel,
-                {
-                  color: feedTab === t ? colors.foreground : colors.mutedForeground,
-                  fontFamily:
-                    feedTab === t ? "Inter_600SemiBold" : "Inter_400Regular",
-                },
+                styles.tabBtn,
+                isActive && { backgroundColor: isIC ? "#92400e" : colors.card },
               ]}
             >
-              {t === "feed" ? "Community Feed" : "Questions"}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Ionicons
+                name={
+                  isIC
+                    ? isActive ? "trophy" : "trophy-outline"
+                    : t === "feed"
+                    ? isActive ? "people" : "people-outline"
+                    : isActive ? "help-circle" : "help-circle-outline"
+                }
+                size={15}
+                color={
+                  isIC && isActive
+                    ? "#fbbf24"
+                    : isActive
+                    ? colors.foreground
+                    : colors.mutedForeground
+                }
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  {
+                    color:
+                      isIC && isActive
+                        ? "#fbbf24"
+                        : isActive
+                        ? colors.foreground
+                        : colors.mutedForeground,
+                    fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+                  },
+                ]}
+              >
+                {t === "feed" ? "Feed" : t === "questions" ? "Q&A" : "Inner Circle"}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
+
+      {feedTab === "inner-circle" && tier !== "legacy" && (
+        <View style={[styles.centered, { padding: 32, gap: 12 }]}>
+          <Ionicons name="trophy" size={48} color="#fbbf24" />
+          <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: "center", fontSize: 18 }]}>
+            Legacy Members Only
+          </Text>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular" }}>
+            The Inner Circle is a private space for Legacy founders to connect, share insights, and support each other.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: "#fbbf24", paddingHorizontal: 24, paddingVertical: 11, borderRadius: 12, marginTop: 4 }}
+            onPress={() => router.push("/membership")}
+          >
+            <Text style={{ color: "#000", fontFamily: "Inter_700Bold", fontSize: 14 }}>Upgrade to Legacy</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.centered}>
