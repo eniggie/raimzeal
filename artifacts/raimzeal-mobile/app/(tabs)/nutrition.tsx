@@ -1743,6 +1743,7 @@ export default function NutritionScreen() {
   const historyFiltersHydratedRef = useRef(false);
   const suppressRemoteRef = useRef(false);
   const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteRef = useRef(false);
 
   useEffect(() => {
     const VALID_DATE_RANGES = new Set(["all", "7d", "30d"]);
@@ -1883,6 +1884,7 @@ export default function NutritionScreen() {
   useEffect(() => {
     if (!filtersHydratedRef.current || !cloudSyncReadyRef.current) return;
     if (!isSupabaseConfigured) return;
+    if (applyingRemoteRef.current) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session?.user) return;
       if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
@@ -1920,6 +1922,7 @@ export default function NutritionScreen() {
             if (!prefs || typeof prefs !== "object") return;
             const p = prefs as Record<string, unknown>;
             const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+            applyingRemoteRef.current = true;
             if (Array.isArray(p["activeFilters"])) {
               const restored = (p["activeFilters"] as unknown[]).filter(
                 (k): k is string => typeof k === "string" && validKeys.has(k)
@@ -1947,6 +1950,7 @@ export default function NutritionScreen() {
               }
               setFilterThresholds((prev) => ({ ...prev, ...validated }));
             }
+            setTimeout(() => { applyingRemoteRef.current = false; }, 0);
           }
         )
         .subscribe();
