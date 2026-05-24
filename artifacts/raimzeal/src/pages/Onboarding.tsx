@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { STRIPE_DONATION_URL, DONATION_ACTIVE } from '@/lib/constants';
 
 interface OnboardingProps {
   onLogin: () => void;
@@ -216,11 +218,23 @@ export function Onboarding({ onLogin }: OnboardingProps) {
                     ))}
                   </div>
 
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center space-y-1">
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center space-y-2">
                     <p className="text-xs font-semibold text-primary">Foundation Plan — Free Forever</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       No subscription required. Donations keep the platform running — you never have to pay.
                     </p>
+                    {DONATION_ACTIVE && (
+                      <a
+                        href={STRIPE_DONATION_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+                        aria-label="Donate to support RAIMZEAL"
+                      >
+                        <Heart className="w-3 h-3 fill-current" />
+                        Support the mission
+                      </a>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-muted-foreground/60 text-center leading-relaxed px-2">
