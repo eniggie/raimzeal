@@ -1539,6 +1539,7 @@ export default function NutritionScreen() {
   }
 
   function showPresetDeletedToast(preset: CustomFilterPreset) {
+    dismissPresetUndoToast(true);
     if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
     if (presetUndoCountdownIntervalRef.current) clearInterval(presetUndoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
@@ -1584,10 +1585,10 @@ export default function NutritionScreen() {
     }, remaining);
   }
 
-  function dismissPresetUndoToast() {
+  function dismissPresetUndoToast(forReplacement = false) {
     presetUndoProgressAnim.stopAnimation();
     Animated.timing(presetUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      setDeletedPreset(null);
+      if (!forReplacement) setDeletedPreset(null);
     });
     if (presetUndoTimerRef.current) {
       clearTimeout(presetUndoTimerRef.current);
@@ -1609,10 +1610,10 @@ export default function NutritionScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
-  function dismissPresetRenameUndoToast() {
+  function dismissPresetRenameUndoToast(forReplacement = false) {
     presetRenameUndoProgressAnim.stopAnimation();
     Animated.timing(presetRenameUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      setRenamedPreset(null);
+      if (!forReplacement) setRenamedPreset(null);
     });
     if (presetRenameUndoTimerRef.current) {
       clearTimeout(presetRenameUndoTimerRef.current);
@@ -1625,6 +1626,7 @@ export default function NutritionScreen() {
   }
 
   function showPresetRenamedToast(oldPreset: CustomFilterPreset, newName: string) {
+    dismissPresetRenameUndoToast(true);
     if (presetRenameUndoTimerRef.current) clearTimeout(presetRenameUndoTimerRef.current);
     if (presetRenameUndoCountdownIntervalRef.current) clearInterval(presetRenameUndoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
@@ -1683,6 +1685,7 @@ export default function NutritionScreen() {
   }
 
   function showUndoToast(meal: MealLog) {
+    dismissUndoToast(true);
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     if (undoCountdownIntervalRef.current) clearInterval(undoCountdownIntervalRef.current);
     const durationSec = settings.undoWindowSeconds ?? 3;
@@ -1727,10 +1730,10 @@ export default function NutritionScreen() {
     }, remaining);
   }
 
-  function dismissUndoToast() {
+  function dismissUndoToast(forReplacement = false) {
     undoProgressAnim.stopAnimation();
     Animated.timing(undoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      setUndoMeal(null);
+      if (!forReplacement) setUndoMeal(null);
     });
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current);
