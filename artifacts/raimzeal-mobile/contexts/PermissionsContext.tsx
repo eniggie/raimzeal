@@ -206,20 +206,17 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     setHasSeenRationale(false);
     // Clear from Supabase so the pre-prompt re-appears on other devices too.
     if (isSupabaseConfigured) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session?.user) return;
-        fetchUserPreferences(session.user.id)
-          .then((existing) =>
-            upsertUserPreferences(session.user.id, {
-              ...existing,
-              appSettings: {
-                ...(existing?.appSettings ?? {}),
-                cameraRollRationaleDismissed: false,
-              },
-            })
-          )
-          .catch(() => {});
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const existing = await fetchUserPreferences(session.user.id);
+        await upsertUserPreferences(session.user.id, {
+          ...existing,
+          appSettings: {
+            ...(existing?.appSettings ?? {}),
+            cameraRollRationaleDismissed: false,
+          },
+        });
+      }
     }
   }, []);
 
