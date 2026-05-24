@@ -105,6 +105,11 @@ export function Membership() {
   const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
+    // Open a blank tab immediately — must be synchronous inside the click handler
+    // so popup blockers don't intervene. We navigate it to Stripe after the fetch.
+    let stripeTab: Window | null = null;
+    try { stripeTab = window.open('', '_blank'); } catch { /* sandbox blocks open */ }
+
     setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
     setCheckoutError((prev) => ({ ...prev, [tier]: '' }));
     setCheckoutUrl((prev) => ({ ...prev, [tier]: '' }));
@@ -121,6 +126,7 @@ export function Membership() {
       const data = await res.json() as { url?: string; error?: string };
 
       if (!res.ok || !data.url) {
+        stripeTab?.close();
         setCheckoutError((prev) => ({
           ...prev,
           [tier]: data.error ?? 'Could not start checkout. Please try again.',
@@ -128,15 +134,15 @@ export function Membership() {
         return;
       }
 
-      // Open Stripe checkout in a new tab.
-      // Stripe blocks iframe embedding (X-Frame-Options: DENY) so we must NOT use
-      // window.location.href here — that would navigate the preview iframe and crash.
-      const newTab = window.open(data.url, '_blank', 'noopener,noreferrer');
-      if (!newTab) {
-        // Popup was blocked — surface the link so the user can click it manually.
+      if (stripeTab && !stripeTab.closed) {
+        // Navigate the pre-opened tab to Stripe checkout.
+        stripeTab.location.href = data.url;
+      } else {
+        // Tab was blocked — surface a clickable link as fallback.
         setCheckoutUrl((prev) => ({ ...prev, [tier]: data.url! }));
       }
     } catch {
+      stripeTab?.close();
       setCheckoutError((prev) => ({
         ...prev,
         [tier]: 'Network error. Please check your connection and try again.',
@@ -292,9 +298,11 @@ export function Membership() {
                         href={stripeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block w-full py-2 rounded-xl border border-foreground/20 text-xs font-semibold text-center text-foreground/70 hover:bg-foreground/5 transition-colors"
+                        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-center text-white transition-opacity hover:opacity-90
+                          ${plan.key === 'rise' ? 'bg-blue-500' : 'bg-purple-500'}`}
                       >
-                        ↗ Tap here to open Stripe checkout
+                        <ExternalLink className="w-4 h-4" />
+                        Continue to Stripe Checkout
                       </a>
                     )}
                     <p className="text-[10px] text-foreground/40 text-center">
