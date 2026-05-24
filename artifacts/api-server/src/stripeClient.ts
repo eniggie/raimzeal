@@ -71,8 +71,10 @@ export async function getStripeSync(): Promise<StripeSync> {
     throw new Error("DATABASE_URL environment variable is required");
   }
   const { secretKey } = await getCredentials();
+  const webhookSecret = process.env["STRIPE_WEBHOOK_SECRET"];
   return new StripeSync({
     poolConfig: { connectionString: databaseUrl, max: 2 },
     stripeSecretKey: secretKey,
+    ...(webhookSecret ? { webhookSecret } : {}),
   });
 }

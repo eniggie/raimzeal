@@ -325,7 +325,7 @@ authRouter.post("/auth/verify-email-code", emailVerifyRateLimit, async (req, res
     if (listError) { res.status(500).json({ error: "Failed to look up user." }); return; }
 
     const user = listData.users.find((u) => u.email === email);
-    if (!user) { res.status(404).json({ error: "No account found with that email." }); return; }
+    if (!user) { res.status(400).json({ error: "Code expired or not found. Request a new one." }); return; }
 
     const { data: rows } = await supabaseAdmin
       .from("verification_codes")

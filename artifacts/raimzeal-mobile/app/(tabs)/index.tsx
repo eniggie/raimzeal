@@ -519,6 +519,38 @@ export default function HomeScreen() {
             }}
           />
         </View>
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="person-outline"
+            label="Profile"
+            color="#f472b6"
+            bg="#f472b620"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/profile");
+            }}
+          />
+          <QuickAction
+            icon="share-social-outline"
+            label="Share Progress"
+            color="#34d399"
+            bg="#34d39920"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/progress");
+            }}
+          />
+          <QuickAction
+            icon="card-outline"
+            label="My Card"
+            color="#38bdf8"
+            bg="#38bdf820"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/ovia");
+            }}
+          />
+        </View>
 
       </View>
 

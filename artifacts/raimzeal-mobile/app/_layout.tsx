@@ -47,8 +47,8 @@ async function initNotifications() {
     const settings = await loadReminderSettings();
     const hasAnyOn = Object.values(settings).some(Boolean);
     if (hasAnyOn) await scheduleReminders(settings);
-  } catch {
-    // Non-fatal — app continues normally
+  } catch (err) {
+    console.warn("[initNotifications] failed (non-fatal):", err);
   }
 }
 

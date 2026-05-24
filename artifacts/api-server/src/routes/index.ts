@@ -1,6 +1,5 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import appRouter from "./routes";
 import oviaRouter from "./ovia";
 import emailRouter from "./email";
 import stripeRouter from "./stripe";
@@ -55,6 +54,5 @@ router.use(waterIntakeRouter);
 router.use(scheduledWorkoutsRouter);
 router.use(userProfileRouter);
 router.use(enrolledProgramRouter);
-router.use(appRouter);
 
 export default router;

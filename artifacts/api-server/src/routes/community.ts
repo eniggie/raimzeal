@@ -6,7 +6,10 @@ import { randomUUID } from "crypto";
 
 // Supabase project URL — fall back to the known project ref if the env var
 // contains the anon key value instead of the URL (a common misconfiguration).
-const rawSupabaseUrl = process.env["EXPO_PUBLIC_SUPABASE_URL"] ?? "";
+const rawSupabaseUrl =
+  process.env["SUPABASE_URL"] ??
+  process.env["EXPO_PUBLIC_SUPABASE_URL"] ??
+  "";
 const supabaseUrl = rawSupabaseUrl.startsWith("https://")
   ? rawSupabaseUrl
   : "https://druogyuqjytmkwihinhg.supabase.co";
