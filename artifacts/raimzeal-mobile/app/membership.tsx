@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   View,
   Text,
@@ -13,6 +14,8 @@ import { STRIPE_DONATION_URL } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
+import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/lib/db";
 
 const FOUNDATION_FEATURES = [
   "Full workout library & custom workouts",
@@ -66,6 +69,7 @@ type PaidPlan = {
   bgEnd: string;
   monthly: number;
   yearly: number;
+  yearlyEquiv: number;
   popular: boolean;
   features: string[];
 };
@@ -81,6 +85,7 @@ const PAID_PLANS: PaidPlan[] = [
     bgEnd: "#0f172a",
     monthly: 9.99,
     yearly: 99,
+    yearlyEquiv: 8.25,
     popular: false,
     features: RISE_FEATURES,
   },
@@ -94,6 +99,7 @@ const PAID_PLANS: PaidPlan[] = [
     bgEnd: "#0f172a",
     monthly: 19.99,
     yearly: 199,
+    yearlyEquiv: 16.58,
     popular: true,
     features: REIGN_FEATURES,
   },
@@ -107,6 +113,7 @@ const PAID_PLANS: PaidPlan[] = [
     bgEnd: "#0f172a",
     monthly: 49.99,
     yearly: 499,
+    yearlyEquiv: 41.58,
     popular: false,
     features: LEGACY_FEATURES,
   },
@@ -116,6 +123,42 @@ export default function MembershipScreen() {
   const colors = useColors();
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
+  const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
+
+  async function handleCheckout(tier: string, interval: "monthly" | "yearly") {
+    setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
+    setCheckoutError((prev) => ({ ...prev, [tier]: "" }));
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+      const res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ tier, interval }),
+      });
+
+      const data = await res.json() as { url?: string; error?: string };
+
+      if (!res.ok || !data.url) {
+        const msg = data.error ?? "Could not start checkout. Please try again.";
+        setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
+        Alert.alert("Checkout Error", msg);
+        return;
+      }
+
+      await Linking.openURL(data.url);
+    } catch {
+      const msg = "Network error. Please check your connection and try again.";
+      setCheckoutError((prev) => ({ ...prev, [tier]: msg }));
+      Alert.alert("Connection Error", msg);
+    } finally {
+      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+    }
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -126,7 +169,7 @@ export default function MembershipScreen() {
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>Membership</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Foundation is free forever. No catch.
+            Foundation is free forever. Rise, Reign &amp; Legacy unlock more.
           </Text>
         </View>
       </View>
@@ -191,6 +234,9 @@ export default function MembershipScreen() {
         {PAID_PLANS.map((plan) => {
           const price = billing === "monthly" ? plan.monthly : plan.yearly;
           const period = billing === "monthly" ? "/mo" : "/yr";
+          const isLoading = checkoutLoading[plan.key] ?? false;
+          const error = checkoutError[plan.key] ?? "";
+
           return (
             <View key={plan.key}>
               {plan.popular && (
@@ -210,9 +256,11 @@ export default function MembershipScreen() {
                   </View>
                   <View style={styles.cardTitleBlock}>
                     <Text style={[styles.planName, { color: colors.foreground }]}>{plan.name}</Text>
-                    <View style={[styles.comingSoonBadge, { backgroundColor: plan.color + "22" }]}>
-                      <Text style={[styles.comingSoonText, { color: plan.color }]}>Coming Soon</Text>
-                    </View>
+                    <Text style={[styles.planTagline, { color: colors.mutedForeground }]}>
+                      {billing === "yearly"
+                        ? `$${plan.yearlyEquiv.toFixed(2)}/mo equivalent`
+                        : "Billed monthly · Cancel anytime"}
+                    </Text>
                   </View>
                   <View style={styles.priceBlock}>
                     <Text style={[styles.price, { color: plan.color }]}>
@@ -231,30 +279,36 @@ export default function MembershipScreen() {
                   ))}
                 </View>
 
+                {error ? (
+                  <Text style={[styles.errorText, { color: "#f87171" }]}>{error}</Text>
+                ) : null}
+
                 <TouchableOpacity
-                  style={[styles.ctaBtn, { backgroundColor: plan.color + "25", borderColor: plan.color + "60", borderWidth: 1 }]}
+                  style={[
+                    styles.ctaBtn,
+                    {
+                      backgroundColor: plan.color + "25",
+                      borderColor: plan.color + "60",
+                      borderWidth: 1,
+                      opacity: isLoading ? 0.7 : 1,
+                    },
+                  ]}
                   activeOpacity={0.8}
-                  onPress={() => {
-                    Alert.alert(
-                      `${plan.name} — Coming Soon`,
-                      "Subscriptions are launching very soon!\n\nIn the meantime, a voluntary donation helps keep RAIMZEAL free for everyone. You are never required to give — any amount is deeply appreciated.",
-                      [
-                        {
-                          text: "Donate Now",
-                          onPress: () =>
-                            Linking.openURL(STRIPE_DONATION_URL).catch(() =>
-                              Linking.openURL("mailto:support@raimzeal.com?subject=Donation")
-                            ),
-                        },
-                        { text: "Not Now", style: "cancel" },
-                      ]
-                    );
-                  }}
+                  disabled={isLoading}
+                  onPress={() => handleCheckout(plan.key, billing)}
                 >
-                  <Text style={[styles.ctaText, { color: plan.color }]}>
-                    Notify Me — Support Now
-                  </Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={plan.color} />
+                  ) : (
+                    <Text style={[styles.ctaText, { color: plan.color }]}>
+                      {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
+                    </Text>
+                  )}
                 </TouchableOpacity>
+
+                <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
+                  Secure checkout via Stripe · Cancel anytime
+                </Text>
               </LinearGradient>
             </View>
           );
@@ -382,8 +436,6 @@ const styles = StyleSheet.create({
   cardTitleBlock: { flex: 1, gap: 4 },
   planName:    { fontSize: 17, fontWeight: "700" },
   planTagline: { fontSize: 12, marginTop: 1 },
-  comingSoonBadge: { alignSelf: "flex-start", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  comingSoonText:  { fontSize: 11, fontWeight: "700" },
   priceBlock:  { alignItems: "flex-end" },
   price:       { fontSize: 22, fontWeight: "900" },
   priceSub:    { fontSize: 11, marginTop: -2 },
@@ -391,13 +443,16 @@ const styles = StyleSheet.create({
   featureRow:  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   checkIcon:   { marginTop: 1 },
   featureText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  errorText:   { fontSize: 12, textAlign: "center" },
   ctaBtn: {
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 46,
   },
-  ctaText: { fontSize: 14, fontWeight: "700" },
+  ctaText:    { fontSize: 14, fontWeight: "700" },
+  secureNote: { fontSize: 11, textAlign: "center", marginTop: -4 },
 
   donationCard: {
     borderRadius: 18,
