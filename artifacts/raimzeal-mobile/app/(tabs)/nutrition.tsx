@@ -800,7 +800,7 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount } = useFitness();
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -1238,6 +1238,23 @@ export default function NutritionScreen() {
   const scrollYRef = useRef<number>(0);
   const seenDatesRef = useRef<Set<string>>(new Set());
   const [, setSeenDatesTick] = useState(0);
+
+  // Reset filter/history UI state whenever the user clears all app data.
+  // dataResetCount increments once per clear; skip count === 0 (initial mount).
+  const prevResetCountRef = useRef(dataResetCount);
+  useEffect(() => {
+    if (dataResetCount === 0 || dataResetCount === prevResetCountRef.current) return;
+    prevResetCountRef.current = dataResetCount;
+    setActiveFilters(new Set());
+    setFilterThresholds(getDefaultThresholds());
+    setCustomPresets([]);
+    setHistoryDateRange("all");
+    setHistoryMealFilter("all");
+    setCustomDateRange(null);
+    setTrendMetric("calories");
+    setHighlightedDate(null);
+    setActiveTab("today");
+  }, [dataResetCount]);
 
   const markDateSeen = useCallback((date: string) => {
     if (!seenDatesRef.current.has(date)) {

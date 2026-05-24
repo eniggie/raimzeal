@@ -24,7 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import { useMacroGoals } from "@/contexts/MacroGoalsContext";
+import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
@@ -78,9 +78,10 @@ export default function ProfileScreen() {
     updateSettings,
     resetState,
     resetHints,
+    clearAllData,
   } = useFitness();
   const { signOut } = useAuth();
-  const { goals: macroGoals } = useMacroGoals();
+  const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
     cameraRollStatus,
     hasSeenRationale,
@@ -334,6 +335,49 @@ export default function ProfileScreen() {
     Alert.alert(
       "Hints Reset",
       "All one-time tips will reappear the next time you visit those sections."
+    );
+  }
+
+  function handleClearAppData() {
+    Alert.alert(
+      "Clear All App Data",
+      "This will permanently delete your filters, goals, history, and all other stored data. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { default: AsyncStorage } = await import(
+                "@react-native-async-storage/async-storage"
+              );
+              // Remove all app data except Supabase auth session tokens
+              // (sb-* keys hold the user's login session — keeping them means
+              //  the user stays signed in but all data is wiped, which is the
+              //  intended behavior for "fresh start").
+              const allKeys = await AsyncStorage.getAllKeys();
+              const keysToRemove = allKeys.filter(
+                (k) => !k.startsWith("sb-")
+              );
+              await AsyncStorage.multiRemove(keysToRemove);
+              // Reset in-memory state for every context.
+              // clearAllData() resets FitnessContext state (including hints) WITHOUT
+              // calling persist(), so no stale AsyncStorage.setItem can race against
+              // the multiRemove above and recreate data on next launch.
+              clearAllData();
+              await setMacroGoals(DEFAULT_MACRO_GOALS);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                "Data Cleared",
+                "All app data has been reset. You can start fresh."
+              );
+            } catch {
+              Alert.alert("Error", "Could not clear app data. Please try again.");
+            }
+          },
+        },
+      ]
     );
   }
 
@@ -950,7 +994,6 @@ export default function ProfileScreen() {
               sublabel="Reset saved grams & meal type for all foods"
               color={colors.warning}
               onPress={handleClearMealDefaults}
-              isLast={settings.showRestoreBadge !== false}
             />
             {settings.showRestoreBadge === false && (
               <SettingToggleRow
@@ -960,9 +1003,16 @@ export default function ProfileScreen() {
                 color={colors.primary}
                 value={false}
                 onValueChange={handleToggleRestoreBadge}
-                isLast
               />
             )}
+            <ActionRow
+              icon="trash-outline"
+              label="Clear all app data"
+              sublabel="Wipe filters, goals, history & preferences"
+              color={colors.destructive}
+              onPress={handleClearAppData}
+              isLast
+            />
           </GlassCard>
           </View>
 

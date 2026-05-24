@@ -199,6 +199,17 @@ interface FitnessContextType extends AppState {
   markOnboarded: () => void;
   /** Wipe all local fitness data and AsyncStorage on logout — prevents ghost-data for the next user */
   resetState: () => void;
+  /**
+   * Resets all in-memory fitness state (including hints) WITHOUT persisting to
+   * AsyncStorage. Use this after an external bulk-remove (e.g. "Clear all app data")
+   * to avoid a race where a stale persist() writes data back after the wipe.
+   */
+  clearAllData: () => void;
+  /**
+   * Increments each time resetState() or clearAllData() is called so mounted
+   * screens can react (e.g. reset filter / history UI state) without remounting.
+   */
+  dataResetCount: number;
 }
 
 /** Same key as the web app — data schemas are compatible */
@@ -271,6 +282,7 @@ const FitnessContext = createContext<FitnessContextType | null>(null);
 export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const [stateHydrated, setStateHydrated] = useState(false);
+  const [dataResetCount, setDataResetCount] = useState(0);
 
   useEffect(() => {
     // Step 1: hydrate from AsyncStorage (fast, works offline)
@@ -453,6 +465,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const resetState = useCallback(() => {
     setState({ ...defaultState, isOnboarded: true }); // keep onboarded flag so health-onboarding doesn't re-fire
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    setDataResetCount((c) => c + 1);
+  }, []);
+
+  /**
+   * Resets all in-memory state WITHOUT calling persist(). Safe to call after an
+   * external AsyncStorage.multiRemove/clear because no stale setItem can race
+   * against the external wipe.
+   */
+  const clearAllData = useCallback(() => {
+    setState({ ...defaultState, isOnboarded: true });
+    setDataResetCount((c) => c + 1);
   }, []);
 
   const addWorkoutLog = useCallback(
@@ -937,6 +960,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         stateHydrated,
         markOnboarded,
         resetState,
+        clearAllData,
+        dataResetCount,
       }}
     >
       {children}
