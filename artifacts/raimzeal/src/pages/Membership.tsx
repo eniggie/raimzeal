@@ -16,7 +16,7 @@ const FOUNDATION_FEATURES = [
   'Progress charts & personal records',
   'Sleep tracking & streak tracking',
   'Workout calendar scheduling',
-  'Data export (JSON / CSV)',
+  'Data export (PDF report)',
   'Public profile with shareable link',
   'Macro target calculator',
 ];

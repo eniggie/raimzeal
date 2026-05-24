@@ -124,7 +124,7 @@ export function Privacy() {
               <li><strong className="text-foreground">Access:</strong> request a copy of the personal data we hold about you.</li>
               <li><strong className="text-foreground">Rectification:</strong> correct inaccurate personal data via Profile → Edit Profile in the app.</li>
               <li><strong className="text-foreground">Erasure ("right to be forgotten"):</strong> request deletion of your account and associated data via Settings → Delete Account, or by emailing us.</li>
-              <li><strong className="text-foreground">Data portability:</strong> export your data in JSON format via Settings → Export Data.</li>
+              <li><strong className="text-foreground">Data portability:</strong> export your data as a PDF report via Settings → Export Records.</li>
               <li><strong className="text-foreground">Restriction:</strong> request we restrict processing of your data in certain circumstances.</li>
               <li><strong className="text-foreground">Objection:</strong> object to processing based on legitimate interests.</li>
               <li><strong className="text-foreground">Withdraw consent:</strong> unsubscribe from the weekly digest at any time via Profile → Reminders, or by clicking "Unsubscribe" in any digest email.</li>

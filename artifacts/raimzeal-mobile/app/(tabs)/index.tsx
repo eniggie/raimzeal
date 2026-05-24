@@ -474,28 +474,6 @@ export default function HomeScreen() {
       <View style={styles.actions}>
         <View style={styles.actionsRow}>
           <QuickAction
-            icon="restaurant-outline"
-            label="Log Meal"
-            color={colors.secondary}
-            bg={colors.secondary + "20"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/nutrition");
-            }}
-          />
-          <QuickAction
-            icon="chatbubble-ellipses-outline"
-            label="Ask Ovia"
-            color={colors.accent}
-            bg={colors.accent + "20"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/ovia");
-            }}
-          />
-        </View>
-        <View style={styles.actionsRow}>
-          <QuickAction
             icon="body-outline"
             label="Log Body"
             color={colors.warning}

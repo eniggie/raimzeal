@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Camera, Plus, Trash2, Loader2, ImageIcon, Scale, X } from 'lucide-react';
+import { ChevronLeft, Camera, Plus, Trash2, Loader2, ImageIcon, Scale, X, Lock } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,6 +27,17 @@ export function ProgressPhotos() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState<ProgressPhoto | null>(null);
+  const [canUpload, setCanUpload] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', session.user.id).single();
+      const tier = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
+      setCanUpload(tier === 'rise' || tier === 'reign' || tier === 'legacy');
+    })();
+  }, []);
 
   const [caption, setCaption] = useState('');
   const [weightKg, setWeightKg] = useState('');
@@ -137,9 +148,15 @@ export function ProgressPhotos() {
               <p className="text-sm text-muted-foreground">Track your visual transformation</p>
             </div>
           </div>
-          <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-            <Plus className="w-4 h-4 mr-1" /> Add Photo
-          </Button>
+          {canUpload ? (
+            <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Plus className="w-4 h-4 mr-1" /> Add Photo
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/40 text-muted-foreground text-xs font-semibold">
+              <Lock className="w-3 h-3" /> Rise+ Required
+            </div>
+          )}
         </div>
 
         <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />

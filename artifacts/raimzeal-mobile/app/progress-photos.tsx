@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTier } from "@/hooks/useTier";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/db";
@@ -99,6 +100,8 @@ export default function ProgressPhotosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
+  const { tier: photoTier, loading: tierLoading } = useTier(session?.user?.id ?? null);
+  const canUploadPhotos = photoTier !== "foundation";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
@@ -474,6 +477,10 @@ export default function ProgressPhotosScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!canUploadPhotos) {
+                Alert.alert("Rise+ Feature", "Progress photo uploads are available on Rise, Reign, and Legacy plans. Upgrade to start tracking your visual transformation.", [{ text: "OK" }]);
+                return;
+              }
               Alert.alert(
                 "Add Photo",
                 "Choose a source",
@@ -484,9 +491,9 @@ export default function ProgressPhotosScreen() {
                 ]
               );
             }}
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addBtn, { backgroundColor: canUploadPhotos ? colors.primary : colors.mutedForeground }]}
           >
-            <Ionicons name="add" size={20} color={colors.primaryForeground} />
+            <Ionicons name={canUploadPhotos ? "add" : "lock-closed-outline"} size={20} color={colors.primaryForeground} />
           </TouchableOpacity>
         </View>
       </View>
@@ -593,17 +600,21 @@ export default function ProgressPhotosScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              if (!canUploadPhotos) {
+                Alert.alert("Rise+ Feature", "Progress photo uploads are available on Rise, Reign, and Legacy plans. Upgrade to start tracking your visual transformation.", [{ text: "OK" }]);
+                return;
+              }
               Alert.alert("Add Photo", "Choose a source", [
                 { text: "Take Photo", onPress: () => void handleTakePhoto() },
                 { text: "Choose from Library", onPress: () => void handleAddPhoto() },
                 { text: "Cancel", style: "cancel" },
               ]);
             }}
-            style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
+            style={[styles.emptyBtn, { backgroundColor: canUploadPhotos ? colors.primary : colors.mutedForeground }]}
           >
-            <Ionicons name="camera-outline" size={18} color={colors.primaryForeground} />
+            <Ionicons name={canUploadPhotos ? "camera-outline" : "lock-closed-outline"} size={18} color={colors.primaryForeground} />
             <Text style={[styles.emptyBtnText, { color: colors.primaryForeground }]}>
-              Add First Photo
+              {canUploadPhotos ? "Add First Photo" : "Rise+ Required"}
             </Text>
           </TouchableOpacity>
         </View>

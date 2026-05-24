@@ -101,7 +101,6 @@ function AppContent() {
     addBodyMeasurement,
     updateSettings,
     updateProfile,
-    exportData,
     exportPdfReport,
   } = useAppState(user?.id, user?.email);
 
