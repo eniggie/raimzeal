@@ -1257,10 +1257,17 @@ export default function CardCustomizationModal({
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
   const [autoTriggerBannerWidth, setAutoTriggerBannerWidth] = useState(0);
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
+  const [autoTriggerBannerVisible, setAutoTriggerBannerVisible] = useState(false);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
   const autoTriggerProgress = useRef(new Animated.Value(1)).current;
   const autoTriggerProgressAnim = useRef<Animated.CompositeAnimation | null>(null);
+  // Banner entrance/exit animation: 0 = hidden, 1 = visible
+  const autoTriggerBannerAnim = useRef(new Animated.Value(0)).current;
+  const hideAutoTriggerBannerRef = useRef<((then?: () => void) => void) | null>(null);
+  // Monotonically-increasing session counter; callbacks check against this so
+  // any in-flight fade from a prior session becomes a no-op.
+  const autoTriggerSessionIdRef = useRef(0);
   // Keep a ref to always call the latest handleGenerate (avoids stale closure in interval)
   const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
   // Tracks the current visible prop so the interval can guard against firing after close
@@ -1662,6 +1669,13 @@ export default function CardCustomizationModal({
         clearInterval(autoTriggerIntervalRef.current);
         autoTriggerIntervalRef.current = null;
       }
+      autoTriggerProgressAnim.current?.stop();
+      autoTriggerProgressAnim.current = null;
+      // Bump session ID so any in-flight banner fade callback becomes a no-op
+      autoTriggerSessionIdRef.current += 1;
+      autoTriggerBannerAnim.stopAnimation();
+      autoTriggerBannerAnim.setValue(0);
+      setAutoTriggerBannerVisible(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
       // Dismiss any in-progress undo-delete toast so the timer doesn't fire
@@ -2013,6 +2027,20 @@ export default function CardCustomizationModal({
     }
   }
 
+  function hideAutoTriggerBanner(then?: () => void) {
+    const sessionId = autoTriggerSessionIdRef.current;
+    Animated.timing(autoTriggerBannerAnim, {
+      toValue: 0,
+      duration: reduceMotionRef.current ? 150 : 250,
+      useNativeDriver: true,
+    }).start(() => {
+      // No-op if a new session started while we were fading out
+      if (autoTriggerSessionIdRef.current !== sessionId) return;
+      setAutoTriggerBannerVisible(false);
+      then?.();
+    });
+  }
+
   function cancelAutoTrigger() {
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
@@ -2021,8 +2049,10 @@ export default function CardCustomizationModal({
     autoTriggerProgressAnim.current?.stop();
     autoTriggerProgressAnim.current = null;
     autoTriggerProgress.setValue(1);
-    setAutoTriggerCountdown(null);
-    setAutoTriggerAction(null);
+    hideAutoTriggerBanner(() => {
+      setAutoTriggerCountdown(null);
+      setAutoTriggerAction(null);
+    });
   }
 
   async function handleGenerate(action: CardAction) {
@@ -2092,6 +2122,7 @@ export default function CardCustomizationModal({
   handleGenerateRef.current = handleGenerate;
   visibleRef.current = visible;
   selectedActionRef.current = selectedAction;
+  hideAutoTriggerBannerRef.current = hideAutoTriggerBanner;
 
   function startAutoTrigger(action: CardAction, delay: number) {
     if (autoTriggerIntervalRef.current !== null) {
@@ -2113,6 +2144,18 @@ export default function CardCustomizationModal({
     setAutoTriggerAction(selectedActionRef.current ?? action);
     const DELAY = delay;
     setAutoTriggerCountdown(DELAY);
+
+    // Invalidate any in-flight banner callback from the previous session, then animate in
+    autoTriggerSessionIdRef.current += 1;
+    autoTriggerBannerAnim.stopAnimation();
+    autoTriggerBannerAnim.setValue(0);
+    setAutoTriggerBannerVisible(true);
+    Animated.timing(autoTriggerBannerAnim, {
+      toValue: 1,
+      duration: reduceMotionRef.current ? 150 : 300,
+      useNativeDriver: true,
+    }).start();
+
     let remaining = DELAY;
     autoTriggerIntervalRef.current = setInterval(() => {
       remaining -= 1;
@@ -2123,12 +2166,15 @@ export default function CardCustomizationModal({
       if (remaining <= 0) {
         clearInterval(autoTriggerIntervalRef.current!);
         autoTriggerIntervalRef.current = null;
-        setAutoTriggerCountdown(null);
-        setAutoTriggerAction(null);
-        // Guard: only fire if the modal is still open
-        if (visibleRef.current) {
-          handleGenerateRef.current?.(effectiveAction);
-        }
+        // Animate banner out, then clear state and fire action
+        hideAutoTriggerBannerRef.current?.(() => {
+          setAutoTriggerCountdown(null);
+          setAutoTriggerAction(null);
+          // Guard: only fire if the modal is still open
+          if (visibleRef.current) {
+            handleGenerateRef.current?.(effectiveAction);
+          }
+        });
       } else {
         setAutoTriggerCountdown(remaining);
         setAutoTriggerAction(effectiveAction);
@@ -3728,12 +3774,25 @@ export default function CardCustomizationModal({
           </ScrollView>
 
           {/* Auto-trigger countdown banner */}
-          {autoTriggerCountdown !== null && autoTriggerAction && !generating && (
-            <View
+          {autoTriggerBannerVisible && autoTriggerAction && !generating && (
+            <Animated.View
               onLayout={(e) => setAutoTriggerBannerWidth(e.nativeEvent.layout.width)}
               style={[
                 styles.autoTriggerBanner,
                 { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+                {
+                  opacity: autoTriggerBannerAnim,
+                  transform: reduceMotion
+                    ? []
+                    : [
+                        {
+                          translateY: autoTriggerBannerAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [20, 0],
+                          }),
+                        },
+                      ],
+                },
               ]}
             >
               <Ionicons name="flash" size={14} color={colors.primary} />
@@ -3773,7 +3832,7 @@ export default function CardCustomizationModal({
                   ]}
                 />
               )}
-            </View>
+            </Animated.View>
           )}
 
           {/* Action buttons */}
