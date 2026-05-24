@@ -1255,6 +1255,7 @@ export default function CardCustomizationModal({
 
   // Auto-trigger state: counts down from 3 then fires the default action
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
+  const [autoTriggerBannerWidth, setAutoTriggerBannerWidth] = useState(0);
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
@@ -3729,6 +3730,7 @@ export default function CardCustomizationModal({
           {/* Auto-trigger countdown banner */}
           {autoTriggerCountdown !== null && autoTriggerAction && !generating && (
             <View
+              onLayout={(e) => setAutoTriggerBannerWidth(e.nativeEvent.layout.width)}
               style={[
                 styles.autoTriggerBanner,
                 { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
@@ -3751,14 +3753,22 @@ export default function CardCustomizationModal({
               <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close-circle" size={16} color={colors.primary} />
               </TouchableOpacity>
-              {/* Smooth shrink bar — hidden for reduce-motion users */}
+              {/* Smooth drain bar (left-anchored) — hidden for reduce-motion users */}
               {!reduceMotion && (
                 <Animated.View
                   style={[
                     styles.autoTriggerBar,
                     {
                       backgroundColor: colors.primary + "60",
-                      transform: [{ scaleX: autoTriggerProgress }],
+                      transform: [
+                        {
+                          translateX: autoTriggerProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-autoTriggerBannerWidth / 2, 0],
+                          }),
+                        },
+                        { scaleX: autoTriggerProgress },
+                      ],
                     },
                   ]}
                 />
