@@ -6468,7 +6468,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
             </Text>
 
             <View style={styles.modalNutrients}>
@@ -6999,7 +6999,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
+              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}: {Math.round(editBase.calories)} cal · {Math.round(editBase.protein * 10) / 10}g P · {Math.round(editBase.carbs * 10) / 10}g C · {Math.round(editBase.fat * 10) / 10}g F
             </Text>
 
             <View style={styles.modalNutrients}>
