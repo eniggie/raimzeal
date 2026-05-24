@@ -39,6 +39,7 @@ import {
   PRESET_NUDGE_STORAGE_KEY,
   SWIPE_DELETE_HINT_STORAGE_KEY,
   HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
+  PRESET_LONG_PRESS_HINT_KEY,
 } from "@/lib/hints";
 
 import { Swipeable } from "react-native-gesture-handler";
@@ -1230,6 +1231,11 @@ export default function NutritionScreen() {
   const presetNudgeShownRef = useRef(false);
   const presetNudgeDismissedRef = useRef(false);
 
+  const [presetLongPressHintVisible, setPresetLongPressHintVisible] = useState(false);
+  const presetLongPressHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const presetLongPressHintShownRef = useRef(false);
+  const presetLongPressHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
 
   const favoritesYRef = useRef<number>(0);
@@ -1370,6 +1376,19 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setPresetNudgeVisible(false));
     dismissHint(PRESET_NUDGE_STORAGE_KEY);
+  }
+
+  function dismissPresetLongPressHint() {
+    if (presetLongPressHintTimerRef.current) {
+      clearTimeout(presetLongPressHintTimerRef.current);
+      presetLongPressHintTimerRef.current = null;
+    }
+    Animated.timing(presetLongPressHintFadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setPresetLongPressHintVisible(false));
+    dismissHint(PRESET_LONG_PRESS_HINT_KEY);
   }
 
   function handleHistoryFilterHintPress() {
@@ -2369,6 +2388,21 @@ export default function NutritionScreen() {
     }).start();
   }, [activeTab, isSearching, customPresets.length]);
 
+  useEffect(() => {
+    if (customPresets.length === 0) return;
+    if (presetLongPressHintShownRef.current) return;
+    presetLongPressHintShownRef.current = true;
+    if (isHintDismissed(PRESET_LONG_PRESS_HINT_KEY)) return;
+    presetLongPressHintFadeAnim.setValue(0);
+    setPresetLongPressHintVisible(true);
+    Animated.timing(presetLongPressHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    presetLongPressHintTimerRef.current = setTimeout(dismissPresetLongPressHint, 4000);
+  }, [customPresets.length]);
+
   const shouldShowFilterSummary =
     activeTab === "today" && isSearching && searchDone &&
     (activeFilters.size >= 2 || (activeFilters.size >= 1 && previewFilterKey !== null));
@@ -3008,6 +3042,14 @@ export default function NutritionScreen() {
                       ) : null}
                     </View>
 
+                    {presetLongPressHintVisible && !isReorderingPresets && (
+                      <Animated.Text
+                        style={[styles.presetLongPressHintText, { color: colors.mutedForeground, opacity: presetLongPressHintFadeAnim }]}
+                      >
+                        Hold a chip to edit or delete it
+                      </Animated.Text>
+                    )}
+
                     {isReorderingPresets ? (
                       <View style={{ gap: 0 }}>
                         {reorderPresetsItems.map((preset, idx) => (
@@ -3642,6 +3684,13 @@ export default function NutritionScreen() {
                         Saved Presets
                       </Text>
                     </View>
+                    {presetLongPressHintVisible && (
+                      <Animated.Text
+                        style={[styles.presetLongPressHintText, { color: colors.mutedForeground, opacity: presetLongPressHintFadeAnim }]}
+                      >
+                        Hold a chip to edit or delete it
+                      </Animated.Text>
+                    )}
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
@@ -7490,6 +7539,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
+  },
+  presetLongPressHintText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+    opacity: 0.7,
   },
   filterCombinedSummary: {
     fontSize: 12,

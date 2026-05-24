@@ -7,3 +7,5 @@ export const SWIPE_DELETE_HINT_STORAGE_KEY =
   "@nutrition_swipe_delete_hint_seen";
 export const HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY =
   "@nutrition_history_swipe_delete_hint_seen";
+export const PRESET_LONG_PRESS_HINT_KEY =
+  "@nutrition_preset_long_press_hint_dismissed";
