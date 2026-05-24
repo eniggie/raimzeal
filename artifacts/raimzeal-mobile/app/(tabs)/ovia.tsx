@@ -137,6 +137,16 @@ export default function OviaScreen() {
   const flatListRef = useRef<FlatList>(null);
   const recognitionRef = useRef<unknown>(null);
 
+  // Stop recognition when the screen unmounts (e.g. user switches tabs mid-recording)
+  useEffect(() => {
+    return () => {
+      const rec = recognitionRef.current as Record<string, unknown> | null;
+      if (rec) {
+        try { (rec["stop"] as () => void)(); } catch { /* ignore */ }
+      }
+    };
+  }, []);
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   // Tab bar height: ~49px icon area + bottom safe area inset, floats above content

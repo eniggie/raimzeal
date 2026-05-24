@@ -24,11 +24,11 @@ export function BottomNav() {
             (item.path !== '/' && location.startsWith(item.path));
           
           return (
-            <Link key={item.path} href={item.path}>
+            <Link key={item.path} href={item.path} className="flex-1 flex">
               <motion.div
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 className={cn(
-                  'flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-colors relative px-0.5',
+                  'flex flex-col items-center justify-center w-full h-12 rounded-xl transition-colors relative',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
                 whileTap={{ scale: 0.9 }}

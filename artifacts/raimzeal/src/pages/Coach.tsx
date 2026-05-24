@@ -172,12 +172,18 @@ export function Coach({ state }: CoachProps) {
   const recognitionRef = useRef<unknown>(null);
   const historyLoadedRef = useRef(false);
 
-  // Check browser voice support on mount
+  // Check browser voice support on mount; stop recognition on unmount
   useEffect(() => {
     type AnyRec = Record<string, unknown>;
     const w = window as unknown as AnyRec;
     const SR = w['SpeechRecognition'] ?? w['webkitSpeechRecognition'];
     setVoiceSupported(!!SR);
+    return () => {
+      const rec = recognitionRef.current as Record<string, unknown> | null;
+      if (rec) {
+        try { (rec['stop'] as () => void)(); } catch { /* ignore */ }
+      }
+    };
   }, []);
 
   // Load persisted conversation history from the server on first open
