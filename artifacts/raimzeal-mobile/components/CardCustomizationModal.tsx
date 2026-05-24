@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import {
   Animated,
+  Easing,
   AppState,
   Dimensions,
   Image,
@@ -1146,11 +1147,10 @@ export default function CardCustomizationModal({
             duration: 300,
             useNativeDriver: true,
           }),
-          Animated.spring(badgeSlideAnim, {
+          Animated.timing(badgeSlideAnim, {
             toValue: 0,
-            damping: 12,
-            stiffness: 220,
-            mass: 0.6,
+            duration: 380,
+            easing: Easing.out(Easing.back(1.2)),
             useNativeDriver: true,
           }),
         ]).start();
