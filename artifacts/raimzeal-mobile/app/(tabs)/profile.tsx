@@ -842,6 +842,11 @@ export default function ProfileScreen() {
                   ? "Permanently blocked — tap to open Settings"
                   : "Tap to enable saving cards to your photo library"
               }
+              sublabelColor={
+                cameraRollStatus === "granted"
+                  ? undefined
+                  : colors.warning
+              }
               value={
                 cameraRollStatus === "granted"
                   ? "Active"
@@ -1139,11 +1144,12 @@ function InfoRow({ label, value, icon }: { label: string; value: string; icon: k
 }
 
 function SettingPickerRow({
-  icon, label, sublabel, value, color, onPress, isLast,
+  icon, label, sublabel, sublabelColor, value, color, onPress, isLast,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   sublabel?: string;
+  sublabelColor?: string;
   value: string;
   color: string;
   onPress: () => void;
@@ -1165,7 +1171,7 @@ function SettingPickerRow({
       <View style={{ flex: 1 }}>
         <Text style={[styles.actionLabel, { color: colors.foreground, flex: 0 }]}>{label}</Text>
         {sublabel ? (
-          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: sublabelColor ?? colors.mutedForeground, marginTop: 1 }}>
             {sublabel}
           </Text>
         ) : null}
