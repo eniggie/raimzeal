@@ -317,7 +317,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
 
     <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
       <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">The Foundation Plan is free forever.</p>
-      <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#e8e8ec;">RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. We have turned down partnerships and commercial deals that would have compromised that mission. The Foundation Plan includes all core features at no cost. Donations help keep the staff and platform running for everyone — you are never required to pay.</p>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.7;color:#e8e8ec;">The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. We have turned down partnerships and commercial deals that would have compromised that mission. The Foundation Plan includes all core features at no cost. Donations help keep the staff and platform running for everyone — you are never required to pay.</p>
       <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;">RAIMZEAL supports your wellness journey and does not replace a doctor, emergency care, or licensed medical diagnosis. Always consult a qualified healthcare professional for medical concerns.</p>
     </div>
 
@@ -355,7 +355,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
 
     <div style="background:#1a0d0d;border-left:3px solid #e11d48;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#e11d48;text-transform:uppercase;">Support the mission (never required)</p>
-      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#e8e8ec;">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. You are never required to give anything.</p>
+      <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#e8e8ec;">The Foundation Plan is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. You are never required to give anything.</p>
       <a href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" style="font-size:12px;color:#e11d48;text-decoration:none;font-weight:600;">💚 Donate — donate.stripe.com · Secure · Any amount helps</a>
     </div>
 

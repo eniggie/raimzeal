@@ -356,7 +356,7 @@ export default function MembershipScreen() {
             The Foundation Plan is free forever — no subscription, no catch.
           </Text>
           <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
-            RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale.{"\n\n"}A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.
+            The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale.{"\n\n"}A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.
           </Text>
           <TouchableOpacity
             style={styles.donateBtn}

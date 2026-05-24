@@ -306,7 +306,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
   <div class="donation-heart">💚</div>
   <div class="donation-title">The Foundation Plan is free forever — no subscription, no catch.</div>
   <div class="donation-text">
-    RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.<br/><br/>
+    The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.<br/><br/>
     Books · Music · Courses · Coaching by Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP (RAIMZY): <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" style="color:#2E8B57;font-weight:600">linktr.ee/Raimzy</a>
   </div>
   <a class="donation-btn" href="https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00" target="_blank" rel="noopener noreferrer">
@@ -804,7 +804,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">Support the Mission</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  RAIMZEAL is free forever. Foundation is free for everyone. Rise, Reign, and Legacy are optional support/donation identities — they unlock higher Ovia AI limits and supporter badges for members who choose to contribute. No subscription is ever required.
+                  The Foundation Plan is free forever. Rise, Reign, and Legacy are optional support/donation identities — they unlock higher Ovia AI limits and supporter badges for members who choose to contribute. No subscription is ever required.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary">Foundation — Free</span>

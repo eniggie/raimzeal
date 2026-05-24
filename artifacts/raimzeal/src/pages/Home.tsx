@@ -186,7 +186,7 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-primary">Foundation — Free forever. Rise, Reign & Legacy are optional.</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              RAIMZEAL is free forever. Rise, Reign, and Legacy are optional support/donation identities — never required. A voluntary donation keeps the staff and platform running for everyone. <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">linktr.ee/Raimzy</a>
+              The Foundation Plan is free forever. Rise, Reign, and Legacy are optional support/donation identities — never required. A voluntary donation keeps the staff and platform running for everyone. <a href="https://linktr.ee/Raimzy" target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline">linktr.ee/Raimzy</a>
             </p>
           </div>
           {DONATION_ACTIVE ? (

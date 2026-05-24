@@ -12,7 +12,7 @@ const MAX_CONTENT_LENGTH = 4000;
 const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via oversized context
 
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
-// RAIMZEAL is free forever — all users are on the Foundation Plan.
+// The Foundation Plan is free forever — all users are on the Foundation Plan.
 // Capped at 15 Ovia AI messages per day on gpt-4o-mini.
 // Each entry auto-expires after 24 h; the Map stays small because it only grows
 // by one entry per active user per day.

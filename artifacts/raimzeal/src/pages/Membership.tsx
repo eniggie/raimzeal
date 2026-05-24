@@ -348,7 +348,7 @@ export function Membership() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">Support the mission — keep RAIMZEAL free for everyone.</p>
             <p className="text-xs text-foreground/60 mt-1 leading-relaxed">
-              RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations help keep the platform and team running.
+              The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale. Donations help keep the platform and team running.
             </p>
           </div>
           {DONATION_ACTIVE ? (

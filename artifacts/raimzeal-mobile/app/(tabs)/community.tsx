@@ -737,8 +737,8 @@ export default function CommunityScreen() {
                 <Text style={[styles.donateTitle, { color: colors.foreground }]}>The Foundation Plan is free forever — no subscription, no catch.</Text>
                 <Text style={[styles.donateSubtitle, { color: colors.mutedForeground }]}>
                   {DONATION_ACTIVE
-                    ? 'RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone.'
-                    : 'RAIMZEAL is free forever, built for fitness, food therapy, wellness, and healthcare support.'}
+                    ? 'The Foundation Plan is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone.'
+                    : 'The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support.'}
                 </Text>
               </View>
               {DONATION_ACTIVE && (

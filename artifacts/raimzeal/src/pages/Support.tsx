@@ -72,7 +72,7 @@ export function Support() {
           >
             <p className="text-sm font-semibold mb-1">RAIMZEAL Membership Tiers</p>
             <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-              RAIMZEAL is free forever. Rise, Reign, and Legacy are optional support/donation identities — they unlock higher Ovia AI limits and supporter badges for members who choose to contribute, but they never restrict access to core features.
+              The Foundation Plan is free forever. Rise, Reign, and Legacy are optional support/donation identities — they unlock higher Ovia AI limits and supporter badges for members who choose to contribute, but they never restrict access to core features.
             </p>
             <div className="space-y-2">
               {TIERS.map((tier) => {

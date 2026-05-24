@@ -412,7 +412,7 @@ export function Community() {
         <Card className="p-3 glass flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold">The Foundation Plan is free forever — no subscription, no catch.</p>
-            <p className="text-xs text-muted-foreground mt-0.5">RAIMZEAL is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. Books · Music · Courses · Coaching: <span className="font-semibold">linktr.ee/Raimzy</span></p>
+            <p className="text-xs text-muted-foreground mt-0.5">The Foundation Plan is free forever. If it has helped you, a voluntary donation keeps the staff and platform running for everyone. Books · Music · Courses · Coaching: <span className="font-semibold">linktr.ee/Raimzy</span></p>
           </div>
           {DONATION_ACTIVE ? (
             <motion.a
