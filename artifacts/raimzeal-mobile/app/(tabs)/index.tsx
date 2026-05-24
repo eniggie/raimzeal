@@ -467,16 +467,6 @@ export default function HomeScreen() {
       <View style={styles.actions}>
         <View style={styles.actionsRow}>
           <QuickAction
-            icon="play-circle"
-            label="Start Workout"
-            color={colors.primary}
-            bg={colors.primary + "20"}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/workouts");
-            }}
-          />
-          <QuickAction
             icon="restaurant-outline"
             label="Log Meal"
             color={colors.secondary}
@@ -486,8 +476,6 @@ export default function HomeScreen() {
               router.navigate("/(tabs)/nutrition");
             }}
           />
-        </View>
-        <View style={styles.actionsRow}>
           <QuickAction
             icon="chatbubble-ellipses-outline"
             label="Ask Ovia"
@@ -498,6 +486,8 @@ export default function HomeScreen() {
               router.navigate("/(tabs)/ovia");
             }}
           />
+        </View>
+        <View style={styles.actionsRow}>
           <QuickAction
             icon="body-outline"
             label="Log Body"
@@ -508,8 +498,6 @@ export default function HomeScreen() {
               router.push("/body-measurements");
             }}
           />
-        </View>
-        <View style={styles.actionsRow}>
           <QuickAction
             icon="people-outline"
             label="Community"
@@ -518,16 +506,6 @@ export default function HomeScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.navigate("/(tabs)/community");
-            }}
-          />
-          <QuickAction
-            icon="list-outline"
-            label="Programs"
-            color="#3b82f6"
-            bg="#3b82f620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/workouts");
             }}
           />
           <QuickAction
