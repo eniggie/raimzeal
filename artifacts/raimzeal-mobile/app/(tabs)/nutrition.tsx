@@ -1209,6 +1209,7 @@ export default function NutritionScreen() {
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
   ).current;
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
+  const presetChipScaleAnims = useRef<Record<string, Animated.Value>>({});
 
   const historyChipFadeAnims = useRef(
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
@@ -1988,6 +1989,25 @@ export default function NutritionScreen() {
 
   function applyPreset(preset: CustomFilterPreset) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!presetChipScaleAnims.current[preset.id]) {
+      presetChipScaleAnims.current[preset.id] = new Animated.Value(1);
+    }
+    const scaleAnim = presetChipScaleAnims.current[preset.id];
+    scaleAnim.setValue(1);
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1.15,
+        speed: 40,
+        bounciness: 6,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        speed: 30,
+        bounciness: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
     const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
     const keys = preset.filterKeys.filter((k) => validKeys.has(k));
     setActiveFilters(new Set(keys));
@@ -2896,12 +2916,18 @@ export default function NutritionScreen() {
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={[styles.filterScroll, { paddingVertical: 2 }]}
                       >
-                        {customPresets.map((preset) => (
-                          <View
+                        {customPresets.map((preset) => {
+                          if (!presetChipScaleAnims.current[preset.id]) {
+                            presetChipScaleAnims.current[preset.id] = new Animated.Value(1);
+                          }
+                          const presetScale = presetChipScaleAnims.current[preset.id];
+                          return (
+                          <Animated.View
                             key={preset.id}
                             style={[
                               styles.presetChip,
                               { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
+                              { transform: [{ scale: presetScale }] },
                             ]}
                           >
                             <TouchableOpacity
@@ -2926,8 +2952,9 @@ export default function NutritionScreen() {
                             >
                               <Ionicons name="close" size={13} color={colors.secondary + "cc"} />
                             </TouchableOpacity>
-                          </View>
-                        ))}
+                          </Animated.View>
+                          );
+                        })}
                       </ScrollView>
                     )}
                   </View>
