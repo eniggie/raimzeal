@@ -1133,6 +1133,7 @@ export default function CardCustomizationModal({
   const presetPreviewOriginScale = useRef(new Animated.Value(1)).current;
   const presetPreviewOriginRect = useRef<PresetOriginRect>({ x: 0, y: 0, width: 0, height: 0 });
   const presetCardOpacity = useRef(new Animated.Value(1)).current;
+  const presetCardTranslateX = useRef(new Animated.Value(0)).current;
 
   // Badge fade-in + slide-in animation
   const badgeFadeAnim = useRef(new Animated.Value(0)).current;
@@ -2183,6 +2184,7 @@ export default function CardCustomizationModal({
     pinchSavedTranslateX.value = 0;
     pinchSavedTranslateY.value = 0;
     presetCardOpacity.setValue(1);
+    presetCardTranslateX.setValue(0);
     setPresetPreviewTarget(preset);
     setPresetPreviewVisible(true);
     if (reduceMotionRef.current) {
@@ -2291,17 +2293,20 @@ export default function CardCustomizationModal({
       setPresetPreviewIndex(newIdx);
       setPresetPreviewTarget(nextPreset);
     } else {
-      Animated.timing(presetCardOpacity, {
-        toValue: 0,
-        duration: 140,
+      const slideOutX = dir * -Dimensions.get("window").width;
+      const slideInX = dir * Dimensions.get("window").width;
+      Animated.timing(presetCardTranslateX, {
+        toValue: slideOutX,
+        duration: 200,
         useNativeDriver: true,
       }).start(() => {
         presetPreviewIndexRef.current = newIdx;
         setPresetPreviewIndex(newIdx);
         setPresetPreviewTarget(nextPreset);
-        Animated.timing(presetCardOpacity, {
-          toValue: 1,
-          duration: 180,
+        presetCardTranslateX.setValue(slideInX);
+        Animated.timing(presetCardTranslateX, {
+          toValue: 0,
+          duration: 220,
           useNativeDriver: true,
         }).start();
       });
@@ -3997,6 +4002,7 @@ export default function CardCustomizationModal({
               <Animated.View
                 style={{
                   opacity: presetCardOpacity,
+                  transform: [{ translateX: presetCardTranslateX }],
                 }}
               >
                 <ZoomableCard
