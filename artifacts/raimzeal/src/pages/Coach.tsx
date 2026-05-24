@@ -165,10 +165,20 @@ export function Coach({ state }: CoachProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [searchingFor, setSearchingFor] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [voiceSupported, setVoiceSupported] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<unknown>(null);
   const historyLoadedRef = useRef(false);
+
+  // Check browser voice support on mount
+  useEffect(() => {
+    type AnyRec = Record<string, unknown>;
+    const w = window as unknown as AnyRec;
+    const SR = w['SpeechRecognition'] ?? w['webkitSpeechRecognition'];
+    setVoiceSupported(!!SR);
+  }, []);
 
   // Load persisted conversation history from the server on first open
   useEffect(() => {
@@ -205,29 +215,46 @@ export function Coach({ state }: CoachProps) {
     }).catch(() => { /* best-effort — local welcome message stays if load fails */ });
   }, [session?.access_token]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function stopVoice() {
+    const rec = recognitionRef.current as Record<string, unknown> | null;
+    if (rec) (rec['stop'] as () => void)();
+    setIsListening(false);
+    setInterimTranscript('');
+  }
+
   function startVoice() {
     type AnyRec = Record<string, unknown>;
     const w = window as unknown as AnyRec;
     const SR = (w['SpeechRecognition'] ?? w['webkitSpeechRecognition']) as (new () => AnyRec) | undefined;
-    if (!SR) return;
-    if (isListening) {
-      const rec = recognitionRef.current as AnyRec | null;
-      if (rec) (rec['stop'] as () => void)();
-      setIsListening(false);
-      return;
-    }
+    if (!SR) { setVoiceSupported(false); return; }
+
+    if (isListening) { stopVoice(); return; }
+
     const rec: AnyRec = new SR();
-    rec['continuous'] = false;
-    rec['interimResults'] = false;
+    rec['continuous'] = true;
+    rec['interimResults'] = true;
     rec['lang'] = 'en-US';
+
     rec['onresult'] = (e: unknown) => {
-      const results = ((e as AnyRec)['results'] as AnyRec[][])[0];
-      const transcript = String((results?.[0] as AnyRec | undefined)?.['transcript'] ?? '');
-      if (transcript) setInput(prev => prev ? `${prev} ${transcript}` : transcript);
-      setIsListening(false);
+      const event = e as AnyRec;
+      const results = event['results'] as { [i: number]: { [j: number]: { transcript: string }; isFinal: boolean }; length: number };
+      const startIdx = event['resultIndex'] as number;
+      let interim = '';
+      for (let i = startIdx; i < results.length; i++) {
+        const r = results[i];
+        if (r.isFinal) {
+          const t = r[0].transcript.trim();
+          if (t) setInput(prev => prev ? `${prev} ${t}` : t);
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      setInterimTranscript(interim);
     };
-    rec['onerror'] = () => setIsListening(false);
-    rec['onend'] = () => setIsListening(false);
+
+    rec['onerror'] = () => { setIsListening(false); setInterimTranscript(''); };
+    rec['onend'] = () => { setIsListening(false); setInterimTranscript(''); };
+
     recognitionRef.current = rec;
     (rec['start'] as () => void)();
     setIsListening(true);
@@ -677,43 +704,99 @@ export function Coach({ state }: CoachProps) {
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-4 pb-28 border-t border-border glass" style={{ paddingBottom: 'calc(1.75rem + env(safe-area-inset-bottom, 0px) + 4rem)' }}>
-        <div className="flex gap-2 max-w-2xl mx-auto items-end">
-          <Textarea
-            placeholder="Ask about training, nutrition, food therapy, or health awareness..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            rows={1}
-            className="resize-none min-h-[42px] max-h-32 text-sm"
-            style={{ height: 'auto' }}
-          />
-          <Button
-            onClick={startVoice}
-            size="icon"
-            variant={isListening ? 'destructive' : 'outline'}
-            className="shrink-0 h-[42px] w-[42px]"
-            title={isListening ? 'Stop listening' : 'Speak to Ovia'}
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </Button>
-          <Button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isTyping}
-            size="icon"
-            className="shrink-0 h-[42px] w-[42px]"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+      <div className="p-4 border-t border-border glass" style={{ paddingBottom: 'calc(1.75rem + env(safe-area-inset-bottom, 0px) + 4rem)' }}>
+        <div className="max-w-2xl mx-auto space-y-2">
+
+          {/* Voice recording indicator + interim transcript */}
+          <AnimatePresence>
+            {isListening && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-start gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30"
+              >
+                <span className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                  <motion.span
+                    className="w-2 h-2 rounded-full bg-destructive inline-block"
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  />
+                  <span className="text-xs font-semibold text-destructive">Recording</span>
+                </span>
+                <p className="text-xs text-muted-foreground flex-1 leading-relaxed">
+                  {interimTranscript
+                    ? <span className="text-foreground/70 italic">{interimTranscript}</span>
+                    : 'Speak now… tap Stop when done'}
+                </p>
+                <button
+                  onClick={stopVoice}
+                  className="shrink-0 text-xs font-semibold text-destructive hover:underline"
+                >
+                  Stop
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Unsupported browser notice */}
+          {!voiceSupported && (
+            <p className="text-xs text-amber-400 text-center">
+              Voice input is not supported in this browser. Try Chrome or Edge.
+            </p>
+          )}
+
+          {/* Text input row */}
+          <div className="flex gap-2 items-end">
+            <Textarea
+              placeholder={isListening ? 'Listening… keep speaking or tap Stop' : 'Ask about training, nutrition, food therapy, or health awareness…'}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (isListening) stopVoice();
+                  handleSend();
+                }
+              }}
+              rows={1}
+              className="resize-none min-h-[42px] max-h-32 text-sm"
+              style={{ height: 'auto' }}
+            />
+
+            {/* Mic / Stop button */}
+            <Button
+              onClick={startVoice}
+              size="icon"
+              variant={isListening ? 'destructive' : 'outline'}
+              disabled={!voiceSupported}
+              className={cn(
+                'shrink-0 h-[42px] w-[42px] transition-all',
+                isListening && 'ring-2 ring-destructive ring-offset-2 ring-offset-background'
+              )}
+              title={isListening ? 'Stop recording' : voiceSupported ? 'Start voice input' : 'Voice not supported in this browser'}
+            >
+              {isListening
+                ? <MicOff className="w-4 h-4" />
+                : <Mic className="w-4 h-4" />}
+            </Button>
+
+            {/* Send button */}
+            <Button
+              onClick={() => { if (isListening) stopVoice(); handleSend(); }}
+              disabled={!input.trim() || isTyping}
+              size="icon"
+              className="shrink-0 h-[42px] w-[42px]"
+              title="Send message"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Ovia AI is for fitness, food therapy &amp; health awareness only. It does not replace any doctor, dietitian, or healthcare professional. Always consult a qualified professional for medical decisions. You are solely responsible for any action you take based on this app.
+          </p>
         </div>
-        <p className="text-center text-xs text-muted-foreground mt-2">
-          Ovia AI is for fitness, food therapy &amp; health awareness only. It does not replace any doctor, dietitian, or healthcare professional. Always consult a qualified professional for medical decisions. You are solely responsible for any action you take based on this app.
-        </p>
       </div>
       <BottomNav />
     </div>
