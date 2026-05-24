@@ -1781,11 +1781,20 @@ export default function CardCustomizationModal({
   }
 
   function handleMessageChange(text: string) {
+    const wasEmpty = customMessage === '';
+    const isEmpty = text === '';
     setCustomMessage(text);
     setActivePresetId(null);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
+    if (wasEmpty !== isEmpty && !reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   async function saveToStorage(
