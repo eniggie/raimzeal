@@ -1,13 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   ChevronLeft, ChevronRight, Plus, Search, Scan, Utensils, 
   Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus,
-  CalendarDays
+  CalendarDays, Filter
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseConfigured } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,74 @@ import { StatRing } from '@/components/StatRing';
 import { cn } from '@/lib/utils';
 import { quickFoods, type MealLog, type AppState } from '@/lib/store';
 import { BottomNav } from '@/components/BottomNav';
+
+// ─── Filter definitions (mirrors mobile nutrition.tsx) ────────────────────────
+
+interface FilterDef {
+  key: string;
+  label: string;
+  defaultThreshold: number;
+  unit: string;
+  direction: 'gte' | 'lte';
+  nutrient: 'calories' | 'protein' | 'carbs' | 'fat';
+}
+
+const FILTER_DEFS: FilterDef[] = [
+  { key: 'high_protein', label: 'High Protein', defaultThreshold: 15, unit: 'g', direction: 'gte', nutrient: 'protein' },
+  { key: 'low_calorie',  label: 'Low Calorie',  defaultThreshold: 150, unit: 'kcal', direction: 'lte', nutrient: 'calories' },
+  { key: 'low_fat',      label: 'Low Fat',      defaultThreshold: 5,   unit: 'g', direction: 'lte', nutrient: 'fat' },
+  { key: 'low_carb',     label: 'Low Carb',     defaultThreshold: 10,  unit: 'g', direction: 'lte', nutrient: 'carbs' },
+];
+
+interface CustomFilterPreset {
+  id: string;
+  name: string;
+  filterKeys: string[];
+}
+
+type FilterThresholds = Record<string, number>;
+
+function getDefaultThresholds(): FilterThresholds {
+  const out: FilterThresholds = {};
+  for (const def of FILTER_DEFS) out[def.key] = def.defaultThreshold;
+  return out;
+}
+
+const ACTIVE_FILTERS_LS_KEY  = 'raimzeal_nutrition_active_filters';
+const THRESHOLDS_LS_KEY      = 'raimzeal_nutrition_filter_thresholds';
+const CUSTOM_PRESETS_LS_KEY  = 'raimzeal_nutrition_custom_presets';
+
+// Reads filter preferences from Supabase profiles.preferences
+async function fetchFilterPrefs(userId: string): Promise<{
+  activeFilters?: string[];
+  customPresets?: CustomFilterPreset[];
+  filterThresholds?: FilterThresholds;
+} | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('preferences')
+    .eq('id', userId)
+    .single();
+  if (!data?.preferences || typeof data.preferences !== 'object') return null;
+  return data.preferences as {
+    activeFilters?: string[];
+    customPresets?: CustomFilterPreset[];
+    filterThresholds?: FilterThresholds;
+  };
+}
+
+// Upserts filter preferences to Supabase profiles.preferences
+async function pushFilterPrefs(userId: string, prefs: {
+  activeFilters: string[];
+  customPresets: CustomFilterPreset[];
+  filterThresholds: FilterThresholds;
+}): Promise<void> {
+  await supabase
+    .from('profiles')
+    .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface NutritionProps {
   state: AppState;
@@ -39,6 +107,223 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
     name: string; calories: number; protein_g: number; carbs_g: number; fat_g: number; confidence: string; notes?: string | null;
   } | null>(null);
 
+  // ─── Filter state ───────────────────────────────────────────────────────────
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
+  const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+
+  // Refs to break the push↔pull loop (same pattern as mobile)
+  const filtersHydratedRef = useRef(false);
+  const cloudSyncReadyRef  = useRef(false);
+  const applyingRemoteRef  = useRef(false);
+  const suppressRemoteRef  = useRef(false);
+  const suppressTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Load from localStorage on mount ────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const rawFilters = localStorage.getItem(ACTIVE_FILTERS_LS_KEY);
+      if (rawFilters) {
+        const parsed = JSON.parse(rawFilters) as unknown;
+        if (Array.isArray(parsed)) {
+          const validKeys = new Set(FILTER_DEFS.map(d => d.key));
+          setActiveFilters(new Set((parsed as unknown[]).filter((k): k is string => typeof k === 'string' && validKeys.has(k))));
+        }
+      }
+    } catch {}
+
+    try {
+      const rawThresholds = localStorage.getItem(THRESHOLDS_LS_KEY);
+      if (rawThresholds) {
+        const parsed = JSON.parse(rawThresholds) as unknown;
+        if (parsed && typeof parsed === 'object') {
+          const validated: FilterThresholds = {};
+          for (const def of FILTER_DEFS) {
+            const v = (parsed as Record<string, unknown>)[def.key];
+            if (typeof v === 'number' && isFinite(v) && v >= 0) validated[def.key] = Math.round(v);
+          }
+          setFilterThresholds(prev => ({ ...prev, ...validated }));
+        }
+      }
+    } catch {}
+
+    try {
+      const rawPresets = localStorage.getItem(CUSTOM_PRESETS_LS_KEY);
+      if (rawPresets) {
+        const parsed = JSON.parse(rawPresets) as unknown;
+        if (Array.isArray(parsed)) {
+          const valid = (parsed as unknown[]).filter(
+            (item): item is CustomFilterPreset =>
+              item !== null &&
+              typeof item === 'object' &&
+              typeof (item as CustomFilterPreset).id === 'string' &&
+              typeof (item as CustomFilterPreset).name === 'string' &&
+              Array.isArray((item as CustomFilterPreset).filterKeys)
+          );
+          setCustomPresets(valid);
+        }
+      }
+    } catch {}
+
+    filtersHydratedRef.current = true;
+  }, []);
+
+  // ── Hydrate from Supabase on mount ─────────────────────────────────────────
+  useEffect(() => {
+    if (!supabaseConfigured) {
+      cloudSyncReadyRef.current = true;
+      return;
+    }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session?.user) {
+        cloudSyncReadyRef.current = true;
+        return;
+      }
+      try {
+        const prefs = await fetchFilterPrefs(session.user.id);
+        if (!prefs) return;
+        const validKeys = new Set(FILTER_DEFS.map(d => d.key));
+        applyingRemoteRef.current = true;
+        if (Array.isArray(prefs.activeFilters)) {
+          setActiveFilters(new Set(prefs.activeFilters.filter(k => typeof k === 'string' && validKeys.has(k))));
+        }
+        if (Array.isArray(prefs.customPresets)) {
+          const valid = prefs.customPresets.filter(
+            (item): item is CustomFilterPreset =>
+              item !== null &&
+              typeof item === 'object' &&
+              typeof item.id === 'string' &&
+              typeof item.name === 'string' &&
+              Array.isArray(item.filterKeys)
+          );
+          setCustomPresets(valid);
+        }
+        if (prefs.filterThresholds && typeof prefs.filterThresholds === 'object') {
+          const validated: FilterThresholds = {};
+          for (const def of FILTER_DEFS) {
+            const v = (prefs.filterThresholds as Record<string, unknown>)[def.key];
+            if (typeof v === 'number' && isFinite(v) && v >= 0) validated[def.key] = Math.round(v);
+          }
+          setFilterThresholds(prev => ({ ...prev, ...validated }));
+        }
+        setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+      } catch {}
+    }).finally(() => {
+      cloudSyncReadyRef.current = true;
+    });
+  }, []);
+
+  // ── Persist activeFilters to localStorage ───────────────────────────────────
+  useEffect(() => {
+    if (!filtersHydratedRef.current) return;
+    if (activeFilters.size === 0) {
+      localStorage.removeItem(ACTIVE_FILTERS_LS_KEY);
+    } else {
+      localStorage.setItem(ACTIVE_FILTERS_LS_KEY, JSON.stringify(Array.from(activeFilters)));
+    }
+  }, [activeFilters]);
+
+  // ── Persist thresholds + presets to localStorage ────────────────────────────
+  useEffect(() => {
+    if (!filtersHydratedRef.current) return;
+    localStorage.setItem(THRESHOLDS_LS_KEY, JSON.stringify(filterThresholds));
+  }, [filterThresholds]);
+
+  useEffect(() => {
+    if (!filtersHydratedRef.current) return;
+    localStorage.setItem(CUSTOM_PRESETS_LS_KEY, JSON.stringify(customPresets));
+  }, [customPresets]);
+
+  // ── Push local filter changes to Supabase ───────────────────────────────────
+  useEffect(() => {
+    if (!filtersHydratedRef.current || !cloudSyncReadyRef.current) return;
+    if (!supabaseConfigured) return;
+    if (applyingRemoteRef.current) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+      suppressRemoteRef.current = true;
+      suppressTimerRef.current = setTimeout(() => { suppressRemoteRef.current = false; }, 3000);
+      pushFilterPrefs(session.user.id, {
+        activeFilters: Array.from(activeFilters),
+        customPresets,
+        filterThresholds,
+      }).catch(() => {});
+    });
+  }, [activeFilters, customPresets, filterThresholds]);
+
+  // ── Supabase Realtime subscription ──────────────────────────────────────────
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const userId = session.user.id;
+      channel = supabase
+        .channel(`profiles_prefs_web:${userId}`)
+        .on(
+          'postgres_changes' as Parameters<ReturnType<typeof supabase.channel>['on']>[0],
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${userId}`,
+          },
+          (payload: { new: Record<string, unknown> }) => {
+            if (suppressRemoteRef.current) return;
+            const prefs = payload.new['preferences'];
+            if (!prefs || typeof prefs !== 'object') return;
+            const p = prefs as Record<string, unknown>;
+            const validKeys = new Set(FILTER_DEFS.map(d => d.key));
+            applyingRemoteRef.current = true;
+            if (Array.isArray(p['activeFilters'])) {
+              const restored = (p['activeFilters'] as unknown[]).filter(
+                (k): k is string => typeof k === 'string' && validKeys.has(k)
+              );
+              setActiveFilters(new Set(restored));
+            }
+            if (Array.isArray(p['customPresets'])) {
+              const valid = (p['customPresets'] as unknown[]).filter(
+                (item): item is CustomFilterPreset =>
+                  item !== null &&
+                  typeof item === 'object' &&
+                  typeof (item as CustomFilterPreset).id === 'string' &&
+                  typeof (item as CustomFilterPreset).name === 'string' &&
+                  Array.isArray((item as CustomFilterPreset).filterKeys)
+              );
+              setCustomPresets(valid);
+            }
+            if (p['filterThresholds'] && typeof p['filterThresholds'] === 'object') {
+              const validated: FilterThresholds = {};
+              for (const def of FILTER_DEFS) {
+                const v = (p['filterThresholds'] as Record<string, unknown>)[def.key];
+                if (typeof v === 'number' && isFinite(v) && v >= 0) {
+                  validated[def.key] = Math.round(v);
+                }
+              }
+              setFilterThresholds(prev => ({ ...prev, ...validated }));
+            }
+            setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+          }
+        )
+        .subscribe();
+    });
+    return () => {
+      if (channel) supabase.removeChannel(channel).catch(() => {});
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    };
+  }, []);
+
+  // ─── Toggle a filter ────────────────────────────────────────────────────────
+  const toggleFilter = useCallback((key: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // ─── Photo scan ─────────────────────────────────────────────────────────────
   async function handlePhotoScan(file: File) {
     setAnalyzeError('');
     setAnalyzedMeal(null);
@@ -109,9 +394,19 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
     return { calories: tdee, protein, carbs, fat };
   })();
 
-  const filteredFoods = quickFoods.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Apply active filters to the quick-food list
+  const filteredFoods = quickFoods.filter(f => {
+    const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (activeFilters.size === 0) return true;
+    return Array.from(activeFilters).every(key => {
+      const def = FILTER_DEFS.find(d => d.key === key);
+      if (!def) return true;
+      const val: number = f[def.nutrient];
+      const threshold = filterThresholds[key] ?? def.defaultThreshold;
+      return def.direction === 'gte' ? val >= threshold : val <= threshold;
+    });
+  });
 
   const handleAddFood = (food: typeof quickFoods[0]) => {
     const meal: MealLog = {
@@ -361,7 +656,7 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
               </DialogHeader>
               
               {/* Meal type selector */}
-              <Tabs value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as any)} className="mt-2">
+              <Tabs value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as 'breakfast' | 'lunch' | 'dinner' | 'snack')} className="mt-2">
                 <TabsList className="w-full">
                   <TabsTrigger value="breakfast" className="flex-1">Breakfast</TabsTrigger>
                   <TabsTrigger value="lunch" className="flex-1">Lunch</TabsTrigger>
@@ -469,7 +764,45 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
                 </div>
               )}
 
-              <div className="relative mt-4">
+              {/* Nutrient filter chips */}
+              <div className="mt-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Filter by nutrient</span>
+                  {activeFilters.size > 0 && (
+                    <button
+                      onClick={() => setActiveFilters(new Set())}
+                      className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                    >
+                      <X className="w-3 h-3" />Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {FILTER_DEFS.map(def => {
+                    const active = activeFilters.has(def.key);
+                    const threshold = filterThresholds[def.key] ?? def.defaultThreshold;
+                    const symbol = def.direction === 'gte' ? '≥' : '≤';
+                    return (
+                      <button
+                        key={def.key}
+                        onClick={() => toggleFilter(def.key)}
+                        className={cn(
+                          'px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                          active
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-muted/40 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                        )}
+                        data-testid={`filter-chip-${def.key}`}
+                      >
+                        {def.label} {symbol}{threshold}{def.unit}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="relative mt-3">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search foods..."
@@ -483,8 +816,16 @@ export function Nutrition({ state, onAddMeal, onUpdateWater }: NutritionProps) {
               <div className="flex-1 overflow-y-auto mt-4 space-y-2">
                 {filteredFoods.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
-                    <p className="text-sm font-medium">No foods match "{search}"</p>
-                    <p className="text-xs mt-1">Try a different name or clear the search.</p>
+                    <p className="text-sm font-medium">
+                      {activeFilters.size > 0 && !search
+                        ? 'No foods match the active filters'
+                        : search
+                        ? `No foods match "${search}"`
+                        : 'No foods available'}
+                    </p>
+                    <p className="text-xs mt-1">
+                      {activeFilters.size > 0 ? 'Try clearing some filters or adjusting thresholds.' : 'Try a different name or clear the search.'}
+                    </p>
                   </div>
                 )}
                 {filteredFoods.map((food, i) => (
