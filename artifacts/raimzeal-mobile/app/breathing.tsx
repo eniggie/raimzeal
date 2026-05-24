@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -91,6 +92,7 @@ function formatSeconds(s: number) {
 }
 
 export default function BreathingScreen() {
+  useKeepAwake();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();

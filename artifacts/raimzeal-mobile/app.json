@@ -74,6 +74,15 @@
           "origin": "https://replit.com/"
         }
       ],
+      "expo-apple-authentication",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "RAIMZEAL reads your Apple Health data — steps, sleep, heart rate and weight — to keep your fitness stats accurate and up to date.",
+          "healthUpdatePermission": "RAIMZEAL writes your workout and activity data back to Apple Health so all your apps stay in sync."
+        }
+      ],
+      "react-native-health-connect",
       "expo-font",
       "expo-web-browser",
       [

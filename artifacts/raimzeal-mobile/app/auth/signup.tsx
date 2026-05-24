@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,8 +24,9 @@ export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, signInWithApple } = useAuth();
 
+  const [appleLoading, setAppleLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -40,6 +42,20 @@ export default function SignupScreen() {
   const parsedAge = parseInt(age, 10);
   const ageIsValid = !isNaN(parsedAge) && parsedAge > 0 && parsedAge <= 120;
   const ageBlocked = ageIsValid && parsedAge < MIN_AGE;
+
+  async function handleAppleSignup() {
+    if (!responsibilityAccepted || !termsAccepted) {
+      Alert.alert(
+        "Accept terms first",
+        "Please read and accept the Personal Responsibility Waiver and Terms & Conditions before continuing with Apple."
+      );
+      return;
+    }
+    setAppleLoading(true);
+    const { error } = await signInWithApple();
+    setAppleLoading(false);
+    if (error) Alert.alert("Apple sign-in failed", error);
+  }
 
   async function handleSignup() {
     if (!name.trim() || !email.trim() || !password || !confirm) {
@@ -360,6 +376,38 @@ export default function SignupScreen() {
               </Text>
             )}
           </TouchableOpacity>
+
+          {/* Continue with Apple — iOS only, gated behind T&C */}
+          {Platform.OS === "ios" && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
+              {appleLoading ? (
+                <View style={styles.appleLoadingWrap}>
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                </View>
+              ) : (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                  cornerRadius={14}
+                  style={[
+                    styles.appleBtn,
+                    { opacity: termsAccepted && responsibilityAccepted ? 1 : 0.4 },
+                  ]}
+                  onPress={handleAppleSignup}
+                />
+              )}
+              {(!termsAccepted || !responsibilityAccepted) && (
+                <Text style={[styles.appleHint, { color: colors.mutedForeground }]}>
+                  Accept the terms above to use Apple sign-in
+                </Text>
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -509,6 +557,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  appleBtn: { width: "100%", height: 52 },
+  appleLoadingWrap: {
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appleHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -4 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

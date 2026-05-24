@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
 import { Accelerometer } from "expo-sensors";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -126,6 +127,7 @@ function useRepCounter(exercise: Exercise | null, enabled: boolean) {
 type Phase = "picker" | "counting" | "done";
 
 export default function RepCounterScreen() {
+  useKeepAwake();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();

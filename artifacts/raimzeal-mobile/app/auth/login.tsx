@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 
@@ -33,12 +34,13 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signIn, resetPassword } = useAuth();
+  const { signIn, signInWithApple, resetPassword } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState<string | null>(null);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
@@ -108,6 +110,13 @@ export default function LoginScreen() {
       }
     }
     // On success, AuthContext updates session → _layout redirects to tabs
+  }
+
+  async function handleAppleLogin() {
+    setAppleLoading(true);
+    const { error } = await signInWithApple();
+    setAppleLoading(false);
+    if (error) Alert.alert("Apple sign-in failed", error);
   }
 
   async function handleBiometricLogin() {
@@ -280,6 +289,30 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
           )}
+
+          {/* Sign in with Apple — iOS only */}
+          {Platform.OS === "ios" && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
+              {appleLoading ? (
+                <View style={styles.appleLoadingWrap}>
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                </View>
+              ) : (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                  cornerRadius={14}
+                  style={styles.appleBtn}
+                  onPress={handleAppleLogin}
+                />
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -358,6 +391,20 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   biometricBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  appleBtn: { width: "100%", height: 52 },
+  appleLoadingWrap: {
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",

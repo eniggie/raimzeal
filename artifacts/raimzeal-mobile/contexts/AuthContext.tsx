@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 function getApiBase(): string {
@@ -41,6 +42,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
@@ -99,6 +101,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signInWithApple = useCallback(async () => {
+    if (!isSupabaseConfigured) return { error: "Supabase not configured" };
+    if (Platform.OS !== "ios") return { error: "Apple sign-in is only available on iOS" };
+    try {
+      const AppleAuthentication = await import("expo-apple-authentication");
+      const available = await AppleAuthentication.isAvailableAsync();
+      if (!available) return { error: "Apple sign-in is not available on this device" };
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) return { error: "Apple did not return an identity token" };
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      if (!error && credential.fullName) {
+        const first = credential.fullName.givenName ?? "";
+        const last = credential.fullName.familyName ?? "";
+        const fullName = [first, last].filter(Boolean).join(" ");
+        if (fullName) {
+          await supabase.auth.updateUser({ data: { name: fullName } });
+        }
+      }
+      return { error: error?.message ?? null };
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && "code" in e && (e as { code: string }).code === "ERR_REQUEST_CANCELED") {
+        return { error: null };
+      }
+      return { error: e instanceof Error ? e.message : "Apple sign-in failed" };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
@@ -145,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signUp,
         signIn,
+        signInWithApple,
         signOut,
         sendPhoneOtp,
         verifyPhoneOtp,

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -35,6 +36,7 @@ function formatTime(secs: number) {
 }
 
 export default function WorkoutPlayerScreen() {
+  useKeepAwake();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();

@@ -18,4 +18,10 @@ config.resolver.nodeModulesPaths = [
 // Required for pnpm symlinks
 config.resolver.unstable_enableSymlinks = true;
 
+// Block Metro from watching temp directories created by react-native-health-connect
+// during pnpm install — they are removed immediately but Metro crashes if it tries to watch them
+config.resolver.blockList = [
+  /react-native-health-connect_tmp_[^/]+/,
+];
+
 module.exports = config;

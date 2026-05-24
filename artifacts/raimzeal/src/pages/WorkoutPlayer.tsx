@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoute, useLocation } from 'wouter';
 import { 
@@ -43,6 +43,24 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
   const [startTime] = useState(Date.now());
   const [pendingLog, setPendingLog] = useState<WorkoutLog | null>(null);
   const [rpe, setRpe] = useState<number | null>(null);
+
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  useEffect(() => {
+    const active = isRunning && phase !== 'complete';
+    if (!('wakeLock' in navigator)) return;
+    if (active) {
+      navigator.wakeLock.request('screen').then(lock => {
+        wakeLockRef.current = lock;
+      }).catch(() => {});
+    } else {
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+    return () => {
+      wakeLockRef.current?.release().catch(() => {});
+      wakeLockRef.current = null;
+    };
+  }, [isRunning, phase]);
 
   const allExercises: ExerciseStep[] = workout ? [
     ...workout.warmup.map(e => ({ 

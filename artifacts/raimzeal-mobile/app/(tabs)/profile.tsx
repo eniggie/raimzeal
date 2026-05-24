@@ -978,6 +978,19 @@ export default function ProfileScreen() {
             />
           </GlassCard>
 
+          {/* Integrations */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Integrations</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="heart"
+              label={Platform.OS === "ios" ? "Apple Health" : "Health Connect"}
+              sublabel="Steps · Sleep · Heart rate · Weight"
+              color={Platform.OS === "ios" ? "#ff3b30" : "#34a853"}
+              onPress={() => router.push("/health-sync")}
+              isLast
+            />
+          </GlassCard>
+
           {/* Training & Stats */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Training & Stats</Text>
           <GlassCard style={styles.actionsCard}>
