@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
+import { supabase } from '@/lib/supabase';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
@@ -61,6 +62,7 @@ const PAID_PLANS = [
     yearly: 99.00,
     yearlyEquiv: 8.25,
     popular: false,
+    hasPrice: true,
     features: RISE_FEATURES,
   },
   {
@@ -75,6 +77,7 @@ const PAID_PLANS = [
     yearly: 199.00,
     yearlyEquiv: 16.58,
     popular: true,
+    hasPrice: true,
     features: REIGN_FEATURES,
   },
   {
@@ -89,14 +92,49 @@ const PAID_PLANS = [
     yearly: 499.00,
     yearlyEquiv: 41.58,
     popular: false,
+    hasPrice: false,
     features: LEGACY_FEATURES,
   },
-] as const;
+];
 
 export function Membership() {
-  const [donationError, setDonationError] = useState(false);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
+  const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
+
+  async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
+    setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
+    setCheckoutError((prev) => ({ ...prev, [tier]: '' }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch('/api/stripe/checkout-session', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tier, interval }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+
+      if (!res.ok || !data.url) {
+        setCheckoutError((prev) => ({
+          ...prev,
+          [tier]: data.error ?? 'Could not start checkout. Please try again.',
+        }));
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setCheckoutError((prev) => ({
+        ...prev,
+        [tier]: 'Network error. Please check your connection and try again.',
+      }));
+    } finally {
+      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}>
@@ -172,13 +210,16 @@ export function Membership() {
             const Icon = plan.icon;
             const price = billing === 'monthly' ? plan.monthly : plan.yearly;
             const period = billing === 'monthly' ? '/mo' : '/yr';
+            const isLoading = checkoutLoading[plan.key] ?? false;
+            const error = checkoutError[plan.key] ?? '';
+
             return (
               <motion.div
                 key={plan.key}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.06 + i * 0.04 }}
-                className={`relative rounded-2xl glass p-5 border ${plan.border} opacity-80`}
+                className={`relative rounded-2xl glass p-5 border ${plan.border} ${!plan.hasPrice ? 'opacity-80' : ''}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -190,9 +231,11 @@ export function Membership() {
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={`h-5 w-5 ${plan.color}`} />
                   <p className="font-bold text-foreground">{plan.name}</p>
-                  <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-foreground/10 text-foreground/50">
-                    Coming Soon
-                  </span>
+                  {!plan.hasPrice && (
+                    <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-foreground/10 text-foreground/50">
+                      Coming Soon
+                    </span>
+                  )}
                 </div>
                 <div className="mb-3">
                   <span className={`text-2xl font-extrabold ${plan.color}`}>${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}</span>
@@ -209,13 +252,43 @@ export function Membership() {
                     </li>
                   ))}
                 </ul>
-                <button
-                  onClick={() => setNotifyPlan(plan.key)}
-                  className="w-full py-2.5 rounded-xl border border-foreground/20 text-sm font-semibold text-foreground/60 bg-foreground/5 hover:bg-foreground/10 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Bell className="w-4 h-4" />
-                  Notify Me When Available
-                </button>
+
+                {plan.hasPrice ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleCheckout(plan.key, billing)}
+                      disabled={isLoading}
+                      className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2
+                        ${plan.key === 'rise'
+                          ? 'bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-60'
+                          : 'bg-purple-500 hover:bg-purple-400 text-white disabled:opacity-60'
+                        }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Redirecting to Stripe…
+                        </>
+                      ) : (
+                        `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}${period}`
+                      )}
+                    </button>
+                    {error && (
+                      <p className="text-xs text-destructive text-center leading-relaxed">{error}</p>
+                    )}
+                    <p className="text-[10px] text-foreground/40 text-center">
+                      Secure checkout via Stripe · Cancel anytime
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setNotifyPlan(plan.key)}
+                    className="w-full py-2.5 rounded-xl border border-foreground/20 text-sm font-semibold text-foreground/60 bg-foreground/5 hover:bg-foreground/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notify Me When Available
+                  </button>
+                )}
               </motion.div>
             );
           })}
@@ -235,7 +308,7 @@ export function Membership() {
             </p>
           </div>
           {DONATION_ACTIVE ? (
-            <div className="shrink-0 flex flex-col items-end gap-1">
+            <div className="shrink-0">
               <a
                 href={STRIPE_DONATION_URL}
                 target="_blank"
@@ -246,9 +319,6 @@ export function Membership() {
                 <Heart className="w-4 h-4 fill-current" />
                 Donate
               </a>
-              {donationError && (
-                <p className="text-xs text-destructive text-right">Donation link temporarily unavailable — please try again shortly.</p>
-              )}
             </div>
           ) : (
             <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
@@ -285,7 +355,7 @@ export function Membership() {
 
       </div>
 
-      {/* Notify Me modal */}
+      {/* Notify Me modal — only for plans without a price (Legacy) */}
       <AnimatePresence>
         {notifyPlan && (() => {
           const plan = PAID_PLANS.find(p => p.key === notifyPlan);

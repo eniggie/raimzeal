@@ -44,6 +44,7 @@ import { PublicProfileSettings } from '@/pages/PublicProfileSettings';
 import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
+import { Welcome } from '@/pages/Welcome';
 import NotFound from '@/pages/not-found';
 
 // ─── Redirect helper ──────────────────────────────────────────────────────────
@@ -280,8 +281,9 @@ function App() {
               <Route path="/login"><LoginRoute /></Route>
               <Route path="/verify-email"><VerifyEmailOTP /></Route>
               <Route path="/verify-phone"><VerifyPhoneRoute /></Route>
-              {/* Support / membership page */}
+              {/* Support / membership / post-checkout pages */}
               <Route path="/membership"><MembershipRoute /></Route>
+              <Route path="/welcome"><Welcome /></Route>
               {/* Static pages */}
               <Route path="/privacy"><Privacy /></Route>
               <Route path="/terms"><TermsOfService /></Route>

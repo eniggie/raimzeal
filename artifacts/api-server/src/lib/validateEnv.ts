@@ -9,6 +9,12 @@ const REQUIRED: string[] = [
 const OPTIONAL: Array<{ key: string; feature: string }> = [
   { key: "DATABASE_URL", feature: "Stripe sync / drizzle DB" },
   { key: "STRIPE_WEBHOOK_SECRET", feature: "Stripe billing webhook verification" },
+  { key: "STRIPE_PRICE_RISE_MONTHLY",   feature: "Rise monthly subscription checkout" },
+  { key: "STRIPE_PRICE_RISE_YEARLY",    feature: "Rise yearly subscription checkout" },
+  { key: "STRIPE_PRICE_REIGN_MONTHLY",  feature: "Reign monthly subscription checkout" },
+  { key: "STRIPE_PRICE_REIGN_YEARLY",   feature: "Reign yearly subscription checkout" },
+  { key: "STRIPE_PRICE_LEGACY_MONTHLY", feature: "Legacy monthly subscription checkout" },
+  { key: "STRIPE_PRICE_LEGACY_YEARLY",  feature: "Legacy yearly subscription checkout" },
   { key: "SMTP_HOST", feature: "Email OTP delivery" },
   { key: "SMTP_USER", feature: "Email OTP delivery" },
   { key: "SMTP_PASS", feature: "Email OTP delivery" },
