@@ -153,6 +153,7 @@ const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
+const LAST_USED_SERVING_KEY = "@nutrition_last_used_serving";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
@@ -2826,8 +2827,19 @@ export default function NutritionScreen() {
     setSelectedFoodIsApiResult(false);
     setSelectedFoodNutrients100g(undefined);
     setModalShowPer100g(false);
-    setServings(1);
-    setServingsText("1");
+
+    let restoredServings = 1;
+    try {
+      const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
+      if (raw) {
+        const map: Record<string, number> = JSON.parse(raw);
+        if (map[food.name] != null) restoredServings = map[food.name];
+      }
+    } catch {
+      // ignore
+    }
+    setServings(restoredServings);
+    setServingsText(String(restoredServings));
 
     let mealType = food.mealType;
     try {
@@ -2851,8 +2863,21 @@ export default function NutritionScreen() {
     setSelectedFoodIsApiResult(true);
     setSelectedFoodNutrients100g(food.nutrients100g);
     setSelectedFoodUnit(food.unit ?? "g");
-    setServings(1);
-    setServingsText("1");
+
+    let restoredServings = 1;
+    if (food.servingLabel) {
+      try {
+        const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
+        if (raw) {
+          const map: Record<string, number> = JSON.parse(raw);
+          if (map[food.name] != null) restoredServings = map[food.name];
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setServings(restoredServings);
+    setServingsText(String(restoredServings));
 
     let lastGrams = forceGrams ?? "100";
     let isRemembered = false;
@@ -2961,6 +2986,16 @@ export default function NutritionScreen() {
         return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
       })
       .catch(() => {});
+
+    if (!isGramsMode) {
+      AsyncStorage.getItem(LAST_USED_SERVING_KEY)
+        .then((raw) => {
+          const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+          map[name] = servings;
+          return AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(map));
+        })
+        .catch(() => {});
+    }
 
     if (canToggleServing) {
       AsyncStorage.getItem(LAST_USED_VIEW_KEY)
