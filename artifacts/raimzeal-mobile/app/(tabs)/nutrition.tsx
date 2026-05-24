@@ -548,6 +548,133 @@ function DraggablePresetItem({
   );
 }
 
+interface HorizontalDraggablePresetChipProps {
+  preset: CustomFilterPreset;
+  indexRef: React.MutableRefObject<number>;
+  listRef: React.MutableRefObject<CustomFilterPreset[]>;
+  avgChipWidthRef: React.MutableRefObject<number>;
+  isActive: boolean;
+  isHover: boolean;
+  displacement: number;
+  onDragStart: (index: number) => void;
+  onHover: (index: number) => void;
+  onDrop: (from: number, to: number) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function HorizontalDraggablePresetChip({
+  preset,
+  indexRef,
+  listRef,
+  avgChipWidthRef,
+  isActive,
+  isHover,
+  displacement,
+  onDragStart,
+  onHover,
+  onDrop,
+  colors,
+}: HorizontalDraggablePresetChipProps) {
+  const dragX = useSharedValue(0);
+  const dispX = useSharedValue(0);
+  const currentDx = useRef(0);
+
+  useEffect(() => {
+    dispX.value = withSpring(displacement, SPRING_CONFIG);
+  }, [displacement]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: dragX.value + dispX.value }],
+  }));
+
+  const onDragStartRef = useRef(onDragStart);
+  onDragStartRef.current = onDragStart;
+  const onHoverRef = useRef(onHover);
+  onHoverRef.current = onHover;
+  const onDropRef = useRef(onDrop);
+  onDropRef.current = onDrop;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragX.value = 0;
+        currentDx.current = 0;
+        onDragStartRef.current(indexRef.current);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      },
+      onPanResponderMove: (_, { dx }) => {
+        dragX.value = dx;
+        currentDx.current = dx;
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotWidth = avgChipWidthRef.current > 0 ? avgChipWidthRef.current : 80;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(dx / slotWidth)));
+        onHoverRef.current(to);
+      },
+      onPanResponderRelease: () => {
+        const from = indexRef.current;
+        const total = listRef.current.length;
+        const slotWidth = avgChipWidthRef.current > 0 ? avgChipWidthRef.current : 80;
+        const to = Math.max(0, Math.min(total - 1, from + Math.round(currentDx.current / slotWidth)));
+        dragX.value = withSpring(0, SPRING_CONFIG);
+        onDropRef.current(from, to);
+      },
+      onPanResponderTerminate: () => {
+        dragX.value = withSpring(0, SPRING_CONFIG);
+        onHoverRef.current(-1);
+      },
+    })
+  ).current;
+
+  return (
+    <Reanimated.View
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0) avgChipWidthRef.current = w;
+      }}
+      style={[
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 20,
+          borderWidth: 1,
+          maxWidth: 180,
+          marginRight: 6,
+          backgroundColor: isActive
+            ? colors.secondary + "35"
+            : isHover
+            ? colors.secondary + "25"
+            : colors.secondary + "18",
+          borderColor: isActive
+            ? colors.secondary + "cc"
+            : isHover
+            ? colors.secondary + "88"
+            : colors.secondary + "55",
+          zIndex: isActive ? 100 : 1,
+          elevation: isActive ? 8 : 0,
+          shadowColor: "#000",
+          shadowOpacity: isActive ? 0.18 : 0,
+          shadowRadius: isActive ? 6 : 0,
+          shadowOffset: { width: 0, height: 3 },
+          opacity: isActive ? 0.92 : 1,
+        },
+        animatedStyle,
+      ]}
+      {...panResponder.panHandlers}
+    >
+      <View style={styles.presetChipInner}>
+        <Ionicons name="reorder-two-outline" size={11} color={colors.secondary + "88"} />
+        <Ionicons name="bookmark" size={12} color={colors.secondary} />
+        <Text style={[styles.presetChipText, { color: colors.secondary }]} numberOfLines={1}>
+          {preset.name}
+        </Text>
+      </View>
+    </Reanimated.View>
+  );
+}
+
 function formatCustomRangeLabel(start: string, end: string): string {
   const s = new Date(start + "T12:00:00");
   const e = new Date(end + "T12:00:00");
@@ -1191,6 +1318,7 @@ export default function NutritionScreen() {
   const [hoverReorderPresetIdx, setHoverReorderPresetIdx] = useState(-1);
   const indexRefsPresetRef = useRef<React.MutableRefObject<number>[]>([]);
   const presetItemHeightRef = useRef(DRAG_PRESET_ITEM_HEIGHT);
+  const avgPresetChipWidthRef = useRef(80);
 
   const [filterSummaryVisible, setFilterSummaryVisible] = useState(false);
   const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
@@ -2171,11 +2299,11 @@ export default function NutritionScreen() {
 
   function computePresetDisplacement(idx: number, active: number, hover: number): number {
     if (active === -1 || hover === -1 || idx === active) return 0;
-    const slotHeight = presetItemHeightRef.current > 0 ? presetItemHeightRef.current : DRAG_PRESET_ITEM_HEIGHT;
+    const slotWidth = avgPresetChipWidthRef.current > 0 ? avgPresetChipWidthRef.current : 80;
     if (active < hover) {
-      if (idx > active && idx <= hover) return -slotHeight;
+      if (idx > active && idx <= hover) return -slotWidth;
     } else if (active > hover) {
-      if (idx >= hover && idx < active) return slotHeight;
+      if (idx >= hover && idx < active) return slotWidth;
     }
     return 0;
   }
@@ -3061,14 +3189,19 @@ export default function NutritionScreen() {
                     )}
 
                     {isReorderingPresets ? (
-                      <View style={{ gap: 0 }}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        scrollEnabled={false}
+                        contentContainerStyle={[styles.filterScroll, { paddingVertical: 4 }]}
+                      >
                         {reorderPresetsItems.map((preset, idx) => (
-                          <DraggablePresetItem
+                          <HorizontalDraggablePresetChip
                             key={`preset-drag-${preset.id}`}
                             preset={preset}
                             indexRef={indexRefsPresetRef.current[idx] ?? { current: idx }}
                             listRef={reorderPresetsRef}
-                            itemHeightRef={presetItemHeightRef}
+                            avgChipWidthRef={avgPresetChipWidthRef}
                             isActive={idx === activeReorderPresetIdx}
                             isHover={idx === hoverReorderPresetIdx && idx !== activeReorderPresetIdx}
                             displacement={computePresetDisplacement(idx, activeReorderPresetIdx, hoverReorderPresetIdx)}
@@ -3078,7 +3211,7 @@ export default function NutritionScreen() {
                             colors={colors}
                           />
                         ))}
-                      </View>
+                      </ScrollView>
                     ) : (
                       <ScrollView
                         horizontal
@@ -3693,43 +3826,90 @@ export default function NutritionScreen() {
                       <Text style={[styles.presetChipsLabel, { color: colors.mutedForeground }]}>
                         Saved Presets
                       </Text>
+                      {isReorderingPresets ? (
+                        <TouchableOpacity
+                          onPress={exitPresetReorderMode}
+                          style={[styles.reorderDoneBtn, { backgroundColor: colors.secondary }]}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={[styles.reorderDoneText, { color: colors.primaryForeground }]}>
+                            Done
+                          </Text>
+                        </TouchableOpacity>
+                      ) : customPresets.length >= 2 ? (
+                        <TouchableOpacity
+                          onPress={enterPresetReorderMode}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
+                            Reorder
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
-                    {presetLongPressHintVisible && (
+                    {presetLongPressHintVisible && !isReorderingPresets && (
                       <Animated.Text
                         style={[styles.presetLongPressHintText, { color: colors.mutedForeground, opacity: presetLongPressHintFadeAnim }]}
                       >
                         Hold a chip to edit or delete it
                       </Animated.Text>
                     )}
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={[styles.filterScroll, { paddingVertical: 2, marginBottom: 4 }]}
-                    >
-                      {customPresets.map((preset) => (
-                        <TouchableOpacity
-                          key={preset.id}
-                          onPress={() => applyPreset(preset)}
-                          onLongPress={() => openEditPresetModal(preset)}
-                          delayLongPress={500}
-                          activeOpacity={0.75}
-                          style={[
-                            styles.presetChip,
-                            { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
-                          ]}
-                        >
-                          <View style={styles.presetChipInner}>
-                            <Ionicons name="bookmark" size={12} color={colors.secondary} />
-                            <Text
-                              style={[styles.presetChipText, { color: colors.secondary }]}
-                              numberOfLines={1}
-                            >
-                              {preset.name}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                    {isReorderingPresets ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        scrollEnabled={false}
+                        contentContainerStyle={[styles.filterScroll, { paddingVertical: 4, marginBottom: 4 }]}
+                      >
+                        {reorderPresetsItems.map((preset, idx) => (
+                          <HorizontalDraggablePresetChip
+                            key={`preset-drag-main-${preset.id}`}
+                            preset={preset}
+                            indexRef={indexRefsPresetRef.current[idx] ?? { current: idx }}
+                            listRef={reorderPresetsRef}
+                            avgChipWidthRef={avgPresetChipWidthRef}
+                            isActive={idx === activeReorderPresetIdx}
+                            isHover={idx === hoverReorderPresetIdx && idx !== activeReorderPresetIdx}
+                            displacement={computePresetDisplacement(idx, activeReorderPresetIdx, hoverReorderPresetIdx)}
+                            onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
+                            onHover={setHoverReorderPresetIdx}
+                            onDrop={handlePresetReorderDrop}
+                            colors={colors}
+                          />
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={[styles.filterScroll, { paddingVertical: 2, marginBottom: 4 }]}
+                      >
+                        {customPresets.map((preset) => (
+                          <TouchableOpacity
+                            key={preset.id}
+                            onPress={() => applyPreset(preset)}
+                            onLongPress={() => openEditPresetModal(preset)}
+                            delayLongPress={500}
+                            activeOpacity={0.75}
+                            style={[
+                              styles.presetChip,
+                              { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
+                            ]}
+                          >
+                            <View style={styles.presetChipInner}>
+                              <Ionicons name="bookmark" size={12} color={colors.secondary} />
+                              <Text
+                                style={[styles.presetChipText, { color: colors.secondary }]}
+                                numberOfLines={1}
+                              >
+                                {preset.name}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
                   </>
                 )}
 
