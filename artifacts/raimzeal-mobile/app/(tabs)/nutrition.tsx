@@ -1233,6 +1233,7 @@ export default function NutritionScreen() {
   const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyCardYsRef = useRef<Record<string, number>>({});
   const trendChartYRef = useRef<number>(0);
+  const historyFilterBarYRef = useRef<number>(0);
   const { height: windowHeight } = useWindowDimensions();
   const scrollYRef = useRef<number>(0);
   const seenDatesRef = useRef<Set<string>>(new Set());
@@ -1347,21 +1348,25 @@ export default function NutritionScreen() {
   }
 
   function handleHistoryFilterHintPress() {
+    flatListRef.current?.scrollToOffset({ offset: historyFilterBarYRef.current, animated: true });
     historyFilterScrollRef.current?.scrollTo({ x: 0, animated: true });
+    const SCROLL_SETTLE_MS = 350;
     const STAGGER_MS = 60;
     const PER_CHIP_DURATION = 200 + 300 + 400;
     const HINT_FADE_DURATION = 300;
     const totalAnimMs = (HISTORY_CHIP_COUNT - 1) * STAGGER_MS + PER_CHIP_DURATION;
-    const dismissDelayMs = totalAnimMs - HINT_FADE_DURATION;
-    historyChipHighlightAnims.forEach((anim, i) => {
-      anim.setValue(0);
-      Animated.sequence([
-        Animated.delay(i * STAGGER_MS),
-        Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: false }),
-        Animated.delay(300),
-        Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: false }),
-      ]).start();
-    });
+    const dismissDelayMs = SCROLL_SETTLE_MS + totalAnimMs - HINT_FADE_DURATION;
+    setTimeout(() => {
+      historyChipHighlightAnims.forEach((anim, i) => {
+        anim.setValue(0);
+        Animated.sequence([
+          Animated.delay(i * STAGGER_MS),
+          Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: false }),
+          Animated.delay(300),
+          Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: false }),
+        ]).start();
+      });
+    }, SCROLL_SETTLE_MS);
     setTimeout(dismissHistoryFilterHint, dismissDelayMs);
   }
 
@@ -3514,7 +3519,12 @@ export default function NutritionScreen() {
             {activeTab === "history" && (
               <>
                 {/* Filter bar */}
-                <View style={styles.historyFilterBar}>
+                <View
+                  style={styles.historyFilterBar}
+                  onLayout={(e) => {
+                    historyFilterBarYRef.current = e.nativeEvent.layout.y;
+                  }}
+                >
                   <ScrollView
                     ref={historyFilterScrollRef}
                     horizontal
