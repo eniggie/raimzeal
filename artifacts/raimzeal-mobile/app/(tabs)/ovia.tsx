@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -131,7 +132,10 @@ export default function OviaScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [interimText, setInterimText] = useState("");
   const flatListRef = useRef<FlatList>(null);
+  const recognitionRef = useRef<unknown>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -311,7 +315,72 @@ export default function OviaScreen() {
 
   // Called by the send button and keyboard return
   async function handleSend() {
+    if (isRecording) stopVoice();
     await handleSendMessage(chatInput.trim());
+  }
+
+  function stopVoice() {
+    const rec = recognitionRef.current as Record<string, unknown> | null;
+    if (rec) (rec["stop"] as () => void)();
+    setIsRecording(false);
+    setInterimText("");
+  }
+
+  function toggleVoice() {
+    if (Platform.OS !== "web") {
+      Alert.alert(
+        "Voice Input",
+        "Tap the microphone key on your keyboard to dictate, or type your message below.",
+        [{ text: "Got it" }]
+      );
+      return;
+    }
+
+    type AnyRec = Record<string, unknown>;
+    const w = window as unknown as AnyRec;
+    const SR = (w["SpeechRecognition"] ?? w["webkitSpeechRecognition"]) as
+      | (new () => AnyRec)
+      | undefined;
+
+    if (!SR) {
+      Alert.alert("Not Supported", "Voice input is not supported in this browser.");
+      return;
+    }
+
+    if (isRecording) { stopVoice(); return; }
+
+    const rec: AnyRec = new SR();
+    rec["continuous"] = true;
+    rec["interimResults"] = true;
+    rec["lang"] = "en-US";
+
+    rec["onresult"] = (e: unknown) => {
+      const event = e as AnyRec;
+      const results = event["results"] as {
+        [i: number]: { [j: number]: { transcript: string }; isFinal: boolean };
+        length: number;
+      };
+      const startIdx = event["resultIndex"] as number;
+      let interim = "";
+      for (let i = startIdx; i < results.length; i++) {
+        const r = results[i];
+        if (r.isFinal) {
+          const t = r[0].transcript.trim();
+          if (t) setChatInput((prev) => (prev ? `${prev} ${t}` : t));
+          setInterimText("");
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      if (interim) setInterimText(interim);
+    };
+
+    rec["onend"] = () => { setIsRecording(false); setInterimText(""); };
+    rec["onerror"] = () => { setIsRecording(false); setInterimText(""); };
+
+    recognitionRef.current = rec;
+    (rec["start"] as () => void)();
+    setIsRecording(true);
   }
 
   return (
@@ -442,34 +511,53 @@ export default function OviaScreen() {
             },
           ]}
         >
+          {/* Mic button */}
+          <TouchableOpacity
+            onPress={toggleVoice}
+            style={[
+              styles.micBtn,
+              {
+                backgroundColor: isRecording ? colors.accent + "20" : colors.muted,
+                borderColor: isRecording ? colors.accent : colors.border,
+              },
+            ]}
+          >
+            <Ionicons
+              name={isRecording ? "mic" : "mic-outline"}
+              size={18}
+              color={isRecording ? colors.accent : colors.mutedForeground}
+            />
+          </TouchableOpacity>
+
           <TextInput
-            value={chatInput}
-            onChangeText={setChatInput}
+            value={isRecording && interimText ? interimText : chatInput}
+            onChangeText={isRecording ? undefined : setChatInput}
             onSubmitEditing={handleSend}
             returnKeyType="send"
-            placeholder="Ask Ovia about fitness, nutrition, health..."
-            placeholderTextColor={colors.mutedForeground}
+            editable={!isRecording}
+            placeholder={isRecording ? "🎙 Listening..." : "Ask Ovia about fitness, nutrition, health..."}
+            placeholderTextColor={isRecording ? colors.accent : colors.mutedForeground}
             style={[
               styles.chatInput,
               {
-                backgroundColor: colors.muted,
-                color: colors.foreground,
-                borderColor: colors.border,
+                backgroundColor: isRecording ? colors.accent + "10" : colors.muted,
+                color: isRecording ? colors.accent : colors.foreground,
+                borderColor: isRecording ? colors.accent + "60" : colors.border,
               },
             ]}
           />
           <TouchableOpacity
             onPress={handleSend}
-            disabled={!chatInput.trim()}
+            disabled={!chatInput.trim() && !interimText}
             style={[
               styles.sendBtn,
-              { backgroundColor: chatInput.trim() ? colors.primary : colors.muted },
+              { backgroundColor: (chatInput.trim() || interimText) ? colors.primary : colors.muted },
             ]}
           >
             <Ionicons
               name="arrow-up"
               size={18}
-              color={chatInput.trim() ? colors.primaryForeground : colors.mutedForeground}
+              color={(chatInput.trim() || interimText) ? colors.primaryForeground : colors.mutedForeground}
             />
           </TouchableOpacity>
         </View>
@@ -529,7 +617,8 @@ const styles = StyleSheet.create({
   typingRow: { flexDirection: "row", paddingHorizontal: 16, paddingBottom: 8 },
   typingBubble: { flexDirection: "row", alignItems: "center", gap: 4, padding: 12, borderRadius: 16, borderWidth: 1 },
   tDot: { width: 6, height: 6, borderRadius: 3 },
-  inputBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 10, gap: 10, borderTopWidth: 1 },
+  inputBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 10, gap: 8, borderTopWidth: 1 },
   chatInput: { flex: 1, height: 44, borderRadius: 22, paddingHorizontal: 16, fontSize: 15, fontFamily: "Inter_400Regular", borderWidth: 1 },
+  micBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
 });

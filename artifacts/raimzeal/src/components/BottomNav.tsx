@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'wouter';
-import { Home, Dumbbell, BarChart3, Bot, User } from 'lucide-react';
+import { Home, Dumbbell, BarChart3, Bot, User, Utensils, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -7,7 +7,9 @@ const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/workouts', icon: Dumbbell, label: 'Workouts' },
   { path: '/coach', icon: Bot, label: 'Ovia AI' },
+  { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
   { path: '/tracking', icon: BarChart3, label: 'Progress' },
+  { path: '/community', icon: Users, label: 'Community' },
   { path: '/settings', icon: User, label: 'Profile' },
 ];
 
@@ -26,7 +28,7 @@ export function BottomNav() {
               <motion.div
                 data-testid={`nav-${item.label.toLowerCase()}`}
                 className={cn(
-                  'flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-colors relative',
+                  'flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-colors relative px-0.5',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
                 whileTap={{ scale: 0.9 }}
@@ -42,8 +44,8 @@ export function BottomNav() {
                     transition={{ type: 'spring', bounce: 0.25, duration: 0.4 }}
                   />
                 )}
-                <item.icon className="w-5 h-5 relative z-10" strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-[10px] font-medium mt-0.5 relative z-10">{item.label}</span>
+                <item.icon className="w-[18px] h-[18px] relative z-10" strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[9px] font-medium mt-0.5 relative z-10 leading-none">{item.label}</span>
               </motion.div>
             </Link>
           );
