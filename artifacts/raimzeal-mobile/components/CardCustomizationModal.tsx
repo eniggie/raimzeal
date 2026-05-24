@@ -2960,6 +2960,8 @@ export default function CardCustomizationModal({
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   decelerationRate="fast"
+                  snapToInterval={70}
+                  snapToAlignment="start"
                   contentContainerStyle={styles.presetsScroll}
                   onContentSizeChange={(w) => {
                     if (presets.length <= 1) return;
