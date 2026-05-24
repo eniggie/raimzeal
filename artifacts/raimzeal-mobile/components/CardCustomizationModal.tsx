@@ -4256,6 +4256,12 @@ export default function CardCustomizationModal({
         initialCrop={backgroundPhotoCrop ?? undefined}
         onConfirm={handleCropConfirm}
         onCancel={handleCropCancel}
+        cardOverlay={{
+          ...stableCardPreviewData,
+          visibleStats,
+          customMessage,
+          themeId: selectedThemeId,
+        }}
       />
     </Modal>
   );

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   Modal,
@@ -20,7 +20,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
-import { CARD_WIDTH } from "@/components/ShareProgressCard";
+import ShareProgressCard, {
+  CARD_WIDTH,
+  ShareProgressCardProps,
+} from "@/components/ShareProgressCard";
 
 export interface CropData {
   scale: number;
@@ -34,6 +37,13 @@ interface Props {
   initialCrop?: CropData;
   onConfirm: (crop: CropData) => void;
   onCancel: () => void;
+  /**
+   * When provided, a translucent ShareProgressCard is overlaid on the crop
+   * frame so users can see if their subject is hidden behind card content.
+   * backgroundPhotoUri / backgroundPhotoCrop / backgroundPhotoDimLevel are
+   * intentionally ignored — the image being cropped fills that role.
+   */
+  cardOverlay?: ShareProgressCardProps;
 }
 
 const CROP_ASPECT = 1.4;
@@ -58,10 +68,12 @@ export default function CropPhotoModal({
   initialCrop,
   onConfirm,
   onCancel,
+  cardOverlay,
 }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
+  const [showCardOverlay, setShowCardOverlay] = useState(true);
 
   const screenW = Dimensions.get("window").width;
   const displayScale = Math.min(1, (screenW - 32) / CARD_WIDTH);
@@ -205,6 +217,23 @@ export default function CropPhotoModal({
                 ]}
                 resizeMode="cover"
               />
+              {/* Live card overlay */}
+              {cardOverlay && showCardOverlay && (
+                <View
+                  style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
+                >
+                  <View style={styles.cardOverlayWrap}>
+                    <ShareProgressCard
+                      {...cardOverlay}
+                      backgroundPhotoUri={undefined}
+                      backgroundPhotoCrop={undefined}
+                      backgroundPhotoDimLevel={undefined}
+                      renderScale={displayScale}
+                    />
+                  </View>
+                </View>
+              )}
               {/* Corner markers */}
               <View style={[styles.cornerTL, styles.cornerH]} />
               <View style={[styles.cornerTL, styles.cornerV]} />
@@ -220,6 +249,22 @@ export default function CropPhotoModal({
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+          {cardOverlay && (
+            <TouchableOpacity
+              onPress={() => setShowCardOverlay((v) => !v)}
+              activeOpacity={0.75}
+              style={styles.overlayToggleBtn}
+            >
+              <Ionicons
+                name={showCardOverlay ? "eye-off-outline" : "eye-outline"}
+                size={17}
+                color="rgba(255,255,255,0.70)"
+              />
+              <Text style={styles.overlayToggleText}>
+                {showCardOverlay ? "Hide card overlay" : "Show card overlay"}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={handleConfirm}
             activeOpacity={0.85}
@@ -290,7 +335,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    paddingTop: 24,
+    paddingTop: 20,
+    gap: 14,
+  },
+  overlayToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  overlayToggleText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.60)",
+  },
+  cardOverlayWrap: {
+    opacity: 0.72,
   },
   usePhotoBtn: {
     flexDirection: "row",
