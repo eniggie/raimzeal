@@ -40,6 +40,8 @@ import {
   SWIPE_DELETE_HINT_STORAGE_KEY,
   HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
   PRESET_LONG_PRESS_HINT_KEY,
+  QUICK_FOOD_GRAMS_HINT_KEY,
+  FAV_FOOD_GRAMS_HINT_KEY,
 } from "@/lib/hints";
 
 import { Swipeable } from "react-native-gesture-handler";
@@ -1339,6 +1341,14 @@ export default function NutritionScreen() {
   const reorderHintDismissedRef = useRef(false);
   const reorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [quickGramsHintVisible, setQuickGramsHintVisible] = useState(false);
+  const quickGramsHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const quickGramsHintShownRef = useRef(false);
+
+  const [favGramsHintVisible, setFavGramsHintVisible] = useState(false);
+  const favGramsHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const favGramsHintShownRef = useRef(false);
+
   const [resultCountVisible, setResultCountVisible] = useState(false);
   const resultCountFadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -1493,6 +1503,24 @@ export default function NutritionScreen() {
     dismissHint(REORDER_HINT_STORAGE_KEY, Date.now());
   }
 
+  function dismissQuickGramsHint() {
+    Animated.timing(quickGramsHintFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setQuickGramsHintVisible(false));
+    dismissHint(QUICK_FOOD_GRAMS_HINT_KEY);
+  }
+
+  function dismissFavGramsHint() {
+    Animated.timing(favGramsHintFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setFavGramsHintVisible(false));
+    dismissHint(FAV_FOOD_GRAMS_HINT_KEY);
+  }
+
   function dismissHistoryFilterHint() {
     if (historyFilterHintTimerRef.current) {
       clearTimeout(historyFilterHintTimerRef.current);
@@ -1621,6 +1649,32 @@ export default function NutritionScreen() {
     return () => {
       if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    if (quickGramsHintShownRef.current) return;
+    quickGramsHintShownRef.current = true;
+    if (isHintDismissed(QUICK_FOOD_GRAMS_HINT_KEY)) return;
+    quickGramsHintFadeAnim.setValue(0);
+    setQuickGramsHintVisible(true);
+    Animated.timing(quickGramsHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  useEffect(() => {
+    if (favGramsHintShownRef.current) return;
+    favGramsHintShownRef.current = true;
+    if (isHintDismissed(FAV_FOOD_GRAMS_HINT_KEY)) return;
+    favGramsHintFadeAnim.setValue(0);
+    setFavGramsHintVisible(true);
+    Animated.timing(favGramsHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useEffect(() => {
@@ -3740,6 +3794,29 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </Animated.View>
                     )}
+                    {!isReordering && favGramsHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary + "40",
+                            opacity: favGramsHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="scale-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Tap a food to enter grams and scale macros
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissFavGramsHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
                     {isReordering ? (
                       reorderItems.map((food, idx) => (
                         <DraggableFavItem
@@ -3997,6 +4074,29 @@ export default function NutritionScreen() {
                     <Text style={[styles.quickEditBtnText, { color: colors.mutedForeground }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
+                {quickGramsHintVisible && (
+                  <Animated.View
+                    style={[
+                      styles.reorderHintBanner,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.primary + "40",
+                        opacity: quickGramsHintFadeAnim,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="scale-outline" size={14} color={colors.primary} />
+                    <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                      Tap a food to enter grams and scale macros
+                    </Text>
+                    <TouchableOpacity
+                      onPress={dismissQuickGramsHint}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
               </>
             )}
 

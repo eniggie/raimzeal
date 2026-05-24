@@ -9,3 +9,7 @@ export const HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY =
   "@nutrition_history_swipe_delete_hint_seen";
 export const PRESET_LONG_PRESS_HINT_KEY =
   "@nutrition_preset_long_press_hint_dismissed";
+export const QUICK_FOOD_GRAMS_HINT_KEY =
+  "@nutrition_quick_food_grams_hint_dismissed";
+export const FAV_FOOD_GRAMS_HINT_KEY =
+  "@nutrition_fav_food_grams_hint_dismissed";
