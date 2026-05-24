@@ -1058,6 +1058,13 @@ export default function CardCustomizationModal({
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
+  const sizeLabelOpacity = useSharedValue(0);
+  const sizeLabelAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: sizeLabelOpacity.value,
+  }));
+  useEffect(() => {
+    sizeLabelOpacity.value = withTiming(thumbnailSize !== "m" ? 1 : 0, { duration: 200 });
+  }, [thumbnailSize]);
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knobAnims = useRef<Record<string, Animated.Value>>(
@@ -3222,7 +3229,7 @@ export default function CardCustomizationModal({
                 ))}
               </View>
             </View>
-            {thumbnailSize !== "m" && (
+            <Reanimated.View style={sizeLabelAnimatedStyle} pointerEvents="none">
               <Text
                 style={{
                   fontSize: 11,
@@ -3235,7 +3242,7 @@ export default function CardCustomizationModal({
               >
                 Preview size: {thumbnailSize === "s" ? "Small" : "Large"}
               </Text>
-            )}
+            </Reanimated.View>
             <View
               style={styles.themeThumbnailsWrapper}
               onLayout={(e) => {
