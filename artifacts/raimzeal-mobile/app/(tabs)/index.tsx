@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,8 @@ import { AnimatedPressable } from "@/components/AnimatedPressable";
 
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
+
+const STRIPE_DONATION_URL = "https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00";
 
 const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
 
@@ -558,6 +561,32 @@ export default function HomeScreen() {
 
       </View>
 
+      {/* Donation CTA */}
+      <TouchableOpacity
+        activeOpacity={0.82}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Linking.openURL(STRIPE_DONATION_URL);
+        }}
+        style={[styles.donationCard, { backgroundColor: colors.card, borderColor: colors.primary + "44" }]}
+      >
+        <View style={styles.donationLeft}>
+          <View style={[styles.donationIconWrap, { backgroundColor: colors.primary + "20" }]}>
+            <Ionicons name="heart" size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.donationTitle, { color: colors.foreground }]}>
+              Someone funded this session.{"\n"}
+              <Text style={{ color: colors.primary }}>It wasn't you.</Text>
+            </Text>
+            <Text style={[styles.donationSub, { color: colors.mutedForeground }]}>
+              Support the mission — any amount
+            </Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
       {/* Body Stats Banner */}
       {latestWeight && (
         <AnimatedPressable
@@ -945,6 +974,25 @@ const styles = StyleSheet.create({
   membershipBannerContent: { flex: 1 },
   membershipBannerTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
   membershipBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  donationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  donationLeft: { flexDirection: "row", alignItems: "center", flex: 1, gap: 12 },
+  donationIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  donationTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 2, lineHeight: 18 },
+  donationSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
   workoutList: { gap: 10 },
   noWorkouts: {
     flexDirection: "row",
