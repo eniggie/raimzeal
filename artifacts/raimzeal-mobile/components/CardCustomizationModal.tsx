@@ -1253,7 +1253,10 @@ export default function CardCustomizationModal({
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
-  // Auto-trigger state: counts down from 3 then fires the default action
+  // User-chosen auto-trigger delay (0 = off, 1/3/5 = seconds)
+  const [autoTriggerDelay, setAutoTriggerDelay] = useState(DEFAULT_AUTO_TRIGGER_DELAY);
+
+  // Auto-trigger state: counts down from delay then fires the default action
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
   const [autoTriggerBannerWidth, setAutoTriggerBannerWidth] = useState(0);
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
@@ -1822,6 +1825,7 @@ export default function CardCustomizationModal({
           const parsed = parseInt(savedAutoTriggerDelay, 10);
           if (!isNaN(parsed) && parsed > 0) effectiveAutoTriggerDelay = parsed;
         }
+        setAutoTriggerDelay(effectiveAutoTriggerDelay);
         if (resolvedAction && effectiveAnyStatEnabled && effectiveAutoTriggerDelay > 0) {
           startAutoTrigger(resolvedAction, effectiveAutoTriggerDelay);
         }
@@ -2207,7 +2211,9 @@ export default function CardCustomizationModal({
               // Re-show set-as-preferred alert for this action
               Alert.alert(
                 "Set as preferred",
-                `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
+                autoTriggerDelay > 0
+                  ? `Always open with ${label}? ${label} will auto-trigger after ${autoTriggerDelay} second${autoTriggerDelay === 1 ? "" : "s"} each time you open the card builder.`
+                  : `Always open with ${label}? ${label} will be your preferred action (auto-trigger is off).`,
                 [
                   { text: "Cancel", style: "cancel" },
                   {
@@ -2255,7 +2261,9 @@ export default function CardCustomizationModal({
         isSwitching ? "Switch preferred action" : "Set as preferred",
         isSwitching
           ? `Replace ★ ${currentLabel} with ${label}?`
-          : `Always open with ${label}? ${label} will auto-trigger after 3 seconds each time you open the card builder.`,
+          : autoTriggerDelay > 0
+            ? `Always open with ${label}? ${label} will auto-trigger after ${autoTriggerDelay} second${autoTriggerDelay === 1 ? "" : "s"} each time you open the card builder.`
+            : `Always open with ${label}? ${label} will be your preferred action (auto-trigger is off).`,
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -4035,6 +4043,53 @@ export default function CardCustomizationModal({
               />
             </View>
           )}
+          {anyStatEnabled && defaultAction && (
+            <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
+              <View style={styles.longPressSettingText}>
+                <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
+                  Auto-trigger delay
+                </Text>
+                <Text style={[styles.longPressSettingDesc, { color: colors.mutedForeground }]}>
+                  {autoTriggerDelay === 0
+                    ? "Off — no countdown"
+                    : `${autoTriggerDelay} second${autoTriggerDelay === 1 ? "" : "s"} countdown`}
+                </Text>
+              </View>
+              <View style={styles.autoTriggerDelaySegmented}>
+                {([0, 1, 3, 5] as const).map((val) => {
+                  const active = autoTriggerDelay === val;
+                  return (
+                    <TouchableOpacity
+                      key={val}
+                      onPress={() => {
+                        setAutoTriggerDelay(val);
+                        AsyncStorage.setItem(
+                          STORAGE_KEY_AUTO_TRIGGER_DELAY,
+                          val === 0 ? "off" : String(val)
+                        ).catch(() => {});
+                      }}
+                      style={[
+                        styles.autoTriggerDelayChip,
+                        active && { backgroundColor: colors.primary },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={val === 0 ? "Off" : `${val} seconds`}
+                    >
+                      <Text
+                        style={[
+                          styles.autoTriggerDelayChipText,
+                          { color: active ? "#fff" : colors.mutedForeground },
+                        ]}
+                      >
+                        {val === 0 ? "Off" : `${val}s`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
           <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
             {(() => {
               const photoBlocked = cameraRollStatus === "denied";
@@ -5264,6 +5319,24 @@ const styles = StyleSheet.create({
   longPressSettingDesc: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  autoTriggerDelaySegmented: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  autoTriggerDelayChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: "transparent",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(128,128,128,0.35)",
+    minWidth: 34,
+    alignItems: "center",
+  },
+  autoTriggerDelayChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   zoomOverlay: {
     flex: 1,
