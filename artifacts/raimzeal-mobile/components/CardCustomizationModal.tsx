@@ -1108,6 +1108,9 @@ export default function CardCustomizationModal({
   const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
   // Tracks the current visible prop so the interval can guard against firing after close
   const visibleRef = useRef(visible);
+  // Tracks the current selectedAction so the interval always fires/displays the user's
+  // in-session choice rather than the defaultAction captured at countdown start.
+  const selectedActionRef = useRef<CardAction | null>(null);
 
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
@@ -1676,6 +1679,14 @@ export default function CardCustomizationModal({
     ]).start();
   }, [defaultAction, visible]);
 
+  // When the user switches their selected action while a countdown is running, immediately
+  // update the banner label so it stays in sync with the highlighted button.
+  useEffect(() => {
+    if (autoTriggerCountdown !== null && selectedAction !== null) {
+      setAutoTriggerAction(selectedAction);
+    }
+  }, [selectedAction]);
+
   // Persist the dim level to AsyncStorage (debounced) whenever the user moves the slider.
   useEffect(() => {
     if (!backgroundPhotoUri) return;
@@ -1903,6 +1914,7 @@ export default function CardCustomizationModal({
   // Always keep refs current so the interval calls the latest version and sees latest visibility
   handleGenerateRef.current = handleGenerate;
   visibleRef.current = visible;
+  selectedActionRef.current = selectedAction;
 
   function startAutoTrigger(action: CardAction, delay: number) {
     if (autoTriggerIntervalRef.current !== null) {
@@ -1921,12 +1933,16 @@ export default function CardCustomizationModal({
       });
       autoTriggerProgressAnim.current.start();
     }
-    setAutoTriggerAction(action);
+    setAutoTriggerAction(selectedActionRef.current ?? action);
     const DELAY = delay;
     setAutoTriggerCountdown(DELAY);
     let remaining = DELAY;
     autoTriggerIntervalRef.current = setInterval(() => {
       remaining -= 1;
+      // Prefer the user's in-session selectedAction over the defaultAction that was
+      // passed in at countdown start, so the label and fired action stay in sync with
+      // whichever button is currently highlighted.
+      const effectiveAction = selectedActionRef.current ?? action;
       if (remaining <= 0) {
         clearInterval(autoTriggerIntervalRef.current!);
         autoTriggerIntervalRef.current = null;
@@ -1934,10 +1950,11 @@ export default function CardCustomizationModal({
         setAutoTriggerAction(null);
         // Guard: only fire if the modal is still open
         if (visibleRef.current) {
-          handleGenerateRef.current?.(action);
+          handleGenerateRef.current?.(effectiveAction);
         }
       } else {
         setAutoTriggerCountdown(remaining);
+        setAutoTriggerAction(effectiveAction);
       }
     }, 1000);
   }
