@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2 } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
 
@@ -92,12 +92,13 @@ const PAID_PLANS = [
     yearly: 499.00,
     yearlyEquiv: 41.58,
     popular: false,
-    hasPrice: false,
+    hasPrice: true,
     features: LEGACY_FEATURES,
   },
 ];
 
 export function Membership() {
+  const [, navigate] = useLocation();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
@@ -105,6 +106,13 @@ export function Membership() {
   const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
+    // Guard: user must be signed in before we open a Stripe tab.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      navigate('/login');
+      return;
+    }
+
     // Open a blank tab immediately — must be synchronous inside the click handler
     // so popup blockers don't intervene. We navigate it to Stripe after the fetch.
     let stripeTab: Window | null = null;
@@ -114,13 +122,12 @@ export function Membership() {
     setCheckoutError((prev) => ({ ...prev, [tier]: '' }));
     setCheckoutUrl((prev) => ({ ...prev, [tier]: '' }));
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
-
       const res = await fetch('/api/stripe/checkout-session', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ tier, interval }),
       });
       const data = await res.json() as { url?: string; error?: string };
@@ -279,7 +286,9 @@ export function Membership() {
                       className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2
                         ${plan.key === 'rise'
                           ? 'bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-60'
-                          : 'bg-purple-500 hover:bg-purple-400 text-white disabled:opacity-60'
+                          : plan.key === 'legacy'
+                            ? 'bg-yellow-500 hover:bg-yellow-400 text-black disabled:opacity-60'
+                            : 'bg-purple-500 hover:bg-purple-400 text-white disabled:opacity-60'
                         }`}
                     >
                       {isLoading ? (
@@ -299,8 +308,13 @@ export function Membership() {
                         href={stripeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-center text-white transition-opacity hover:opacity-90
-                          ${plan.key === 'rise' ? 'bg-blue-500' : 'bg-purple-500'}`}
+                        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-center transition-opacity hover:opacity-90
+                          ${plan.key === 'rise'
+                            ? 'bg-blue-500 text-white'
+                            : plan.key === 'legacy'
+                              ? 'bg-yellow-500 text-black'
+                              : 'bg-purple-500 text-white'
+                          }`}
                       >
                         <ExternalLink className="w-4 h-4" />
                         Continue to Stripe Checkout

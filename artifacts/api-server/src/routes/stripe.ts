@@ -55,9 +55,15 @@ async function handleCheckoutSession(req: Request, res: Response) {
     return;
   }
 
+  // Mobile clients (React Native / Expo) do not send an Origin header.
+  // Fall back to the first public REPLIT_DOMAINS entry so that Stripe's
+  // success_url / cancel_url point to a reachable HTTPS URL rather than the
+  // internal localhost:PORT address that req.get("host") would return.
   const origin =
     req.headers.origin ??
-    `${req.protocol}://${req.get("host")}`;
+    (process.env["REPLIT_DOMAINS"]
+      ? `https://${process.env["REPLIT_DOMAINS"].split(",")[0]}`
+      : `${req.protocol}://${req.get("host")}`);
 
   try {
     const stripe = await getUncachableStripeClient();

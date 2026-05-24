@@ -475,8 +475,15 @@ export default function ProfileScreen() {
           text: "Sign Out",
           style: "destructive",
           onPress: async () => {
+            // Sign out from Supabase FIRST — if it fails, local state stays intact
+            // so the user is not left in a ghost session.
+            try {
+              await signOut();
+            } catch {
+              Alert.alert("Sign Out Failed", "Could not sign out. Please check your connection and try again.");
+              return;
+            }
             resetState();
-            await signOut();
             if (!isSupabaseConfigured) {
               Alert.alert("Signed out", "You have been signed out.");
             }

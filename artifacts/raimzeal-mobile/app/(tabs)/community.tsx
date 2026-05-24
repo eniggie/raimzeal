@@ -349,9 +349,22 @@ export default function CommunityScreen() {
                 : p
             )
           );
+        } else {
+          // API returned null — remove the optimistic post so the user doesn't
+          // see a post that was never actually saved on the server.
+          setPosts((prev) => prev.filter((p) => p.id !== optimistic.id));
+          Alert.alert("Post Failed", "Your post could not be saved. Please try again.");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setSubmitting(false);
+          return;
         }
       } catch {
-        /* keep optimistic */
+        // Network/server error — roll back the optimistic post.
+        setPosts((prev) => prev.filter((p) => p.id !== optimistic.id));
+        Alert.alert("Post Failed", "Could not connect to the server. Please check your connection and try again.");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setSubmitting(false);
+        return;
       }
     }
     setSubmitting(false);
