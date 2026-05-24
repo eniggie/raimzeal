@@ -1516,6 +1516,30 @@ export default function NutritionScreen() {
     dismissHint(PRESET_NUDGE_STORAGE_KEY);
   }
 
+  function showTipAgain() {
+    if (customPresets.length === 0) {
+      presetNudgeFadeAnim.setValue(0);
+      setPresetNudgeVisible(true);
+      Animated.timing(presetNudgeFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      presetLongPressHintFadeAnim.setValue(0);
+      setPresetLongPressHintVisible(true);
+      Animated.timing(presetLongPressHintFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      if (presetLongPressHintTimerRef.current) {
+        clearTimeout(presetLongPressHintTimerRef.current);
+      }
+      presetLongPressHintTimerRef.current = setTimeout(dismissPresetLongPressHint, 4000);
+    }
+  }
+
   function dismissPresetLongPressHint() {
     if (presetLongPressHintTimerRef.current) {
       clearTimeout(presetLongPressHintTimerRef.current);
@@ -3392,6 +3416,15 @@ export default function NutritionScreen() {
                   </ScrollView>
 
                   <View style={styles.filterActions}>
+                    {activeTab === "today" && isSearching && (
+                      <TouchableOpacity
+                        onPress={showTipAgain}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ opacity: 0.55 }}
+                      >
+                        <Ionicons name="information-circle-outline" size={17} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    )}
                     {activeFilters.size >= 1 && (
                       <TouchableOpacity
                         onPress={openSavePresetModal}
