@@ -102,10 +102,12 @@ export function Membership() {
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
   const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
+  const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
     setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
     setCheckoutError((prev) => ({ ...prev, [tier]: '' }));
+    setCheckoutUrl((prev) => ({ ...prev, [tier]: '' }));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -125,7 +127,15 @@ export function Membership() {
         }));
         return;
       }
-      window.location.href = data.url;
+
+      // Open Stripe checkout in a new tab.
+      // Stripe blocks iframe embedding (X-Frame-Options: DENY) so we must NOT use
+      // window.location.href here — that would navigate the preview iframe and crash.
+      const newTab = window.open(data.url, '_blank', 'noopener,noreferrer');
+      if (!newTab) {
+        // Popup was blocked — surface the link so the user can click it manually.
+        setCheckoutUrl((prev) => ({ ...prev, [tier]: data.url! }));
+      }
     } catch {
       setCheckoutError((prev) => ({
         ...prev,
@@ -212,6 +222,7 @@ export function Membership() {
             const period = billing === 'monthly' ? '/mo' : '/yr';
             const isLoading = checkoutLoading[plan.key] ?? false;
             const error = checkoutError[plan.key] ?? '';
+            const stripeUrl = checkoutUrl[plan.key] ?? '';
 
             return (
               <motion.div
@@ -267,7 +278,7 @@ export function Membership() {
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Redirecting to Stripe…
+                          Opening Stripe checkout…
                         </>
                       ) : (
                         `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}${period}`
@@ -275,6 +286,16 @@ export function Membership() {
                     </button>
                     {error && (
                       <p className="text-xs text-destructive text-center leading-relaxed">{error}</p>
+                    )}
+                    {stripeUrl && (
+                      <a
+                        href={stripeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full py-2 rounded-xl border border-foreground/20 text-xs font-semibold text-center text-foreground/70 hover:bg-foreground/5 transition-colors"
+                      >
+                        ↗ Tap here to open Stripe checkout
+                      </a>
                     )}
                     <p className="text-[10px] text-foreground/40 text-center">
                       Secure checkout via Stripe · Cancel anytime
