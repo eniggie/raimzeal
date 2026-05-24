@@ -1143,12 +1143,14 @@ export default function CardCustomizationModal({
         Animated.parallel([
           Animated.timing(badgeFadeAnim, {
             toValue: 1,
-            duration: 400,
+            duration: 300,
             useNativeDriver: true,
           }),
-          Animated.timing(badgeSlideAnim, {
+          Animated.spring(badgeSlideAnim, {
             toValue: 0,
-            duration: 400,
+            damping: 12,
+            stiffness: 220,
+            mass: 0.6,
             useNativeDriver: true,
           }),
         ]).start();
