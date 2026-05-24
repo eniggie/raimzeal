@@ -2424,7 +2424,12 @@ export default function CardCustomizationModal({
         const messageChanged = (existingPreset.customMessage ?? "") !== trimmedMessage;
         const themeChanged = existingPreset.themeId !== selectedThemeId;
         const photoChanged = (existingPreset.backgroundPhotoUri ?? null) !== backgroundPhotoUri;
-        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged;
+        const existingCrop = existingPreset.backgroundPhotoCrop ?? null;
+        const cropChanged =
+          existingCrop?.scale !== (backgroundPhotoCrop?.scale ?? null) ||
+          existingCrop?.panX !== (backgroundPhotoCrop?.panX ?? null) ||
+          existingCrop?.panY !== (backgroundPhotoCrop?.panY ?? null);
+        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged && !cropChanged;
       }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
