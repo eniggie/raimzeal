@@ -2282,8 +2282,19 @@ export default function CardCustomizationModal({
 
     let updatedPresets: CardPreset[];
 
+    let isRename = false;
     if (activePresetId) {
       // Overwrite existing preset
+      const existingPreset = presets.find((p) => p.id === activePresetId);
+      if (existingPreset) {
+        const trimmedMessage = customMessage.trim();
+        const nameChanged = existingPreset.name !== name;
+        const statsChanged = JSON.stringify(existingPreset.visibleStats) !== JSON.stringify(visibleStats);
+        const messageChanged = (existingPreset.customMessage ?? "") !== trimmedMessage;
+        const themeChanged = existingPreset.themeId !== selectedThemeId;
+        const photoChanged = (existingPreset.backgroundPhotoUri ?? null) !== backgroundPhotoUri;
+        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged;
+      }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
           ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined }
@@ -2319,7 +2330,7 @@ export default function CardCustomizationModal({
     setPresets(updatedPresets);
     setSavingPreset(false);
     setShowInlineSave(false);
-    showConfirmation(activePresetId ? `"${name}" updated` : `"${name}" saved`, "success");
+    showConfirmation(activePresetId ? (isRename ? "Preset renamed" : `"${name}" updated`) : `"${name}" saved`, "success");
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
