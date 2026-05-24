@@ -654,6 +654,13 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <Text style={styles.resultMacros}>
                           {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
                         </Text>
+                        <View style={styles.resultServingRow}>
+                          <View style={styles.resultServingPill}>
+                            <Text style={styles.resultServingPillText}>
+                              {cachedResult.food.servingLabel ? `per ${cachedResult.food.servingLabel}` : "per 100g"}
+                            </Text>
+                          </View>
+                        </View>
                         <View style={styles.cacheAgeRow}>
                           <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.45)" />
                           <Text style={styles.cacheAgeText}>
@@ -764,9 +771,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                 P {scan.food.protein}g · C {scan.food.carbs}g · F {scan.food.fat}g
                               </Text>
                             </View>
-                            <Text style={styles.recentItemDate}>
-                              {formatScannedDate(scan.scannedAt)}
-                            </Text>
+                            <View style={styles.recentItemBottom}>
+                              <View style={styles.recentItemServingPill}>
+                                <Text style={styles.recentItemServingPillText}>
+                                  {scan.food.servingLabel ? `per ${scan.food.servingLabel}` : "per 100g"}
+                                </Text>
+                              </View>
+                              <Text style={styles.recentItemDate}>
+                                {formatScannedDate(scan.scannedAt)}
+                              </Text>
+                            </View>
                           </View>
                           <View style={styles.recentItemActions}>
                             <TouchableOpacity
@@ -1035,6 +1049,22 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginLeft: 26,
   },
+  resultServingRow: {
+    marginLeft: 26,
+    marginTop: 4,
+  },
+  resultServingPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  resultServingPillText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
   resultActions: {
     flexDirection: "row",
     gap: 10,
@@ -1272,11 +1302,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
+  recentItemBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  recentItemServingPill: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  recentItemServingPillText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+  },
   recentItemDate: {
     color: "rgba(255,255,255,0.4)",
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    marginTop: 1,
   },
   recentItemActions: {
     flexDirection: "row",
