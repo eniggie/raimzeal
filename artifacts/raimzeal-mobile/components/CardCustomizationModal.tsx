@@ -2452,14 +2452,17 @@ export default function CardCustomizationModal({
     }
     undoOpacity.stopAnimation();
     undoProgressAnim.stopAnimation();
-    setUndoDeleteState({ preset, index });
+    // Explicitly reset the previous toast before starting fresh so that any
+    // in-flight dismiss animation can't bleed its animated values into the new one.
+    undoOpacity.setValue(0);
     undoProgressAnim.setValue(1);
+    setUndoDeleteState(null);
+    setUndoDeleteState({ preset, index });
     undoRemainingMsRef.current = undoMs;
     undoSegmentStartRef.current = Date.now();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(1);
     } else {
-      undoOpacity.setValue(0);
       Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
       Animated.timing(undoProgressAnim, {
         toValue: 0,
