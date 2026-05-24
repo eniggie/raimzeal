@@ -160,6 +160,7 @@ const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
+const MANUAL_MACROS_KEY = "@nutrition_manual_macros";
 
 interface CustomFilterPreset {
   id: string;
@@ -3093,6 +3094,20 @@ export default function NutritionScreen() {
       })
       .catch(() => {});
 
+    AsyncStorage.getItem(MANUAL_MACROS_KEY)
+      .then((raw) => {
+        const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+          raw ? JSON.parse(raw) : {};
+        map[name] = {
+          calories: manualForm.calories,
+          protein: manualForm.protein,
+          carbs: manualForm.carbs,
+          fat: manualForm.fat,
+        };
+        return AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify(map));
+      })
+      .catch(() => {});
+
     setShowManualEntry(false);
   }
 
@@ -4847,6 +4862,22 @@ export default function NutritionScreen() {
                   .then((raw) => {
                     const map: Record<string, string> = raw ? JSON.parse(raw) : {};
                     if (map[name]) setManualMeal(map[name] as "breakfast" | "lunch" | "dinner" | "snack");
+                  })
+                  .catch(() => {});
+                AsyncStorage.getItem(MANUAL_MACROS_KEY)
+                  .then((raw) => {
+                    if (!raw) return;
+                    const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+                      JSON.parse(raw);
+                    const saved = map[name];
+                    if (!saved) return;
+                    setManualForm((f) => ({
+                      ...f,
+                      calories: f.calories === "" ? saved.calories : f.calories,
+                      protein: f.protein === "" ? saved.protein : f.protein,
+                      carbs: f.carbs === "" ? saved.carbs : f.carbs,
+                      fat: f.fat === "" ? saved.fat : f.fat,
+                    }));
                   })
                   .catch(() => {});
               }}
