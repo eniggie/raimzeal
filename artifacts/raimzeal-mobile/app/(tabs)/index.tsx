@@ -437,6 +437,29 @@ export default function HomeScreen() {
         </AnimatedPressable>
       )}
 
+      {/* Membership Plans Banner */}
+      <TouchableOpacity
+        activeOpacity={0.82}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          router.push("/membership");
+        }}
+        style={[styles.membershipBanner, { backgroundColor: colors.card, borderColor: "#F59E0B40" }]}
+      >
+        <View style={styles.membershipBannerLeft}>
+          <Ionicons name="star" size={20} color="#F59E0B" />
+        </View>
+        <View style={styles.membershipBannerContent}>
+          <Text style={[styles.membershipBannerTitle, { color: colors.foreground }]}>
+            Rise · Reign · Legacy 👑
+          </Text>
+          <Text style={[styles.membershipBannerSub, { color: colors.mutedForeground }]}>
+            Optional support plans from $9.99/mo — tap to explore
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+      </TouchableOpacity>
+
       {/* Quick Actions */}
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
         Quick Actions
@@ -515,16 +538,6 @@ export default function HomeScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.navigate("/(tabs)/progress");
-            }}
-          />
-          <QuickAction
-            icon="star"
-            label="Plans"
-            color="#F59E0B"
-            bg="#F59E0B20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/membership");
             }}
           />
         </View>
@@ -898,6 +911,26 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   bodyBannerBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  membershipBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  membershipBannerLeft: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F59E0B20",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  membershipBannerContent: { flex: 1 },
+  membershipBannerTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  membershipBannerSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
   workoutList: { gap: 10 },
   noWorkouts: {
     flexDirection: "row",

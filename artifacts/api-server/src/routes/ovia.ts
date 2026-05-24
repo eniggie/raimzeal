@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { getUserTier } from "../lib/tier";
 
 const oviaRouter = Router();
 
@@ -362,14 +363,24 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     }
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
-    // RAIMZEAL is free forever — Foundation Plan only, 15 messages/day on gpt-4o-mini.
+    // Limits are tier-based: Foundation=15, Rise=200, Reign=500, Legacy=unlimited.
     const userId = (req as any).userId as string;
     const oviaModel = "gpt-4o-mini";
-    const oviaLimit = 15;
+    const userTier = await getUserTier(userId);
+    const oviaLimit =
+      userTier === "legacy" ? 100_000 :
+      userTier === "reign"  ? 500 :
+      userTier === "rise"   ? 200 :
+      15;
+    const oviaLimitLabel =
+      userTier === "legacy" ? "unlimited" :
+      userTier === "reign"  ? "500" :
+      userTier === "rise"   ? "200" :
+      "15";
     const quota = consumeUserDailyQuota(userId, oviaLimit);
     if (!quota.allowed) {
       res.status(429).json({
-        error: "Daily Ovia AI limit reached (15 messages/day). Please try again tomorrow.",
+        error: `Daily Ovia AI limit reached (${oviaLimitLabel} messages/day on your ${userTier} plan). Please try again tomorrow.`,
         code: "OVIA_QUOTA_EXCEEDED",
         remaining: 0,
       });

@@ -34,28 +34,27 @@ const FOUNDATION_FEATURES = [
 const RISE_FEATURES = [
   "Everything in Foundation",
   "Ovia AI coaching — 200 messages/day",
-  "Priority community badge",
-  "Advanced nutrition analytics",
-  "Extended workout history (unlimited)",
-  "Weekly Ovia AI coaching digest email",
+  "Expanded nutrition tracking & insights",
+  "Full workout history & detailed analytics",
+  "Weekly Ovia AI health digest email",
+  "Rise supporter recognition",
 ];
 
 const REIGN_FEATURES = [
   "Everything in Rise",
   "Ovia AI coaching — 500 messages/day",
-  "AI-powered meal plan suggestions",
-  "Advanced body composition analytics",
-  "Custom macro goal recommendations",
-  "Reign supporter badge",
-  "Early access to all new features",
+  "Priority customer support",
+  "Early access to all new RAIMZEAL features",
+  "AI-personalised coaching at scale via Ovia",
+  "Reign supporter recognition",
 ];
 
 const LEGACY_FEATURES = [
   "Everything in Reign",
-  "Ovia AI coaching — unlimited messages",
-  "1-on-1 coaching session access",
+  "Unlimited Ovia AI messages every day",
   "Dedicated priority support",
-  "Legacy founder badge",
+  "Legacy founder status",
+  "Shape the future of RAIMZEAL",
   "Lifetime recognition in the RAIMZEAL community",
 ];
 
