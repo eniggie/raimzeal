@@ -17,6 +17,10 @@ jobs:
   build:
     name: Build ${{ matrix.platform }} (production)
     runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'push' ||
+      inputs.platform == 'all' ||
+      inputs.platform == matrix.platform
     strategy:
       fail-fast: false
       matrix:
