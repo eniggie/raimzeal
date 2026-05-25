@@ -54,6 +54,96 @@ uri = "file://generated/ebook/images/ch8-donate-support.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "WUelpgtteTNwxa8iiOpZa"
+uri = "file://screenshots/feature_graphic.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6FqDs-ERrExOILhgji8KH"
+uri = "file://screenshots/phone_01_dashboard.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "AqVDuDkGPn2bMnRlu2NlP"
+uri = "file://screenshots/phone_02_nutrition.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "B4vv_s9IOCOW-4rK8ab1e"
+uri = "file://screenshots/phone_03_workout.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "G6bbfFp0bupbD8Z30aPh1"
+uri = "file://screenshots/phone_04_progress.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "15WGpdMXGS8ng-CBC1mdw"
+uri = "file://screenshots/phone_05_ai_coach.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "h_YOA1egIIOFCKxaH0bN-"
+uri = "file://screenshots/tablet7_01_dashboard.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3TyNSmUQlplr4QRfd7Ew0"
+uri = "file://screenshots/tablet7_02_nutrition.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Gj5lHlWKaexZUBfGI9-lz"
+uri = "file://screenshots/tablet7_03_progress.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "LEeX9YXxb605akmJQ2B1m"
+uri = "file://screenshots/tablet10_01_dashboard.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hILn90N5BfnuIv8bYgy9h"
+uri = "file://screenshots/tablet10_02_workouts.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "I5h-2j4lb8R1bsQ9AhIiz"
+uri = "file://screenshots/tablet10_03_coach.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "TtIqgxIpTMUZgNVza5dGF"
+uri = "file://screenshots/chromebook_01_dashboard.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xNOKnehW-n6pn4xlGlUdy"
+uri = "file://screenshots/chromebook_02_nutrition.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ehi-NZrtiE6DFBI1k1-bP"
+uri = "file://screenshots/chromebook_03_progress.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"
@@ -77,3 +167,93 @@ id = "Tt3SADWAgSHvlYSEStCZ0"
 uri = "file://generated/raimzeal-source-code.tar.gz"
 type = "unspecified"
 title = "RAIMZEAL Source Code Archive (.tar.gz)"
+
+[[outputs]]
+id = "PQTgbB-yx0cyg3gLVBhPu"
+uri = "file://screenshots/feature_graphic.png"
+type = "image"
+title = "Feature Graphic (1024x500)"
+
+[[outputs]]
+id = "jHwFLdKAo5wiFp2gfUd9R"
+uri = "file://screenshots/phone_01_dashboard.png"
+type = "image"
+title = "Phone — Dashboard"
+
+[[outputs]]
+id = "FgfspKZ060xQdUkG31s9v"
+uri = "file://screenshots/phone_02_nutrition.png"
+type = "image"
+title = "Phone — Nutrition Log"
+
+[[outputs]]
+id = "9JHZNNr_454nVU0bv2pIp"
+uri = "file://screenshots/phone_03_workout.png"
+type = "image"
+title = "Phone — Workout Tracker"
+
+[[outputs]]
+id = "-QvekBtDIyZeTQcy7usEK"
+uri = "file://screenshots/phone_04_progress.png"
+type = "image"
+title = "Phone — Progress & History"
+
+[[outputs]]
+id = "Ja92Bb6vO4KjakXmQsqkk"
+uri = "file://screenshots/phone_05_ai_coach.png"
+type = "image"
+title = "Phone — Ovia AI Coach"
+
+[[outputs]]
+id = "84XHHoe1i-MdFj3eGul4o"
+uri = "file://screenshots/tablet7_01_dashboard.png"
+type = "image"
+title = "7\" Tablet — Dashboard"
+
+[[outputs]]
+id = "0JBEguSY9B2Wkpyw2ER55"
+uri = "file://screenshots/tablet7_02_nutrition.png"
+type = "image"
+title = "7\" Tablet — Nutrition"
+
+[[outputs]]
+id = "XPMQUbAbay4NTOE5ELxba"
+uri = "file://screenshots/tablet7_03_progress.png"
+type = "image"
+title = "7\" Tablet — Progress"
+
+[[outputs]]
+id = "3k25Il5X7ZmbDxEU0ixE8"
+uri = "file://screenshots/tablet10_01_dashboard.png"
+type = "image"
+title = "10\" Tablet — Dashboard"
+
+[[outputs]]
+id = "gY5TFkga7IN2FVh19gf08"
+uri = "file://screenshots/tablet10_02_workouts.png"
+type = "image"
+title = "10\" Tablet — Workout Library"
+
+[[outputs]]
+id = "kj2WwQoopTBzCsAijcjEg"
+uri = "file://screenshots/tablet10_03_coach.png"
+type = "image"
+title = "10\" Tablet — AI Coach"
+
+[[outputs]]
+id = "cDPg1A7DSZhin119mXQ9z"
+uri = "file://screenshots/chromebook_01_dashboard.png"
+type = "image"
+title = "Chromebook — Dashboard"
+
+[[outputs]]
+id = "ML86wSPI1xO2lKhFaxdA6"
+uri = "file://screenshots/chromebook_02_nutrition.png"
+type = "image"
+title = "Chromebook — Nutrition"
+
+[[outputs]]
+id = "xQXKCDUQoUceyisBIXeDb"
+uri = "file://screenshots/chromebook_03_progress.png"
+type = "image"
+title = "Chromebook — Progress"
