@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   appDataApi,
   workoutLogsApi,
@@ -307,9 +307,24 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
   const [state, setState] = useState<AppState>(defaultState);
   const [cloudSynced, setCloudSynced] = useState(false);
   const [syncError, setSyncError] = useState(false);
+  const [writeSyncStatus, setWriteSyncStatus] = useState<'idle' | 'syncing' | 'saved' | 'offline'>('idle');
 
   const cloudSyncedRef = useRef(false);
   const userIdRef = useRef<string | null | undefined>(undefined);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerWriteSync = useMemo(() => (promise: Promise<unknown>) => {
+    if (!supabaseConfigured) return;
+    setWriteSyncStatus('syncing');
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    promise.then(() => {
+      setWriteSyncStatus('saved');
+      syncTimerRef.current = setTimeout(() => setWriteSyncStatus('idle'), 2500);
+    }).catch(() => {
+      setWriteSyncStatus('offline');
+      syncTimerRef.current = setTimeout(() => setWriteSyncStatus('idle'), 4000);
+    });
+  }, []);
 
   // Re-load state from localStorage whenever the user changes (login/logout)
   useEffect(() => {
@@ -410,7 +425,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      workoutLogsApi.create({
+      triggerWriteSync(workoutLogsApi.create({
         id: log.id,
         workout_id: log.workoutId,
         workout_name: log.workoutName,
@@ -418,7 +433,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
         duration: log.duration,
         calories_burned: log.caloriesBurned,
         exercises: log.exercises,
-      }).catch(() => { /* best-effort */ });
+      }));
     }
   };
 
@@ -429,7 +444,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      workoutLogsApi.remove(id).catch(() => { /* best-effort */ });
+      triggerWriteSync(workoutLogsApi.remove(id));
     }
   };
 
@@ -440,7 +455,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      mealLogsApi.create({
+      triggerWriteSync(mealLogsApi.create({
         id: meal.id,
         date: meal.date,
         name: meal.name,
@@ -449,7 +464,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
         carbs: meal.carbs,
         fat: meal.fat,
         meal_type: meal.mealType,
-      }).catch(() => { /* best-effort */ });
+      }));
     }
   };
 
@@ -460,7 +475,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      mealLogsApi.remove(id).catch(() => { /* best-effort */ });
+      triggerWriteSync(mealLogsApi.remove(id));
     }
   };
 
@@ -483,7 +498,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     });
 
     if (supabaseConfigured) {
-      waterIntakeApi.upsert(today, glasses).catch(() => { /* best-effort */ });
+      triggerWriteSync(waterIntakeApi.upsert(today, glasses));
     }
   };
 
@@ -494,13 +509,13 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      scheduledWorkoutsApi.create({
+      triggerWriteSync(scheduledWorkoutsApi.create({
         id: workout.id,
         workout_id: workout.workoutId,
         workout_name: workout.workoutName,
         date: workout.date,
         completed: workout.completed,
-      }).catch(() => { /* best-effort */ });
+      }));
     }
   };
 
@@ -511,7 +526,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      bodyMeasurementsApi.create({
+      triggerWriteSync(bodyMeasurementsApi.create({
         id: measurement.id,
         date: measurement.date,
         weight: measurement.weight,
@@ -520,7 +535,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
         hips: measurement.hips ?? null,
         arms: measurement.arms ?? null,
         thighs: measurement.thighs ?? null,
-      }).catch(() => { /* best-effort */ });
+      }));
     }
   };
 
@@ -535,14 +550,14 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }));
 
     if (supabaseConfigured) {
-      userProfileApi.update({
+      triggerWriteSync(userProfileApi.update({
         app_settings: {
           dark_mode: nextSettings.darkMode,
           text_size: nextSettings.textSize,
           notifications: nextSettings.notifications,
           weight_unit: nextSettings.weightUnit,
         },
-      }).catch(() => { /* best-effort */ });
+      }));
     }
   };
 
@@ -564,7 +579,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
       if (updates.bloodType !== undefined) apiUpdates.blood_type = updates.bloodType ?? null;
       if (updates.rhFactor !== undefined) apiUpdates.rh_factor = updates.rhFactor ?? null;
       if (updates.genotype !== undefined) apiUpdates.genotype = updates.genotype ?? null;
-      userProfileApi.update(apiUpdates).catch(() => { /* best-effort */ });
+      triggerWriteSync(userProfileApi.update(apiUpdates));
     }
   };
 
@@ -752,6 +767,7 @@ ${mealLogs.length > 0 ? `<table>
     state,
     cloudSynced,
     syncError,
+    writeSyncStatus,
     updateState,
     completeOnboarding,
     addWorkoutLog,

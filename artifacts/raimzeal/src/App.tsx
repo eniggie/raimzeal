@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Loader2 } from 'lucide-react';
 import { useAppState, type UserProfile } from '@/lib/store';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { SyncIndicator } from '@/components/SyncIndicator';
 
 import { Onboarding } from '@/pages/Onboarding';
 import { Login } from '@/pages/Login';
@@ -92,7 +93,9 @@ function AppContent() {
   const { session, user, loading, signOut } = useAuth();
   const {
     state,
+    cloudSynced,
     syncError,
+    writeSyncStatus,
     completeOnboarding,
     addWorkoutLog,
     removeWorkoutLog,
@@ -189,11 +192,32 @@ function AppContent() {
   // Authenticated + verified — show the app
   return (
     <>
+      {/* Top loading bar — visible while initial cloud data is being fetched */}
+      {session && !cloudSynced && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-primary/20 overflow-hidden">
+          <div
+            className="h-full bg-primary animate-[shimmer_1.4s_ease-in-out_infinite]"
+            style={{ width: '40%', animation: 'cloudload 1.4s ease-in-out infinite' }}
+          />
+          <style>{`
+            @keyframes cloudload {
+              0%   { transform: translateX(-100%); }
+              100% { transform: translateX(350%); }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* Error banner — shown when initial cloud load failed */}
       {syncError && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500/90 text-yellow-950 text-center text-xs py-1.5 px-4 font-medium">
           Cloud sync unavailable — your data is saved locally and will sync when the connection is restored.
         </div>
       )}
+
+      {/* Per-write sync indicator — bottom-right pill */}
+      <SyncIndicator status={writeSyncStatus} />
+
     <Switch>
       <Route path="/">
         <Home state={state} onUpdateWater={updateWaterIntake} onUpdateSettings={updateSettings} />
