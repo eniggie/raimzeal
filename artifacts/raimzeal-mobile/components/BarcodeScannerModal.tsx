@@ -461,6 +461,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         s.barcode === editTarget.barcode ? { ...s, food: updated } : s
       )
     );
+    setCachedResult((prev) =>
+      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated } : prev
+    );
     setEditTarget(null);
   }
 
@@ -471,6 +474,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       prev.map((s) =>
         s.barcode === editTarget.barcode ? { ...s, food: updated } : s
       )
+    );
+    setCachedResult((prev) =>
+      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated } : prev
     );
     onFoodFound(updated);
   }
@@ -695,6 +701,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                           <Text style={styles.resultName} numberOfLines={1}>
                             {cachedResult.food.name}
                           </Text>
+                          <TouchableOpacity
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setEditTarget({ barcode: cachedResult.barcode, food: cachedResult.food, scannedAt: cachedResult.cachedAt });
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={styles.resultEditBtn}
+                          >
+                            <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.6)" />
+                          </TouchableOpacity>
                         </View>
                         <Text style={styles.resultMacros}>
                           {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
@@ -1117,6 +1133,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     flex: 1,
+  },
+  resultEditBtn: {
+    padding: 2,
   },
   resultMacros: {
     color: "rgba(255,255,255,0.6)",
