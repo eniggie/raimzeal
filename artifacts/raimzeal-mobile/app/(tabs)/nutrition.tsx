@@ -1419,6 +1419,7 @@ export default function NutritionScreen() {
   const historyCardYsRef = useRef<Record<string, number>>({});
   const trendChartYRef = useRef<number>(0);
   const historyFilterBarYRef = useRef<number>(0);
+  const [historyFilterPanelOpen, setHistoryFilterPanelOpen] = useState(false);
   const { height: windowHeight } = useWindowDimensions();
   const scrollYRef = useRef<number>(0);
   const seenDatesRef = useRef<Set<string>>(new Set());
@@ -1452,6 +1453,7 @@ export default function NutritionScreen() {
     setTrendMetric("calories");
     setHighlightedDate(null);
     setActiveTab("today");
+    setHistoryFilterPanelOpen(false);
     setRecentScanCount(0);
   }, [dataResetCount]);
 
@@ -1746,7 +1748,7 @@ export default function NutritionScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "history") return;
+    if (!historyFilterPanelOpen) return;
     historyChipFadeAnims.forEach((anim) => anim.setValue(0));
     historyChipSlideAnims.forEach((anim) => anim.setValue(18));
     Animated.stagger(
@@ -1767,7 +1769,7 @@ export default function NutritionScreen() {
         ])
       )
     ).start();
-  }, [activeTab]);
+  }, [historyFilterPanelOpen]);
 
   useEffect(() => {
     if (activeTab !== "history") return;
@@ -3334,6 +3336,7 @@ export default function NutritionScreen() {
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setActiveTab("today");
+                      setHistoryFilterPanelOpen(false);
                     }}
                     style={[
                       styles.tabBtn,
@@ -3357,6 +3360,7 @@ export default function NutritionScreen() {
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setActiveTab("history");
+                      setHistoryFilterPanelOpen(true);
                     }}
                     style={[
                       styles.tabBtn,
@@ -4391,8 +4395,11 @@ export default function NutritionScreen() {
             {/* History view — shown when History tab is active */}
             {activeTab === "history" && (
               <>
-                {/* Filter bar */}
-                <View
+                {/* Filter bar — rendered via historyFilterPanelOpen so any future
+                    collapse/expand toggle can flip that boolean and the chip
+                    slide-in animation will replay automatically on every re-open. */}
+                {historyFilterPanelOpen && (
+                <><View
                   style={styles.historyFilterBar}
                   onLayout={(e) => {
                     historyFilterBarYRef.current = e.nativeEvent.layout.y;
@@ -4603,6 +4610,7 @@ export default function NutritionScreen() {
                     </Text>
                   </Animated.View>
                 )}
+                </>)}
 
                 {/* Calorie / macro trend chart */}
                 {trendChartDays.length > 0 && (
