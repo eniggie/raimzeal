@@ -157,15 +157,14 @@ export function CalorieTrendChart({
       const idx = days.findIndex((d) => d.date === date);
       if (idx === -1) return null;
       const day = days[idx];
-      if (day.value <= 0) return null;
-      const barH = Math.max(MIN_BAR_H, barAreaH * (day.value / maxVal));
+      const barH = day.value > 0 ? Math.max(MIN_BAR_H, barAreaH * (day.value / maxVal)) : MIN_BAR_H;
       const x = SIDE_PADDING + idx * (barW + barGap);
       const y = TOP_PADDING + barAreaH - barH;
       return {
         x: x + barW / 2,
         yTop: Math.max(TOP_PADDING - 2, y - 14),
         dateText: formatPillDate(date),
-        valueText: day.value.toLocaleString(),
+        valueText: day.value > 0 ? day.value.toLocaleString() : "No data",
       };
     },
     [days, barAreaH, maxVal, barW, barGap]
@@ -188,7 +187,7 @@ export function CalorieTrendChart({
     const info = computeLabelInfo(highlightedDate);
 
     if (!info) {
-      // Zero-value bar — fade out any existing label so stale data isn't shown
+      // Date not found in chart data — fade out any stale label
       Animated.timing(labelOpacity, {
         toValue: 0,
         duration: 150,
