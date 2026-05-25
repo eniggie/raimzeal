@@ -216,6 +216,7 @@ export default function HomeScreen() {
                 protein={proteinToday}
                 carbs={carbsToday}
                 fat={fatToday}
+                shouldAnimate={true}
               />
             </View>
           </View>
