@@ -982,20 +982,23 @@ export default function NutritionScreen() {
   const todayMeals = getTodayMeals();
   const { calories, protein, carbs, fat } = getTodayMacros();
 
+  const [recentlyStarredNames, setRecentlyStarredNames] = useState<Set<string>>(new Set());
+  const recentlyStarredTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
   const recentFoods = React.useMemo(() => {
     const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
     const seen = new Set<string>();
     const result: Omit<MealLog, "id" | "date">[] = [];
     const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const log of sortedLogs) {
-      if (!seen.has(log.name) && !favoriteNames.has(log.name)) {
+      if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name))) {
         seen.add(log.name);
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
       if (result.length >= 5) break;
     }
     return result;
-  }, [mealLogs, favoriteFoods]);
+  }, [mealLogs, favoriteFoods, recentlyStarredNames]);
 
   const historyDays = React.useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -4185,15 +4188,36 @@ export default function NutritionScreen() {
                           {displayRecentCalories}
                         </Text>
                         <TouchableOpacity
-                          onPress={isReordering ? undefined : () => handleToggleFavorite(food)}
+                          onPress={isReordering ? undefined : () => {
+                            const alreadyFavorited = isFavorite(food.name);
+                            if (!alreadyFavorited) {
+                              setRecentlyStarredNames((prev) => {
+                                const next = new Set(prev);
+                                next.add(food.name);
+                                return next;
+                              });
+                              if (recentlyStarredTimersRef.current[food.name]) {
+                                clearTimeout(recentlyStarredTimersRef.current[food.name]);
+                              }
+                              recentlyStarredTimersRef.current[food.name] = setTimeout(() => {
+                                delete recentlyStarredTimersRef.current[food.name];
+                                setRecentlyStarredNames((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(food.name);
+                                  return next;
+                                });
+                              }, 800);
+                            }
+                            handleToggleFavorite(food);
+                          }}
                           disabled={isReordering}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           style={[styles.starBtn, isReordering && { opacity: 0.35 }]}
                         >
                           <Ionicons
-                            name={isFavorite(food.name) ? "star" : "star-outline"}
+                            name={(isFavorite(food.name) || recentlyStarredNames.has(food.name)) ? "star" : "star-outline"}
                             size={18}
-                            color={isFavorite(food.name) ? "#f59f0a" : colors.mutedForeground}
+                            color={(isFavorite(food.name) || recentlyStarredNames.has(food.name)) ? "#f59f0a" : colors.mutedForeground}
                           />
                         </TouchableOpacity>
                       </TouchableOpacity>
