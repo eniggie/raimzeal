@@ -5683,6 +5683,20 @@ export default function NutritionScreen() {
                     </Text>
                   </View>
 
+                  {(() => {
+                    const total = item.protein + item.carbs + item.fat;
+                    const proteinPct = total > 0 ? item.protein / total : 1 / 3;
+                    const carbsPct   = total > 0 ? item.carbs   / total : 1 / 3;
+                    const fatPct     = total > 0 ? item.fat     / total : 1 / 3;
+                    return (
+                      <View style={styles.previewSheetMacroBar}>
+                        <View style={[styles.previewSheetMacroBarSegment, { flex: proteinPct, backgroundColor: "#3b82f6", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }]} />
+                        <View style={[styles.previewSheetMacroBarSegment, { flex: carbsPct,   backgroundColor: "#f97316" }]} />
+                        <View style={[styles.previewSheetMacroBarSegment, { flex: fatPct,     backgroundColor: "#ec4899", borderTopRightRadius: 6, borderBottomRightRadius: 6 }]} />
+                      </View>
+                    );
+                  })()}
+
                   <View style={[styles.previewSheetMacroGrid, { backgroundColor: colors.muted }]}>
                     <View style={styles.previewSheetMacroCell}>
                       <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
@@ -9122,6 +9136,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_400Regular",
     paddingBottom: 4,
+  },
+  previewSheetMacroBar: {
+    flexDirection: "row",
+    height: 10,
+    borderRadius: 6,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  previewSheetMacroBarSegment: {
+    height: "100%",
   },
   previewSheetMacroGrid: {
     flexDirection: "row",
