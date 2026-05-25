@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -293,6 +294,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [recentLoading, setRecentLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [notFoundBanner, setNotFoundBanner] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadRecentScans = useCallback(async () => {
     setRecentLoading(true);
@@ -312,6 +314,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setRefreshFailed(false);
       setActiveTab("scan");
       setNotFoundBanner(false);
+      setSearchQuery("");
       loadRecentScans();
     }
   }, [visible, loadRecentScans]);
@@ -448,8 +451,15 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setError(null);
       setCachedResult(null);
       setNotFoundBanner(false);
+      setSearchQuery("");
     }
   }
+
+  const filteredScans = searchQuery.trim()
+    ? recentScans.filter((s) =>
+        s.food.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : recentScans;
 
   if (Platform.OS === "web") {
     return (
@@ -719,6 +729,27 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       </Text>
                     </View>
                   )}
+                  {!recentLoading && recentScans.length > 0 && (
+                    <View style={styles.searchBarRow}>
+                      <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.searchIcon} />
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search recent scans…"
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        returnKeyType="search"
+                        clearButtonMode="while-editing"
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                      />
+                      {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                   {recentLoading ? (
                     <View style={styles.recentCenter}>
                       <ActivityIndicator color="#fff" size="large" />
@@ -738,16 +769,25 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <Text style={styles.recentScanNowText}>Scan a Product</Text>
                       </TouchableOpacity>
                     </View>
+                  ) : filteredScans.length === 0 ? (
+                    <View style={styles.recentCenter}>
+                      <Ionicons name="search-outline" size={40} color="rgba(255,255,255,0.35)" />
+                      <Text style={styles.recentEmptyTitle}>No results</Text>
+                      <Text style={styles.recentEmptySub}>
+                        No scans match "{searchQuery}". Try a different name.
+                      </Text>
+                    </View>
                   ) : (
                     <ScrollView
                       style={styles.recentList}
                       contentContainerStyle={styles.recentListContent}
                       showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
                     >
                       <Text style={styles.recentHint}>
                         Tap to add · Pencil to edit
                       </Text>
-                      {recentScans.map((scan) => (
+                      {filteredScans.map((scan) => (
                         <TouchableOpacity
                           key={scan.barcode}
                           onPress={() => handleSelectRecent(scan.food)}
@@ -1202,6 +1242,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Recent tab styles
+  searchBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  searchIcon: {
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
   recentPanel: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.55)",
