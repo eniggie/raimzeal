@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
+import { REORDER_HINT_STORAGE_KEY } from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useTier } from "@/hooks/useTier";
@@ -351,6 +352,30 @@ export default function ProfileScreen() {
     Alert.alert(
       "Hints Reset",
       "All one-time tips will reappear the next time you visit those sections."
+    );
+  }
+
+  function handleResetReorderHint() {
+    Alert.alert(
+      "Reset Reorder Hint",
+      "The favorites reorder reminder will reappear the next time you visit your favorites.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          onPress: async () => {
+            const { default: AsyncStorage } = await import(
+              "@react-native-async-storage/async-storage"
+            );
+            await AsyncStorage.removeItem(REORDER_HINT_STORAGE_KEY);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert(
+              "Reorder Hint Reset",
+              "The favorites reorder reminder will reappear on your next visit."
+            );
+          },
+        },
+      ]
     );
   }
 
@@ -1041,6 +1066,13 @@ export default function ProfileScreen() {
               sublabel="Re-show one-time tips for filters and reordering"
               color={colors.accent}
               onPress={handleResetHints}
+            />
+            <ActionRow
+              icon="swap-vertical-outline"
+              label="Reset reorder hint"
+              sublabel="Re-show the favorites drag-to-reorder reminder"
+              color={colors.accent}
+              onPress={handleResetReorderHint}
             />
             <ActionRow
               icon="refresh-circle-outline"
