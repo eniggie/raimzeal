@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -37,6 +39,7 @@ interface DayLog {
   date: string;
   flow?: FlowIntensity;
   symptoms: Symptom[];
+  bbt?: number;
 }
 
 interface CycleEntry {
@@ -162,6 +165,7 @@ export default function PeriodTrackerScreen() {
   const [logModalDate, setLogModalDate] = useState<string | null>(null);
   const [logFlow, setLogFlow] = useState<FlowIntensity | undefined>(undefined);
   const [logSymptoms, setLogSymptoms] = useState<Symptom[]>([]);
+  const [logBBT, setLogBBT] = useState("");
 
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [inputCycleLen, setInputCycleLen] = useState("28");
@@ -247,6 +251,7 @@ export default function PeriodTrackerScreen() {
     const existing = getDayLog(date);
     setLogFlow(existing?.flow);
     setLogSymptoms(existing?.symptoms ?? []);
+    setLogBBT(existing?.bbt != null ? String(existing.bbt) : "");
     setLogModalDate(date);
   }
 
@@ -324,7 +329,13 @@ export default function PeriodTrackerScreen() {
 
     const cycle = { ...cycles[targetIdx] };
     const existingIdx = cycle.dayLogs.findIndex((l) => l.date === logModalDate);
-    const newLog: DayLog = { date: logModalDate, flow: logFlow, symptoms: logSymptoms };
+    const bbtNum = parseFloat(logBBT);
+    const newLog: DayLog = {
+      date: logModalDate,
+      flow: logFlow,
+      symptoms: logSymptoms,
+      bbt: !isNaN(bbtNum) && bbtNum > 30 && bbtNum < 45 ? bbtNum : undefined,
+    };
     if (existingIdx >= 0) {
       cycle.dayLogs = [...cycle.dayLogs];
       cycle.dayLogs[existingIdx] = newLog;
@@ -662,6 +673,21 @@ export default function PeriodTrackerScreen() {
               })}
             </View>
 
+            <Text style={[styles.modalSection, { color: colors.mutedForeground }]}>BBT (Basal Body Temperature)</Text>
+            <View style={[styles.bbtRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <Ionicons name="thermometer-outline" size={18} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.bbtInput, { color: colors.foreground }]}
+                placeholder="e.g. 36.5"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="decimal-pad"
+                value={logBBT}
+                onChangeText={setLogBBT}
+                maxLength={5}
+              />
+              <Text style={[styles.bbtUnit, { color: colors.mutedForeground }]}>°C</Text>
+            </View>
+
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={[styles.modalCancel, { borderColor: colors.border }]}
@@ -850,6 +876,12 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   modalSave: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
   modalSaveText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  bbtRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 4,
+  },
+  bbtInput: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
+  bbtUnit: { fontSize: 14, fontFamily: "Inter_400Regular" },
 
   settingsLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
   settingsHint: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 8 },

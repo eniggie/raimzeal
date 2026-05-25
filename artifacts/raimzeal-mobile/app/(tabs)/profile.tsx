@@ -1218,13 +1218,6 @@ export default function ProfileScreen() {
               onPress={() => router.push("/calculators")}
             />
             <ActionRow
-              icon="flower-outline"
-              label="Period Tracker"
-              sublabel="Cycle · Symptoms · Fertile window"
-              color="#ec4899"
-              onPress={() => router.push("/period-tracker")}
-            />
-            <ActionRow
               icon="checkmark-circle-outline"
               label="Habit Tracker"
               sublabel="Daily habits · 7-day streaks"
@@ -1244,6 +1237,40 @@ export default function ProfileScreen() {
               sublabel="Daily stack · 7-day compliance"
               color="#f59e0b"
               onPress={() => router.push("/supplements")}
+              isLast
+            />
+          </GlassCard>
+
+          {/* Women's Health */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Women's Health</Text>
+          <GlassCard style={styles.actionsCard}>
+            <ActionRow
+              icon="flower-outline"
+              label="Period Tracker"
+              sublabel="Cycle · Symptoms · Fertile window · BBT"
+              color="#ec4899"
+              onPress={() => router.push("/period-tracker")}
+            />
+            <ActionRow
+              icon="rose-outline"
+              label="Women's Health Reminders"
+              sublabel="Breast exam · Pap smear · Mammogram"
+              color="#f43f5e"
+              onPress={() => router.push("/womens-health-reminders")}
+            />
+            <ActionRow
+              icon="analytics-outline"
+              label="PCOS Tracker"
+              sublabel="Daily symptoms · Pattern tracking · Rise+"
+              color="#8b5cf6"
+              onPress={() => router.push("/pcos-tracker")}
+            />
+            <ActionRow
+              icon="sunny-outline"
+              label="Menopause Tracker"
+              sublabel="Hot flashes · Night sweats · Mood · Rise+"
+              color="#f59e0b"
+              onPress={() => router.push("/menopause-tracker")}
               isLast
             />
           </GlassCard>
