@@ -29,6 +29,7 @@ import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useTier } from "@/hooks/useTier";
+import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -83,6 +84,7 @@ export default function ProfileScreen() {
   } = useFitness();
   const { signOut, user: authUser } = useAuth();
   const { tier } = useTier(authUser?.id ?? null);
+  const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
     cameraRollStatus,
@@ -963,6 +965,17 @@ export default function ProfileScreen() {
               }
               color={colors.accent}
               onPress={handlePickReorderHintFrequency}
+            />
+            <SettingToggleRow
+              icon="scale-outline"
+              label="Default to per-100g view"
+              sublabel="Show nutrition per 100g on search results by default"
+              color={colors.secondary}
+              value={defaultPer100g}
+              onValueChange={(v) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setDefaultPer100g(v);
+              }}
             />
             <SettingPickerRow
               icon="images-outline"

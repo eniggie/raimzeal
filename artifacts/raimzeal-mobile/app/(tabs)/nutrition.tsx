@@ -50,6 +50,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useTier } from "@/hooks/useTier";
+import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -1252,6 +1253,7 @@ export default function NutritionScreen() {
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
+  const [defaultPer100g] = usePer100gDefault();
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
@@ -2543,6 +2545,23 @@ export default function NutritionScreen() {
       if (abortRef.current) abortRef.current.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (!defaultPer100g) return;
+    setPer100gItems((prev) => {
+      const next = new Set(prev);
+      for (const item of searchResults) {
+        if (item._kind === "search") {
+          const canToggle = !!(item.servingLabel && item.nutrients100g);
+          if (canToggle) {
+            const itemKey = `${item.name}:${item.servingLabel ?? ""}:${item.calories}`;
+            next.add(itemKey);
+          }
+        }
+      }
+      return next;
+    });
+  }, [searchResults, defaultPer100g]);
 
   const isSearching = searchQuery.trim().length > 0;
 
