@@ -22,7 +22,27 @@ const CACHE_PREFIX = "barcode_cache_v1:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const RECENT_SCANS_KEY = "barcode_recent_scans_v1";
+const RECENT_LAST_VIEWED_KEY = "barcode_recent_last_viewed_v1";
 const MAX_RECENT_SCANS = 20;
+
+async function getRecentLastViewed(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_LAST_VIEWED_KEY);
+    if (!raw) return 0;
+    const ts = parseInt(raw, 10);
+    return isNaN(ts) ? 0 : ts;
+  } catch {
+    return 0;
+  }
+}
+
+async function setRecentLastViewed(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(RECENT_LAST_VIEWED_KEY, String(Date.now()));
+  } catch {
+    // Non-fatal
+  }
+}
 
 export interface RecentScan {
   barcode: string;
@@ -295,11 +315,22 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [notFoundBanner, setNotFoundBanner] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [hasNewScans, setHasNewScans] = useState(false);
 
-  const loadRecentScans = useCallback(async () => {
+  const loadRecentScans = useCallback(async (markViewed = false) => {
     setRecentLoading(true);
-    const data = await getRecentScans();
+    const [data, lastViewed] = await Promise.all([
+      getRecentScans(),
+      getRecentLastViewed(),
+    ]);
     setRecentScans(data);
+    if (markViewed) {
+      await setRecentLastViewed();
+      setHasNewScans(false);
+    } else {
+      const newest = data[0]?.scannedAt ?? 0;
+      setHasNewScans(newest > lastViewed);
+    }
     setRecentLoading(false);
   }, []);
 
@@ -315,6 +346,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setActiveTab("scan");
       setNotFoundBanner(false);
       setSearchQuery("");
+      setHasNewScans(false);
       loadRecentScans();
     }
   }, [visible, loadRecentScans]);
@@ -322,7 +354,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   // Reload recent scans when switching to the Recent tab
   useEffect(() => {
     if (activeTab === "recent") {
-      loadRecentScans();
+      loadRecentScans(true);
     }
   }, [activeTab, loadRecentScans]);
 
@@ -607,6 +639,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                   <Text style={[styles.tabText, activeTab === "recent" && styles.tabTextActive]}>
                     {recentScans.length > 0 ? `Recent · ${recentScans.length}` : "Recent"}
                   </Text>
+                  {hasNewScans && activeTab !== "recent" && (
+                    <View style={styles.newScanDot} />
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -1396,5 +1431,13 @@ const styles = StyleSheet.create({
   },
   recentActionBtn: {
     padding: 4,
+  },
+  newScanDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#a3e635",
+    marginLeft: 2,
+    alignSelf: "center",
   },
 });
