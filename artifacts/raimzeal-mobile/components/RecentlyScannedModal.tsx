@@ -14,6 +14,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import {
   getRecentScans,
@@ -24,6 +25,8 @@ import {
   ScannedFood,
 } from "@/components/BarcodeScannerModal";
 import { ScanEditSheet } from "@/components/ScanEditSheet";
+
+const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 
 interface Props {
   visible: boolean;
@@ -251,8 +254,23 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   const loadScans = useCallback(async () => {
     setLoading(true);
-    const data = await getRecentScans();
+    const [data, viewRaw] = await Promise.all([
+      getRecentScans(),
+      AsyncStorage.getItem(LAST_USED_VIEW_KEY).catch(() => null),
+    ]);
     setScans(data);
+
+    let viewMap: Record<string, boolean> = {};
+    try { viewMap = viewRaw ? JSON.parse(viewRaw) : {}; } catch { /* ignore */ }
+    const restoredPer100g = new Set<string>();
+    for (const scan of data) {
+      const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+      if (canToggle && viewMap[scan.food.name] === true) {
+        restoredPer100g.add(scan.barcode);
+      }
+    }
+    setPer100gScans(restoredPer100g);
+
     setLoading(false);
   }, []);
 

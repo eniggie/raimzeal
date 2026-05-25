@@ -990,7 +990,7 @@ export default function NutritionScreen() {
     for (const log of sortedLogs) {
       if (!seen.has(log.name) && !favoriteNames.has(log.name)) {
         seen.add(log.name);
-        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}) });
+        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
       if (result.length >= 5) break;
     }
@@ -1262,6 +1262,7 @@ export default function NutritionScreen() {
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
+  const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
   const [defaultPer100g] = usePer100gDefault();
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
@@ -1672,6 +1673,24 @@ export default function NutritionScreen() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (recentFoods.length === 0) return;
+    AsyncStorage.getItem(LAST_USED_VIEW_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        let map: Record<string, boolean> = {};
+        try { map = JSON.parse(raw); } catch { return; }
+        const initial = new Set<string>();
+        for (const food of recentFoods) {
+          if (food.nutrients100g && food.servingLabel && map[food.name] === true) {
+            initial.add(food.name);
+          }
+        }
+        setRecentFoodsPer100g(initial);
+      })
+      .catch(() => {});
+  }, [recentFoods]);
 
   useEffect(() => {
     if (quickGramsHintShownRef.current) return;
@@ -2974,9 +2993,21 @@ export default function NutritionScreen() {
       setSelectedFoodIsApiResult(false);
       setSelectedFoodNutrients100g(food.nutrients100g);
       setSelectedFoodUnit("g");
-      setModalShowPer100g(false);
       setGrams("100");
       setGramsPreFillHint(null);
+
+      let restoredPer100g = false;
+      try {
+        const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+        if (raw) {
+          let map: Record<string, boolean> = {};
+          try { map = JSON.parse(raw); } catch { /* ignore */ }
+          if (map[food.name] !== undefined) restoredPer100g = map[food.name];
+        }
+      } catch {
+        // ignore
+      }
+      setModalShowPer100g(restoredPer100g);
     } else {
       setSelectedFood(food);
       setSelectedFoodServingLabel(undefined);
@@ -4040,7 +4071,22 @@ export default function NutritionScreen() {
                     <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                       Recent Foods
                     </Text>
-                    {recentFoods.map((food, idx) => (
+                    {recentFoods.map((food, idx) => {
+                      const canToggleRecent = !!(food.nutrients100g && food.servingLabel);
+                      const showingRecent100g = canToggleRecent && recentFoodsPer100g.has(food.name);
+                      const displayRecentCalories = showingRecent100g ? food.nutrients100g!.calories : food.calories;
+                      const displayRecentProtein = showingRecent100g ? food.nutrients100g!.protein : food.protein;
+                      const displayRecentCarbs = showingRecent100g ? food.nutrients100g!.carbs : food.carbs;
+                      const displayRecentFat = showingRecent100g ? food.nutrients100g!.fat : food.fat;
+                      const recentPillLabel = showingRecent100g
+                        ? "per 100g"
+                        : food.amountGrams !== undefined
+                        ? `per ${Number.isInteger(food.amountGrams) ? food.amountGrams : food.amountGrams.toFixed(1)}g`
+                        : food.servingLabel
+                        ? `per ${food.servingLabel}`
+                        : "per serving";
+
+                      return (
                       <TouchableOpacity
                         key={`recent-${food.name}-${idx}`}
                         activeOpacity={0.8}
@@ -4083,18 +4129,36 @@ export default function NutritionScreen() {
                             {food.name}
                           </Text>
                           <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                            P {food.protein}g · C {food.carbs}g · F {food.fat}g
+                            P {displayRecentProtein}g · C {displayRecentCarbs}g · F {displayRecentFat}g
                           </Text>
-                          <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
+                          <TouchableOpacity
+                            activeOpacity={canToggleRecent ? 0.7 : 1}
+                            onPress={canToggleRecent ? (e) => {
+                              e.stopPropagation();
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setRecentFoodsPer100g((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(food.name)) next.delete(food.name);
+                                else next.add(food.name);
+                                return next;
+                              });
+                            } : undefined}
+                            style={[
+                              styles.servingPill,
+                              { backgroundColor: colors.primary + "18" },
+                              canToggleRecent && { paddingRight: 6 },
+                            ]}
+                          >
                             <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                              {food.amountGrams !== undefined
-                                ? `per ${Number.isInteger(food.amountGrams) ? food.amountGrams : food.amountGrams.toFixed(1)}g`
-                                : "per serving"}
+                              {recentPillLabel}
                             </Text>
-                          </View>
+                            {canToggleRecent && (
+                              <Ionicons name="swap-horizontal-outline" size={11} color={colors.primary} style={{ marginLeft: 3 }} />
+                            )}
+                          </TouchableOpacity>
                         </View>
                         <Text style={[styles.foodCal, { color: colors.primary }]}>
-                          {food.calories}
+                          {displayRecentCalories}
                         </Text>
                         <TouchableOpacity
                           onPress={isReordering ? undefined : () => handleToggleFavorite(food)}
@@ -4109,7 +4173,8 @@ export default function NutritionScreen() {
                           />
                         </TouchableOpacity>
                       </TouchableOpacity>
-                    ))}
+                      );
+                    })}
                   </>
                 )}
 
