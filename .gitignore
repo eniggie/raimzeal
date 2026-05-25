@@ -49,3 +49,7 @@ Thumbs.db
 .local/
 *.local
 *.env.local
+
+# Never commit service account keys or sensitive JSON
+attached_assets/*.json
+attached_assets/*.pdf
