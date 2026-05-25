@@ -6733,15 +6733,20 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
               Edit Meal
             </Text>
 
-            <Text
-              numberOfLines={2}
+            <Text style={[styles.editFieldLabel, { color: colors.mutedForeground }]}>Name</Text>
+            <TextInput
+              value={editForm.name}
+              onChangeText={(text) => setEditForm(f => ({ ...f, name: text }))}
+              placeholder="Meal name"
+              placeholderTextColor={colors.mutedForeground}
+              returnKeyType="done"
+              selectTextOnFocus
+              maxLength={120}
               style={[
                 styles.editFoodNameLabel,
                 { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
               ]}
-            >
-              {editForm.name}
-            </Text>
+            />
 
             {log.nutrients100g !== undefined && (
               <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
@@ -7337,15 +7342,20 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
               Edit Meal
             </Text>
 
-            <Text
-              numberOfLines={2}
+            <Text style={[styles.editFieldLabel, { color: colors.mutedForeground }]}>Name</Text>
+            <TextInput
+              value={editForm.name}
+              onChangeText={(text) => setEditForm(f => ({ ...f, name: text }))}
+              placeholder="Meal name"
+              placeholderTextColor={colors.mutedForeground}
+              returnKeyType="done"
+              selectTextOnFocus
+              maxLength={120}
               style={[
                 styles.editFoodNameLabel,
                 { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
               ]}
-            >
-              {editForm.name}
-            </Text>
+            />
 
             {log.nutrients100g !== undefined && (
               <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
@@ -8133,6 +8143,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     flex: 1,
   },
+  editFieldLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    marginTop: 2,
+  },
   editFoodNameLabel: {
     fontSize: 15,
     fontFamily: "Inter_500Medium",
@@ -8140,7 +8158,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 2,
+    marginBottom: 8,
   },
   editRefLine: {
     fontSize: 12,
