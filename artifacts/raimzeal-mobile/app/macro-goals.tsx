@@ -1,5 +1,5 @@
-import { useRouter, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -46,6 +46,16 @@ export default function MacroGoalsScreen() {
   const [protein, setProtein] = useState(goals.protein.toString());
   const [carbs, setCarbs] = useState(goals.carbs.toString());
   const [fat, setFat] = useState(goals.fat.toString());
+
+  // Force a re-render whenever this screen comes back into focus so the
+  // suggestion banner always reflects the latest profile data (e.g. after
+  // the user saves edits in the Edit Profile screen and navigates back).
+  const [, setFocusTick] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((t) => t + 1);
+    }, [])
+  );
 
   const scrollRef = useRef<ScrollView>(null);
   const inputRefs = useRef<Record<string, TextInput | null>>({});
