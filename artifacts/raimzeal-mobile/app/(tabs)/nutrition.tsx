@@ -6608,16 +6608,18 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     setEditForm(f => ({ ...f, [field]: text }));
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
-      const newBase = { ...editBase, [field]: n };
-      setEditBase(newBase);
-      if (editGrams !== undefined && editGrams > 0) {
-        perGramRef.current = {
-          calories: newBase.calories / editGrams,
-          protein: newBase.protein / editGrams,
-          carbs: newBase.carbs / editGrams,
-          fat: newBase.fat / editGrams,
-        };
-      }
+      setEditBase(prev => {
+        const newBase = { ...prev, [field]: n };
+        if (editGrams !== undefined && editGrams > 0) {
+          perGramRef.current = {
+            calories: newBase.calories / editGrams,
+            protein: newBase.protein / editGrams,
+            carbs: newBase.carbs / editGrams,
+            fat: newBase.fat / editGrams,
+          };
+        }
+        return newBase;
+      });
     }
   }
 
@@ -6625,14 +6627,18 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     const name = editForm.name.trim();
     if (!name) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const savedBase = editBase;
+    const savedServings = editServings;
+    const savedMealType = editMealType;
+    const savedGrams = editGrams;
     updateMealLog(log.id, {
       name,
-      calories: Math.round(editBase.calories * editServings),
-      protein: Math.round(editBase.protein * editServings * 10) / 10,
-      carbs: Math.round(editBase.carbs * editServings * 10) / 10,
-      fat: Math.round(editBase.fat * editServings * 10) / 10,
-      mealType: editMealType,
-      amountGrams: editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined,
+      calories: Math.round(savedBase.calories * savedServings),
+      protein: Math.round(savedBase.protein * savedServings * 10) / 10,
+      carbs: Math.round(savedBase.carbs * savedServings * 10) / 10,
+      fat: Math.round(savedBase.fat * savedServings * 10) / 10,
+      mealType: savedMealType,
+      amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     });
     setShowEditSheet(false);
   }
@@ -7225,16 +7231,18 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     setEditForm(f => ({ ...f, [field]: text }));
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
-      const newBase = { ...editBase, [field]: n };
-      setEditBase(newBase);
-      if (editGrams !== undefined && editGrams > 0) {
-        perGramRef.current = {
-          calories: newBase.calories / editGrams,
-          protein: newBase.protein / editGrams,
-          carbs: newBase.carbs / editGrams,
-          fat: newBase.fat / editGrams,
-        };
-      }
+      setEditBase(prev => {
+        const newBase = { ...prev, [field]: n };
+        if (editGrams !== undefined && editGrams > 0) {
+          perGramRef.current = {
+            calories: newBase.calories / editGrams,
+            protein: newBase.protein / editGrams,
+            carbs: newBase.carbs / editGrams,
+            fat: newBase.fat / editGrams,
+          };
+        }
+        return newBase;
+      });
     }
   }
 
@@ -7242,14 +7250,18 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     const name = editForm.name.trim();
     if (!name) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const savedBase = editBase;
+    const savedServings = editServings;
+    const savedMealType = editMealType;
+    const savedGrams = editGrams;
     updateMealLog(log.id, {
       name,
-      calories: Math.round(editBase.calories * editServings),
-      protein: Math.round(editBase.protein * editServings * 10) / 10,
-      carbs: Math.round(editBase.carbs * editServings * 10) / 10,
-      fat: Math.round(editBase.fat * editServings * 10) / 10,
-      mealType: editMealType,
-      amountGrams: editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined,
+      calories: Math.round(savedBase.calories * savedServings),
+      protein: Math.round(savedBase.protein * savedServings * 10) / 10,
+      carbs: Math.round(savedBase.carbs * savedServings * 10) / 10,
+      fat: Math.round(savedBase.fat * savedServings * 10) / 10,
+      mealType: savedMealType,
+      amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     });
     setShowEditSheet(false);
   }
