@@ -226,34 +226,34 @@ title = "7\" Tablet — Progress"
 id = "3k25Il5X7ZmbDxEU0ixE8"
 uri = "file://screenshots/tablet10_01_dashboard.png"
 type = "image"
-title = "10\" Tablet — Dashboard"
+title = "10\" Tablet — Dashboard (1080×1440)"
 
 [[outputs]]
 id = "gY5TFkga7IN2FVh19gf08"
 uri = "file://screenshots/tablet10_02_workouts.png"
 type = "image"
-title = "10\" Tablet — Workout Library"
+title = "10\" Tablet — Workouts (1080×1440)"
 
 [[outputs]]
 id = "kj2WwQoopTBzCsAijcjEg"
 uri = "file://screenshots/tablet10_03_coach.png"
 type = "image"
-title = "10\" Tablet — AI Coach"
+title = "10\" Tablet — AI Coach (1080×1440)"
 
 [[outputs]]
 id = "cDPg1A7DSZhin119mXQ9z"
 uri = "file://screenshots/chromebook_01_dashboard.png"
 type = "image"
-title = "Chromebook — Dashboard"
+title = "Chromebook — Dashboard (1920×1080)"
 
 [[outputs]]
 id = "ML86wSPI1xO2lKhFaxdA6"
 uri = "file://screenshots/chromebook_02_nutrition.png"
 type = "image"
-title = "Chromebook — Nutrition"
+title = "Chromebook — Nutrition (1920×1080)"
 
 [[outputs]]
 id = "xQXKCDUQoUceyisBIXeDb"
 uri = "file://screenshots/chromebook_03_progress.png"
 type = "image"
-title = "Chromebook — Progress"
+title = "Chromebook — Progress (1920×1080)"
