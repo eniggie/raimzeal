@@ -6983,16 +6983,31 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
               const mismatch =
                 statedKcal > 0 &&
                 Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              const perServing = editBase.protein * 4 + editBase.carbs * 4 + editBase.fat * 9;
               return (
-                <Text
-                  style={[
-                    styles.macroCalHint,
-                    { color: mismatch ? "#f59e0b" : colors.mutedForeground },
-                  ]}
-                >
-                  ~{macroKcal} kcal from macros
-                  {mismatch ? "  ⚠ doesn't match stated calories" : ""}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <Text
+                    style={[
+                      styles.macroCalHint,
+                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                    ]}
+                  >
+                    ~{macroKcal} kcal from macros
+                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                  </Text>
+                  {mismatch && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const rounded = Math.round(perServing);
+                        setEditBase(prev => ({ ...prev, calories: rounded }));
+                        setEditForm(prev => ({ ...prev, calories: String(rounded) }));
+                      }}
+                      style={{ backgroundColor: "#f59e0b22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b66" }}
+                    >
+                      <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               );
             })()}
 
@@ -7600,16 +7615,31 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
               const mismatch =
                 statedKcal > 0 &&
                 Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              const perServing = editBase.protein * 4 + editBase.carbs * 4 + editBase.fat * 9;
               return (
-                <Text
-                  style={[
-                    styles.macroCalHint,
-                    { color: mismatch ? "#f59e0b" : colors.mutedForeground },
-                  ]}
-                >
-                  ~{macroKcal} kcal from macros
-                  {mismatch ? "  ⚠ doesn't match stated calories" : ""}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <Text
+                    style={[
+                      styles.macroCalHint,
+                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                    ]}
+                  >
+                    ~{macroKcal} kcal from macros
+                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                  </Text>
+                  {mismatch && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        const rounded = Math.round(perServing);
+                        setEditBase(prev => ({ ...prev, calories: rounded }));
+                        setEditForm(prev => ({ ...prev, calories: String(rounded) }));
+                      }}
+                      style={{ backgroundColor: "#f59e0b22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b66" }}
+                    >
+                      <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               );
             })()}
 
