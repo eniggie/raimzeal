@@ -29,6 +29,9 @@ const RISE_FEATURES = [
   'Advanced nutrition analytics',
   'Extended workout history (unlimited)',
   'Weekly Ovia AI coaching digest email',
+  'PCOS Symptom Tracker (daily log & pattern analysis)',
+  'Menopause Symptom Tracker (14 symptoms, stage tracking)',
+  "Women's Health Reminders (screenings & self-checks)",
 ];
 
 const REIGN_FEATURES = [

@@ -422,7 +422,7 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
     "HEALTH INSIGHT:", insightObj.insight, `Learn more: ${insightObj.link}`, "",
     "RESOURCE OF THE WEEK:", `${resource.name}`, resource.desc, resource.url, "",
     "Open the app: https://www.raimzeal.com",
-    "Visit us: https://www.raimzeal.com",
+    "RAIMZY resources: https://linktr.ee/Raimzy",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -451,7 +451,7 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
     "🥗 Plan your next meal with intention",
     "",
     "Open the app: https://www.raimzeal.com",
-    "Visit us: https://www.raimzeal.com",
+    "RAIMZY resources: https://linktr.ee/Raimzy",
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -513,7 +513,7 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
   try {
     await transporter.sendMail({
       from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`, to, subject,
-      text: `${bodyText}\n\nOpen the app: https://www.raimzeal.com\nVisit us: https://www.raimzeal.com\n\n— Your Ovia AI Coach · RAIMZEAL`,
+      text: `${bodyText}\n\nOpen the app: https://www.raimzeal.com\nRAIMZY resources: https://linktr.ee/Raimzy\n\n— Your Ovia AI Coach · RAIMZEAL`,
       html: buildSimpleHtmlEmail(subject, bodyText.replace(/\n/g, "<br />")),
     });
     req.log.info({ to, type }, "Email sent"); res.json({ success: true, message: "Email sent." });

@@ -49,6 +49,32 @@ function derivePeriodEnd(sub: Stripe.Subscription): number | undefined {
   return computed;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * When a subscriber downgrades to Foundation (subscription canceled or expired),
+ * deactivate them in digest_subscribers so they stop receiving paid-tier emails.
+ * Looks up the user's email via their stripe_customer_id in profiles.
+ */
+async function deactivateDigestForCustomer(customerId: string): Promise<void> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("stripe_customer_id", customerId)
+      .maybeSingle();
+    if (data?.email) {
+      await supabaseAdmin
+        .from("digest_subscribers")
+        .update({ active: false })
+        .eq("email", data.email);
+      logger.info({ customerId, email: data.email }, "Digest subscription deactivated — user downgraded to Foundation");
+    }
+  } catch (err) {
+    logger.warn({ customerId, err }, "Could not deactivate digest for downgraded user — non-fatal");
+  }
+}
+
 // ─── Idempotency ─────────────────────────────────────────────────────────────
 // Every incoming Stripe event is recorded in stripe_webhook_events by its
 // event.id (e.g. "evt_1Abc..."). If the same event arrives twice (Stripe
@@ -132,6 +158,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
           current_period_end: null,
         }).eq("stripe_customer_id", customerId);
 
+        await deactivateDigestForCustomer(customerId);
         logger.info({ customerId, status: sub.status }, "Subscription expired/unpaid — reverted to foundation");
       } else {
         // incomplete or past_due: payment pending/in-grace-period — update status only, no tier change
@@ -154,6 +181,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
         current_period_end: null,
       }).eq("stripe_customer_id", customerId);
 
+      await deactivateDigestForCustomer(customerId);
       logger.info({ customerId }, "Subscription canceled — downgraded to Foundation");
       break;
     }
