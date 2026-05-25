@@ -472,9 +472,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         s.barcode === editTarget.barcode ? { ...s, food: updated } : s
       )
     );
-    setEditTarget(null);
     onFoodFound(updated);
-    handleClose();
   }
 
   function handleSwitchTab(tab: ActiveTab) {

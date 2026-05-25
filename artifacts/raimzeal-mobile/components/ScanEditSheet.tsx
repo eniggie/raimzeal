@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -40,6 +41,10 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
 
+  const [loggedToast, setLoggedToast] = useState(false);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (food && visible) {
       setName(food.name);
@@ -67,10 +72,24 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
     onSave(buildUpdated());
   }
 
+  function showLoggedToast() {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setLoggedToast(true);
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.delay(1600),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
+    ]).start(() => {
+      setLoggedToast(false);
+    });
+    toastTimerRef.current = setTimeout(() => setLoggedToast(false), 2200);
+  }
+
   function handleSaveAndAdd() {
     if (!name.trim() || !onSaveAndAdd) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onSaveAndAdd(buildUpdated());
+    showLoggedToast();
   }
 
   const canSave = name.trim().length > 0;
@@ -101,6 +120,16 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
           ]}
         >
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
+
+          {loggedToast && (
+            <Animated.View
+              style={[styles.loggedToast, { opacity: toastOpacity }]}
+              pointerEvents="none"
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Text style={styles.loggedToastText}>Food logged!</Text>
+            </Animated.View>
+          )}
 
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -385,6 +414,29 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  loggedToast: {
+    position: "absolute",
+    top: 60,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  loggedToastText: {
+    color: "#fff",
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
 });

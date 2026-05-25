@@ -370,9 +370,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
         s.barcode === editTarget.barcode ? { ...s, food: updated } : s
       )
     );
-    setEditTarget(null);
     onFoodFound(updated);
-    onClose();
   }
 
   function handleClearAll() {
