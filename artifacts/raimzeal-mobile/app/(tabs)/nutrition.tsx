@@ -976,7 +976,8 @@ export default function NutritionScreen() {
     const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
     const seen = new Set<string>();
     const result: Omit<MealLog, "id" | "date">[] = [];
-    for (const log of mealLogs) {
+    const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    for (const log of sortedLogs) {
       if (!seen.has(log.name) && !favoriteNames.has(log.name)) {
         seen.add(log.name);
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}) });
