@@ -1218,6 +1218,13 @@ export default function ProfileScreen() {
               onPress={() => router.push("/calculators")}
             />
             <ActionRow
+              icon="flower-outline"
+              label="Period Tracker"
+              sublabel="Cycle · Symptoms · Fertile window"
+              color="#ec4899"
+              onPress={() => router.push("/period-tracker")}
+            />
+            <ActionRow
               icon="checkmark-circle-outline"
               label="Habit Tracker"
               sublabel="Daily habits · 7-day streaks"
