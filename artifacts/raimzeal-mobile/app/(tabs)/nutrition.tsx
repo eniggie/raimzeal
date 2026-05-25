@@ -5162,6 +5162,44 @@ export default function NutritionScreen() {
               />
             </View>
 
+            {(() => {
+              const protein = parseFloat(manualForm.protein) || 0;
+              const carbs = parseFloat(manualForm.carbs) || 0;
+              const fat = parseFloat(manualForm.fat) || 0;
+              const calories = parseFloat(manualForm.calories) || 0;
+              const macroKcal = Math.round(protein * 4 + carbs * 4 + fat * 9);
+              const statedKcal = Math.round(calories);
+              const hasAnyMacro = protein > 0 || carbs > 0 || fat > 0;
+              const mismatch =
+                hasAnyMacro &&
+                statedKcal > 0 &&
+                Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              if (!hasAnyMacro) return null;
+              return (
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                  <Text
+                    style={[
+                      styles.macroCalHint,
+                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                    ]}
+                  >
+                    ~{macroKcal} kcal from macros
+                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                  </Text>
+                  {mismatch && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setManualForm((f) => ({ ...f, calories: String(macroKcal) }));
+                      }}
+                      style={{ backgroundColor: "#f59e0b22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b66" }}
+                    >
+                      <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
+
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Add to meal
             </Text>
