@@ -77,14 +77,22 @@ const MEAL_COLORS: Record<MealType, string> = {
 };
 
 const QUICK_FOODS: Omit<MealLog, "id" | "date">[] = [
-  { name: "Protein Shake", calories: 180, protein: 25, carbs: 10, fat: 4, mealType: "breakfast" },
-  { name: "Chicken Breast (150g)", calories: 248, protein: 46, carbs: 0, fat: 5, mealType: "lunch" },
-  { name: "Brown Rice (1 cup)", calories: 215, protein: 5, carbs: 45, fat: 2, mealType: "lunch" },
-  { name: "Greek Yogurt", calories: 130, protein: 17, carbs: 8, fat: 3, mealType: "snack" },
-  { name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0, mealType: "snack" },
-  { name: "Almonds (30g)", calories: 174, protein: 6, carbs: 6, fat: 15, mealType: "snack" },
-  { name: "Oatmeal (1 cup)", calories: 147, protein: 5, carbs: 27, fat: 3, mealType: "breakfast" },
-  { name: "Salmon Fillet (150g)", calories: 312, protein: 43, carbs: 0, fat: 15, mealType: "dinner" },
+  { name: "Protein Shake", calories: 180, protein: 25, carbs: 10, fat: 4, mealType: "breakfast",
+    servingLabel: "1 scoop (35g)", nutrients100g: { calories: 514, protein: 71, carbs: 29, fat: 11 } },
+  { name: "Chicken Breast (150g)", calories: 248, protein: 46, carbs: 0, fat: 5, mealType: "lunch",
+    servingLabel: "1 serving (150g)", nutrients100g: { calories: 165, protein: 31, carbs: 0, fat: 3 } },
+  { name: "Brown Rice (1 cup)", calories: 215, protein: 5, carbs: 45, fat: 2, mealType: "lunch",
+    servingLabel: "1 cup (195g)", nutrients100g: { calories: 110, protein: 3, carbs: 23, fat: 1 } },
+  { name: "Greek Yogurt", calories: 130, protein: 17, carbs: 8, fat: 3, mealType: "snack",
+    servingLabel: "1 container (170g)", nutrients100g: { calories: 76, protein: 10, carbs: 5, fat: 2 } },
+  { name: "Banana", calories: 89, protein: 1, carbs: 23, fat: 0, mealType: "snack",
+    servingLabel: "1 medium (118g)", nutrients100g: { calories: 75, protein: 1, carbs: 20, fat: 0 } },
+  { name: "Almonds (30g)", calories: 174, protein: 6, carbs: 6, fat: 15, mealType: "snack",
+    servingLabel: "1 oz (30g)", nutrients100g: { calories: 580, protein: 20, carbs: 20, fat: 50 } },
+  { name: "Oatmeal (1 cup)", calories: 147, protein: 5, carbs: 27, fat: 3, mealType: "breakfast",
+    servingLabel: "1 cup cooked (240g)", nutrients100g: { calories: 61, protein: 2, carbs: 11, fat: 1 } },
+  { name: "Salmon Fillet (150g)", calories: 312, protein: 43, carbs: 0, fat: 15, mealType: "dinner",
+    servingLabel: "1 fillet (150g)", nutrients100g: { calories: 208, protein: 29, carbs: 0, fat: 10 } },
 ];
 
 const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -2960,6 +2968,15 @@ export default function NutritionScreen() {
       setModalShowPer100g(false);
       setGrams(String(gramValue));
       setGramsPreFillHint(String(gramValue));
+    } else if (food.nutrients100g && food.servingLabel) {
+      setSelectedFood(food);
+      setSelectedFoodServingLabel(food.servingLabel);
+      setSelectedFoodIsApiResult(false);
+      setSelectedFoodNutrients100g(food.nutrients100g);
+      setSelectedFoodUnit("g");
+      setModalShowPer100g(false);
+      setGrams("100");
+      setGramsPreFillHint(null);
     } else {
       setSelectedFood(food);
       setSelectedFoodServingLabel(undefined);
