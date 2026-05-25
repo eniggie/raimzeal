@@ -1,0 +1,18 @@
+# Exclude monorepo workspace folders that aren't needed for the EAS build
+../../node_modules
+../../lib
+../../artifacts/raimzeal
+../../artifacts/api-server
+../../artifacts/mockup-sandbox
+../../scripts
+../../.local
+
+# Local build/cache artifacts
+.expo
+dist
+static-build
+google-play-service-account.json
+
+# Dev files
+*.log
+.env
