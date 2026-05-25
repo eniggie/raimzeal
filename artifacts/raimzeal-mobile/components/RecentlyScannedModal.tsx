@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,7 @@ import {
 import { ScanEditSheet } from "@/components/ScanEditSheet";
 
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view_v2";
+const SWIPE_HINT_KEY = "@scan_swipe_hint_v1";
 
 async function saveViewPreference(barcode: string, per100g: boolean): Promise<void> {
   try {
@@ -88,6 +89,7 @@ interface ScanRowProps {
   onLongPress: () => void;
   onRemove: () => void;
   onToggle100g: () => void;
+  runHintAnimation?: boolean;
 }
 
 function ScanRow({
@@ -99,8 +101,21 @@ function ScanRow({
   onLongPress,
   onRemove,
   onToggle100g,
+  runHintAnimation,
 }: ScanRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
+
+  useEffect(() => {
+    if (!runHintAnimation) return;
+    const timer = setTimeout(() => {
+      swipeableRef.current?.openRight();
+      const closeTimer = setTimeout(() => {
+        swipeableRef.current?.close();
+      }, 600);
+      return () => clearTimeout(closeTimer);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [runHintAnimation]);
 
   const displayCalories = showing100g
     ? scan.food.nutrients100g!.calories
@@ -287,12 +302,15 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [loading, setLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
+  const [runSwipeHint, setRunSwipeHint] = useState(false);
 
   const loadScans = useCallback(async () => {
     setLoading(true);
-    const [data, viewRaw] = await Promise.all([
+    setRunSwipeHint(false);
+    const [data, viewRaw, hintRaw] = await Promise.all([
       getRecentScans(),
       AsyncStorage.getItem(LAST_USED_VIEW_KEY).catch(() => null),
+      AsyncStorage.getItem(SWIPE_HINT_KEY).catch(() => null),
     ]);
     setScans(data);
 
@@ -306,6 +324,11 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
       }
     }
     setPer100gScans(restoredPer100g);
+
+    if (!hintRaw && data.length > 0) {
+      setRunSwipeHint(true);
+      AsyncStorage.setItem(SWIPE_HINT_KEY, "1").catch(() => {});
+    }
 
     setLoading(false);
   }, []);
@@ -509,9 +532,9 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Tap to add · Swipe left to delete · Pencil to edit
+                Tap to add · Pencil to edit
               </Text>
-              {scans.map((scan) => {
+              {scans.map((scan, index) => {
                 const canToggle = !!(
                   scan.food.servingLabel && scan.food.nutrients100g
                 );
@@ -527,6 +550,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                     onSelect={() => handleSelect(scan, showing100g)}
                     onLongPress={() => handleLongPress(scan)}
                     onRemove={() => handleRemove(scan.barcode)}
+                    runHintAnimation={index === 0 && runSwipeHint}
                     onToggle100g={() =>
                       setPer100gScans((prev) => {
                         const next = new Set(prev);
