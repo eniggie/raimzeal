@@ -111,6 +111,8 @@ export default function ProfileScreen() {
   const [showUndoWindowModal, setShowUndoWindowModal] = useState(false);
   const [undoWindowInput, setUndoWindowInput] = useState("");
 
+  const [mealDefaultsCount, setMealDefaultsCount] = useState<number | null>(null);
+
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
   const [showFlashOverlay, setShowFlashOverlay] = useState(false);
@@ -393,6 +395,28 @@ export default function ProfileScreen() {
     );
   }
 
+  async function loadMealDefaultsCount() {
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      const [gramsRaw, mealRaw] = await Promise.all([
+        AsyncStorage.getItem(LAST_USED_GRAMS_KEY),
+        AsyncStorage.getItem(LAST_USED_MEAL_KEY),
+      ]);
+      const gramsMap: Record<string, unknown> = gramsRaw ? JSON.parse(gramsRaw) : {};
+      const mealMap: Record<string, unknown> = mealRaw ? JSON.parse(mealRaw) : {};
+      const foodNames = new Set([...Object.keys(gramsMap), ...Object.keys(mealMap)]);
+      setMealDefaultsCount(foodNames.size);
+    } catch {
+      setMealDefaultsCount(null);
+    }
+  }
+
+  useEffect(() => {
+    loadMealDefaultsCount();
+  }, []);
+
   function handleClearMealDefaults() {
     Alert.alert(
       "Clear Remembered Defaults",
@@ -411,6 +435,7 @@ export default function ProfileScreen() {
                 AsyncStorage.removeItem(LAST_USED_GRAMS_KEY),
                 AsyncStorage.removeItem(LAST_USED_MEAL_KEY),
               ]);
+              setMealDefaultsCount(0);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert(
                 "Defaults Cleared",
@@ -1007,7 +1032,13 @@ export default function ProfileScreen() {
             <ActionRow
               icon="refresh-circle-outline"
               label="Clear remembered meal defaults"
-              sublabel="Reset saved grams & meal type for all foods"
+              sublabel={
+                mealDefaultsCount === null
+                  ? "Reset saved grams & meal type for all foods"
+                  : mealDefaultsCount === 0
+                  ? "No saved defaults"
+                  : `${mealDefaultsCount} ${mealDefaultsCount === 1 ? "food has" : "foods have"} saved grams or meal type`
+              }
               color={colors.warning}
               onPress={handleClearMealDefaults}
             />
