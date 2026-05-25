@@ -4034,18 +4034,16 @@ export default function NutritionScreen() {
                               onPress={() => handleAddFood(food)}
                               onLongPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                const options: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [
-                                  { text: "Cancel", style: "cancel" },
-                                  {
-                                    text: "Reset Defaults",
-                                    style: "destructive",
-                                    onPress: () => handleResetFoodDefaults(food.name),
-                                  },
-                                ];
-                                if (favoriteFoods.length > 1) {
-                                  options.splice(1, 0, { text: "Reorder Favorites", onPress: enterReorderMode });
-                                }
-                                Alert.alert(food.name, undefined, options);
+                                setPreviewSheetFood({
+                                  name: food.name,
+                                  calories: food.calories,
+                                  protein: food.protein,
+                                  carbs: food.carbs,
+                                  fat: food.fat,
+                                  servingLabel: food.servingLabel,
+                                  nutrients100g: food.nutrients100g,
+                                  _kind: "search",
+                                });
                               }}
                               delayLongPress={500}
                               onLayout={(e) => {
@@ -4120,18 +4118,16 @@ export default function NutritionScreen() {
                         onPress={() => handleAddFood(food)}
                         onLongPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          Alert.alert(
-                            food.name,
-                            undefined,
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              {
-                                text: "Reset Defaults",
-                                style: "destructive",
-                                onPress: () => handleResetFoodDefaults(food.name),
-                              },
-                            ]
-                          );
+                          setPreviewSheetFood({
+                            name: food.name,
+                            calories: food.calories,
+                            protein: food.protein,
+                            carbs: food.carbs,
+                            fat: food.fat,
+                            servingLabel: food.servingLabel,
+                            nutrients100g: food.nutrients100g,
+                            _kind: "search",
+                          });
                         }}
                         delayLongPress={500}
                         style={[
