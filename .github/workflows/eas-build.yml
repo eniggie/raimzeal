@@ -25,6 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         platform: [android, ios]
+    outputs:
+      android_build_id: ${{ steps.build.outputs.build_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +49,55 @@ jobs:
         run: npm install -g eas-cli
 
       - name: Build ${{ matrix.platform }} (production)
+        id: build
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ${{ matrix.platform }} --profile production --non-interactive --no-wait
+        run: |
+          BUILD_ID=$(eas build --platform ${{ matrix.platform }} --profile production \
+            --non-interactive --json --no-wait 2>/dev/null | python3 -c \
+            "import sys,json; builds=json.load(sys.stdin); print(builds[0]['id'] if isinstance(builds,list) else builds['id'])" 2>/dev/null || echo "")
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          eas build --platform ${{ matrix.platform }} --profile production --non-interactive --no-wait
+
+  submit-android:
+    name: Submit Android to Play Store (internal)
+    runs-on: ubuntu-latest
+    needs: build
+    if: >
+      (github.event_name == 'push' ||
+       inputs.platform == 'all' ||
+       inputs.platform == 'android') &&
+      needs.build.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: artifacts/raimzeal-mobile
+        run: pnpm install --frozen-lockfile
+
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Write Play Store service account key
+        working-directory: artifacts/raimzeal-mobile
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
+        run: echo "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" > google-play-service-account.json
+
+      - name: Submit Android to Play Store
+        working-directory: artifacts/raimzeal-mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit --platform android --profile production --latest --non-interactive
