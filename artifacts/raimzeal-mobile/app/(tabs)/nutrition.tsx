@@ -3928,6 +3928,12 @@ export default function NutritionScreen() {
                                 Alert.alert(food.name, undefined, options);
                               }}
                               delayLongPress={500}
+                              onLayout={(e) => {
+                                const h = e.nativeEvent.layout.height;
+                                if (h > 0 && itemHeightRef.current !== h) {
+                                  itemHeightRef.current = h;
+                                }
+                              }}
                               style={[
                                 styles.foodCard,
                                 { backgroundColor: colors.card, borderColor: "#f59f0a40" },
