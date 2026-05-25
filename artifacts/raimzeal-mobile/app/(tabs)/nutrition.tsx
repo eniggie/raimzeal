@@ -154,6 +154,7 @@ const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
 const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
+const EDIT_PER100G_PREF_KEY = "@nutrition_edit_per100g_pref";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 const LAST_USED_SERVING_KEY = "@nutrition_last_used_serving";
@@ -6375,7 +6376,33 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     } else {
       perGramRef.current = null;
     }
-    setEditShowPer100g(false);
+    const hasGrams = log.amountGrams !== undefined && log.amountGrams > 0;
+    if (hasGrams) {
+      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+        try {
+          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+          if (map[log.name] === true && perGramRef.current) {
+            setEditShowPer100g(true);
+            setEditGramsText("100");
+            setEditGrams(100);
+            setEditBase({
+              calories: perGramRef.current.calories * 100,
+              protein: perGramRef.current.protein * 100,
+              carbs: perGramRef.current.carbs * 100,
+              fat: perGramRef.current.fat * 100,
+            });
+            setEditServings(1);
+            setEditServingsText("1");
+          } else {
+            setEditShowPer100g(false);
+          }
+        } catch {
+          setEditShowPer100g(false);
+        }
+      });
+    } else {
+      setEditShowPer100g(false);
+    }
     setShowEditSheet(true);
   }
 
@@ -6576,6 +6603,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                   onPress={() => {
                     if (editShowPer100g) {
                       setEditShowPer100g(false);
+                      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                        try {
+                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = false;
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                        } catch {}
+                      });
                       if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
                         const g = log.amountGrams;
                         const gText = Number.isInteger(g) ? String(g) : g.toFixed(1);
@@ -6617,6 +6651,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                   onPress={() => {
                     if (!editShowPer100g && perGramRef.current) {
                       setEditShowPer100g(true);
+                      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                        try {
+                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = true;
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                        } catch {}
+                      });
                       setEditGramsText("100");
                       setEditGrams(100);
                       setEditBase({
@@ -6945,7 +6986,33 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     } else {
       perGramRef.current = null;
     }
-    setEditShowPer100g(false);
+    const hasGrams = log.amountGrams !== undefined && log.amountGrams > 0;
+    if (hasGrams) {
+      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+        try {
+          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+          if (map[log.name] === true && perGramRef.current) {
+            setEditShowPer100g(true);
+            setEditGramsText("100");
+            setEditGrams(100);
+            setEditBase({
+              calories: perGramRef.current.calories * 100,
+              protein: perGramRef.current.protein * 100,
+              carbs: perGramRef.current.carbs * 100,
+              fat: perGramRef.current.fat * 100,
+            });
+            setEditServings(1);
+            setEditServingsText("1");
+          } else {
+            setEditShowPer100g(false);
+          }
+        } catch {
+          setEditShowPer100g(false);
+        }
+      });
+    } else {
+      setEditShowPer100g(false);
+    }
     setShowEditSheet(true);
   }
 
@@ -7140,6 +7207,13 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                   onPress={() => {
                     if (editShowPer100g) {
                       setEditShowPer100g(false);
+                      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                        try {
+                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = false;
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                        } catch {}
+                      });
                       if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
                         // Restore original logged grams and scale macros accordingly
                         const g = log.amountGrams;
@@ -7183,6 +7257,13 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                   onPress={() => {
                     if (!editShowPer100g && perGramRef.current) {
                       setEditShowPer100g(true);
+                      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                        try {
+                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = true;
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                        } catch {}
+                      });
                       setEditGramsText("100");
                       setEditGrams(100);
                       setEditBase({
