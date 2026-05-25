@@ -20,6 +20,7 @@ import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { StatCard } from "@/components/StatCard";
 import { ProgressRing } from "@/components/ProgressRing";
+import { MacroRing } from "@/components/MacroRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 
@@ -211,6 +212,11 @@ export default function HomeScreen() {
                 value={Math.abs(netRemaining)}
               />
               <RingStat color={colors.muted} label="Goal" value={calorieGoal} />
+              <MacroRing
+                protein={proteinToday}
+                carbs={carbsToday}
+                fat={fatToday}
+              />
             </View>
           </View>
           {/* Macro goal progress rings */}
