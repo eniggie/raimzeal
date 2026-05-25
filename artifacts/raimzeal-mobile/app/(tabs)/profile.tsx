@@ -114,6 +114,10 @@ export default function ProfileScreen() {
   const [showUndoWindowModal, setShowUndoWindowModal] = useState(false);
   const [undoWindowInput, setUndoWindowInput] = useState("");
 
+  const [savedHistoryDateRange, setSavedHistoryDateRange] = useState<string | null>(null);
+  const [showExportRangeModal, setShowExportRangeModal] = useState(false);
+  const [exportRangeSelection, setExportRangeSelection] = useState<DateRangeOption>("all");
+
   const [mealDefaultsCount, setMealDefaultsCount] = useState<number | null>(null);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
@@ -124,6 +128,16 @@ export default function ProfileScreen() {
   const settingsCardYRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
   const { scrollTo, openCard } = useLocalSearchParams<{ scrollTo?: string; openCard?: string }>();
+
+  useEffect(() => {
+    let cancelled = false;
+    import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem("@nutrition_history_date_range").then((val) => {
+        if (!cancelled) setSavedHistoryDateRange(val);
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto-open the card customisation modal when navigated here with openCard=1
   // (e.g. from the "My Card" quick action on the home tab).
@@ -616,17 +630,15 @@ export default function ProfileScreen() {
       Alert.alert("Rise+ Feature", "Data export is available on Rise, Reign, and Legacy plans. Upgrade to download your full health report.", [{ text: "OK" }]);
       return;
     }
-    Alert.alert(
-      "Choose Date Range",
-      "Which period should the report cover?",
-      [
-        { text: "Last 7 Days", onPress: () => runPdfExport("7d") },
-        { text: "Last 30 Days", onPress: () => runPdfExport("30d") },
-        { text: "Last 90 Days", onPress: () => runPdfExport("90d") },
-        { text: "All Time", onPress: () => runPdfExport("all") },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
+    import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem("@nutrition_history_date_range").then((cv) => {
+        setSavedHistoryDateRange(cv);
+        const preselect: DateRangeOption =
+          cv === "7d" || cv === "30d" ? cv : "all";
+        setExportRangeSelection(preselect);
+        setShowExportRangeModal(true);
+      });
+    });
   }
 
   async function runPdfExport(dateRange: DateRangeOption) {
@@ -818,6 +830,93 @@ export default function ProfileScreen() {
                 style={[styles.undoModalBtn, styles.undoModalBtnPrimary, { backgroundColor: colors.primary }]}
               >
                 <Text style={[styles.undoModalBtnText, { color: "#fff" }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* PDF export date-range picker */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showExportRangeModal}
+        onRequestClose={() => setShowExportRangeModal(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowExportRangeModal(false)}
+          style={styles.undoModalBackdrop}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.undoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <Text style={[styles.undoModalTitle, { color: colors.foreground }]}>Export Date Range</Text>
+            <Text style={[styles.undoModalSubtitle, { color: colors.mutedForeground }]}>
+              Choose the period for your PDF report.
+            </Text>
+            {(
+              [
+                { value: "7d", label: "Last 7 Days" },
+                { value: "30d", label: "Last 30 Days" },
+                { value: "90d", label: "Last 90 Days" },
+                { value: "all", label: "All Time" },
+              ] as { value: DateRangeOption; label: string }[]
+            ).map((opt) => {
+              const isSelected = exportRangeSelection === opt.value;
+              const isCurrentView =
+                (opt.value === "7d" && savedHistoryDateRange === "7d") ||
+                (opt.value === "30d" && savedHistoryDateRange === "30d");
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  activeOpacity={0.7}
+                  onPress={() => setExportRangeSelection(opt.value)}
+                  style={[
+                    styles.exportRangeOption,
+                    {
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: isSelected ? colors.primary + "12" : colors.background,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.exportRangeRadio,
+                      {
+                        borderColor: isSelected ? colors.primary : colors.mutedForeground,
+                        backgroundColor: isSelected ? colors.primary : "transparent",
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.exportRangeLabel, { color: colors.foreground }]}>
+                    {opt.label}
+                  </Text>
+                  {isCurrentView && (
+                    <Text style={[styles.exportRangeCurrentTag, { color: colors.primary, borderColor: colors.primary + "40", backgroundColor: colors.primary + "12" }]}>
+                      current view
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <View style={styles.undoModalButtons}>
+              <TouchableOpacity
+                onPress={() => setShowExportRangeModal(false)}
+                style={[styles.undoModalBtn, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.undoModalBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowExportRangeModal(false);
+                  runPdfExport(exportRangeSelection);
+                }}
+                style={[styles.undoModalBtn, styles.undoModalBtnPrimary, { backgroundColor: colors.primary }]}
+              >
+                <Text style={[styles.undoModalBtnText, { color: "#fff" }]}>Export</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1568,4 +1667,8 @@ const styles = StyleSheet.create({
   undoModalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", borderWidth: 1 },
   undoModalBtnPrimary: { borderWidth: 0 },
   undoModalBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  exportRangeOption: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1.5 },
+  exportRangeRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
+  exportRangeLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  exportRangeCurrentTag: { fontSize: 11, fontFamily: "Inter_500Medium", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, overflow: "hidden" },
 });
