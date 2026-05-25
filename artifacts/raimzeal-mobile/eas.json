@@ -36,11 +36,6 @@
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
         "track": "internal"
-      },
-      "ios": {
-        "appleId": "eniggie@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
       }
     }
   }
