@@ -27,7 +27,6 @@ import {
   saveWaterReminderConfig,
   scheduleReminders,
   scheduleWaterIntervalReminders,
-  sendTestNotification,
 } from "@/lib/notifications";
 
 const REMINDER_ORDER: (keyof ReminderSettings)[] = [
@@ -146,19 +145,7 @@ export default function RemindersScreen() {
     if (next.enabled) await scheduleWaterIntervalReminders(next);
   };
 
-  const handleTest = async () => {
-    if (!hasPermission) {
-      const granted = await requestNotificationPermissions();
-      setHasPermission(granted);
-      if (!granted) return;
-    }
-    await sendTestNotification();
-    Alert.alert(
-      "Test Sent",
-      "You will receive a test notification from Ovia AI in about 3 seconds.",
-      [{ text: "OK" }]
-    );
-  };
+
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -188,11 +175,7 @@ export default function RemindersScreen() {
             {activeCount} of {REMINDER_ORDER.length} active
           </Text>
         </View>
-        <TouchableOpacity onPress={handleTest} style={styles.testBtn}>
-          <Text style={[styles.testBtnText, { color: colors.primary }]}>
-            Test
-          </Text>
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -471,8 +454,6 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1 },
   headerTitle: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  testBtn: { padding: 8 },
-  testBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   content: { padding: 16, gap: 16 },
   heroBanner: {
     flexDirection: "row",

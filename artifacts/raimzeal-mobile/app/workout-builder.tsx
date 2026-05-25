@@ -300,7 +300,7 @@ export default function WorkoutBuilderScreen() {
           </View>
         )}
         {exercises.map((ex, i) => (
-          <View key={i} style={[styles.exCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View key={ex.name + String(i)} style={[styles.exCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.exHeader}>
               <View style={styles.exReorder}>
                 <Pressable onPress={() => moveExercise(i, -1)} disabled={i === 0} hitSlop={8}>

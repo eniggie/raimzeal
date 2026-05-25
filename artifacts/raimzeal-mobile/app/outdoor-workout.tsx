@@ -212,7 +212,9 @@ export default function OutdoorWorkoutScreen() {
             prevCoord.current = coord;
           }
         );
-      } catch {}
+      } catch {
+        setLocationErr("Could not restart GPS. Distance tracking paused.");
+      }
     }
 
     startTimeRef.current = Date.now() - pausedSecsRef.current * 1000;
