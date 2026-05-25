@@ -198,6 +198,14 @@ function ScanRow({
               P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
             </Text>
           </View>
+          {!showing100g && scan.food.servingLabel ? (
+            <Text
+              style={[styles.servingNote, { color: colors.mutedForeground }]}
+              numberOfLines={1}
+            >
+              1 serving = {scan.food.servingLabel}
+            </Text>
+          ) : null}
           <View style={styles.itemBottom}>
             <TouchableOpacity
               activeOpacity={canToggle ? 0.7 : 1}
@@ -701,6 +709,11 @@ const styles = StyleSheet.create({
   itemDate: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  servingNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
   servingPill: {
     alignSelf: "flex-start",
