@@ -11,6 +11,7 @@ import Animated, {
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const ANIMATION_DURATION = 400;
+const UPDATE_ANIMATION_DURATION = 200;
 const ANIMATION_EASING = Easing.out(Easing.quad);
 
 export const MACRO_RING_COLORS = {
@@ -106,9 +107,10 @@ export function MacroRing({
       return;
     }
     if (!hasAnimatedRef.current || !hasData) return;
-    proteinOffset.value = targetProteinOffset;
-    carbsOffset.value = targetCarbsOffset;
-    fatOffset.value = targetFatOffset;
+    const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
+    proteinOffset.value = withTiming(targetProteinOffset, config);
+    carbsOffset.value = withTiming(targetCarbsOffset, config);
+    fatOffset.value = withTiming(targetFatOffset, config);
   }, [targetProteinOffset, targetCarbsOffset, targetFatOffset, hasData]);
 
   const proteinAnimProps = useAnimatedProps(() => ({
