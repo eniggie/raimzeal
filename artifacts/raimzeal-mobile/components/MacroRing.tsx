@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
@@ -45,8 +45,6 @@ export function MacroRing({
   strokeWidth = 7,
   shouldAnimate = true,
 }: MacroRingProps) {
-  const [expanded, setExpanded] = useState(false);
-
   const total = protein + carbs + fat;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -145,18 +143,14 @@ export function MacroRing({
   ];
 
   const legend = [
-    { color: MACRO_RING_COLORS.protein, label: "P" },
-    { color: MACRO_RING_COLORS.carbs, label: "C" },
-    { color: MACRO_RING_COLORS.fat, label: "F" },
+    { color: MACRO_RING_COLORS.protein, label: "P", grams: Math.round(protein) },
+    { color: MACRO_RING_COLORS.carbs, label: "C", grams: Math.round(carbs) },
+    { color: MACRO_RING_COLORS.fat, label: "F", grams: Math.round(fat) },
   ];
 
   return (
     <View style={styles.wrapper}>
-      <Pressable
-        onPress={() => setExpanded((prev) => !prev)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        style={styles.ringPressable}
-      >
+      <View style={styles.ringContainer}>
         <Svg width={size} height={size}>
           <Circle
             cx={center}
@@ -185,39 +179,18 @@ export function MacroRing({
               ) : null
             )}
         </Svg>
-      </Pressable>
+      </View>
 
       <View style={styles.legend}>
         {legend.map((item) => (
           <View key={item.label} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-            <Text style={[styles.legendLabel, { color: item.color }]}>{item.label}</Text>
+            <Text style={[styles.legendLabel, { color: item.color }]}>
+              {item.label} {item.grams}g
+            </Text>
           </View>
         ))}
       </View>
-
-      {expanded && hasData && (
-        <View style={styles.tooltip}>
-          <View style={styles.tooltipRow}>
-            <View style={[styles.tooltipDot, { backgroundColor: MACRO_RING_COLORS.protein }]} />
-            <Text style={[styles.tooltipText, { color: MACRO_RING_COLORS.protein }]}>
-              {Math.round(protein)}g
-            </Text>
-          </View>
-          <View style={styles.tooltipRow}>
-            <View style={[styles.tooltipDot, { backgroundColor: MACRO_RING_COLORS.carbs }]} />
-            <Text style={[styles.tooltipText, { color: MACRO_RING_COLORS.carbs }]}>
-              {Math.round(carbs)}g
-            </Text>
-          </View>
-          <View style={styles.tooltipRow}>
-            <View style={[styles.tooltipDot, { backgroundColor: MACRO_RING_COLORS.fat }]} />
-            <Text style={[styles.tooltipText, { color: MACRO_RING_COLORS.fat }]}>
-              {Math.round(fat)}g
-            </Text>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -227,7 +200,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 6,
   },
-  ringPressable: {
+  ringContainer: {
     alignItems: "center",
     justifyContent: "center",
   },
@@ -249,25 +222,6 @@ const styles = StyleSheet.create({
   },
   legendLabel: {
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-  tooltip: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
-  tooltipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  tooltipDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
-  tooltipText: {
-    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
   },
 });
