@@ -1375,6 +1375,8 @@ export default function NutritionScreen() {
   const historyFilterHintFadeAnim = useRef(new Animated.Value(0)).current;
   const historyResetFadeAnim = useRef(new Animated.Value(0)).current;
   const historyResetSlideAnim = useRef(new Animated.Value(16)).current;
+  const todayResetFadeAnim = useRef(new Animated.Value(0)).current;
+  const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
@@ -2851,6 +2853,21 @@ export default function NutritionScreen() {
     return FILTER_DEFS.some((def) => filterThresholds[def.key] !== def.defaultThreshold);
   }, [filterThresholds]);
 
+  useEffect(() => {
+    if (hasCustomThresholds) {
+      todayResetSlideAnim.setValue(16);
+      Animated.parallel([
+        Animated.timing(todayResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(todayResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(todayResetFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(todayResetSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [hasCustomThresholds]);
+
   function resetAllThresholds() {
     Alert.alert(
       "Reset All Filters",
@@ -3707,7 +3724,13 @@ export default function NutritionScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {hasCustomThresholds && (
+                    <Animated.View
+                      style={{
+                        opacity: todayResetFadeAnim,
+                        transform: [{ translateX: todayResetSlideAnim }],
+                      }}
+                      pointerEvents={hasCustomThresholds ? "auto" : "none"}
+                    >
                       <TouchableOpacity
                         onPress={resetAllThresholds}
                         style={[
@@ -3721,7 +3744,7 @@ export default function NutritionScreen() {
                           Reset all
                         </Text>
                       </TouchableOpacity>
-                    )}
+                    </Animated.View>
                     {activeFilters.size > 0 && (
                       <TouchableOpacity
                         onPress={clearFilters}
