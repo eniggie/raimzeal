@@ -58,7 +58,7 @@ import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
-import { BarcodeScannerModal, ScannedFood } from "@/components/BarcodeScannerModal";
+import { BarcodeScannerModal, ScannedFood, getRecentScans } from "@/components/BarcodeScannerModal";
 import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 import { MacroRing } from "@/components/MacroRing";
@@ -1239,6 +1239,7 @@ export default function NutritionScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showRecentScans, setShowRecentScans] = useState(false);
+  const [recentScanCount, setRecentScanCount] = useState(0);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showQuickEditor, setShowQuickEditor] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
@@ -1417,6 +1418,19 @@ export default function NutritionScreen() {
   const seenDatesRef = useRef<Set<string>>(new Set());
   const [, setSeenDatesTick] = useState(0);
 
+  const refreshRecentScanCount = useCallback(async () => {
+    try {
+      const scans = await getRecentScans();
+      setRecentScanCount(scans.length);
+    } catch {
+      // Non-fatal
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRecentScanCount();
+  }, [refreshRecentScanCount]);
+
   // Reset filter/history UI state whenever the user clears all app data.
   // dataResetCount increments once per clear; skip count === 0 (initial mount).
   const prevResetCountRef = useRef(dataResetCount);
@@ -1432,6 +1446,7 @@ export default function NutritionScreen() {
     setTrendMetric("calories");
     setHighlightedDate(null);
     setActiveTab("today");
+    setRecentScanCount(0);
   }, [dataResetCount]);
 
   const markDateSeen = useCallback((date: string) => {
@@ -3336,16 +3351,25 @@ export default function NutritionScreen() {
                 </View>
                 {activeTab === "today" && (
                   <View style={styles.scanBtnGroup}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setShowRecentScans(true);
-                      }}
-                      style={[styles.recentBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="time-outline" size={17} color={colors.mutedForeground} />
-                    </TouchableOpacity>
+                    <View style={styles.recentBtnWrapper}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setShowRecentScans(true);
+                        }}
+                        style={[styles.recentBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="time-outline" size={17} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                      {recentScanCount > 0 && (
+                        <View style={[styles.recentBtnBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.recentBtnBadgeText}>
+                            {recentScanCount > 99 ? "99+" : recentScanCount}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <TouchableOpacity
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -5015,7 +5039,10 @@ export default function NutritionScreen() {
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal
         visible={showScanner}
-        onClose={() => setShowScanner(false)}
+        onClose={() => {
+          setShowScanner(false);
+          refreshRecentScanCount();
+        }}
         onFoodFound={handleScannedFood}
         onManualEntry={() => {
           setShowScanner(false);
@@ -5026,7 +5053,10 @@ export default function NutritionScreen() {
       {/* Recently Scanned Modal */}
       <RecentlyScannedModal
         visible={showRecentScans}
-        onClose={() => setShowRecentScans(false)}
+        onClose={() => {
+          setShowRecentScans(false);
+          refreshRecentScanCount();
+        }}
         onFoodFound={handleScannedFood}
       />
 
@@ -7824,6 +7854,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  recentBtnWrapper: {
+    position: "relative",
+  },
   recentBtn: {
     width: 34,
     height: 34,
@@ -7831,6 +7864,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  recentBtnBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  recentBtnBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 12,
   },
   scanBtn: {
     flexDirection: "row",
