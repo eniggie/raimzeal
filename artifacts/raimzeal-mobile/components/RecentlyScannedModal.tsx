@@ -26,7 +26,35 @@ import {
 } from "@/components/BarcodeScannerModal";
 import { ScanEditSheet } from "@/components/ScanEditSheet";
 
-const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
+const LAST_USED_VIEW_KEY = "@nutrition_last_used_view_v2";
+
+async function saveViewPreference(barcode: string, per100g: boolean): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+    let viewMap: Record<string, boolean> = {};
+    try { viewMap = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
+    if (per100g) {
+      viewMap[barcode] = true;
+    } else {
+      delete viewMap[barcode];
+    }
+    await AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(viewMap));
+  } catch {
+    // Non-fatal
+  }
+}
+
+async function removeViewPreference(barcode: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+    let viewMap: Record<string, boolean> = {};
+    try { viewMap = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
+    delete viewMap[barcode];
+    await AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(viewMap));
+  } catch {
+    // Non-fatal
+  }
+}
 
 interface Props {
   visible: boolean;
@@ -265,7 +293,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     const restoredPer100g = new Set<string>();
     for (const scan of data) {
       const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
-      if (canToggle && viewMap[scan.food.name] === true) {
+      if (canToggle && viewMap[scan.barcode] === true) {
         restoredPer100g.add(scan.barcode);
       }
     }
@@ -284,7 +312,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   async function handleRemove(barcode: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await removeRecentScan(barcode);
+    await Promise.all([removeRecentScan(barcode), removeViewPreference(barcode)]);
     setScans((prev) => prev.filter((s) => s.barcode !== barcode));
     setPer100gScans((prev) => {
       const next = new Set(prev);
@@ -350,7 +378,10 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
           text: "Clear all",
           style: "destructive",
           onPress: async () => {
-            await clearAllRecentScans();
+            await Promise.all([
+              clearAllRecentScans(),
+              AsyncStorage.removeItem(LAST_USED_VIEW_KEY),
+            ]);
             setScans([]);
             setPer100gScans(new Set());
           },
@@ -493,8 +524,10 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                     onToggle100g={() =>
                       setPer100gScans((prev) => {
                         const next = new Set(prev);
-                        if (next.has(scan.barcode)) next.delete(scan.barcode);
-                        else next.add(scan.barcode);
+                        const nowPer100g = !next.has(scan.barcode);
+                        if (nowPer100g) next.add(scan.barcode);
+                        else next.delete(scan.barcode);
+                        saveViewPreference(scan.barcode, nowPer100g);
                         return next;
                       })
                     }
