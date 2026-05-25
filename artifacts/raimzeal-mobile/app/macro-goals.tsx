@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -34,6 +34,7 @@ export default function MacroGoalsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const { goals, setGoals, loaded } = useMacroGoals();
   const { user } = useFitness();
   const { user: authUser } = useAuth();
@@ -45,6 +46,12 @@ export default function MacroGoalsScreen() {
   const [carbs, setCarbs] = useState(goals.carbs.toString());
   const [fat, setFat] = useState(goals.fat.toString());
 
+  const scrollRef = useRef<ScrollView>(null);
+  const inputRefs = useRef<Record<string, TextInput | null>>({});
+  const fieldOffsets = useRef<Record<string, number>>({});
+  const focusApplied = useRef(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   const initialised = useRef(false);
   useEffect(() => {
     if (loaded && !initialised.current) {
@@ -55,6 +62,28 @@ export default function MacroGoalsScreen() {
       setFat(goals.fat.toString());
     }
   }, [loaded, goals]);
+
+  useEffect(() => {
+    if (!focus || focusApplied.current || !loaded) return;
+    const validKeys = ["protein", "carbs", "fat"];
+    if (!validKeys.includes(focus)) return;
+
+    const applyFocus = () => {
+      focusApplied.current = true;
+      setFocusedField(focus);
+      const offset = fieldOffsets.current[focus];
+      if (offset !== undefined) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, offset - 80), animated: true });
+      }
+      setTimeout(() => {
+        inputRefs.current[focus]?.focus();
+      }, 350);
+      setTimeout(() => setFocusedField(null), 2000);
+    };
+
+    const timer = setTimeout(applyFocus, 120);
+    return () => clearTimeout(timer);
+  }, [focus, loaded]);
 
   const suggested = computeSuggestedGoals(user);
   const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
@@ -126,6 +155,7 @@ export default function MacroGoalsScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
@@ -201,33 +231,44 @@ export default function MacroGoalsScreen() {
         )}
 
         {/* Goal inputs */}
-        {fields.map((field) => (
-          <View key={field.key} style={styles.fieldWrap}>
-            <View style={styles.fieldLabelRow}>
-              <View style={[styles.fieldDot, { backgroundColor: field.color }]} />
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                {field.label}
-              </Text>
-            </View>
+        {fields.map((field) => {
+          const isHighlighted = focusedField === field.key;
+          return (
             <View
-              style={[
-                styles.inputBox,
-                { backgroundColor: colors.muted, borderColor: colors.border },
-              ]}
+              key={field.key}
+              style={styles.fieldWrap}
+              onLayout={(e) => {
+                fieldOffsets.current[field.key] = e.nativeEvent.layout.y;
+              }}
             >
-              <TextInput
-                style={[styles.textInput, { color: colors.foreground }]}
-                value={values[field.key]}
-                onChangeText={setters[field.key]}
-                placeholder={field.placeholder}
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="numeric"
-                returnKeyType="done"
-              />
-              <Text style={[styles.unit, { color: colors.mutedForeground }]}>{field.unit}</Text>
+              <View style={styles.fieldLabelRow}>
+                <View style={[styles.fieldDot, { backgroundColor: field.color }]} />
+                <Text style={[styles.fieldLabel, { color: isHighlighted ? field.color : colors.mutedForeground }]}>
+                  {field.label}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.inputBox,
+                  { backgroundColor: colors.muted, borderColor: isHighlighted ? field.color : colors.border },
+                  isHighlighted && { shadowColor: field.color, shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 4 },
+                ]}
+              >
+                <TextInput
+                  ref={(r) => { inputRefs.current[field.key] = r; }}
+                  style={[styles.textInput, { color: colors.foreground }]}
+                  value={values[field.key]}
+                  onChangeText={setters[field.key]}
+                  placeholder={field.placeholder}
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                />
+                <Text style={[styles.unit, { color: colors.mutedForeground }]}>{field.unit}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {/* Save button */}
         <TouchableOpacity

@@ -4722,7 +4722,13 @@ export default function NutritionScreen() {
                       onBarPress={handleChartBarPress}
                       onPillPress={handleChartPillPress}
                       onClearHighlight={handleClearHighlight}
-                      onEditGoals={() => router.push("/macro-goals")}
+                      onEditGoals={() =>
+                        router.push(
+                          trendMetric === "calories"
+                            ? "/macro-goals"
+                            : `/macro-goals?focus=${trendMetric}`
+                        )
+                      }
                       colors={colors}
                     />
                   </View>
