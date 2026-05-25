@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2 } from 'lucide-react';
-import { Link, useLocation } from 'wouter';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Link, useLocation, useSearch } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
 
@@ -104,11 +104,21 @@ const PAID_PLANS = [
 
 export function Membership() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
   const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
   const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get('checkout') === 'success') {
+      setShowSuccess(true);
+      window.history.replaceState({}, '', '/membership');
+    }
+  }, [search]);
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
     // Guard: user must be signed in before we open a Stripe tab.
@@ -179,6 +189,33 @@ export function Membership() {
             <p className="text-sm text-foreground/60">The Foundation Plan is free forever. No subscription. No catch.</p>
           </div>
         </div>
+
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              key="checkout-success"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ type: 'tween', ease: 'easeOut', duration: 0.25 }}
+              className="mb-4 flex items-start gap-3 rounded-2xl glass-emerald shimmer p-4"
+            >
+              <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Subscription activated!</p>
+                <p className="text-xs text-foreground/60 mt-0.5 leading-relaxed">
+                  Welcome to the RAIMZEAL supporter family. Your expanded plan is now active — thank you for keeping the platform free for everyone. A receipt has been sent to your email.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSuccess(false)}
+                className="text-foreground/40 hover:text-foreground/70 transition-colors shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Foundation — Free Forever */}
         <motion.div

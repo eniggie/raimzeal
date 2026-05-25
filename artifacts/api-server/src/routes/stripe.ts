@@ -85,7 +85,7 @@ async function handleCheckoutSession(req: Request, res: Response) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/membership?checkout=success`,
       cancel_url: `${origin}/membership`,
       metadata: { user_id: userId },
       allow_promotion_codes: true,
@@ -118,7 +118,10 @@ async function handleCheckoutSession(req: Request, res: Response) {
   }
 }
 
-// POST /api/stripe/checkout-session — canonical path (current bundles)
+// POST /api/stripe/checkout — canonical path (task spec / new clients)
+stripeRouter.post("/stripe/checkout", requireAuth, handleCheckoutSession);
+
+// POST /api/stripe/checkout-session — alias kept for compatibility
 stripeRouter.post("/stripe/checkout-session", requireAuth, handleCheckoutSession);
 
 // POST /api/billing/create-checkout-session — legacy alias (older cached bundles)
