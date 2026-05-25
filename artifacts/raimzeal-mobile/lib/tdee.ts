@@ -45,7 +45,7 @@ export function computeSuggestedGoals(user: UserProfile | null): MacroGoals | nu
 export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): SuggestedGoalsResult | null {
   if (!user) return null;
 
-  const { age, weight, height, fitnessLevel, goals, units } = user;
+  const { age, weight, height, fitnessLevel, goals, units, biologicalSex } = user;
 
   if (!age || !weight || !height || age <= 0 || weight <= 0 || height <= 0) {
     return null;
@@ -55,8 +55,13 @@ export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): Su
   const weightKg = units === "imperial" ? weight * 0.453592 : weight;
   const heightCm = units === "imperial" ? height * 2.54 : height;
 
-  // Mifflin-St Jeor (gender-neutral: average of male/female constants → -78)
-  const bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age - 78);
+  // Mifflin-St Jeor BMR constant:
+  //   male   → +5
+  //   female → −161
+  //   unknown/prefer-not-to-say → average (−78)
+  const sexConstant =
+    biologicalSex === "male" ? 5 : biologicalSex === "female" ? -161 : -78;
+  const bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + sexConstant);
 
   // Activity multiplier
   const activityFactor: Record<UserProfile["fitnessLevel"], number> = {

@@ -22,6 +22,11 @@ import { useFitness } from "@/contexts/FitnessContext";
 const BLOOD_TYPES = ["A", "B", "AB", "O"] as const;
 const RH_FACTORS = ["+", "-"] as const;
 const GENOTYPES = ["AA", "AS", "AC", "SS", "SC"] as const;
+const BIOLOGICAL_SEX_OPTIONS = [
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
+  { id: "prefer_not_to_say", label: "Prefer not to say" },
+] as const;
 
 const GOALS = [
   { id: "build_muscle", label: "Build Muscle" },
@@ -55,6 +60,7 @@ export default function EditProfileScreen() {
   const [bloodType, setBloodType] = useState<"A" | "B" | "AB" | "O" | undefined>(user?.bloodType);
   const [rhFactor, setRhFactor] = useState<"+" | "-" | undefined>(user?.rhFactor);
   const [genotype, setGenotype] = useState<"AA" | "AS" | "AC" | "SS" | "SC" | undefined>(user?.genotype);
+  const [biologicalSex, setBiologicalSex] = useState<"male" | "female" | "prefer_not_to_say" | undefined>(user?.biologicalSex);
 
   function toggleGoal(id: string) {
     Haptics.selectionAsync();
@@ -97,6 +103,7 @@ export default function EditProfileScreen() {
       bloodType,
       rhFactor,
       genotype,
+      biologicalSex,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
@@ -285,7 +292,42 @@ export default function EditProfileScreen() {
           Used to generate evidence-based food guidance. Optional but recommended.
         </Text>
 
-        <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Blood Type (ABO)</Text>
+        <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>Biological Sex</Text>
+        <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+          Improves calorie suggestion accuracy by ~80–160 kcal/day.
+        </Text>
+        <View style={styles.chipRow}>
+          {BIOLOGICAL_SEX_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setBiologicalSex(biologicalSex === opt.id ? undefined : opt.id);
+              }}
+              style={[
+                styles.healthChip,
+                {
+                  backgroundColor: biologicalSex === opt.id ? colors.primary : colors.muted,
+                  borderColor: biologicalSex === opt.id ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.healthChipText,
+                  {
+                    color: biologicalSex === opt.id ? colors.primaryForeground : colors.mutedForeground,
+                    fontFamily: biologicalSex === opt.id ? "Inter_600SemiBold" : "Inter_400Regular",
+                  },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[styles.rowLabel, { color: colors.mutedForeground, marginTop: 8 }]}>Blood Type (ABO)</Text>
         <View style={styles.chipRow}>
           {BLOOD_TYPES.map((bt) => (
             <TouchableOpacity
@@ -496,6 +538,7 @@ const styles = StyleSheet.create({
   },
   goalText: { fontSize: 13 },
   healthNote: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginTop: -4, marginBottom: 4 },
+  fieldHint: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15, marginTop: -6, marginBottom: 4 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   healthChip: {
     paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, borderWidth: 1,

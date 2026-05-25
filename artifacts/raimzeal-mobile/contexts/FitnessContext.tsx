@@ -101,6 +101,8 @@ export interface UserProfile {
   rhFactor?: "+" | "-";
   /** Haemoglobin genotype (sickle-cell locus) */
   genotype?: "AA" | "AS" | "AC" | "SS" | "SC";
+  /** Biological sex — used for the sex-specific Mifflin-St Jeor BMR constant */
+  biologicalSex?: "male" | "female" | "prefer_not_to_say";
 }
 
 /** Mobile-only: Ovia AI conversation history */
