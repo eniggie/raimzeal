@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MacroGoalsSheet } from "@/components/MacroGoalsSheet";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -92,8 +91,6 @@ export default function HomeScreen() {
   const { goals: macroGoals } = useMacroGoals();
   const calorieGoal = macroGoals.calories;
 
-  const [showGoalsSheet, setShowGoalsSheet] = useState(false);
-
   const todayStr = new Date().toISOString().split("T")[0];
   const caloriesTodayBurned = workoutLogs
     .filter((w) => w.date === todayStr)
@@ -175,13 +172,13 @@ export default function HomeScreen() {
                 onPress={(e) => {
                   e.stopPropagation();
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowGoalsSheet(true);
+                  router.push("/macro-goals");
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={[styles.editGoalsBtn, { backgroundColor: colors.muted }]}
               >
                 <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} />
-                <Text style={[styles.editGoalsText, { color: colors.mutedForeground }]}>Goals</Text>
+                <Text style={[styles.editGoalsText, { color: colors.mutedForeground }]}>Edit goals</Text>
               </TouchableOpacity>
               <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
             </View>
@@ -666,7 +663,6 @@ export default function HomeScreen() {
       <Text style={{ fontSize: 10, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 24, paddingVertical: 14, lineHeight: 15 }}>
         RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
       </Text>
-      <MacroGoalsSheet visible={showGoalsSheet} onClose={() => setShowGoalsSheet(false)} />
     </ScrollView>
   );
 }
