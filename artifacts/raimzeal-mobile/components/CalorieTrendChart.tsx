@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
 interface ChartDay {
   date: string;
   value: number;
@@ -73,6 +75,50 @@ export function CalorieTrendChart({
   const pillOpacity = useRef(new Animated.Value(0)).current;
   const pillFlash = useRef(new Animated.Value(1)).current;
   const pillVisible = useRef(false);
+
+  // --- Bar colour animation ---
+  const barAnimValues = useRef<Map<string, Animated.Value>>(new Map());
+  const prevBarHighlight = useRef<string | null>(null);
+
+  // Initialise an animated value for any day not yet tracked
+  days.forEach((day) => {
+    if (!barAnimValues.current.has(day.date)) {
+      const initialVal = day.date === highlightedDate ? 1 : 0;
+      barAnimValues.current.set(day.date, new Animated.Value(initialVal));
+    }
+  });
+
+  useEffect(() => {
+    const prev = prevBarHighlight.current;
+    const next = highlightedDate;
+    prevBarHighlight.current = next;
+
+    const animations: Animated.CompositeAnimation[] = [];
+
+    if (prev && prev !== next && barAnimValues.current.has(prev)) {
+      animations.push(
+        Animated.timing(barAnimValues.current.get(prev)!, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: false,
+        })
+      );
+    }
+
+    if (next && barAnimValues.current.has(next)) {
+      animations.push(
+        Animated.timing(barAnimValues.current.get(next)!, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: false,
+        })
+      );
+    }
+
+    if (animations.length > 0) {
+      Animated.parallel(animations).start();
+    }
+  }, [highlightedDate]);
 
   useEffect(() => {
     if (highlightedDate) {
@@ -254,23 +300,31 @@ export function CalorieTrendChart({
           const y = TOP_PADDING + barAreaH - barH;
           const isHighlighted = day.date === highlightedDate;
           const isAboveGoal = day.value >= goal;
-          const barColor = isHighlighted
-            ? colors.warning
-            : isAboveGoal
-            ? accentColor
-            : colors.mutedForeground;
-          const barOpacity = isHighlighted ? 1 : day.value === 0 ? 0.2 : 0.75;
+          const restingColor = isAboveGoal ? accentColor : colors.mutedForeground;
+          const restingOpacity = day.value === 0 ? 0.2 : 0.75;
+
+          const animValue =
+            barAnimValues.current.get(day.date) ??
+            new Animated.Value(isHighlighted ? 1 : 0);
+          const animatedFill = animValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [restingColor, colors.warning],
+          });
+          const animatedOpacity = animValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [restingOpacity, 1],
+          });
 
           return (
             <React.Fragment key={day.date}>
-              <Rect
+              <AnimatedRect
                 x={x}
                 y={y}
                 width={barW}
                 height={barH}
                 rx={barW > 8 ? 3 : 2}
-                fill={barColor}
-                opacity={barOpacity}
+                fill={animatedFill}
+                opacity={animatedOpacity}
               />
               {/* Invisible hit-target overlay */}
               <Rect
