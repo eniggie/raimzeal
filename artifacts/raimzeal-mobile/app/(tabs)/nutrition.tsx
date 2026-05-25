@@ -2919,11 +2919,35 @@ export default function NutritionScreen() {
 
   async function handleAddFood(food: Omit<MealLog, "id" | "date">) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedFood(food);
-    setSelectedFoodServingLabel(undefined);
-    setSelectedFoodIsApiResult(false);
-    setSelectedFoodNutrients100g(undefined);
-    setModalShowPer100g(false);
+
+    const gramMatch = food.servingLabel?.match(/^(\d+(?:\.\d+)?)g$/i) ?? null;
+    if (gramMatch) {
+      const gramValue = parseFloat(gramMatch[1]);
+      const scale = gramValue > 0 ? 100 / gramValue : 1;
+      const per100gFood = {
+        ...food,
+        calories: Math.round(food.calories * scale),
+        protein: Math.round(food.protein * scale * 10) / 10,
+        carbs: Math.round(food.carbs * scale * 10) / 10,
+        fat: Math.round(food.fat * scale * 10) / 10,
+      };
+      setSelectedFood(per100gFood);
+      setSelectedFoodIsApiResult(true);
+      setSelectedFoodServingLabel(undefined);
+      setSelectedFoodNutrients100g(undefined);
+      setSelectedFoodUnit("g");
+      setModalShowPer100g(false);
+      setGrams(String(gramValue));
+      setGramsPreFillHint(String(gramValue));
+    } else {
+      setSelectedFood(food);
+      setSelectedFoodServingLabel(undefined);
+      setSelectedFoodIsApiResult(false);
+      setSelectedFoodNutrients100g(undefined);
+      setModalShowPer100g(false);
+      setGrams("100");
+      setGramsPreFillHint(null);
+    }
 
     const storedMeal = lastUsedMealMapRef.current[food.name] as MealType | undefined;
     setSelectedMeal(storedMeal ?? food.mealType);
