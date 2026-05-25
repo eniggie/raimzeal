@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   TrendingUp, TrendingDown, Scale, Ruler, Camera, 
-  Plus, Trophy, Dumbbell, ChevronRight, Share2
+  Plus, Trophy, Dumbbell, ChevronRight, Share2, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,9 +19,10 @@ import { ProgressShareCard } from '@/components/ProgressShareCard';
 interface TrackingProps {
   state: AppState;
   onAddMeasurement: (measurement: BodyMeasurement) => void;
+  onDeleteWorkoutLog: (id: string) => void;
 }
 
-export function Tracking({ state, onAddMeasurement }: TrackingProps) {
+export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: TrackingProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -291,18 +292,28 @@ export function Tracking({ state, onAddMeasurement }: TrackingProps) {
                     {filtered.map((log, i) => (
                       <Card key={log.id} className="p-3" data-testid={`card-workout-log-${i}`}>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <Dumbbell className="w-5 h-5 text-primary" />
                           </div>
-                          <div className="flex-1">
-                            <div className="font-medium">{log.workoutName}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{log.workoutName}</div>
                             <div className="text-sm text-muted-foreground">
                               {log.duration} min · {log.caloriesBurned} cal
                               {log.notes ? ` · ${log.notes}` : ''}
                             </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </div>
+                            <button
+                              onClick={() => onDeleteWorkoutLog(log.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
+                              aria-label={`Delete ${log.workoutName}`}
+                              data-testid={`delete-workout-log-${i}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       </Card>

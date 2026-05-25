@@ -422,6 +422,17 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }
   };
 
+  const removeWorkoutLog = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.filter(l => l.id !== id),
+    }));
+
+    if (supabaseConfigured) {
+      workoutLogsApi.remove(id).catch(() => { /* best-effort */ });
+    }
+  };
+
   const addMealLog = (meal: MealLog) => {
     setState(prev => ({
       ...prev,
@@ -439,6 +450,17 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
         fat: meal.fat,
         meal_type: meal.mealType,
       }).catch(() => { /* best-effort */ });
+    }
+  };
+
+  const removeMealLog = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      mealLogs: prev.mealLogs.filter(m => m.id !== id),
+    }));
+
+    if (supabaseConfigured) {
+      mealLogsApi.remove(id).catch(() => { /* best-effort */ });
     }
   };
 
@@ -733,7 +755,9 @@ ${mealLogs.length > 0 ? `<table>
     updateState,
     completeOnboarding,
     addWorkoutLog,
+    removeWorkoutLog,
     addMealLog,
+    removeMealLog,
     updateWaterIntake,
     scheduleWorkout,
     addBodyMeasurement,
