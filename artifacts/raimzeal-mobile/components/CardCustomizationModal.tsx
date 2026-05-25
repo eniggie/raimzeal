@@ -3321,7 +3321,7 @@ export default function CardCustomizationModal({
                   />
                 )}
                 </View>
-                {presets.length > 1 && (
+                {presets.length > 1 && settings.reorderHintFrequency !== "never" && (
                   <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
                     Long-press any preset to reorder
                   </Text>
