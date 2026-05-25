@@ -4,6 +4,7 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,7 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
-import { computeSuggestedGoals, primaryGoalLabel } from "@/lib/tdee";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTier } from "@/hooks/useTier";
 
@@ -85,8 +86,18 @@ export default function MacroGoalsScreen() {
     return () => clearTimeout(timer);
   }, [focus, loaded]);
 
-  const suggested = computeSuggestedGoals(user);
+  const suggestedResult = computeSuggestedGoalsWithBreakdown(user);
+  const suggested = suggestedResult?.goals ?? null;
+  const breakdown = suggestedResult?.breakdown ?? null;
   const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
+
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+
+  function toggleBreakdown() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setBreakdownExpanded((v) => !v);
+    Haptics.selectionAsync();
+  }
 
   function applySuggestion() {
     if (!suggested) return;
@@ -185,9 +196,7 @@ export default function MacroGoalsScreen() {
         {/* Suggested for you banner — Reign+ exclusive feature */}
         {suggested && (
           isReign ? (
-            <TouchableOpacity
-              activeOpacity={0.82}
-              onPress={applySuggestion}
+            <View
               style={[
                 styles.suggestionBanner,
                 { backgroundColor: colors.primary + "18", borderColor: colors.primary + "55" },
@@ -197,9 +206,25 @@ export default function MacroGoalsScreen() {
                 <Ionicons name="sparkles" size={18} color={colors.primary} />
               </View>
               <View style={styles.suggestionBody}>
-                <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
-                  Suggested for you
-                </Text>
+                <View style={styles.suggestionTitleRow}>
+                  <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
+                    Suggested for you
+                  </Text>
+                  <TouchableOpacity
+                    onPress={toggleBreakdown}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[
+                      styles.infoBtn,
+                      { backgroundColor: breakdownExpanded ? colors.primary + "30" : colors.primary + "18" },
+                    ]}
+                  >
+                    <Ionicons
+                      name={breakdownExpanded ? "close-circle" : "information-circle-outline"}
+                      size={16}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
                 <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
                   Based on your profile & {goalLabel} — tap to pre-fill
                 </Text>
@@ -209,9 +234,95 @@ export default function MacroGoalsScreen() {
                   <SuggestionPill label={`${suggested.carbs}g carbs`} color={colors.warning} />
                   <SuggestionPill label={`${suggested.fat}g fat`} color={colors.accent} />
                 </View>
+
+                {breakdownExpanded && breakdown && (
+                  <View style={[styles.breakdownCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+                    <Text style={[styles.breakdownHeading, { color: colors.primary }]}>
+                      How we calculated this
+                    </Text>
+                    <Text style={[styles.breakdownNote, { color: colors.mutedForeground }]}>
+                      Based on your weight, height, age, and activity level using the Mifflin-St Jeor formula.
+                    </Text>
+
+                    <BreakdownRow
+                      label="Basal Metabolic Rate (BMR)"
+                      value={`${breakdown.bmr} kcal`}
+                      note="Calories your body burns at rest"
+                      colors={colors}
+                    />
+                    <BreakdownRow
+                      label={`× Activity level (${breakdown.activityLabel})`}
+                      value={`${breakdown.tdee} kcal`}
+                      note="Total Daily Energy Expenditure"
+                      colors={colors}
+                    />
+                    {breakdown.goalAdjustment !== 0 && (
+                      <BreakdownRow
+                        label={`Goal adjustment (${goalLabel})`}
+                        value={`${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`}
+                        note={breakdown.goalAdjustment < 0 ? "Calorie deficit to support fat loss" : "Calorie surplus to support muscle growth"}
+                        colors={colors}
+                        valueColor={breakdown.goalAdjustment < 0 ? colors.warning : colors.secondary}
+                      />
+                    )}
+                    <BreakdownRow
+                      label="Target calories"
+                      value={`${breakdown.targetCalories} kcal`}
+                      note="Rounded to the nearest 50 kcal"
+                      colors={colors}
+                      bold
+                    />
+
+                    <View style={[styles.breakdownDivider, { backgroundColor: colors.primary + "25" }]} />
+
+                    <Text style={[styles.breakdownSubheading, { color: colors.mutedForeground }]}>
+                      Macro split
+                    </Text>
+                    <BreakdownRow
+                      label="Protein"
+                      value={`${Math.round(breakdown.proteinRatio * 100)}% of calories`}
+                      note={`${suggested.protein}g · 4 kcal per gram`}
+                      colors={colors}
+                    />
+                    <BreakdownRow
+                      label="Carbohydrates"
+                      value={`${Math.round(breakdown.carbRatio * 100)}% of calories`}
+                      note={`${suggested.carbs}g · 4 kcal per gram`}
+                      colors={colors}
+                    />
+                    <BreakdownRow
+                      label="Fat"
+                      value={`${Math.round(breakdown.fatRatio * 100)}% of calories`}
+                      note={`${suggested.fat}g · 9 kcal per gram`}
+                      colors={colors}
+                    />
+
+                    <TouchableOpacity
+                      activeOpacity={0.82}
+                      onPress={applySuggestion}
+                      style={[styles.applyBtn, { backgroundColor: colors.primary }]}
+                    >
+                      <Text style={[styles.applyBtnText, { color: colors.primaryForeground }]}>
+                        Apply these goals
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {!breakdownExpanded && (
+                  <TouchableOpacity
+                    activeOpacity={0.82}
+                    onPress={applySuggestion}
+                    style={styles.applyInlineBtn}
+                  >
+                    <Text style={[styles.applyInlineBtnText, { color: colors.primary }]}>
+                      Apply suggestion
+                    </Text>
+                    <Ionicons name="chevron-forward" size={13} color={colors.primary} />
+                  </TouchableOpacity>
+                )}
               </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginTop: 2 }} />
-            </TouchableOpacity>
+            </View>
           ) : (
             <View style={[styles.suggestionBanner, { backgroundColor: colors.muted, borderColor: colors.border, opacity: 0.9 }]}>
               <View style={[styles.suggestionIconWrap, { backgroundColor: colors.border }]}>
@@ -304,6 +415,45 @@ function SuggestionPill({ label, color }: { label: string; color: string }) {
   );
 }
 
+interface BreakdownRowProps {
+  label: string;
+  value: string;
+  note?: string;
+  bold?: boolean;
+  valueColor?: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function BreakdownRow({ label, value, note, bold, valueColor, colors }: BreakdownRowProps) {
+  return (
+    <View style={styles.breakdownRow}>
+      <View style={styles.breakdownRowLeft}>
+        <Text
+          style={[
+            styles.breakdownRowLabel,
+            { color: colors.foreground },
+            bold && { fontFamily: "Inter_600SemiBold" },
+          ]}
+        >
+          {label}
+        </Text>
+        {note ? (
+          <Text style={[styles.breakdownRowNote, { color: colors.mutedForeground }]}>{note}</Text>
+        ) : null}
+      </View>
+      <Text
+        style={[
+          styles.breakdownRowValue,
+          { color: valueColor ?? colors.foreground },
+          bold && { fontFamily: "Inter_700Bold" },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 16 },
   header: {
@@ -330,11 +480,95 @@ const styles = StyleSheet.create({
   },
   suggestionIconWrap: { marginTop: 1 },
   suggestionBody: { flex: 1, gap: 3 },
-  suggestionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  suggestionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  suggestionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
   suggestionSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   suggestionPills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
   pill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   pillText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  infoBtn: {
+    borderRadius: 12,
+    padding: 3,
+  },
+  breakdownCard: {
+    marginTop: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+  },
+  breakdownHeading: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 2,
+  },
+  breakdownNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  breakdownSubheading: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  breakdownDivider: {
+    height: 1,
+    marginVertical: 4,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  breakdownRowLeft: { flex: 1, gap: 1 },
+  breakdownRowLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
+  breakdownRowNote: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 14,
+  },
+  breakdownRowValue: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textAlign: "right",
+    flexShrink: 0,
+  },
+  applyBtn: {
+    marginTop: 8,
+    borderRadius: 10,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  applyInlineBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 6,
+    alignSelf: "flex-start",
+  },
+  applyInlineBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
   fieldWrap: { gap: 6 },
   fieldLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   fieldDot: { width: 8, height: 8, borderRadius: 4 },

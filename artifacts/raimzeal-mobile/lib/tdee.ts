@@ -1,6 +1,31 @@
 import { UserProfile } from "@/contexts/FitnessContext";
 import { MacroGoals } from "@/contexts/MacroGoalsContext";
 
+export interface TdeeBreakdown {
+  bmr: number;
+  tdee: number;
+  goalAdjustment: number;
+  targetCalories: number;
+  proteinRatio: number;
+  carbRatio: number;
+  fatRatio: number;
+  activityLabel: string;
+}
+
+export interface SuggestedGoalsResult {
+  goals: MacroGoals;
+  breakdown: TdeeBreakdown;
+}
+
+function activityLabel(fitnessLevel: UserProfile["fitnessLevel"]): string {
+  const map: Record<UserProfile["fitnessLevel"], string> = {
+    beginner: "lightly active (1.375×)",
+    intermediate: "moderately active (1.55×)",
+    advanced: "very active (1.725×)",
+  };
+  return map[fitnessLevel] ?? "lightly active (1.375×)";
+}
+
 /**
  * Returns suggested macro goals derived from the user's profile using the
  * Mifflin-St Jeor BMR formula (gender-neutral average) multiplied by an
@@ -9,6 +34,15 @@ import { MacroGoals } from "@/contexts/MacroGoalsContext";
  * Returns null if the profile is missing the required fields.
  */
 export function computeSuggestedGoals(user: UserProfile | null): MacroGoals | null {
+  const result = computeSuggestedGoalsWithBreakdown(user);
+  return result ? result.goals : null;
+}
+
+/**
+ * Same as computeSuggestedGoals but also returns the intermediate values so
+ * the UI can show a step-by-step breakdown.
+ */
+export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): SuggestedGoalsResult | null {
   if (!user) return null;
 
   const { age, weight, height, fitnessLevel, goals, units } = user;
@@ -22,7 +56,7 @@ export function computeSuggestedGoals(user: UserProfile | null): MacroGoals | nu
   const heightCm = units === "imperial" ? height * 2.54 : height;
 
   // Mifflin-St Jeor (gender-neutral: average of male/female constants → -78)
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 78;
+  const bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age - 78);
 
   // Activity multiplier
   const activityFactor: Record<UserProfile["fitnessLevel"], number> = {
@@ -30,20 +64,20 @@ export function computeSuggestedGoals(user: UserProfile | null): MacroGoals | nu
     intermediate: 1.55,
     advanced: 1.725,
   };
-  const tdee = bmr * (activityFactor[fitnessLevel] ?? 1.375);
+  const tdee = Math.round(bmr * (activityFactor[fitnessLevel] ?? 1.375));
 
   // Goal adjustment
   const primaryGoal = goals?.[0] ?? "";
-  let targetCalories: number;
+  let goalAdjustment: number;
   if (primaryGoal === "lose_weight") {
-    targetCalories = tdee - 500;
+    goalAdjustment = -500;
   } else if (primaryGoal === "build_muscle") {
-    targetCalories = tdee + 300;
+    goalAdjustment = +300;
   } else {
-    targetCalories = tdee;
+    goalAdjustment = 0;
   }
 
-  targetCalories = Math.max(1200, Math.round(targetCalories / 50) * 50);
+  let targetCalories = Math.max(1200, Math.round((tdee + goalAdjustment) / 50) * 50);
 
   // Macro split ratios (protein/carbs/fat as fraction of total calories)
   let proteinRatio: number;
@@ -69,7 +103,19 @@ export function computeSuggestedGoals(user: UserProfile | null): MacroGoals | nu
   const carbs = Math.round((targetCalories * carbRatio) / 4 / 5) * 5;
   const fat = Math.round((targetCalories * fatRatio) / 9 / 5) * 5;
 
-  return { calories: targetCalories, protein, carbs, fat };
+  return {
+    goals: { calories: targetCalories, protein, carbs, fat },
+    breakdown: {
+      bmr,
+      tdee,
+      goalAdjustment,
+      targetCalories,
+      proteinRatio,
+      carbRatio,
+      fatRatio,
+      activityLabel: activityLabel(fitnessLevel),
+    },
+  };
 }
 
 /** Human-readable label for the first goal in the goals array */
