@@ -1378,6 +1378,7 @@ export default function NutritionScreen() {
   const todayResetFadeAnim = useRef(new Animated.Value(0)).current;
   const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyChipDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1751,6 +1752,7 @@ export default function NutritionScreen() {
     if (!historyFilterPanelOpen) return;
     historyChipFadeAnims.forEach((anim) => anim.setValue(0));
     historyChipSlideAnims.forEach((anim) => anim.setValue(18));
+    historyChipDividerFadeAnim.setValue(0);
     Animated.stagger(
       35,
       historyChipFadeAnims.map((_, i) =>
@@ -1769,6 +1771,14 @@ export default function NutritionScreen() {
         ])
       )
     ).start();
+    Animated.sequence([
+      Animated.delay(90),
+      Animated.timing(historyChipDividerFadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [historyFilterPanelOpen]);
 
   useEffect(() => {
@@ -4508,7 +4518,12 @@ export default function NutritionScreen() {
                       />
                     </TouchableOpacity>
 
-                    <View style={styles.historyFilterDivider} />
+                    <Animated.View
+                      style={{ opacity: historyChipDividerFadeAnim }}
+                      pointerEvents="none"
+                    >
+                      <View style={styles.historyFilterDivider} />
+                    </Animated.View>
 
                     {(["all", ...MEALS] as const).map((meal, mealIdx) => {
                       const chipIdx = 3 + mealIdx;
