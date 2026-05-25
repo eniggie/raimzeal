@@ -42,6 +42,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
   const [fat, setFat] = useState("");
 
   const [loggedToast, setLoggedToast] = useState(false);
+  const [toastLabel, setToastLabel] = useState("");
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,9 +73,11 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
     onSave(buildUpdated());
   }
 
-  function showLoggedToast() {
+  function showLoggedToast(label: string) {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastLabel(label);
     setLoggedToast(true);
+    toastOpacity.setValue(0);
     Animated.sequence([
       Animated.timing(toastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.delay(1600),
@@ -88,8 +91,9 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
   function handleSaveAndAdd() {
     if (!name.trim() || !onSaveAndAdd) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onSaveAndAdd(buildUpdated());
-    showLoggedToast();
+    const updated = buildUpdated();
+    onSaveAndAdd(updated);
+    showLoggedToast(`${updated.name} added · ${updated.calories} kcal`);
   }
 
   const canSave = name.trim().length > 0;
@@ -127,7 +131,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
               pointerEvents="none"
             >
               <Ionicons name="checkmark-circle" size={16} color="#fff" />
-              <Text style={styles.loggedToastText}>Food logged!</Text>
+              <Text style={styles.loggedToastText} numberOfLines={1}>{toastLabel}</Text>
             </Animated.View>
           )}
 
@@ -420,6 +424,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     alignSelf: "center",
+    maxWidth: "88%",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
