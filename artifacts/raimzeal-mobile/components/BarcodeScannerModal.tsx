@@ -329,6 +329,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setScanning(false);
       setLoading(true);
       setError(null);
+      setNotFoundBanner(false);
 
       const result = await fetchFoodByBarcode(data);
       setLoading(false);
