@@ -4753,7 +4753,7 @@ export default function NutritionScreen() {
               ? "per 100g"
               : item.servingLabel
               ? `per ${item.servingLabel}`
-              : "per 100g";
+              : "per serving";
             const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack", servingLabel: item.servingLabel };
             const starred = isFavorite(item.name);
             return (
