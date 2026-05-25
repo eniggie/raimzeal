@@ -1375,6 +1375,7 @@ export default function NutritionScreen() {
   const historyFilterHintFadeAnim = useRef(new Animated.Value(0)).current;
   const historyResetFadeAnim = useRef(new Animated.Value(0)).current;
   const historyResetSlideAnim = useRef(new Animated.Value(16)).current;
+  const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1797,11 +1798,18 @@ export default function NutritionScreen() {
     if (isNonDefault) {
       historyResetSlideAnim.setValue(16);
       Animated.parallel([
-        Animated.timing(historyResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(historyResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+        Animated.timing(historyDividerFadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.parallel([
+            Animated.timing(historyResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.spring(historyResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+          ]),
+        ]),
       ]).start();
     } else {
       Animated.parallel([
+        Animated.timing(historyDividerFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
         Animated.timing(historyResetFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
         Animated.timing(historyResetSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
       ]).start();
@@ -4525,15 +4533,19 @@ export default function NutritionScreen() {
                     })}
 
                     <Animated.View
+                      style={{ opacity: historyDividerFadeAnim }}
+                      pointerEvents="none"
+                    >
+                      <View style={styles.historyFilterDivider} />
+                    </Animated.View>
+
+                    <Animated.View
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
                         opacity: historyResetFadeAnim,
                         transform: [{ translateX: historyResetSlideAnim }],
                       }}
                       pointerEvents={historyDateRange !== "all" || historyMealFilter !== "all" ? "auto" : "none"}
                     >
-                      <View style={styles.historyFilterDivider} />
                       <TouchableOpacity
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
