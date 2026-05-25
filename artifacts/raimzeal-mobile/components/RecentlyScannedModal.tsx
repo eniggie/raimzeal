@@ -295,6 +295,14 @@ function ScanRow({
   );
 }
 
+interface PendingDelete {
+  scan: RecentScan;
+  originalIndex: number;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const UNDO_DURATION_MS = 3000;
+
 export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -303,6 +311,19 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
   const [runSwipeHint, setRunSwipeHint] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const pendingDeleteRef = useRef<PendingDelete | null>(null);
+
+  // Commit any pending delete when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteRef.current) {
+        clearTimeout(pendingDeleteRef.current.timer);
+        commitDelete(pendingDeleteRef.current.scan.barcode);
+        pendingDeleteRef.current = null;
+      }
+    };
+  }, []);
 
   const loadScans = useCallback(async () => {
     setLoading(true);
@@ -341,13 +362,55 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     }
   }, [visible, loadScans]);
 
-  async function handleRemove(barcode: string) {
+  function commitDelete(barcode: string) {
+    removeRecentScan(barcode).catch(() => {});
+    removeViewPreference(barcode).catch(() => {});
+  }
+
+  function handleRemove(barcode: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await Promise.all([removeRecentScan(barcode), removeViewPreference(barcode)]);
+
+    // If there's already a pending delete, commit it immediately before starting a new one
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timer);
+      commitDelete(pendingDeleteRef.current.scan.barcode);
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+    }
+
+    // Find the item and its position before removing from state
+    const originalIndex = scans.findIndex((s) => s.barcode === barcode);
+    const scan = scans[originalIndex];
+    if (!scan) return;
+
+    // Optimistically remove from the visible list
     setScans((prev) => prev.filter((s) => s.barcode !== barcode));
-    setPer100gScans((prev) => {
-      const next = new Set(prev);
-      next.delete(barcode);
+
+    // Start the commit timer — deletion only lands in storage after the undo window
+    const timer = setTimeout(() => {
+      commitDelete(barcode);
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+    }, UNDO_DURATION_MS);
+
+    const pd: PendingDelete = { scan, originalIndex, timer };
+    pendingDeleteRef.current = pd;
+    setPendingDelete(pd);
+  }
+
+  function handleUndo() {
+    if (!pendingDeleteRef.current) return;
+    const { scan, originalIndex, timer } = pendingDeleteRef.current;
+    clearTimeout(timer);
+    pendingDeleteRef.current = null;
+    setPendingDelete(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setScans((prev) => {
+      // Guard: skip if the item is somehow already in the list (e.g. after a reload)
+      if (prev.some((s) => s.barcode === scan.barcode)) return prev;
+      const next = [...prev];
+      const insertAt = Math.min(originalIndex, next.length);
+      next.splice(insertAt, 0, scan);
       return next;
     });
   }
@@ -366,7 +429,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     } else {
       onFoodFound(scan.food);
     }
-    onClose();
+    handleClose();
   }
 
   function handleLongPress(scan: RecentScan) {
@@ -398,6 +461,13 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   function handleClearAll() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Commit any pending delete before clearing all
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timer);
+      commitDelete(pendingDeleteRef.current.scan.barcode);
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+    }
     Alert.alert(
       "Clear all scans?",
       "This will remove all recently scanned products. This cannot be undone.",
@@ -419,12 +489,23 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     );
   }
 
+  function handleClose() {
+    // Commit any pending delete when closing the sheet
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timer);
+      commitDelete(pendingDeleteRef.current.scan.barcode);
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+    }
+    onClose();
+  }
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
         <View
@@ -483,7 +564,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                onPress={onClose}
+                onPress={handleClose}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons
@@ -565,6 +646,37 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                 );
               })}
             </ScrollView>
+          )}
+
+          {/* Undo toast */}
+          {pendingDelete !== null && (
+            <View
+              style={[
+                styles.undoToast,
+                { backgroundColor: colors.foreground },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.undoToastText,
+                  { color: colors.background },
+                ]}
+                numberOfLines={1}
+              >
+                Scan removed
+              </Text>
+              <TouchableOpacity
+                onPress={handleUndo}
+                hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+                style={styles.undoBtn}
+              >
+                <Text
+                  style={[styles.undoBtnText, { color: colors.primary }]}
+                >
+                  Undo
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -756,5 +868,28 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 4,
+  },
+  undoToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  undoToastText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+  undoBtn: {
+    marginLeft: 12,
+  },
+  undoBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
 });
