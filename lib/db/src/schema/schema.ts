@@ -11,7 +11,7 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
-  membershipTier: text("membership_tier").default("free"),
+  membershipTier: text("membership_tier").default("foundation"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

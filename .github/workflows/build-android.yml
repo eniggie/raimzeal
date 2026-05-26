@@ -48,13 +48,13 @@ jobs:
           BUILD_ID=$(echo "$BUILD_JSON" | node -e \
             "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d)[0]?.id))")
           echo "EAS Build ID: $BUILD_ID"
-          echo "Waiting for build to finish (up to 30 min)..."
-          for i in $(seq 1 60); do
+          echo "Waiting for build to finish (up to 45 min)..."
+          for i in $(seq 1 90); do
             sleep 30
             VIEW_JSON=$(eas build:view "$BUILD_ID" --json 2>/dev/null)
             STATUS=$(echo "$VIEW_JSON" | node -e \
               "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).status))")
-            echo "[$i/60] Status: $STATUS"
+            echo "[$i/90] Status: $STATUS"
             if [ "$STATUS" = "FINISHED" ]; then
               AAB_URL=$(echo "$VIEW_JSON" | node -e \
                 "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).artifacts?.buildUrl??''))")

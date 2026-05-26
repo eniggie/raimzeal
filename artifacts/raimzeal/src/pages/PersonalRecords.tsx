@@ -18,12 +18,11 @@ interface PR {
   achieved_at: string;
 }
 
-const VALUE_TYPE_LABELS = { weight: 'kg', reps: 'reps', time: 'sec' };
-
 export function PersonalRecords() {
   const { toast } = useToast();
   const [records, setRecords] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>('kg');
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ exercise_name: '', value_type: 'weight' as PR['value_type'], value: '', achieved_at: new Date().toISOString().split('T')[0] });
@@ -34,12 +33,17 @@ export function PersonalRecords() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setLoading(false); return; }
-      const res = await fetch('/api/user/personal-records', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json() as { records: PR[] };
+      const [recordsRes, profileRes] = await Promise.all([
+        fetch('/api/user/personal-records', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+        fetch('/api/user/profile', { headers: { Authorization: `Bearer ${session.access_token}` } }),
+      ]);
+      if (!recordsRes.ok) throw new Error('Failed');
+      const data = await recordsRes.json() as { records: PR[] };
       setRecords(data.records);
+      if (profileRes.ok) {
+        const profileData = await profileRes.json() as { profile: { units?: string } };
+        setWeightUnit(profileData.profile?.units === 'imperial' ? 'lbs' : 'kg');
+      }
     } catch {
       toast({ title: 'Could not load records', variant: 'destructive' });
     } finally {
@@ -127,7 +131,7 @@ export function PersonalRecords() {
                       onChange={e => setForm(p => ({ ...p, value_type: e.target.value as PR['value_type'] }))}
                       className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
                     >
-                      <option value="weight">Weight (kg)</option>
+                      <option value="weight">Weight ({weightUnit})</option>
                       <option value="reps">Reps</option>
                       <option value="time">Time (sec)</option>
                     </select>
@@ -172,7 +176,7 @@ export function PersonalRecords() {
                         <Trophy className="w-4 h-4 text-amber-400" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-bold">{pr.value} <span className="font-normal text-muted-foreground text-xs">{VALUE_TYPE_LABELS[pr.value_type]}</span></div>
+                        <div className="text-sm font-bold">{pr.value} <span className="font-normal text-muted-foreground text-xs">{pr.value_type === 'weight' ? weightUnit : pr.value_type === 'reps' ? 'reps' : 'sec'}</span></div>
                         <div className="text-xs text-muted-foreground">{new Date(pr.achieved_at).toLocaleDateString()}</div>
                       </div>
                       <button onClick={() => handleDelete(pr.id)} className="p-1.5 rounded text-muted-foreground hover:text-destructive transition-colors">

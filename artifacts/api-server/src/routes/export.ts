@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
+import { exportRateLimit } from "../lib/rateLimiter";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
 
@@ -17,7 +18,7 @@ function toCSV(rows: Record<string, unknown>[]): string {
   return [headers.join(","), ...rows.map(r => headers.map(h => escape(r[h])).join(","))].join("\n");
 }
 
-exportRouter.get("/user/export", requireAuth, async (req, res) => {
+exportRouter.get("/user/export", requireAuth, exportRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const format = ((req.query.format as string) || "json").toLowerCase();
 
