@@ -98,9 +98,10 @@ export default function CommunityScreen() {
   const [feedTab, setFeedTab] = useState<FeedTab>("feed");
   const [posts, setPosts] = useState<PostState[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const { tier } = useTier(userId);
+  const { tier, loading: tierLoading } = useTier(userId);
 
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPostType, setNewPostType] = useState<"post" | "question" | "win" | "tip" | "challenge">("post");
@@ -121,18 +122,21 @@ export default function CommunityScreen() {
 
   const loadPosts = useCallback(
     async (tab: FeedTab = feedTab) => {
+      setLoadError(false);
       try {
         const isInnerCircle = tab === "inner-circle";
         const filter = tab === "questions" ? "question" : undefined;
-        let fetched: CommunityPost[] = await fetchCommunityPosts(filter, 30, isInnerCircle);
-
-        if (!isSupabaseConfigured) {
-          fetched = [];
-        }
+        let fetched: CommunityPost[] = isSupabaseConfigured
+          ? await fetchCommunityPosts(filter, 30, isInnerCircle)
+          : [];
 
         let likedSet = new Set<string>();
         if (userId) {
-          likedSet = await checkUserLikes(fetched.map((p) => p.id), userId);
+          try {
+            likedSet = await checkUserLikes(fetched.map((p) => p.id), userId);
+          } catch {
+            // Likes check failing should not block posts from showing
+          }
         }
 
         setPosts(
@@ -148,6 +152,7 @@ export default function CommunityScreen() {
         );
       } catch {
         setPosts([]);
+        setLoadError(true);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -755,6 +760,23 @@ export default function CommunityScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      ) : loadError ? (
+        <View style={[styles.centered, { padding: 32, gap: 12 }]}>
+          <Ionicons name="wifi-outline" size={52} color="#ef4444" style={{ opacity: 0.7 }} />
+          <Text style={[styles.emptyTitle, { color: colors.foreground, textAlign: "center" }]}>
+            Could not load posts
+          </Text>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular" }}>
+            Couldn't load posts. Check your connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 }}
+            onPress={() => { setLoading(true); loadPosts(feedTab); }}
+          >
+            <Ionicons name="refresh-outline" size={16} color={colors.foreground} />
+            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={posts}
@@ -972,7 +994,7 @@ export default function CommunityScreen() {
               <TouchableOpacity
                 style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
                 onPress={() => {
-                  if (tier === "foundation") {
+                  if (!tierLoading && tier === "foundation") {
                     Alert.alert("Rise+ Feature", "Attaching images to community posts is available on Rise, Reign, and Legacy plans. Upgrade to unlock this feature.", [{ text: "OK" }]);
                     return;
                   }

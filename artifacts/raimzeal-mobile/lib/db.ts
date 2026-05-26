@@ -346,16 +346,17 @@ export async function fetchCommunityPosts(
   legacyOnly = false
 ): Promise<CommunityPost[]> {
   if (!isSupabaseConfigured) return [];
-  try {
-    let query = supabase
-      .from("community_posts")
-      .select("*, community_likes(count), community_comments(count)")
-      .eq("is_legacy_post", legacyOnly)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    if (postType) query = (query as typeof query).eq("post_type", postType);
-    const { data } = await query;
-    const rows = data ?? [];
+  let query = supabase
+    .from("community_posts")
+    .select("*, community_likes(count), community_comments(count)")
+    .eq("is_legacy_post", legacyOnly)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (postType) query = (query as typeof query).eq("post_type", postType);
+  const { data, error } = await query;
+  // Propagate Supabase errors so callers can show a proper "failed to load" state.
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
 
     const uniqueUserIds = [...new Set(rows.map((r) => r.user_id as string))];
     const tierMap: Record<string, "foundation" | "rise" | "reign" | "legacy"> = {};
@@ -372,27 +373,24 @@ export async function fetchCommunityPosts(
       }
     }
 
-    return rows.map((r) => {
-      const raw = r as typeof r & {
-        community_likes: Array<{ count: number }>;
-        community_comments: Array<{ count: number }>;
-      };
-      return {
-        id: r.id,
-        userId: r.user_id,
-        userName: r.user_name,
-        content: r.content,
-        postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
-        imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
-        likesCount: raw.community_likes?.[0]?.count ?? 0,
-        commentsCount: raw.community_comments?.[0]?.count ?? 0,
-        createdAt: r.created_at,
-        authorTier: tierMap[r.user_id] ?? "foundation",
-      };
-    });
-  } catch {
-    return [];
-  }
+  return rows.map((r) => {
+    const raw = r as typeof r & {
+      community_likes: Array<{ count: number }>;
+      community_comments: Array<{ count: number }>;
+    };
+    return {
+      id: r.id,
+      userId: r.user_id,
+      userName: r.user_name,
+      content: r.content,
+      postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
+      imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
+      likesCount: raw.community_likes?.[0]?.count ?? 0,
+      commentsCount: raw.community_comments?.[0]?.count ?? 0,
+      createdAt: r.created_at,
+      authorTier: tierMap[r.user_id] ?? "foundation",
+    };
+  });
 }
 
 export async function createCommunityPost(
