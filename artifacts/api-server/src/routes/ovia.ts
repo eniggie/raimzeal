@@ -640,9 +640,11 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         if (profileUpdates["goals"]) dbUpdates["goals"] = profileUpdates["goals"];
         if (profileUpdates["units"]) dbUpdates["units"] = profileUpdates["units"];
 
+        let profileSaved = false;
         try {
           const { error } = await supabaseAdmin.from("profiles").update(dbUpdates).eq("id", userId);
-          if (!error) res.write(`data: ${JSON.stringify({ profileUpdated: profileUpdates })}\n\n`);
+          profileSaved = !error;
+          if (profileSaved) res.write(`data: ${JSON.stringify({ profileUpdated: profileUpdates })}\n\n`);
         } catch { /* silent — conversation continues regardless */ }
 
         const profileContinuation = await openai.chat.completions.create({
@@ -658,7 +660,9 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             {
               role: "tool" as const,
               tool_call_id: toolCallId,
-              content: "Profile updated successfully.",
+              content: profileSaved
+                ? "Profile updated successfully."
+                : "Profile update failed — ask the user to update their profile manually in the app settings.",
             } as Parameters<typeof openai.chat.completions.create>[0]["messages"][0],
           ],
           stream: true,
