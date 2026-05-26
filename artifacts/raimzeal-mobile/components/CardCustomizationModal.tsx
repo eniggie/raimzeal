@@ -1432,6 +1432,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const inlineSaveHeight = useSharedValue(0);
   const inlineSaveOpacity = useSharedValue(0);
   const activePresetBannerOpacity = useSharedValue(1);
+  const activePresetBannerTranslateY = useSharedValue(0);
   const inlineSaveOpen = useRef(false);
   useEffect(() => {
     const open = showInlineSave && !reorderMode;
@@ -1444,18 +1445,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
       inlineSaveOpacity.value = open ? 1 : 0;
       activePresetBannerOpacity.value = open ? 0 : 1;
+      activePresetBannerTranslateY.value = 0;
     } else if (open) {
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
       inlineSaveOpacity.value = withTiming(1, { duration: 180 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 120 });
+      activePresetBannerTranslateY.value = 5;
     } else {
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
-      activePresetBannerOpacity.value = withTiming(1, { duration: 180 });
+      activePresetBannerOpacity.value = withTiming(1, { duration: 240 });
+      activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
     }
   }, [showInlineSave, reorderMode, reduceMotion]);
   const activePresetBannerAnimStyle = useAnimatedStyle(() => ({
     opacity: activePresetBannerOpacity.value,
+    transform: [{ translateY: activePresetBannerTranslateY.value }],
   }));
   const inlineSaveAnimStyle = useAnimatedStyle(() => ({
     height: inlineSaveHeight.value,
@@ -3167,7 +3172,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoTranslateY.setValue(0);
     } else {
       Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      Animated.timing(undoTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(undoTranslateY, { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }).start();
       Animated.timing(undoProgressAnim, {
         toValue: 0,
         duration: undoMs,
