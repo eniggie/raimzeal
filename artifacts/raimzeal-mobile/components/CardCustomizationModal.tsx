@@ -1144,6 +1144,7 @@ interface PresetChipItemProps {
   preset: CardPreset;
   isActive: boolean;
   isModified?: boolean;
+  savedAt?: number;
   cardPreviewData: CardPreviewData;
   colors: ReturnType<typeof useColors>;
   onPress: (preset: CardPreset, originRect: PresetOriginRect) => void;
@@ -1156,6 +1157,7 @@ const PresetChipItem = memo(function PresetChipItem({
   preset,
   isActive,
   isModified = false,
+  savedAt,
   cardPreviewData,
   colors,
   onPress,
@@ -1173,6 +1175,19 @@ const PresetChipItem = memo(function PresetChipItem({
     (chipRef as React.MutableRefObject<React.ElementRef<typeof TouchableOpacity> | null>).current = el;
     chipRefSetterRef.current?.(el);
   }, []);
+
+  const pulseScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!savedAt) return;
+    pulseScale.setValue(1);
+    Animated.sequence([
+      Animated.timing(pulseScale, { toValue: 1.08, duration: 120, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+      Animated.timing(pulseScale, { toValue: 0.96, duration: 100, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+      Animated.timing(pulseScale, { toValue: 1, duration: 150, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+    ]).start();
+  }, [savedAt]);
+
   return (
     <TouchableOpacity
       ref={handleChipRef}
@@ -1190,7 +1205,7 @@ const PresetChipItem = memo(function PresetChipItem({
       activeOpacity={0.75}
       style={styles.presetChip}
     >
-      <View
+      <Animated.View
         style={[
           styles.presetThumbnailFrame,
           {
@@ -1201,6 +1216,7 @@ const PresetChipItem = memo(function PresetChipItem({
               : colors.border,
             borderWidth: isActive ? 2 : 1.5,
             borderStyle: isActive && isModified ? "dashed" : "solid",
+            transform: [{ scale: pulseScale }],
           },
         ]}
       >
@@ -1244,7 +1260,7 @@ const PresetChipItem = memo(function PresetChipItem({
             color={isActive ? (isModified ? colors.primary + "88" : colors.primary) : colors.mutedForeground}
           />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
       <Text
         style={[
           styles.presetChipText,
@@ -1402,6 +1418,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [presets, setPresets] = useState<CardPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [activePresetModified, setActivePresetModified] = useState(false);
+  const [presetSavedAt, setPresetSavedAt] = useState<number>(0);
   const [showInlineSave, setShowInlineSave] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
@@ -2999,10 +3016,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, newPreset.id).catch(() => {});
     }
 
+    const wasUpdate = !!activePresetId;
     await savePresets(updatedPresets);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
     setActivePresetModified(false);
+    if (wasUpdate) setPresetSavedAt(Date.now());
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
@@ -3836,6 +3855,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       preset={preset}
                       isActive={preset.id === activePresetId}
                       isModified={preset.id === activePresetId && activePresetModified}
+                      savedAt={preset.id === activePresetId ? presetSavedAt : undefined}
                       cardPreviewData={stableCardPreviewData}
                       colors={colors}
                       onPress={stableOpenPresetPreview}
