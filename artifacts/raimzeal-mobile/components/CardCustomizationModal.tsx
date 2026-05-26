@@ -110,6 +110,7 @@ const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
+const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
@@ -1517,6 +1518,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const cardChipSlideAnim = useRef(new Animated.Value(6)).current;
   const cardChipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showCardChip, setShowCardChip] = useState(false);
+  const [chipDismissCount, setChipDismissCount] = useState(0);
 
   useEffect(() => {
     if (cardChipTimerRef.current !== null) {
@@ -1588,6 +1590,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
     cardChipFadeAnim.stopAnimation();
     cardChipSlideAnim.stopAnimation();
+    const nextCount = chipDismissCount + 1;
+    setChipDismissCount(nextCount);
+    AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(nextCount)).catch(() => {});
     if (reduceMotion) {
       cardChipFadeAnim.setValue(0);
       setShowCardChip(false);
@@ -1926,7 +1931,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw, savedChipDismissCount] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -1941,6 +1946,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           AsyncStorage.getItem(STORAGE_KEY_ACTIVE_PRESET),
           AsyncStorage.getItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN),
+          AsyncStorage.getItem(STORAGE_KEY_CHIP_DISMISS_COUNT),
         ]);
 
         if (cancelled) return;
@@ -1996,6 +2002,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         // preference (initialBadgeDismissed) is true — the latter ensures a
         // fresh device honours the user's cross-device setting immediately.
         setBadgeDismissed(dismissedFlag === "1" || initialBadgeDismissed === true);
+        setChipDismissCount(parseInt(savedChipDismissCount ?? "0", 10) || 0);
         const validActions: CardAction[] = ["share", "save", "both", "copy"];
         const resolvedAction = validActions.includes(savedAction as CardAction)
           ? (savedAction as CardAction)
@@ -3962,7 +3969,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   >
                     <Ionicons name="time-outline" size={11} color="#fff" />
                     <Text style={styles.cardChipText}>Last used</Text>
-                    <Ionicons name="close" size={10} color="rgba(255,255,255,0.65)" style={{ marginLeft: 1 }} />
+                    <Ionicons name="close" size={10} color="rgba(255,255,255,0.65)" style={{ marginLeft: 1, opacity: chipDismissCount >= 3 ? 0 : 1 }} />
                   </TouchableOpacity>
                 </Animated.View>
               )}
