@@ -501,6 +501,8 @@ function SortablePresetList({
       onReorder(next);
       return next;
     });
+    snapFromIdx.value = -1;
+    snapTargetIdx.value = -1;
   }
 
   return (
