@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -293,6 +294,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const [stateHydrated, setStateHydrated] = useState(false);
   const [dataResetCount, setDataResetCount] = useState(0);
+
+  // Debounce refs for settings cloud sync — accumulates rapid changes so only
+  // one fetch+write round-trip happens per burst, eliminating the race where
+  // two concurrent reads both see the old value and one write clobbers the other.
+  const pendingSettingsPatchRef = useRef<NonNullable<import("@/lib/db").UserPreferences["appSettings"]>>({});
+  const settingsDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Step 1: hydrate from AsyncStorage (fast, works offline)
@@ -885,18 +892,37 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("longPressAndRun" in updates) appSettings.longPressAndRun = updates.longPressAndRun;
       if ("autoTriggerDelay" in updates) appSettings.autoTriggerDelay = updates.autoTriggerDelay;
       if (Object.keys(appSettings).length === 0) return;
-      // Merge into existing preferences so unrelated keys are preserved
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session?.user) return;
-        fetchUserPreferences(session.user.id)
-          .then((existing) =>
-            upsertUserPreferences(session.user.id, {
-              ...existing,
-              appSettings: { ...(existing?.appSettings ?? {}), ...appSettings },
-            })
-          )
-          .catch(() => {});
-      });
+
+      // Accumulate all changes from this burst into the pending patch ref.
+      // This merges new keys on top of any changes that arrived before the
+      // debounce timer fires, so nothing is lost even when settings are toggled
+      // in rapid succession.
+      pendingSettingsPatchRef.current = { ...pendingSettingsPatchRef.current, ...appSettings };
+
+      // Cancel any in-flight debounce timer and restart it.  Only the final
+      // flush after 600 ms of inactivity actually hits Supabase — a single
+      // fetch + write that carries every accumulated change, eliminating the
+      // read-before-write race condition.
+      if (settingsDebounceTimerRef.current !== null) {
+        clearTimeout(settingsDebounceTimerRef.current);
+      }
+      settingsDebounceTimerRef.current = setTimeout(() => {
+        settingsDebounceTimerRef.current = null;
+        const patch = pendingSettingsPatchRef.current;
+        pendingSettingsPatchRef.current = {};
+        if (Object.keys(patch).length === 0) return;
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (!session?.user) return;
+          fetchUserPreferences(session.user.id)
+            .then((existing) =>
+              upsertUserPreferences(session.user.id, {
+                ...existing,
+                appSettings: { ...(existing?.appSettings ?? {}), ...patch },
+              })
+            )
+            .catch(() => {});
+        });
+      }, 600);
     },
     [persist]
   );
