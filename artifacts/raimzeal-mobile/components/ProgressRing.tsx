@@ -1,7 +1,9 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface ProgressRingProps {
   progress: number;
@@ -10,6 +12,8 @@ interface ProgressRingProps {
   color?: string;
   label?: string;
   sublabel?: string;
+  animateOnMount?: boolean;
+  delay?: number;
 }
 
 export function ProgressRing({
@@ -19,12 +23,41 @@ export function ProgressRing({
   color,
   label,
   sublabel,
+  animateOnMount = false,
+  delay = 0,
 }: ProgressRingProps) {
   const colors = useColors();
   const ringColor = color ?? colors.primary;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - Math.min(1, progress));
+
+  const clampedProgress = Math.min(1, Math.max(0, progress));
+  const targetOffset = circumference * (1 - clampedProgress);
+
+  const animatedOffset = useRef(new Animated.Value(circumference)).current;
+
+  useEffect(() => {
+    if (!animateOnMount) {
+      animatedOffset.setValue(targetOffset);
+      return;
+    }
+    animatedOffset.setValue(circumference);
+    const timer = setTimeout(() => {
+      Animated.timing(animatedOffset, {
+        toValue: targetOffset,
+        duration: 700,
+        useNativeDriver: false,
+      }).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [animateOnMount, delay, targetOffset, circumference]);
+
+  useEffect(() => {
+    if (!animateOnMount) {
+      animatedOffset.setValue(targetOffset);
+    }
+  }, [targetOffset, animateOnMount]);
+
   const center = size / 2;
 
   return (
@@ -38,7 +71,7 @@ export function ProgressRing({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <Circle
+        <AnimatedCircle
           cx={center}
           cy={center}
           r={radius}
@@ -46,7 +79,7 @@ export function ProgressRing({
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
+          strokeDashoffset={animatedOffset}
           strokeLinecap="round"
           rotation={-90}
           origin={`${center}, ${center}`}

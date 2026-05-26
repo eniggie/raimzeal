@@ -227,7 +227,7 @@ export default function HomeScreen() {
               { label: "Protein", value: proteinToday, goal: macroGoals.protein, unit: "g", baseColor: colors.secondary },
               { label: "Carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", baseColor: "#f97316" },
               { label: "Fat", value: fatToday, goal: macroGoals.fat, unit: "g", baseColor: colors.accent },
-            ].map(({ label, value, goal, unit, baseColor }) => {
+            ].map(({ label, value, goal, unit, baseColor }, index) => {
               const rawRatio = goal > 0 ? value / goal : 0;
               const pct = Math.min(rawRatio, 1);
               const ringColor =
@@ -256,6 +256,8 @@ export default function HomeScreen() {
                     size={64}
                     strokeWidth={6}
                     color={ringColor}
+                    animateOnMount
+                    delay={index * 100}
                   />
                   <Text style={[styles.macroRingName, { color: colors.mutedForeground }]}>{label}</Text>
                   <Text style={[styles.macroRingValue, { color: ringColor }]}>
