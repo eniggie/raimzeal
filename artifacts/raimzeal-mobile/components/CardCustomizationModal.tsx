@@ -3403,6 +3403,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [zoomVisible, setZoomVisible] = useState(false);
   const [themeScrollAtEnd, setThemeScrollAtEnd] = useState(false);
   const [themeHasOverflow, setThemeHasOverflow] = useState(false);
+  useEffect(() => {
+    if (CARD_THEMES.length <= 1) {
+      setThemeHasOverflow(false);
+    }
+  }, [CARD_THEMES.length]);
   const themeContainerWidth = useRef(0);
   const themeContentWidth = useRef(0);
   const [presetScrollAtEnd, setPresetScrollAtEnd] = useState(false);
