@@ -29,6 +29,7 @@ import Reanimated, {
   withSpring,
   withTiming,
   withSequence,
+  withDelay,
   runOnJS,
   SharedValue,
 } from "react-native-reanimated";
@@ -1455,13 +1456,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     } else if (open) {
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
       inlineSaveOpacity.value = withTiming(1, { duration: 180 });
-      activePresetBannerOpacity.value = withTiming(0, { duration: 120 });
-      activePresetBannerTranslateY.value = 5;
+      activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
+      activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
     } else {
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
-      activePresetBannerOpacity.value = withTiming(1, { duration: 240 });
       activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
+      activePresetBannerOpacity.value = withDelay(60, withTiming(1, { duration: 220 }));
     }
   }, [showInlineSave, reorderMode, reduceMotion]);
   const activePresetBannerAnimStyle = useAnimatedStyle(() => ({
