@@ -1352,11 +1352,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
   const sizeLabelOpacity = useSharedValue(thumbnailSize !== "m" ? 1 : 0);
+  const sizeLabelTranslateY = useSharedValue(thumbnailSize !== "m" ? 0 : -4);
   const sizeLabelAnimatedStyle = useAnimatedStyle(() => ({
     opacity: sizeLabelOpacity.value,
+    transform: [{ translateY: sizeLabelTranslateY.value }],
   }));
   useEffect(() => {
-    sizeLabelOpacity.value = withTiming(thumbnailSize !== "m" ? 1 : 0, { duration: 200 });
+    const visible = thumbnailSize !== "m";
+    sizeLabelOpacity.value = withTiming(visible ? 1 : 0, { duration: 200 });
+    if (visible) {
+      sizeLabelTranslateY.value = -4;
+      sizeLabelTranslateY.value = withTiming(0, { duration: 200 });
+    } else {
+      sizeLabelTranslateY.value = withTiming(4, { duration: 200 });
+    }
   }, [thumbnailSize]);
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
