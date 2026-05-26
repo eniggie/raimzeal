@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { BootSplash } from "@/components/BootSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -170,7 +171,7 @@ export default function RootLayout() {
     }
   }, [appReady]);
 
-  if (!appReady) return null;
+  if (!appReady) return <BootSplash />;
 
   return (
     <SafeAreaProvider>
