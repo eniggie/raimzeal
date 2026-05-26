@@ -32,220 +32,256 @@ export function getApiBase(): string {
  * can present a Bearer token to requireAuth on the API server.
  */
 async function getAccessToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Profiles ──────────────────────────────────────────────────────────────
 
 export async function upsertProfile(userId: string, profile: Partial<UserProfile>) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("profiles").upsert({
-    id: userId,
-    name: profile.name,
-    age: profile.age,
-    height: profile.height,
-    weight: profile.weight,
-    fitness_level: profile.fitnessLevel,
-    goals: profile.goals,
-    units: profile.units,
-    updated_at: new Date().toISOString(),
-  });
+  try {
+    await supabase.from("profiles").upsert({
+      id: userId,
+      name: profile.name,
+      age: profile.age,
+      height: profile.height,
+      weight: profile.weight,
+      fitness_level: profile.fitnessLevel,
+      goals: profile.goals,
+      units: profile.units,
+      updated_at: new Date().toISOString(),
+    });
+  } catch { /* non-fatal — local state is the source of truth */ }
 }
 
 export async function fetchProfile(userId: string): Promise<Partial<UserProfile> | null> {
   if (!isSupabaseConfigured) return null;
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
-  if (!data) return null;
-  return {
-    id: data.id,
-    name: data.name,
-    age: data.age,
-    height: data.height,
-    weight: data.weight,
-    fitnessLevel: data.fitness_level,
-    goals: data.goals ?? [],
-    units: data.units,
-  };
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      age: data.age,
+      height: data.height,
+      weight: data.weight,
+      fitnessLevel: data.fitness_level,
+      goals: data.goals ?? [],
+      units: data.units,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Workout Logs ──────────────────────────────────────────────────────────
 
 export async function syncWorkoutLogs(userId: string, logs: WorkoutLog[]) {
   if (!isSupabaseConfigured || logs.length === 0) return;
-  await supabase.from("workout_logs").upsert(
-    logs.map((l) => ({
-      id: l.id,
-      user_id: userId,
-      workout_id: l.workoutId,
-      workout_name: l.workoutName,
-      date: l.date,
-      duration: l.duration,
-      calories_burned: l.caloriesBurned,
-      exercises: l.exercises,
-    }))
-  );
+  try {
+    await supabase.from("workout_logs").upsert(
+      logs.map((l) => ({
+        id: l.id,
+        user_id: userId,
+        workout_id: l.workoutId,
+        workout_name: l.workoutName,
+        date: l.date,
+        duration: l.duration,
+        calories_burned: l.caloriesBurned,
+        exercises: l.exercises,
+      }))
+    );
+  } catch { /* non-fatal */ }
 }
 
 export async function fetchWorkoutLogs(userId: string): Promise<WorkoutLog[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("workout_logs")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: false });
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    workoutId: r.workout_id,
-    workoutName: r.workout_name,
-    date: r.date,
-    duration: r.duration,
-    caloriesBurned: r.calories_burned,
-    exercises: r.exercises ?? [],
-  }));
+  try {
+    const { data } = await supabase
+      .from("workout_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      workoutId: r.workout_id,
+      workoutName: r.workout_name,
+      date: r.date,
+      duration: r.duration,
+      caloriesBurned: r.calories_burned,
+      exercises: r.exercises ?? [],
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function insertWorkoutLog(userId: string, log: WorkoutLog) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("workout_logs").insert({
-    id: log.id,
-    user_id: userId,
-    workout_id: log.workoutId,
-    workout_name: log.workoutName,
-    date: log.date,
-    duration: log.duration,
-    calories_burned: log.caloriesBurned,
-    exercises: log.exercises,
-  });
+  try {
+    await supabase.from("workout_logs").insert({
+      id: log.id,
+      user_id: userId,
+      workout_id: log.workoutId,
+      workout_name: log.workoutName,
+      date: log.date,
+      duration: log.duration,
+      calories_burned: log.caloriesBurned,
+      exercises: log.exercises,
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ─── Meal Logs ─────────────────────────────────────────────────────────────
 
 export async function syncMealLogs(userId: string, logs: MealLog[]) {
   if (!isSupabaseConfigured || logs.length === 0) return;
-  await supabase.from("meal_logs").upsert(
-    logs.map((m) => ({
-      id: m.id,
-      user_id: userId,
-      date: m.date,
-      name: m.name,
-      calories: m.calories,
-      protein: m.protein,
-      carbs: m.carbs,
-      fat: m.fat,
-      meal_type: m.mealType,
-      amount_grams: m.amountGrams ?? null,
-    }))
-  );
+  try {
+    await supabase.from("meal_logs").upsert(
+      logs.map((m) => ({
+        id: m.id,
+        user_id: userId,
+        date: m.date,
+        name: m.name,
+        calories: m.calories,
+        protein: m.protein,
+        carbs: m.carbs,
+        fat: m.fat,
+        meal_type: m.mealType,
+        amount_grams: m.amountGrams ?? null,
+      }))
+    );
+  } catch { /* non-fatal */ }
 }
 
 export async function fetchMealLogs(userId: string): Promise<MealLog[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("meal_logs")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: false });
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    date: r.date,
-    name: r.name,
-    calories: r.calories,
-    protein: r.protein,
-    carbs: r.carbs,
-    fat: r.fat,
-    mealType: r.meal_type as MealLog["mealType"],
-    ...(r.amount_grams != null ? { amountGrams: r.amount_grams as number } : {}),
-  }));
+  try {
+    const { data } = await supabase
+      .from("meal_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: false });
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      date: r.date,
+      name: r.name,
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fat,
+      mealType: r.meal_type as MealLog["mealType"],
+      ...(r.amount_grams != null ? { amountGrams: r.amount_grams as number } : {}),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function insertMealLog(userId: string, meal: MealLog) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("meal_logs").insert({
-    id: meal.id,
-    user_id: userId,
-    date: meal.date,
-    name: meal.name,
-    calories: meal.calories,
-    protein: meal.protein,
-    carbs: meal.carbs,
-    fat: meal.fat,
-    meal_type: meal.mealType,
-    amount_grams: meal.amountGrams ?? null,
-  });
+  try {
+    await supabase.from("meal_logs").insert({
+      id: meal.id,
+      user_id: userId,
+      date: meal.date,
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      meal_type: meal.mealType,
+      amount_grams: meal.amountGrams ?? null,
+    });
+  } catch { /* non-fatal */ }
 }
 
 export async function upsertMealLog(userId: string, meal: MealLog) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("meal_logs").upsert({
-    id: meal.id,
-    user_id: userId,
-    date: meal.date,
-    name: meal.name,
-    calories: meal.calories,
-    protein: meal.protein,
-    carbs: meal.carbs,
-    fat: meal.fat,
-    meal_type: meal.mealType,
-    amount_grams: meal.amountGrams ?? null,
-  });
+  try {
+    await supabase.from("meal_logs").upsert({
+      id: meal.id,
+      user_id: userId,
+      date: meal.date,
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      meal_type: meal.mealType,
+      amount_grams: meal.amountGrams ?? null,
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ─── Body Measurements ─────────────────────────────────────────────────────
 
 export async function insertBodyMeasurement(userId: string, m: BodyMeasurement) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("body_measurements").upsert({
-    id: m.id,
-    user_id: userId,
-    date: m.date,
-    weight: m.weight,
-    chest: m.chest ?? null,
-    waist: m.waist ?? null,
-    hips: m.hips ?? null,
-    arms: m.arms ?? null,
-    thighs: m.thighs ?? null,
-  });
-}
-
-export async function syncBodyMeasurements(userId: string, items: BodyMeasurement[]) {
-  if (!isSupabaseConfigured || items.length === 0) return;
-  await supabase.from("body_measurements").upsert(
-    items.map((m) => ({
+  try {
+    await supabase.from("body_measurements").upsert({
       id: m.id,
       user_id: userId,
       date: m.date,
       weight: m.weight,
-      chest: m.chest,
-      waist: m.waist,
-      hips: m.hips,
-      arms: m.arms,
-      thighs: m.thighs,
-    }))
-  );
+      chest: m.chest ?? null,
+      waist: m.waist ?? null,
+      hips: m.hips ?? null,
+      arms: m.arms ?? null,
+      thighs: m.thighs ?? null,
+    });
+  } catch { /* non-fatal */ }
+}
+
+export async function syncBodyMeasurements(userId: string, items: BodyMeasurement[]) {
+  if (!isSupabaseConfigured || items.length === 0) return;
+  try {
+    await supabase.from("body_measurements").upsert(
+      items.map((m) => ({
+        id: m.id,
+        user_id: userId,
+        date: m.date,
+        weight: m.weight,
+        chest: m.chest,
+        waist: m.waist,
+        hips: m.hips,
+        arms: m.arms,
+        thighs: m.thighs,
+      }))
+    );
+  } catch { /* non-fatal */ }
 }
 
 export async function fetchBodyMeasurements(userId: string): Promise<BodyMeasurement[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("body_measurements")
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: true });
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    date: r.date,
-    weight: r.weight,
-    chest: r.chest,
-    waist: r.waist,
-    hips: r.hips,
-    arms: r.arms,
-    thighs: r.thighs,
-  }));
+  try {
+    const { data } = await supabase
+      .from("body_measurements")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: true });
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      date: r.date,
+      weight: r.weight,
+      chest: r.chest,
+      waist: r.waist,
+      hips: r.hips,
+      arms: r.arms,
+      thighs: r.thighs,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // ─── Water Intake ──────────────────────────────────────────────────────────
@@ -256,20 +292,26 @@ export async function upsertWaterIntake(
   glasses: number
 ) {
   if (!isSupabaseConfigured) return;
-  await supabase.from("water_intake").upsert({ user_id: userId, date, glasses });
+  try {
+    await supabase.from("water_intake").upsert({ user_id: userId, date, glasses });
+  } catch { /* non-fatal */ }
 }
 
 export async function fetchWaterIntake(
   userId: string
 ): Promise<{ date: string; glasses: number }[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("water_intake")
-    .select("date, glasses")
-    .eq("user_id", userId)
-    .order("date", { ascending: false })
-    .limit(30);
-  return data ?? [];
+  try {
+    const { data } = await supabase
+      .from("water_intake")
+      .select("date, glasses")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(30);
+    return data ?? [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Community Types ────────────────────────────────────────────────────────
@@ -304,49 +346,53 @@ export async function fetchCommunityPosts(
   legacyOnly = false
 ): Promise<CommunityPost[]> {
   if (!isSupabaseConfigured) return [];
-  let query = supabase
-    .from("community_posts")
-    .select("*, community_likes(count), community_comments(count)")
-    .eq("is_legacy_post", legacyOnly)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (postType) query = (query as typeof query).eq("post_type", postType);
-  const { data } = await query;
-  const rows = data ?? [];
+  try {
+    let query = supabase
+      .from("community_posts")
+      .select("*, community_likes(count), community_comments(count)")
+      .eq("is_legacy_post", legacyOnly)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (postType) query = (query as typeof query).eq("post_type", postType);
+    const { data } = await query;
+    const rows = data ?? [];
 
-  const uniqueUserIds = [...new Set(rows.map((r) => r.user_id as string))];
-  const tierMap: Record<string, "foundation" | "rise" | "reign" | "legacy"> = {};
-  if (uniqueUserIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, subscription_tier")
-      .in("id", uniqueUserIds);
-    for (const p of profiles ?? []) {
-      const raw = p as Record<string, unknown>;
-      const t = raw["subscription_tier"] as string | null;
-      tierMap[raw["id"] as string] =
-        t === "rise" || t === "reign" || t === "legacy" ? t : "foundation";
+    const uniqueUserIds = [...new Set(rows.map((r) => r.user_id as string))];
+    const tierMap: Record<string, "foundation" | "rise" | "reign" | "legacy"> = {};
+    if (uniqueUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, subscription_tier")
+        .in("id", uniqueUserIds);
+      for (const p of profiles ?? []) {
+        const raw = p as Record<string, unknown>;
+        const t = raw["subscription_tier"] as string | null;
+        tierMap[raw["id"] as string] =
+          t === "rise" || t === "reign" || t === "legacy" ? t : "foundation";
+      }
     }
-  }
 
-  return rows.map((r) => {
-    const raw = r as typeof r & {
-      community_likes: Array<{ count: number }>;
-      community_comments: Array<{ count: number }>;
-    };
-    return {
-      id: r.id,
-      userId: r.user_id,
-      userName: r.user_name,
-      content: r.content,
-      postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
-      imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
-      likesCount: raw.community_likes?.[0]?.count ?? 0,
-      commentsCount: raw.community_comments?.[0]?.count ?? 0,
-      createdAt: r.created_at,
-      authorTier: tierMap[r.user_id] ?? "foundation",
-    };
-  });
+    return rows.map((r) => {
+      const raw = r as typeof r & {
+        community_likes: Array<{ count: number }>;
+        community_comments: Array<{ count: number }>;
+      };
+      return {
+        id: r.id,
+        userId: r.user_id,
+        userName: r.user_name,
+        content: r.content,
+        postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
+        imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
+        likesCount: raw.community_likes?.[0]?.count ?? 0,
+        commentsCount: raw.community_comments?.[0]?.count ?? 0,
+        createdAt: r.created_at,
+        authorTier: tierMap[r.user_id] ?? "foundation",
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function createCommunityPost(
@@ -526,12 +572,16 @@ export async function checkUserLikes(
   userId: string
 ): Promise<Set<string>> {
   if (!isSupabaseConfigured || postIds.length === 0) return new Set();
-  const { data } = await supabase
-    .from("community_likes")
-    .select("post_id")
-    .eq("user_id", userId)
-    .in("post_id", postIds);
-  return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
+  try {
+    const { data } = await supabase
+      .from("community_likes")
+      .select("post_id")
+      .eq("user_id", userId)
+      .in("post_id", postIds);
+    return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
+  } catch {
+    return new Set();
+  }
 }
 
 // ─── Ovia AI Messages ───────────────────────────────────────────────────────
@@ -545,18 +595,22 @@ export interface OviaMessageRow {
 
 export async function fetchOviaMessages(userId: string): Promise<OviaMessageRow[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("ovia_messages")
-    .select("id, role, content, timestamp")
-    .eq("user_id", userId)
-    .order("timestamp", { ascending: true })
-    .limit(200);
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    role: r.role as "user" | "assistant",
-    content: r.content as string,
-    timestamp: r.timestamp as string,
-  }));
+  try {
+    const { data } = await supabase
+      .from("ovia_messages")
+      .select("id, role, content, timestamp")
+      .eq("user_id", userId)
+      .order("timestamp", { ascending: true })
+      .limit(200);
+    return (data ?? []).map((r) => ({
+      id: r.id as string,
+      role: r.role as "user" | "assistant",
+      content: r.content as string,
+      timestamp: r.timestamp as string,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function insertOviaMessage(
@@ -564,13 +618,15 @@ export async function insertOviaMessage(
   message: OviaMessageRow
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
-  await supabase.from("ovia_messages").upsert({
-    id: message.id,
-    user_id: userId,
-    role: message.role,
-    content: message.content,
-    timestamp: message.timestamp,
-  });
+  try {
+    await supabase.from("ovia_messages").upsert({
+      id: message.id,
+      user_id: userId,
+      role: message.role,
+      content: message.content,
+      timestamp: message.timestamp,
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ─── User Preferences ──────────────────────────────────────────────────────
@@ -625,13 +681,17 @@ export async function fetchUserPreferences(
   userId: string
 ): Promise<UserPreferences | null> {
   if (!isSupabaseConfigured) return null;
-  const { data } = await supabase
-    .from("profiles")
-    .select("preferences")
-    .eq("id", userId)
-    .single();
-  if (!data?.preferences) return null;
-  return data.preferences as UserPreferences;
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("preferences")
+      .eq("id", userId)
+      .single();
+    if (!data?.preferences) return null;
+    return data.preferences as UserPreferences;
+  } catch {
+    return null;
+  }
 }
 
 export async function upsertUserPreferences(
@@ -639,9 +699,11 @@ export async function upsertUserPreferences(
   prefs: UserPreferences
 ): Promise<void> {
   if (!isSupabaseConfigured) return;
-  await supabase
-    .from("profiles")
-    .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
+  try {
+    await supabase
+      .from("profiles")
+      .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
+  } catch { /* non-fatal */ }
 }
 
 // ─── Program Enrollment ─────────────────────────────────────────────────────
@@ -672,14 +734,18 @@ function mapEnrollmentRow(r: Record<string, unknown>): EnrolledProgram {
 
 export async function fetchEnrolledProgram(): Promise<EnrolledProgram | null> {
   if (!isSupabaseConfigured) return null;
-  const token = await getAccessToken();
-  if (!token) return null;
-  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) return null;
-  const body = await res.json() as { enrollment?: Record<string, unknown> | null };
-  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { enrollment?: Record<string, unknown> | null };
+    return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function enrollProgram(
@@ -688,16 +754,20 @@ export async function enrollProgram(
   programData: ProgramItem
 ): Promise<EnrolledProgram | null> {
   if (!isSupabaseConfigured) return null;
-  const token = await getAccessToken();
-  if (!token) return null;
-  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ program_id: programId, program_name: programName, program_data: programData }),
-  });
-  if (!res.ok) return null;
-  const body = await res.json() as { enrollment?: Record<string, unknown> };
-  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ program_id: programId, program_name: programName, program_data: programData }),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { enrollment?: Record<string, unknown> };
+    return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -714,26 +784,32 @@ export async function advanceEnrolledProgram(
   exercises: { name: string }[]
 ): Promise<EnrolledProgram | null> {
   if (!isSupabaseConfigured) return null;
-  const token = await getAccessToken();
-  if (!token) return null;
-  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ workout_date: workoutDate, workout_name: workoutName, exercises }),
-  });
-  if (!res.ok) return null;
-  const body = await res.json() as { enrollment?: Record<string, unknown> | null };
-  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  try {
+    const token = await getAccessToken();
+    if (!token) return null;
+    const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ workout_date: workoutDate, workout_name: workoutName, exercises }),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { enrollment?: Record<string, unknown> | null };
+    return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function unenrollProgram(): Promise<void> {
   if (!isSupabaseConfigured) return;
-  const token = await getAccessToken();
-  if (!token) return;
-  await fetch(`${getApiBase()}/user/enrolled-program`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  try {
+    const token = await getAccessToken();
+    if (!token) return;
+    await fetch(`${getApiBase()}/user/enrolled-program`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch { /* non-fatal */ }
 }
 
 // ─── Programs ───────────────────────────────────────────────────────────────
@@ -757,19 +833,23 @@ export interface ProgramItem {
 
 export async function fetchPrograms(): Promise<ProgramItem[]> {
   if (!isSupabaseConfigured) return [];
-  const { data } = await supabase
-    .from("programs")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    level: r.level as ProgramItem["level"],
-    durationWeeks: r.duration_weeks,
-    goals: r.goals ?? [],
-    schedule: r.schedule as ProgramItem["schedule"],
-    isActive: r.is_active,
-  }));
+  try {
+    const { data } = await supabase
+      .from("programs")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true });
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      level: r.level as ProgramItem["level"],
+      durationWeeks: r.duration_weeks,
+      goals: r.goals ?? [],
+      schedule: r.schedule as ProgramItem["schedule"],
+      isActive: r.is_active,
+    }));
+  } catch {
+    return [];
+  }
 }
