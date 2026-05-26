@@ -1234,6 +1234,18 @@ export default function NutritionScreen() {
     });
   }, [historyDays, filteredHistoryDays, historyDateRange]);
 
+  useEffect(() => {
+    if (!highlightedDate) return;
+    // Wait until the underlying history data has loaded before validating.
+    // Once historyDays is non-empty we know data has settled; after that,
+    // absence from trendChartDays (even an empty chart) means the date is stale.
+    if (historyDays.length === 0) return;
+    const found = trendChartDays.some((d) => d.date === highlightedDate);
+    if (!found) {
+      setHighlightedDate(null);
+    }
+  }, [trendChartDays, highlightedDate, historyDays.length]);
+
   const chartDisplayDays = React.useMemo(
     () =>
       trendChartDays.map((day) => ({
