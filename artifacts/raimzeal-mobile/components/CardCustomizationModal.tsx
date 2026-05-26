@@ -3021,7 +3021,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
     setActivePresetModified(false);
-    if (wasUpdate) setPresetSavedAt(Date.now());
+    if (wasUpdate) {
+      setPresetSavedAt(Date.now());
+      AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, activePresetId).catch(() => {});
+    }
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
