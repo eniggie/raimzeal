@@ -144,6 +144,24 @@ uri = "file://screenshots/chromebook_03_progress.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "HiSEnLodmwBNNTRzo_YyF"
+uri = "file://artifacts/raimzeal-video/public/images/transformation.png"
+type = "image"
+title = "abstract transformation"
+
+[[generated]]
+id = "14Ga9Wwth8N6EMFi9htEX"
+uri = "file://artifacts/raimzeal-video/public/images/food-therapy.png"
+type = "image"
+title = "food therapy"
+
+[[generated]]
+id = "pe6fNR83AnauJ3oSAcI3J"
+uri = "file://artifacts/raimzeal-video/public/images/community.png"
+type = "image"
+title = "community workout"
+
 [[outputs]]
 id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"
@@ -269,3 +287,9 @@ id = "4rQVhI3LZMQyMnJTCqeKv"
 uri = "file://.local/ebook/raimzeal-source.zip"
 type = "unspecified"
 title = "RAIMZEAL — Full Source Code"
+
+[[outputs]]
+id = "JUvHu9f-H55Uz6uNGpT7e"
+uri = "file://artifacts/raimzeal-video/public/audio/bg_music.mp3"
+type = "audio"
+title = "RAIMZEAL fitness ad background music"
