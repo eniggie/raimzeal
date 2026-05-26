@@ -1491,7 +1491,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   useEffect(() => {
     badgeFadeAnim.stopAnimation();
     badgeSlideAnim.stopAnimation();
-    if (restoredFromStorage && !badgeDismissed) {
+    if (visible && restoredFromStorage && !badgeDismissed) {
       badgeFadeAnim.setValue(0);
       badgeSlideAnim.setValue(5);
       if (reduceMotion) {
@@ -1516,7 +1516,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       badgeFadeAnim.setValue(0);
       badgeSlideAnim.setValue(5);
     }
-  }, [restoredFromStorage, badgeDismissed, reduceMotion]);
+  }, [visible, restoredFromStorage, badgeDismissed, reduceMotion]);
 
   useEffect(() => {
     if (showLongPressHint) {
@@ -1950,12 +1950,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         AsyncStorage.setItem(STORAGE_KEY_BADGE_DISMISSED, "1").catch(() => {});
         onBadgeDismiss?.();
       }
-      // Reset badge animation synchronously so a rapid reopen never shows a
-      // stale non-zero opacity before the badge effect can run.
-      badgeFadeAnim.stopAnimation();
-      badgeSlideAnim.stopAnimation();
-      badgeFadeAnim.setValue(0);
-      badgeSlideAnim.setValue(5);
       return;
     }
     setRestoredFromStorage(false);
