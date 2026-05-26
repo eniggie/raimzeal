@@ -7844,7 +7844,7 @@ function HistoryMacroChip({
   const colors = useColors();
   const progress = goal > 0 ? Math.min(value / goal, 1) : 0;
   const ratio = goal > 0 ? value / goal : 1;
-  const chipColor = value >= goal ? colors.success : colors.destructive;
+  const chipColor = ratio > 1 ? colors.destructive : ratio >= 0.9 ? colors.warning : color;
   const badge: "low" | "over" | null =
     ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
