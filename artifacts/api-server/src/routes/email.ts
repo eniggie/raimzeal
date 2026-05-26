@@ -500,17 +500,17 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
 
   if (type === "weekly") {
     try { await sendWeeklyDigest(to, userName); req.log.info({ to }, "Weekly digest sent"); res.json({ success: true, message: "Weekly digest sent." }); }
-    catch (err) { res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" }); }
+    catch (err) { req.log.error({ err }, "POST /email/send weekly digest error"); res.status(503).json({ error: "Failed to send email. Please try again later." }); }
     return;
   }
   if (type === "welcome") {
     try { await sendWelcomeEmail(to, userName); req.log.info({ to }, "Welcome email sent"); res.json({ success: true, message: "Welcome email sent." }); }
-    catch (err) { res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" }); }
+    catch (err) { req.log.error({ err }, "POST /email/send welcome email error"); res.status(503).json({ error: "Failed to send email. Please try again later." }); }
     return;
   }
   if (type === "midweek") {
     try { await sendMidWeekMotivation(to, userName); req.log.info({ to }, "Mid-week email sent"); res.json({ success: true, message: "Mid-week motivation sent." }); }
-    catch (err) { res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" }); }
+    catch (err) { req.log.error({ err }, "POST /email/send midweek email error"); res.status(503).json({ error: "Failed to send email. Please try again later." }); }
     return;
   }
 
@@ -541,7 +541,8 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
     });
     req.log.info({ to, type }, "Email sent"); res.json({ success: true, message: "Email sent." });
   } catch (err) {
-    res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    req.log.error({ err }, "POST /email/send error");
+    res.status(503).json({ error: "Failed to send email. Please try again later." });
   }
 });
 
@@ -568,7 +569,8 @@ emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req,
     req.log.info({ to }, "Verification OTP sent");
     res.json({ success: true, message: "Verification code sent." });
   } catch (err) {
-    res.status(503).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    req.log.error({ err }, "POST /email/verify error");
+    res.status(503).json({ error: "Failed to send verification email. Please try again later." });
   }
 });
 
@@ -580,7 +582,7 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
   const userId = (req as any).userId as string;
   const tier = await getUserTier(userId);
   if (tier === "foundation") {
-    res.status(403).json({ error: "The weekly digest is available on Rise, Reign, and Legacy plans.", code: "UPGRADE_REQUIRED" });
+    res.status(403).json({ error: "UPGRADE_REQUIRED", message: "The weekly digest is available on Rise, Reign, and Legacy plans." });
     return;
   }
 
@@ -590,7 +592,8 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
     req.log.info({ email, tier }, "Digest subscriber added");
     res.json({ success: true, message: "Subscribed to weekly digest." });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    req.log.error({ err }, "POST /email/digest/subscribe error");
+    res.status(500).json({ error: "Could not subscribe to digest. Please try again." });
   }
 });
 
@@ -602,7 +605,8 @@ emailRouter.post("/email/digest/unsubscribe", requireAuth, emailUnsubscribeRateL
     req.log.info({ email }, "Digest subscriber deactivated");
     res.json({ success: true, message: "Unsubscribed from weekly digest." });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    req.log.error({ err }, "POST /email/digest/unsubscribe error");
+    res.status(500).json({ error: "Could not unsubscribe. Please try again." });
   }
 });
 
@@ -645,7 +649,8 @@ emailRouter.post("/email/digest/send-now", digestSendNowRateLimit, async (req, r
     req.log.info({ sent, failed }, "Manual digest send complete");
     res.json({ success: true, sent, failed, total: subscribers.length, errors });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+    req.log.error({ err }, "POST /email/digest/send-now error");
+    res.status(500).json({ error: "Internal server error." });
   }
 });
 
