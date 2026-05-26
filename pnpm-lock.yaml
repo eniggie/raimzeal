@@ -856,6 +856,16 @@ importers:
         version: 3.5.4(zod@3.25.76)
 
   artifacts/raimzeal-video:
+    dependencies:
+      '@ffmpeg/core':
+        specifier: 0.12.6
+        version: 0.12.6
+      '@ffmpeg/ffmpeg':
+        specifier: 0.12.10
+        version: 0.12.10
+      '@ffmpeg/util':
+        specifier: 0.12.1
+        version: 0.12.1
     devDependencies:
       '@react-spring/web':
         specifier: ^10.0.3
@@ -1715,6 +1725,22 @@ packages:
   '@expo/xcpretty@4.4.4':
     resolution: {integrity: sha512-4aQzz9vgxcNXFfo/iyNgDDYfsU5XGKKxWxZopw0cVotHiW+U8IJbIxMaxsINs6bHhtkG3StKNPcOrn3eBuxKPw==}
     hasBin: true
+
+  '@ffmpeg/core@0.12.6':
+    resolution: {integrity: sha512-PrjWBTfGn2WVn9T7wGnzfFwChbqWeZc7tM9vvJZVRadYFUDakfzy7W0LpYC0cvvK0xT82qlBsk38lQhJ/Hps5A==}
+    engines: {node: '>=16.x'}
+
+  '@ffmpeg/ffmpeg@0.12.10':
+    resolution: {integrity: sha512-lVtk8PW8e+NUzGZhPTWj2P1J4/NyuCrbDD3O9IGpSeLYtUZKBqZO8CNj1WYGghep/MXoM8e1qVY1GztTkf8YYQ==}
+    engines: {node: '>=18.x'}
+
+  '@ffmpeg/types@0.12.4':
+    resolution: {integrity: sha512-k9vJQNBGTxE5AhYDtOYR5rO5fKsspbg51gbcwtbkw2lCdoIILzklulcjJfIDwrtn7XhDeF2M+THwJ2FGrLeV6A==}
+    engines: {node: '>=16.x'}
+
+  '@ffmpeg/util@0.12.1':
+    resolution: {integrity: sha512-10jjfAKWaDyb8+nAkijcsi9wgz/y26LOc1NKJradNMyCIl6usQcBbhkjX5qhALrSBcOy6TOeksunTYa+a03qNQ==}
+    engines: {node: '>=18.x'}
 
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
@@ -8102,6 +8128,16 @@ snapshots:
       '@babel/code-frame': 7.29.0
       chalk: 4.1.2
       js-yaml: 4.1.1
+
+  '@ffmpeg/core@0.12.6': {}
+
+  '@ffmpeg/ffmpeg@0.12.10':
+    dependencies:
+      '@ffmpeg/types': 0.12.4
+
+  '@ffmpeg/types@0.12.4': {}
+
+  '@ffmpeg/util@0.12.1': {}
 
   '@floating-ui/core@1.7.5':
     dependencies:
