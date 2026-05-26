@@ -55,9 +55,19 @@ async function checkPermission(): Promise<CameraRollPermissionStatus> {
   }
 }
 
-export function PermissionsProvider({ children }: { children: React.ReactNode }) {
+interface PermissionsProviderProps {
+  children: React.ReactNode;
+  /**
+   * Pre-loaded value of the rationale-dismissed flag from `loadBootPreferences()`.
+   * Seeding this avoids a redundant AsyncStorage read inside the bootstrap
+   * (the OS permission check and optional Supabase call still run as normal).
+   */
+  initialRationaleDismissed?: boolean;
+}
+
+export function PermissionsProvider({ children, initialRationaleDismissed = false }: PermissionsProviderProps) {
   const [cameraRollStatus, setCameraRollStatus] = useState<CameraRollPermissionStatus | null>(null);
-  const [hasSeenRationale, setHasSeenRationale] = useState(false);
+  const [hasSeenRationale, setHasSeenRationale] = useState(initialRationaleDismissed);
   const [permissionsBootstrapped, setPermissionsBootstrapped] = useState(false);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   // Kept in sync with cameraRollStatus state so the auth-change callback can
@@ -68,8 +78,9 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     /**
      * Bootstrap order (all must resolve before permissionsBootstrapped = true):
-     *  1. OS permission status check
-     *  2. Local AsyncStorage flag (fast, works offline)
+     *  1. OS permission status check  (always needed; can't be pre-fetched)
+     *  2. Local AsyncStorage flag — already seeded via `initialRationaleDismissed`
+     *     from `loadBootPreferences()`, so no extra read is needed here.
      *  3. Remote Supabase preference (for signed-in returning users on a fresh
      *     install whose local AsyncStorage was wiped by the uninstall)
      *
@@ -77,25 +88,21 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
      * the rationale before reinstalling will not see the sheet again.
      */
     async function bootstrap() {
-      const [status, localDismissed] = await Promise.all([
-        checkPermission(),
-        AsyncStorage.getItem(RATIONALE_DISMISSED_KEY),
-      ]);
+      const status = await checkPermission();
 
       setCameraRollStatus(status);
 
       // If permission is already resolved the flag is irrelevant; clear it.
       if (status !== "undetermined") {
-        if (localDismissed) {
-          AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
-        }
+        AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
         setHasSeenRationale(false);
         setPermissionsBootstrapped(true);
         return;
       }
 
-      // Permission is still undetermined — determine the effective flag value.
-      let effectiveDismissed = localDismissed === "true";
+      // Permission is still undetermined — start from the pre-seeded value
+      // (initialRationaleDismissed) and let Supabase override if available.
+      let effectiveDismissed = initialRationaleDismissed;
 
       // For signed-in users, the cloud value is the source of truth on fresh
       // installs (local AsyncStorage was wiped by the uninstall).

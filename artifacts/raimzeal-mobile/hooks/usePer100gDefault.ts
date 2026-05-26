@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
 
 const STORAGE_KEY = "@raimzeal_default_per100g";
 
@@ -10,33 +10,31 @@ interface Per100gDefaultContextType {
 
 const Per100gDefaultContext = createContext<Per100gDefaultContextType | null>(null);
 
+interface Per100gDefaultProviderProps {
+  children: React.ReactNode;
+  /**
+   * Pre-loaded value from `loadBootPreferences()`. Providing this avoids any
+   * AsyncStorage read inside the provider and prevents a null/blocking flash.
+   */
+  initialValue: boolean;
+}
+
 /**
  * Reads the "default to per-100g view" preference from AsyncStorage once at
  * app boot and exposes shared state to all consumers.  Wrap the app root with
  * this provider so the preference is available app-wide without per-component
  * AsyncStorage round-trips.
+ *
+ * Pass `initialValue` from `loadBootPreferences()` (called before the provider
+ * mounts) so the correct persisted value is available on the very first render.
  */
-export function Per100gDefaultProvider({ children }: { children: React.ReactNode }) {
-  const [defaultPer100g, setDefaultPer100gState] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((saved) => {
-        setDefaultPer100gState(saved === "true");
-      })
-      .catch(() => {
-        setDefaultPer100gState(false);
-      });
-  }, []);
+export function Per100gDefaultProvider({ children, initialValue }: Per100gDefaultProviderProps) {
+  const [defaultPer100g, setDefaultPer100gState] = useState<boolean>(initialValue);
 
   const setDefaultPer100g = useCallback((value: boolean) => {
     setDefaultPer100gState(value);
     AsyncStorage.setItem(STORAGE_KEY, value ? "true" : "false").catch(() => {});
   }, []);
-
-  if (defaultPer100g === null) {
-    return null;
-  }
 
   return React.createElement(
     Per100gDefaultContext.Provider,

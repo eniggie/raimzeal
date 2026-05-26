@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
 
 export interface MacroGoals {
   calories: number;
@@ -25,32 +25,18 @@ interface MacroGoalsContextType {
 
 const MacroGoalsContext = createContext<MacroGoalsContextType | null>(null);
 
-export function MacroGoalsProvider({ children }: { children: React.ReactNode }) {
-  const [goals, setGoalsState] = useState<MacroGoals>(DEFAULT_MACRO_GOALS);
-  const [loaded, setLoaded] = useState(false);
+interface MacroGoalsProviderProps {
+  children: React.ReactNode;
+  /**
+   * Pre-loaded goals from `loadBootPreferences()`. Providing this avoids any
+   * AsyncStorage read inside the provider and ensures the correct persisted
+   * value is available on the very first render with no flash or extra round-trip.
+   */
+  initialGoals: MacroGoals;
+}
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw) as Partial<MacroGoals>;
-            setGoalsState({
-              calories: parsed.calories ?? DEFAULT_MACRO_GOALS.calories,
-              protein: parsed.protein ?? DEFAULT_MACRO_GOALS.protein,
-              carbs: parsed.carbs ?? DEFAULT_MACRO_GOALS.carbs,
-              fat: parsed.fat ?? DEFAULT_MACRO_GOALS.fat,
-            });
-          } catch {
-            // corrupted — keep defaults
-          }
-        }
-      })
-      .catch(() => {
-        // storage read failed — keep defaults
-      })
-      .finally(() => setLoaded(true));
-  }, []);
+export function MacroGoalsProvider({ children, initialGoals }: MacroGoalsProviderProps) {
+  const [goals, setGoalsState] = useState<MacroGoals>(initialGoals);
 
   const setGoals = useCallback(async (newGoals: MacroGoals) => {
     setGoalsState(newGoals);
@@ -62,7 +48,7 @@ export function MacroGoalsProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   return (
-    <MacroGoalsContext.Provider value={{ goals, setGoals, loaded }}>
+    <MacroGoalsContext.Provider value={{ goals, setGoals, loaded: true }}>
       {children}
     </MacroGoalsContext.Provider>
   );
@@ -70,6 +56,6 @@ export function MacroGoalsProvider({ children }: { children: React.ReactNode }) 
 
 export function useMacroGoals(): MacroGoalsContextType {
   const ctx = useContext(MacroGoalsContext);
-  if (!ctx) throw new Error("useMacroGoals must be used inside MacroGoalsProvider");
+  if (!ctx) throw new Error("useMacroGoals must be inside MacroGoalsProvider");
   return ctx;
 }

@@ -26,8 +26,9 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider, useFitness } from "@/contexts/FitnessContext";
 import { MacroGoalsProvider } from "@/contexts/MacroGoalsContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
-import { ThumbnailSizeProvider, loadInitialThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
+import { ThumbnailSizeProvider } from "@/hooks/useThumbnailSize";
 import { Per100gDefaultProvider } from "@/hooks/usePer100gDefault";
+import { BootPreferences, loadBootPreferences } from "@/hooks/useBootPreferences";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   loadReminderSettings,
@@ -155,13 +156,13 @@ export default function RootLayout() {
   const fontsLoaded = interLoaded && groteskLoaded;
   const fontError = interError || groteskError;
 
-  const [initialThumbnailSize, setInitialThumbnailSize] = useState<ThumbnailSize | null>(null);
+  const [bootPrefs, setBootPrefs] = useState<BootPreferences | null>(null);
 
   useEffect(() => {
-    loadInitialThumbnailSize().then(setInitialThumbnailSize);
+    loadBootPreferences().then(setBootPrefs);
   }, []);
 
-  const appReady = (fontsLoaded || !!fontError) && initialThumbnailSize !== null;
+  const appReady = (fontsLoaded || !!fontError) && bootPrefs !== null;
 
   useEffect(() => {
     if (appReady) {
@@ -179,10 +180,10 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AuthProvider>
                 <FitnessProvider>
-                  <MacroGoalsProvider>
-                    <PermissionsProvider>
-                      <ThumbnailSizeProvider initialSize={initialThumbnailSize}>
-                        <Per100gDefaultProvider>
+                  <MacroGoalsProvider initialGoals={bootPrefs.macroGoals}>
+                    <PermissionsProvider initialRationaleDismissed={bootPrefs.cameraRollRationaleDismissed}>
+                      <ThumbnailSizeProvider initialSize={bootPrefs.thumbnailSize}>
+                        <Per100gDefaultProvider initialValue={bootPrefs.defaultPer100g}>
                           <AuthGate />
                         </Per100gDefaultProvider>
                       </ThumbnailSizeProvider>
