@@ -237,25 +237,31 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
             <Download className="w-4 h-4 mr-2" />
             Download
           </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleCopy}
-            disabled={!isClipboardImageSupported}
-            title={!isClipboardImageSupported ? 'Copy not supported — try Download instead.' : undefined}
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-green-500">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 mr-2" />
-                Copy Image
-              </>
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleCopy}
+              disabled={!isClipboardImageSupported}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 mr-2 text-green-500" />
+                  <span className="text-green-500">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Image
+                </>
+              )}
+            </Button>
+            {!isClipboardImageSupported && (
+              <p className="text-xs text-muted-foreground text-center leading-tight">
+                Not supported in this browser — use Download
+              </p>
             )}
-          </Button>
+          </div>
           <Button className="flex-1" onClick={handleShare}>
             <Share2 className="w-4 h-4 mr-2" />
             Share
