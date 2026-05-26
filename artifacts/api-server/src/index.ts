@@ -68,26 +68,28 @@ async function runSupabaseSchemaMigration() {
       ALTER TABLE community_likes    ENABLE ROW LEVEL SECURITY;
       ALTER TABLE community_comments ENABLE ROW LEVEL SECURITY;
 
-      -- Create SELECT policies idempotently (DO block catches duplicate_object).
+      -- Create SELECT policies only when the 'authenticated' role exists.
+      -- In Supabase this role is always present; in plain Postgres (dev) it is not.
+      -- Each DO block is idempotent: duplicate_object is silently swallowed.
       DO $pol$
       BEGIN
-        CREATE POLICY "community_posts_select_authenticated"
-          ON community_posts FOR SELECT TO authenticated USING (true);
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $pol$;
-
-      DO $pol$
-      BEGIN
-        CREATE POLICY "community_likes_select_authenticated"
-          ON community_likes FOR SELECT TO authenticated USING (true);
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $pol$;
-
-      DO $pol$
-      BEGIN
-        CREATE POLICY "community_comments_select_authenticated"
-          ON community_comments FOR SELECT TO authenticated USING (true);
-      EXCEPTION WHEN duplicate_object THEN NULL;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          BEGIN
+            CREATE POLICY "community_posts_select_authenticated"
+              ON community_posts FOR SELECT TO authenticated USING (true);
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END;
+          BEGIN
+            CREATE POLICY "community_likes_select_authenticated"
+              ON community_likes FOR SELECT TO authenticated USING (true);
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END;
+          BEGIN
+            CREATE POLICY "community_comments_select_authenticated"
+              ON community_comments FOR SELECT TO authenticated USING (true);
+          EXCEPTION WHEN duplicate_object THEN NULL;
+          END;
+        END IF;
       END $pol$;
     `);
     // Reload PostgREST schema cache via direct connection (bypasses PgBouncer).
