@@ -1367,6 +1367,28 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       sizeLabelTranslateY.value = withTiming(4, { duration: 200 });
     }
   }, [thumbnailSize]);
+
+  // Thumbnail row crossfade + scale animation on size change
+  const thumbRowOpacity = useSharedValue(1);
+  const thumbRowScale = useSharedValue(1);
+  const thumbRowAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: thumbRowOpacity.value,
+    transform: [{ scale: thumbRowScale.value }],
+  }));
+  const prevThumbnailSizeRef = useRef<ThumbnailSize>(thumbnailSize);
+  useEffect(() => {
+    if (prevThumbnailSizeRef.current === thumbnailSize) return;
+    prevThumbnailSizeRef.current = thumbnailSize;
+    if (reduceMotionRef.current) return;
+    thumbRowOpacity.value = withSequence(
+      withTiming(0, { duration: 90 }),
+      withTiming(1, { duration: 180 })
+    );
+    thumbRowScale.value = withSequence(
+      withTiming(0.97, { duration: 90 }),
+      withTiming(1, { duration: 180 })
+    );
+  }, [thumbnailSize]);
   const previewOpacity = useRef(new Animated.Value(1)).current;
   const themeTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const knobAnims = useRef<Record<string, Animated.Value>>(
@@ -4163,8 +4185,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 Preview size: {thumbnailSize === "s" ? "Small" : "Large"}
               </Text>
             </Reanimated.View>
-            <View
-              style={styles.themeThumbnailsWrapper}
+            <Reanimated.View
+              style={[styles.themeThumbnailsWrapper, thumbRowAnimatedStyle]}
               onLayout={(e) => {
                 const w = e.nativeEvent.layout.width;
                 themeContainerWidth.current = w;
@@ -4209,7 +4231,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   pointerEvents="none"
                 />
               )}
-            </View>
+            </Reanimated.View>
 
             {/* Stat toggles */}
             <View
