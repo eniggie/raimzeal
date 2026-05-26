@@ -1396,6 +1396,21 @@ export default function CardCustomizationModal({
     }
   }, [showLongPressHint]);
 
+  function dismissLongPressHint() {
+    AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+    if (reduceMotionRef.current) {
+      setShowLongPressHint(false);
+      return;
+    }
+    Animated.timing(longPressHintFadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowLongPressHint(false);
+    });
+  }
+
   // Card-preview chip: fade in then auto-dismiss after ~2.5 s
   const cardChipFadeAnim = useRef(new Animated.Value(0)).current;
   const cardChipSlideAnim = useRef(new Animated.Value(6)).current;
@@ -2294,8 +2309,7 @@ export default function CardCustomizationModal({
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
     // Dismiss the long-press hint permanently once the user has discovered the gesture
     if (showLongPressHint) {
-      setShowLongPressHint(false);
-      AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+      dismissLongPressHint();
     }
 
     const isAlreadyDefault = defaultAction === action;
@@ -4166,10 +4180,7 @@ export default function CardCustomizationModal({
           {anyStatEnabled && showLongPressHint && (
             <Animated.View style={{ opacity: longPressHintFadeAnim }}>
               <TouchableOpacity
-                onPress={() => {
-                  setShowLongPressHint(false);
-                  AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
-                }}
+                onPress={dismissLongPressHint}
                 activeOpacity={0.6}
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss hint"
