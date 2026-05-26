@@ -9,24 +9,61 @@ import pg from "pg";
 validateEnv();
 
 /**
- * Ensures the Supabase community_posts table has the image_url column and
- * notifies PostgREST to reload its schema cache so it picks up the column.
+ * Ensures the community_posts table has all required columns.
+ * Runs via direct pg (DATABASE_URL) which connects to the same PostgreSQL
+ * instance that Supabase PostgREST uses.
  * Non-fatal — any error is logged and the server continues.
  */
 async function runSupabaseSchemaMigration() {
   const databaseUrl = process.env["DATABASE_URL"];
-  if (!databaseUrl) return;
+  if (!databaseUrl) {
+    logger.warn("DATABASE_URL not set — skipping community schema migration");
+    return;
+  }
 
   const { Pool } = pg;
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+  // Use direct connection (port 5432) not the pooler (port 6543).
+  // NOTIFY does not propagate through PgBouncer, so we need the direct host.
+  const directUrl = databaseUrl.replace(/:6543\//, ":5432/");
+  const pool = new Pool({ connectionString: directUrl, max: 1, connectionTimeoutMillis: 8000 });
   try {
-    await pool.query(
-      `ALTER TABLE IF EXISTS community_posts ADD COLUMN IF NOT EXISTS image_url TEXT`
-    );
+    // Create community tables if they don't exist, then add optional columns.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS community_posts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL,
+        user_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        post_type TEXT NOT NULL DEFAULT 'post',
+        is_legacy_post BOOLEAN NOT NULL DEFAULT false,
+        image_url TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_legacy_post BOOLEAN NOT NULL DEFAULT false;
+
+      CREATE TABLE IF NOT EXISTS community_likes (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE(post_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS community_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id UUID NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL,
+        user_name TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    // Reload PostgREST schema cache via direct connection (bypasses PgBouncer).
     await pool.query(`SELECT pg_notify('pgrst', 'reload schema')`);
-    logger.info("Supabase schema migration complete — PostgREST cache reloaded");
+    logger.info("Community schema migration complete — PostgREST cache reloaded");
   } catch (err) {
-    logger.warn({ err }, "Supabase schema migration failed — non-fatal");
+    logger.warn({ err }, "Community schema migration failed — non-fatal, posts may be unavailable");
   } finally {
     await pool.end();
   }

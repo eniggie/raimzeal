@@ -83,6 +83,104 @@ communityRouter.post(
   }
 );
 
+// ── GET /api/community/posts ─────────────────────────────────────────────────
+// Returns community posts. No authentication required — the feed is public.
+// Uses the admin client to bypass RLS so posts are always visible.
+// Query params:
+//   postType   – filter (post|question|win|tip|challenge)
+//   limit      – max rows (default 30, max 50)
+//   legacyOnly – "true" for inner-circle posts only (default "false")
+communityRouter.get(
+  "/community/posts",
+  async (req, res) => {
+    const q = req.query as Record<string, string | undefined>;
+    const limit = Math.min(parseInt(q["limit"] ?? "30", 10) || 30, 50);
+    const legacyOnly = q["legacyOnly"] === "true";
+    const validTypes = ["post", "question", "win", "tip", "challenge"] as const;
+    const safePostType = validTypes.includes(q["postType"] as (typeof validTypes)[number])
+      ? (q["postType"] as (typeof validTypes)[number])
+      : undefined;
+
+    const supabase = getAdminClient();
+
+    // Use * to avoid errors if optional columns (image_url, is_legacy_post) don't
+    // exist yet in this Supabase project. Missing columns just won't appear in results.
+    let query = supabase
+      .from("community_posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    // Only filter by is_legacy_post if we're requesting inner-circle posts —
+    // if the column doesn't exist the query would fail, so we skip this filter
+    // for the default (legacyOnly=false) case and rely on the column being absent=false.
+    if (legacyOnly) {
+      query = (query as typeof query).eq("is_legacy_post", true);
+    }
+    if (safePostType) query = (query as typeof query).eq("post_type", safePostType);
+
+    const { data, error } = await query;
+
+    if (error) {
+      req.log.error({ error }, "Failed to fetch community posts");
+      res.status(500).json({ error: "Failed to fetch posts" });
+      return;
+    }
+
+    const rows = (data ?? []) as Record<string, unknown>[];
+
+    // Fetch likes and comments counts in bulk via separate queries — avoids
+    // requiring FK relationships to be configured in PostgREST.
+    const postIds = rows.map((r) => r["id"] as string);
+    const [likesRes, commentsRes, profilesRes] = await Promise.all([
+      postIds.length > 0
+        ? supabase.from("community_likes").select("post_id").in("post_id", postIds)
+        : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
+      postIds.length > 0
+        ? supabase.from("community_comments").select("post_id").in("post_id", postIds)
+        : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
+      ((): string[] => {
+        const ids = [...new Set(rows.map((r) => r["user_id"] as string))];
+        return ids;
+      })().length > 0
+        ? supabase
+            .from("profiles")
+            .select("id, subscription_tier")
+            .in("id", [...new Set(rows.map((r) => r["user_id"] as string))])
+        : Promise.resolve({ data: [] as Array<{ id: string; subscription_tier: string | null }> }),
+    ]);
+
+    const likesCount: Record<string, number> = {};
+    for (const l of (likesRes.data ?? []) as Array<{ post_id: string }>) {
+      likesCount[l.post_id] = (likesCount[l.post_id] ?? 0) + 1;
+    }
+    const commentsCount: Record<string, number> = {};
+    for (const c of (commentsRes.data ?? []) as Array<{ post_id: string }>) {
+      commentsCount[c.post_id] = (commentsCount[c.post_id] ?? 0) + 1;
+    }
+    const tierMap: Record<string, string> = {};
+    for (const p of (profilesRes.data ?? []) as Array<{ id: string; subscription_tier: string | null }>) {
+      const t = p.subscription_tier;
+      tierMap[p.id] = t === "rise" || t === "reign" || t === "legacy" ? t : "foundation";
+    }
+
+    const posts = rows.map((r) => ({
+      id: r["id"],
+      userId: r["user_id"],
+      userName: r["user_name"],
+      content: r["content"],
+      postType: r["post_type"],
+      imageUrl: r["image_url"] ?? null,
+      likesCount: likesCount[r["id"] as string] ?? 0,
+      commentsCount: commentsCount[r["id"] as string] ?? 0,
+      createdAt: r["created_at"],
+      authorTier: tierMap[r["user_id"] as string] ?? "foundation",
+    }));
+
+    res.json({ posts });
+  }
+);
+
 // ── POST /api/community/posts ────────────────────────────────────────────────
 // Creates a new community post.
 // userId is extracted exclusively from the validated JWT — never from the body.
