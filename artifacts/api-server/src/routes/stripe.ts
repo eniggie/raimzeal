@@ -2,7 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
 import { getUncachableStripeClient } from "../stripeClient";
-import { getPriceId } from "../lib/tier";
+import { getPriceId, tierFromPriceId, normaliseTier } from "../lib/tier";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const stripeRouter = Router();
 
@@ -117,6 +118,80 @@ async function handleCheckoutSession(req: Request, res: Response) {
     }
   }
 }
+
+// GET /api/stripe/sync-subscription — pull user's active Stripe subscription and
+// write it to the Supabase profiles row. Used as a reliable fallback for the
+// membership page after checkout, in case the webhook hasn't fired yet.
+stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+
+  try {
+    const stripe = await getUncachableStripeClient();
+
+    // Get the user's stripe_customer_id and email from Supabase
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id, email")
+      .eq("id", userId)
+      .maybeSingle();
+
+    let customerId = (profile as any)?.stripe_customer_id as string | null | undefined;
+
+    // If no customer ID stored yet, look up by email in Stripe
+    if (!customerId) {
+      const email = (profile as any)?.email as string | undefined;
+      if (email) {
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        customerId = customers.data[0]?.id;
+      }
+    }
+
+    if (!customerId) {
+      res.json({ tier: "foundation", status: null, synced: false });
+      return;
+    }
+
+    // Find the most recently active / trialing subscription
+    const [activeSubs, trialingSubs] = await Promise.all([
+      stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
+      stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    ]);
+    const sub = activeSubs.data[0] ?? trialingSubs.data[0];
+
+    if (!sub) {
+      res.json({ tier: "foundation", status: "none", synced: false });
+      return;
+    }
+
+    const priceId = sub.items.data[0]?.price?.id;
+    const rawMetaTier = sub.items.data[0]?.price?.metadata?.["tier"];
+    const tier = tierFromPriceId(priceId) ?? normaliseTier(rawMetaTier) ?? "foundation";
+    const itemPeriodEnd = (sub.items?.data?.[0] as any)?.current_period_end as number | undefined;
+    const periodEndIso = itemPeriodEnd ? new Date(itemPeriodEnd * 1000).toISOString() : null;
+
+    await supabaseAdmin.from("profiles").update({
+      stripe_customer_id: customerId,
+      subscription_status: sub.status,
+      subscription_tier: tier,
+      current_period_end: periodEndIso,
+    }).eq("id", userId);
+
+    logger.info({ userId, tier, status: sub.status }, "Subscription synced via /stripe/sync-subscription");
+    res.json({ tier, status: sub.status, synced: true });
+  } catch (err) {
+    const isNotConfigured =
+      err instanceof Error &&
+      (err.message.includes("not found") ||
+        err.message.includes("Connect Stripe") ||
+        err.message.includes("Missing Replit"));
+    if (isNotConfigured) {
+      res.json({ tier: "foundation", status: null, synced: false });
+    } else {
+      logger.error({ err, userId }, "Failed to sync subscription");
+      res.status(500).json({ error: "Failed to sync subscription" });
+    }
+  }
+});
 
 // POST /api/stripe/checkout — canonical path (task spec / new clients)
 stripeRouter.post("/stripe/checkout", requireAuth, handleCheckoutSession);

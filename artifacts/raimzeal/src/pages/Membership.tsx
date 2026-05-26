@@ -120,6 +120,19 @@ export function Membership() {
     if (params.get('checkout') === 'success') {
       setShowSuccess(true);
       window.history.replaceState({}, '', '/membership');
+      // Sync the subscription from Stripe immediately so the profile reflects the new tier,
+      // in case the webhook hasn't fired yet or experienced a delay.
+      (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+          await fetch('/api/stripe/sync-subscription', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+        } catch {
+          // non-fatal — webhook will eventually fire
+        }
+      })();
     }
   }, [search]);
 

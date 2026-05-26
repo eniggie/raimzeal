@@ -33,13 +33,20 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
   const [exportLoading, setExportLoading] = useState(false);
   const [canExport, setCanExport] = useState(false);
 
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', session.user.id).single();
-      const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
-      setCanExport(t === 'rise' || t === 'reign' || t === 'legacy');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', session.user.id).single();
+        const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
+        setSubscriptionTier(t ?? 'foundation');
+        setCanExport(t === 'rise' || t === 'reign' || t === 'legacy');
+      } catch {
+        // non-fatal — canExport stays false
+      }
     })();
   }, []);
 
@@ -591,8 +598,18 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                   <Heart className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">RAIMZEAL · Foundation Plan</div>
-                  <div className="text-sm text-muted-foreground">All features included, no subscription</div>
+                  <div className="font-medium">
+                    RAIMZEAL ·{' '}
+                    {subscriptionTier === 'rise' ? 'Rise Plan'
+                      : subscriptionTier === 'reign' ? 'Reign Plan'
+                      : subscriptionTier === 'legacy' ? 'Legacy Plan'
+                      : 'Foundation Plan'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {subscriptionTier && subscriptionTier !== 'foundation'
+                      ? 'Thank you for supporting RAIMZEAL'
+                      : 'All features included, no subscription'}
+                  </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>

@@ -37,7 +37,19 @@ app.post(
     }
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
+      // stripe-replit-sync verifies the signature and handles its own sync tables
       await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+
+      // Also process billing events to update Supabase profiles (subscription tier,
+      // status, period end). The payload was already verified above so we trust it.
+      try {
+        const { handleBillingEvent } = await import("./lib/billingWebhookHandler");
+        const event = JSON.parse((req.body as Buffer).toString("utf8")) as Parameters<typeof handleBillingEvent>[0];
+        await handleBillingEvent(event);
+      } catch (err) {
+        logger.error({ err }, "Billing event processing failed — non-fatal");
+      }
+
       res.status(200).json({ received: true });
     } catch (err: unknown) {
       logger.error({ err }, "Stripe webhook error");
