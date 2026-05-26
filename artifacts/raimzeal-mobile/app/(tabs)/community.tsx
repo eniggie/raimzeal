@@ -123,12 +123,18 @@ export default function CommunityScreen() {
   const loadPosts = useCallback(
     async (tab: FeedTab = feedTab) => {
       setLoadError(false);
+      // Non-legacy users cannot access Inner Circle — skip the fetch entirely
+      // so we never hit the server's 403 gate for restricted content.
+      if (tab === "inner-circle" && !tierLoading && tier !== "legacy") {
+        setPosts([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       try {
         const isInnerCircle = tab === "inner-circle";
         const filter = tab === "questions" ? "question" : undefined;
-        let fetched: CommunityPost[] = isSupabaseConfigured
-          ? await fetchCommunityPosts(filter, 30, isInnerCircle)
-          : [];
+        let fetched: CommunityPost[] = await fetchCommunityPosts(filter, 30, isInnerCircle);
 
         let likedSet = new Set<string>();
         if (userId) {

@@ -352,7 +352,16 @@ export async function fetchCommunityPosts(
     legacyOnly: String(legacyOnly),
   });
   if (postType) params.set("postType", postType);
-  const res = await fetch(`${getApiBase()}/community/posts?${params.toString()}`);
+
+  // Inner Circle requires an authenticated Legacy user — send token so the
+  // server can enforce the tier gate. Public feed (legacyOnly=false) is auth-free.
+  const headers: Record<string, string> = {};
+  if (legacyOnly) {
+    const token = await getAccessToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${getApiBase()}/community/posts?${params.toString()}`, { headers });
   if (!res.ok) throw new Error(`Failed to fetch posts (${res.status})`);
   const body = await res.json() as { posts: CommunityPost[] };
   return body.posts ?? [];

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
 import { randomUUID } from "crypto";
 import { getUserTier } from "../lib/tier";
@@ -92,6 +92,7 @@ communityRouter.post(
 //   legacyOnly – "true" for inner-circle posts only (default "false")
 communityRouter.get(
   "/community/posts",
+  optionalAuth,          // validates Bearer token when present, continues without it
   async (req, res) => {
     const q = req.query as Record<string, string | undefined>;
     const limit = Math.min(parseInt(q["limit"] ?? "30", 10) || 30, 50);
@@ -100,6 +101,20 @@ communityRouter.get(
     const safePostType = validTypes.includes(q["postType"] as (typeof validTypes)[number])
       ? (q["postType"] as (typeof validTypes)[number])
       : undefined;
+
+    // Inner Circle is private — requires an authenticated Legacy member.
+    if (legacyOnly) {
+      const userId = (req as any).userId as string | undefined;
+      if (!userId) {
+        res.status(401).json({ error: "Authentication required" });
+        return;
+      }
+      const userTier = await getUserTier(userId);
+      if (userTier !== "legacy") {
+        res.status(403).json({ error: "Inner Circle requires Legacy membership" });
+        return;
+      }
+    }
 
     const supabase = getAdminClient();
 
