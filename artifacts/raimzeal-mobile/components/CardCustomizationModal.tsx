@@ -1506,6 +1506,8 @@ export default function CardCustomizationModal({
   const confirmSwipeY = useRef(new Animated.Value(0)).current;
   const confirmProgressAnim = useRef(new Animated.Value(1)).current;
   const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
+  const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Swipe-to-dismiss hint (shown once on the first toast the user ever sees)
   const [toastSwipeHintSeen, setToastSwipeHintSeen] = useState(true);
@@ -1523,6 +1525,14 @@ export default function CardCustomizationModal({
   const undoSegmentStartRef = useRef<number>(0);
 
   function dismissConfirmToast() {
+    if (confirmDismissTimerRef.current !== null) {
+      clearTimeout(confirmDismissTimerRef.current);
+      confirmDismissTimerRef.current = null;
+    }
+    if (confirmAnimRef.current !== null) {
+      confirmAnimRef.current.stop();
+      confirmAnimRef.current = null;
+    }
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -1541,6 +1551,14 @@ export default function CardCustomizationModal({
   }
 
   function dismissConfirmToastAnimated() {
+    if (confirmDismissTimerRef.current !== null) {
+      clearTimeout(confirmDismissTimerRef.current);
+      confirmDismissTimerRef.current = null;
+    }
+    if (confirmAnimRef.current !== null) {
+      confirmAnimRef.current.stop();
+      confirmAnimRef.current = null;
+    }
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -1643,6 +1661,14 @@ export default function CardCustomizationModal({
     holdDurationOverrideMs?: number,
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
   ) {
+    if (confirmDismissTimerRef.current !== null) {
+      clearTimeout(confirmDismissTimerRef.current);
+      confirmDismissTimerRef.current = null;
+    }
+    if (confirmAnimRef.current !== null) {
+      confirmAnimRef.current.stop();
+      confirmAnimRef.current = null;
+    }
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -1669,7 +1695,8 @@ export default function CardCustomizationModal({
       confirmOpacity.setValue(1);
       confirmTranslateY.setValue(0);
       if (!noAutoDismiss) {
-        setTimeout(() => {
+        confirmDismissTimerRef.current = setTimeout(() => {
+          confirmDismissTimerRef.current = null;
           confirmOpacity.setValue(0);
           confirmTranslateY.setValue(8);
           confirmProgressAnim.setValue(1);
@@ -1690,7 +1717,7 @@ export default function CardCustomizationModal({
           useNativeDriver: false,
         }).start();
       }
-      Animated.sequence([
+      const seq = Animated.sequence([
         Animated.parallel([
           Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
           Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
@@ -1700,7 +1727,10 @@ export default function CardCustomizationModal({
           Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
           Animated.timing(confirmTranslateY, { toValue: 8, duration: 400, useNativeDriver: true }),
         ]),
-      ]).start(({ finished }) => {
+      ]);
+      confirmAnimRef.current = seq;
+      seq.start(({ finished }) => {
+        confirmAnimRef.current = null;
         if (finished) {
           confirmProgressAnim.setValue(1);
           setConfirmHasCountdown(false);
