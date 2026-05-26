@@ -345,52 +345,17 @@ export async function fetchCommunityPosts(
   limit = 30,
   legacyOnly = false
 ): Promise<CommunityPost[]> {
-  if (!isSupabaseConfigured) return [];
-  let query = supabase
-    .from("community_posts")
-    .select("*, community_likes(count), community_comments(count)")
-    .eq("is_legacy_post", legacyOnly)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (postType) query = (query as typeof query).eq("post_type", postType);
-  const { data, error } = await query;
-  // Propagate Supabase errors so callers can show a proper "failed to load" state.
-  if (error) throw new Error(error.message);
-  const rows = data ?? [];
-
-    const uniqueUserIds = [...new Set(rows.map((r) => r.user_id as string))];
-    const tierMap: Record<string, "foundation" | "rise" | "reign" | "legacy"> = {};
-    if (uniqueUserIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, subscription_tier")
-        .in("id", uniqueUserIds);
-      for (const p of profiles ?? []) {
-        const raw = p as Record<string, unknown>;
-        const t = raw["subscription_tier"] as string | null;
-        tierMap[raw["id"] as string] =
-          t === "rise" || t === "reign" || t === "legacy" ? t : "foundation";
-      }
-    }
-
-  return rows.map((r) => {
-    const raw = r as typeof r & {
-      community_likes: Array<{ count: number }>;
-      community_comments: Array<{ count: number }>;
-    };
-    return {
-      id: r.id,
-      userId: r.user_id,
-      userName: r.user_name,
-      content: r.content,
-      postType: r.post_type as "post" | "question" | "win" | "tip" | "challenge",
-      imageUrl: (r as Record<string, unknown>)["image_url"] as string | null | undefined,
-      likesCount: raw.community_likes?.[0]?.count ?? 0,
-      commentsCount: raw.community_comments?.[0]?.count ?? 0,
-      createdAt: r.created_at,
-      authorTier: tierMap[r.user_id] ?? "foundation",
-    };
+  // Fetch via the API server (admin client, bypasses RLS) instead of querying
+  // Supabase directly — this eliminates RLS failures and relationship-query issues.
+  const params = new URLSearchParams({
+    limit: String(limit),
+    legacyOnly: String(legacyOnly),
   });
+  if (postType) params.set("postType", postType);
+  const res = await fetch(`${getApiBase()}/community/posts?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to fetch posts (${res.status})`);
+  const body = await res.json() as { posts: CommunityPost[] };
+  return body.posts ?? [];
 }
 
 export async function createCommunityPost(
