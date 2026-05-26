@@ -2756,12 +2756,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
-  function closePresetPreview() {
+  function closePresetPreview(releaseVelocity = 0) {
     if (reduceMotionRef.current) {
       presetPreviewAnim.setValue(0);
       presetPreviewTranslateX.setValue(0);
       presetPreviewTranslateY.setValue(0);
       presetPreviewOriginScale.setValue(1);
+      presetPreviewSwipeDragY.setValue(0);
       setPresetPreviewVisible(false);
       setPresetPreviewTarget(null);
     } else {
@@ -2777,8 +2778,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       Animated.parallel([
         Animated.spring(presetPreviewAnim, { toValue: 0, ...springConfig }),
         Animated.spring(presetPreviewTranslateX, { toValue: width > 0 ? originCenterX - screenW / 2 : 0, ...springConfig }),
-        Animated.spring(presetPreviewTranslateY, { toValue: height > 0 ? originCenterY - screenH / 2 : 0, ...springConfig }),
+        Animated.spring(presetPreviewTranslateY, { toValue: height > 0 ? originCenterY - screenH / 2 : 0, velocity: releaseVelocity, ...springConfig }),
         Animated.spring(presetPreviewOriginScale, { toValue: targetScale, ...springConfig }),
+        Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...springConfig }),
       ]).start(({ finished }) => {
         if (finished) {
           setPresetPreviewVisible(false);
@@ -2786,6 +2788,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           presetPreviewTranslateX.setValue(0);
           presetPreviewTranslateY.setValue(0);
           presetPreviewOriginScale.setValue(1);
+          presetPreviewSwipeDragY.setValue(0);
         }
       });
     }
@@ -3266,6 +3269,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const zoomTranslateY = useRef(new Animated.Value(0)).current;
   const zoomOriginScale = useRef(new Animated.Value(1)).current;
   const zoomSwipeDragY = useRef(new Animated.Value(0)).current;
+  const presetPreviewSwipeDragY = useRef(new Animated.Value(0)).current;
   const zoomOriginRect = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const cardPreviewRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
@@ -3511,6 +3515,65 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       },
     })
   ).current;
+
+  // Swipe-down gesture to dismiss the preset preview overlay
+  const closePresetPreviewRef = useRef(closePresetPreview);
+  closePresetPreviewRef.current = closePresetPreview;
+
+  const presetPreviewSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5,
+      onPanResponderMove: (_, gs) => {
+        presetPreviewSwipeDragY.setValue(Math.max(0, gs.dy));
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 80 || gs.vy > 0.5) {
+          closePresetPreviewRef.current(gs.vy);
+        } else {
+          Animated.spring(presetPreviewSwipeDragY, {
+            toValue: 0,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(presetPreviewSwipeDragY, {
+          toValue: 0,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
+  // Stable handlers for preset preview ZoomableCard's onSwipeDown/onSwipeDownProgress.
+  // Required for the same reason as the zoom view: RNGH can take gesture priority over
+  // the outer PanResponder when the card is pinch-zoomed, so we need both paths.
+  const handlePresetPreviewSwipeDown = useCallback((velocityY: number) => {
+    closePresetPreviewRef.current(velocityY);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePresetPreviewSwipeDownProgress = useCallback((dy: number) => {
+    if (dy > 0) {
+      presetPreviewSwipeDragY.setValue(dy);
+    } else {
+      Animated.spring(presetPreviewSwipeDragY, {
+        toValue: 0,
+        ...swipeBackSpringConfig,
+      }).start();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stable callback wrappers via refs — give memoized child components stable function
   // references while always invoking the latest closure, eliminating stale-closure hazards.
@@ -4989,19 +5052,23 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         visible={presetPreviewVisible}
         animationType="none"
         transparent
-        onRequestClose={closePresetPreview}
+        onRequestClose={() => closePresetPreview()}
         statusBarTranslucent
       >
         <Animated.View
           style={[
             styles.zoomOverlay,
-            { opacity: presetPreviewAnim },
+            {
+              opacity: presetPreviewAnim,
+              transform: [{ translateY: presetPreviewSwipeDragY }],
+            },
           ]}
+          {...presetPreviewSwipePanResponder.panHandlers}
         >
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-            onPress={closePresetPreview}
+            onPress={() => closePresetPreview()}
           />
 
           {presetPreviewTarget && (
@@ -5033,6 +5100,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   reduceMotionShared={reduceMotionShared}
                   onSwipeLeft={() => navigatePresetPreview(1)}
                   onSwipeRight={() => navigatePresetPreview(-1)}
+                  onSwipeDown={handlePresetPreviewSwipeDown}
+                  onSwipeDownProgress={handlePresetPreviewSwipeDownProgress}
                 >
                   {zoomIsOneToOne ? (
                     <ShareProgressCard
@@ -5083,7 +5152,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               >
                 <TouchableOpacity
                   style={styles.zoomCloseBtn}
-                  onPress={closePresetPreview}
+                  onPress={() => closePresetPreview()}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                   <Ionicons name="close-circle" size={34} color="rgba(255,255,255,0.85)" />
