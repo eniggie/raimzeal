@@ -52,6 +52,32 @@ function derivePeriodEnd(sub: Stripe.Subscription): number | undefined {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
+ * When a user activates a paid subscription, make sure they are in
+ * digest_subscribers with active = true so opt-out tracking works correctly.
+ * Uses upsert so it is safe to call multiple times for the same email.
+ */
+async function activateDigestForCustomer(customerId: string): Promise<void> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("email, name")
+      .eq("stripe_customer_id", customerId)
+      .maybeSingle();
+    if (data?.email) {
+      await supabaseAdmin
+        .from("digest_subscribers")
+        .upsert(
+          { email: data.email, user_name: data.name ?? "Friend", active: true },
+          { onConflict: "email" },
+        );
+      logger.info({ customerId, email: data.email }, "Digest subscription activated — paid subscriber enrolled");
+    }
+  } catch (err) {
+    logger.warn({ customerId, err }, "Could not activate digest for new paid subscriber — non-fatal");
+  }
+}
+
+/**
  * When a subscriber downgrades to Foundation (subscription canceled or expired),
  * deactivate them in digest_subscribers so they stop receiving paid-tier emails.
  * Looks up the user's email via their stripe_customer_id in profiles.
@@ -120,6 +146,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       }).eq("id", userId);
 
+      await activateDigestForCustomer(session.customer as string);
       logger.info({ userId, tier, status: sub.status }, "Checkout completed — subscription activated");
       break;
     }
@@ -149,6 +176,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
           current_period_end: periodEndIso,
         }).eq("stripe_customer_id", customerId);
 
+        await activateDigestForCustomer(customerId);
         logger.info({ customerId, tier, status: sub.status }, "Subscription created/updated — tier upgraded");
       } else if (sub.status === "incomplete_expired" || sub.status === "unpaid") {
         // Payment window lapsed or permanently unpaid — revoke access
