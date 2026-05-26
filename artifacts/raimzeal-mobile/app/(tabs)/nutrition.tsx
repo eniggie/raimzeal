@@ -6530,9 +6530,38 @@ function MacroBar({
   const colors = useColors();
   const fillRatio = Math.min(1, Math.max(0, value / goal));
   const ratio = goal > 0 ? value / goal : 1;
+  const isOver = ratio > 1;
   const badge: "low" | "over" | null =
     ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
+
+  const glowAnim = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    if (!isOver) {
+      glowAnim.setValue(0.5);
+      return;
+    }
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 650,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.4,
+          duration: 650,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [isOver]);
+
+  const animatedShadowOpacity = isOver ? glowAnim : undefined;
+
   return (
     <View style={styles.macroBarContainer}>
       <View style={styles.macroBarHeader}>
@@ -6550,12 +6579,25 @@ function MacroBar({
           {value}/{goal}g
         </Text>
       </View>
-      <View style={[styles.macroTrack, { backgroundColor: colors.muted }]}>
-        <View style={styles.macroFlex}>
-          <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: color }]} />
-          <View style={{ flex: 1 - fillRatio }} />
+      <Animated.View
+        style={[
+          styles.macroTrackWrapper,
+          isOver && {
+            shadowColor: colors.destructive,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: animatedShadowOpacity,
+            shadowRadius: 7,
+            elevation: 6,
+          },
+        ]}
+      >
+        <View style={[styles.macroTrack, { backgroundColor: isOver ? colors.destructive + "30" : colors.muted }]}>
+          <View style={styles.macroFlex}>
+            <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: isOver ? colors.destructive : color }]} />
+            <View style={{ flex: 1 - fillRatio }} />
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -8131,6 +8173,7 @@ const styles = StyleSheet.create({
   macroBarHeader: { flexDirection: "row", justifyContent: "space-between" },
   macroBarLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   macroBarValue: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  macroTrackWrapper: { borderRadius: 3 },
   macroTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
   macroFlex: { flex: 1, flexDirection: "row", height: "100%" },
   macroFill: { height: "100%", borderRadius: 3 },

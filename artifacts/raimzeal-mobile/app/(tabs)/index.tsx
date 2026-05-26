@@ -233,8 +233,21 @@ export default function HomeScreen() {
                   : rawRatio >= 0.9
                   ? colors.warning
                   : baseColor;
+              const isOver = rawRatio > 1;
               return (
-                <View key={label} style={styles.macroRingItem}>
+                <View
+                  key={label}
+                  style={[
+                    styles.macroRingItem,
+                    isOver && {
+                      shadowColor: colors.destructive,
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.65,
+                      shadowRadius: 10,
+                      elevation: 6,
+                    },
+                  ]}
+                >
                   <ProgressRing
                     progress={pct}
                     size={64}
