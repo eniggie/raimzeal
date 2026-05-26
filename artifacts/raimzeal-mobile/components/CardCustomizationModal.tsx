@@ -1352,20 +1352,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [displayedThemeId, setDisplayedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
   const sizeLabelOpacity = useSharedValue(thumbnailSize !== "m" ? 1 : 0);
-  const sizeLabelTranslateY = useSharedValue(thumbnailSize !== "m" ? 0 : -4);
+  const sizeLabelHeight = useSharedValue(thumbnailSize !== "m" ? 24 : 0);
+  const labelNaturalHeightRef = useRef<number>(24);
   const sizeLabelAnimatedStyle = useAnimatedStyle(() => ({
     opacity: sizeLabelOpacity.value,
-    transform: [{ translateY: sizeLabelTranslateY.value }],
+    height: sizeLabelHeight.value,
+    overflow: "hidden",
   }));
   useEffect(() => {
     const visible = thumbnailSize !== "m";
     sizeLabelOpacity.value = withTiming(visible ? 1 : 0, { duration: 200 });
-    if (visible) {
-      sizeLabelTranslateY.value = -4;
-      sizeLabelTranslateY.value = withTiming(0, { duration: 200 });
-    } else {
-      sizeLabelTranslateY.value = withTiming(4, { duration: 200 });
-    }
+    sizeLabelHeight.value = withTiming(
+      visible ? labelNaturalHeightRef.current : 0,
+      { duration: 200 }
+    );
   }, [thumbnailSize]);
 
   // Thumbnail row crossfade + scale animation on size change
@@ -4186,18 +4186,30 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               </View>
             </View>
             <Reanimated.View style={sizeLabelAnimatedStyle} pointerEvents="none">
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontFamily: "Inter_400Regular",
-                  color: colors.mutedForeground,
-                  textAlign: "right",
-                  marginTop: -4,
-                  marginBottom: 6,
+              <View
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  if (h > 0) {
+                    labelNaturalHeightRef.current = h;
+                    if (thumbnailSize !== "m") {
+                      sizeLabelHeight.value = h;
+                    }
+                  }
                 }}
               >
-                Preview size: {thumbnailSize === "s" ? "Small" : "Large"}
-              </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "Inter_400Regular",
+                    color: colors.mutedForeground,
+                    textAlign: "right",
+                    marginTop: -4,
+                    marginBottom: 6,
+                  }}
+                >
+                  Preview size: {thumbnailSize === "s" ? "Small" : "Large"}
+                </Text>
+              </View>
             </Reanimated.View>
             <Reanimated.View
               style={[styles.themeThumbnailsWrapper, thumbRowAnimatedStyle]}
