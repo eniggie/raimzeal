@@ -230,10 +230,11 @@ function buildSimpleHtmlEmail(subject: string, bodyText: string): string {
   return buildHtmlEmail(subject, bodyHtml);
 }
 
-function buildWeeklyDigestHtml(firstName: string, motivation: string, tipObj: { tip: string; link: string }, insightObj: { insight: string; link: string }, resource: { name: string; url: string; desc: string }): string {
+function buildWeeklyDigestHtml(email: string, firstName: string, motivation: string, tipObj: { tip: string; link: string }, insightObj: { insight: string; link: string }, resource: { name: string; url: string; desc: string }): string {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const safeName = escapeHtml(firstName);
+  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}`;
 
   const bodyHtml = `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">${dateStr}</p>
@@ -266,13 +267,20 @@ function buildWeeklyDigestHtml(firstName: string, motivation: string, tipObj: { 
     <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#9ca3af;">
       Keep logging your workouts, meals and progress in RAIMZEAL — every entry brings you closer to your goals. Your Ovia AI coach is always here for you, 24/7.
     </p>
+
+    <p style="margin:0;font-size:11px;color:#4b5563;text-align:center;">
+      You received this because you subscribed to the RAIMZEAL weekly digest.<br />
+      <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from this digest</a>
+    </p>
   `;
 
   return buildHtmlEmail(`Your Weekly RAIMZEAL Digest — ${dateStr}`, bodyHtml);
 }
 
-function buildMidWeekHtml(firstName: string, motivation: string): string {
+function buildMidWeekHtml(email: string, firstName: string, motivation: string): string {
   const safeName = escapeHtml(firstName);
+  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}`;
+
   const bodyHtml = `
     <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Mid-week check-in, ${safeName}! 💪</p>
 
@@ -290,6 +298,11 @@ function buildMidWeekHtml(firstName: string, motivation: string): string {
       <span style="color:#e8e8ec;">💧</span> Drink a glass of water<br />
       <span style="color:#e8e8ec;">🏋️</span> Log your workout in RAIMZEAL<br />
       <span style="color:#e8e8ec;">🥗</span> Plan your next meal with intention<br />
+    </p>
+
+    <p style="margin:0;font-size:11px;color:#4b5563;text-align:center;">
+      You received this because you subscribed to the RAIMZEAL weekly digest.<br />
+      <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">Unsubscribe from this digest</a>
     </p>
   `;
   return buildHtmlEmail(`Mid-week motivation from Ovia AI, ${firstName}! 🔥`, bodyHtml);
@@ -361,7 +374,7 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
     </div>
 
     <p style="margin:0 0 24px;font-size:13px;color:#9ca3af;line-height:1.6;">
-      You are now subscribed to our <strong style="color:#ffffff;">Saturday morning digest</strong> — every week, Ovia AI will send you fresh motivation, a fitness tip backed by research, a health insight, and a resource of the week.
+      You are now subscribed to our <strong style="color:#ffffff;">Saturday digest + Wednesday mid-week boost</strong> — twice a week, Ovia AI will send you fresh motivation, a fitness tip backed by research, a health insight, and a resource of the week.
     </p>
   `;
 
@@ -423,6 +436,8 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
     "RESOURCE OF THE WEEK:", `${resource.name}`, resource.desc, resource.url, "",
     "Open the app: https://www.raimzeal.com",
     "RAIMZY resources: https://linktr.ee/Raimzy",
+    "",
+    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}`,
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -430,7 +445,7 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
   await transporter.sendMail({
     from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`,
     to, subject, text: plainText,
-    html: buildWeeklyDigestHtml(firstName, motivation, tipObj, insightObj, resource),
+    html: buildWeeklyDigestHtml(to, firstName, motivation, tipObj, insightObj, resource),
   });
 }
 
@@ -452,6 +467,8 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
     "",
     "Open the app: https://www.raimzeal.com",
     "RAIMZY resources: https://linktr.ee/Raimzy",
+    "",
+    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}`,
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -459,7 +476,7 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
   await transporter.sendMail({
     from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`,
     to, subject, text: plainText,
-    html: buildMidWeekHtml(firstName, motivation),
+    html: buildMidWeekHtml(to, firstName, motivation),
   });
 }
 
@@ -580,6 +597,23 @@ emailRouter.post("/email/digest/unsubscribe", requireAuth, emailUnsubscribeRateL
     res.json({ success: true, message: "Unsubscribed from weekly digest." });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+// One-click unsubscribe via email link — no auth required (email addr in query param)
+emailRouter.get("/email/digest/unsubscribe", emailUnsubscribeRateLimit, async (req, res) => {
+  const email = typeof req.query["email"] === "string" ? req.query["email"].trim() : "";
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Unsubscribe — RAIMZEAL</title></head><body style="margin:0;padding:40px;background:#0a0a0b;font-family:sans-serif;color:#e8e8ec;text-align:center;"><p style="font-size:16px;color:#e11d48;">Invalid or missing email address.</p></body></html>`);
+    return;
+  }
+  try {
+    await db.update(digestSubscribers).set({ active: false }).where(eq(digestSubscribers.email, email));
+    req.log.info({ email }, "Digest subscriber deactivated via one-click link");
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Unsubscribed — RAIMZEAL</title></head><body style="margin:0;padding:60px 20px;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#e8e8ec;text-align:center;"><p style="font-size:28px;margin-bottom:12px;">✅</p><p style="font-size:20px;font-weight:700;color:#ffffff;margin-bottom:8px;">You've been unsubscribed.</p><p style="font-size:14px;color:#9ca3af;margin-bottom:32px;">${escapeHtml(email)} has been removed from the RAIMZEAL weekly digest.</p><a href="https://www.raimzeal.com" style="display:inline-block;background:#2E8B57;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;">Back to RAIMZEAL</a></body></html>`);
+  } catch (err) {
+    req.log.error({ email, err }, "Failed to unsubscribe via one-click link");
+    res.status(500).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Error — RAIMZEAL</title></head><body style="margin:0;padding:40px;background:#0a0a0b;font-family:sans-serif;color:#e8e8ec;text-align:center;"><p style="font-size:16px;color:#e11d48;">Something went wrong. Please try again or contact support@raimzeal.com.</p></body></html>`);
   }
 });
 
