@@ -112,6 +112,7 @@ const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
 const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
+const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
@@ -2035,7 +2036,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw, savedChipDismissCount] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -2051,6 +2052,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           AsyncStorage.getItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_CHIP_DISMISS_COUNT),
+          AsyncStorage.getItem(STORAGE_KEY_TAP_GENERATE_HINT_SEEN),
         ]);
 
         if (cancelled) return;
@@ -2113,6 +2115,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           : null;
         setDefaultAction(resolvedAction);
         setSelectedAction(resolvedAction);
+
+        // Tap-generate hint: eligible only when the user has no prior saved action
+        // and hasn't already seen/dismissed the hint.
+        openedWithNoSavedActionRef.current = resolvedAction === null && tapGenerateHintSeenRaw !== "1";
 
         // Long-press-and-run preference: cloud value (initialLongPressAndRun) wins when
         // provided (authenticated user on a fresh device); fall back to AsyncStorage.
@@ -2393,6 +2399,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   async function handleGenerate(action: CardAction) {
     cancelAutoTrigger();
+    dismissTapGenerateHint();
     await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop, backgroundPhotoDimLevel, backgroundPhotoBlurRadius);
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
@@ -3363,6 +3370,49 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
     }
   }, [anyStatEnabled]);
+
+  // Tap-generate hint: shown below the action row after the user picks an action for the first time
+  const openedWithNoSavedActionRef = useRef(false);
+  const [showTapGenerateHint, setShowTapGenerateHint] = useState(false);
+  const [tapGenerateHintMounted, setTapGenerateHintMounted] = useState(false);
+  const tapGenerateHintFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!openedWithNoSavedActionRef.current) return;
+    if (!selectedAction) return;
+    // Show the hint when the user first selects an action
+    setTapGenerateHintMounted(true);
+    setShowTapGenerateHint(true);
+    if (reduceMotionRef.current) {
+      tapGenerateHintFadeAnim.setValue(1);
+    } else {
+      tapGenerateHintFadeAnim.setValue(0);
+      Animated.timing(tapGenerateHintFadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [selectedAction]);
+
+  function dismissTapGenerateHint() {
+    if (!showTapGenerateHint && !tapGenerateHintMounted) return;
+    openedWithNoSavedActionRef.current = false;
+    setShowTapGenerateHint(false);
+    AsyncStorage.setItem(STORAGE_KEY_TAP_GENERATE_HINT_SEEN, "1").catch(() => {});
+    if (reduceMotionRef.current) {
+      tapGenerateHintFadeAnim.setValue(0);
+      setTapGenerateHintMounted(false);
+    } else {
+      Animated.timing(tapGenerateHintFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setTapGenerateHintMounted(false);
+      });
+    }
+  }
 
   // Disabled-button long-press hint: shown below action row when all stats off, dismissable & persisted
   const [disabledBtnLpHintDismissed, setDisabledBtnLpHintDismissed] = useState(false);
@@ -4683,6 +4733,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 })}
               </View>
             </>
+          )}
+          {tapGenerateHintMounted && (
+            <Animated.View style={{ opacity: tapGenerateHintFadeAnim }}>
+              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                {"Tap Generate ↑ to create your card"}
+              </Text>
+            </Animated.View>
           )}
           {lockedHintMounted && (
             <Animated.View style={{ opacity: lockedHintFadeAnim }}>
