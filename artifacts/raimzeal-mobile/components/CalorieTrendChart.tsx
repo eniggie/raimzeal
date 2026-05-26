@@ -10,6 +10,18 @@ interface ChartDay {
   label: string;
 }
 
+interface MealBreakdownEntry {
+  mealType: string;
+  calories: number;
+}
+
+const MEAL_DOT_COLORS: Record<string, string> = {
+  breakfast: "#f59f0a",
+  lunch: "#C9A84C",
+  dinner: "#8B31C7",
+  snack: "#21c45d",
+};
+
 interface CalorieTrendChartProps {
   days: ChartDay[];
   goal: number;
@@ -20,6 +32,7 @@ interface CalorieTrendChartProps {
   onPillPress?: (date: string) => void;
   onClearHighlight?: () => void;
   onEditGoals?: () => void;
+  mealBreakdown?: MealBreakdownEntry[];
   colors: {
     primary: string;
     secondary: string;
@@ -57,6 +70,7 @@ export function CalorieTrendChart({
   onPillPress,
   onClearHighlight,
   onEditGoals,
+  mealBreakdown,
   colors,
 }: CalorieTrendChartProps) {
   const screenWidth = Dimensions.get("window").width;
@@ -464,6 +478,75 @@ export function CalorieTrendChart({
             <Text style={{ fontSize: 11, color: colors.warning + "BB" }}>✕</Text>
           </TouchableOpacity>
         </View>
+      </Animated.View>
+
+      {/* Meal breakdown row — animates in/out with the pill */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          opacity: pillOpacity,
+          alignItems: "center",
+          marginTop: 2,
+          marginBottom: 2,
+          minHeight: mealBreakdown && mealBreakdown.length > 0 ? undefined : 0,
+        }}
+      >
+        {mealBreakdown && mealBreakdown.length > 0 && (
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 0,
+            }}
+          >
+            {mealBreakdown.map(({ mealType, calories }, idx) => (
+              <View
+                key={mealType}
+                style={{ flexDirection: "row", alignItems: "center" }}
+              >
+                {idx > 0 && (
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: colors.mutedForeground,
+                      marginHorizontal: 5,
+                      opacity: 0.5,
+                    }}
+                  >
+                    ·
+                  </Text>
+                )}
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: MEAL_DOT_COLORS[mealType] ?? colors.mutedForeground,
+                    marginRight: 4,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: colors.mutedForeground,
+                  }}
+                >
+                  {mealType.charAt(0).toUpperCase() + mealType.slice(1)}{" "}
+                  <Text
+                    style={{
+                      fontWeight: "600",
+                      color: colors.foreground,
+                    }}
+                  >
+                    {calories.toLocaleString()}
+                  </Text>
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </Animated.View>
 
       {/* Legend row */}

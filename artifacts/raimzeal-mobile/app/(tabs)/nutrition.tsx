@@ -1256,6 +1256,20 @@ export default function NutritionScreen() {
     [trendChartDays, trendMetric]
   );
 
+  const highlightedDateMealBreakdown = React.useMemo(() => {
+    if (!highlightedDate) return [];
+    const ORDER: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+    const totals: Partial<Record<MealType, number>> = {};
+    for (const log of mealLogs) {
+      if (log.date !== highlightedDate) continue;
+      totals[log.mealType] = (totals[log.mealType] ?? 0) + log.calories;
+    }
+    return ORDER.filter((mt) => totals[mt] !== undefined).map((mt) => ({
+      mealType: mt,
+      calories: Math.round(totals[mt]!),
+    }));
+  }, [highlightedDate, mealLogs]);
+
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showRecentScans, setShowRecentScans] = useState(false);
@@ -4734,6 +4748,7 @@ export default function NutritionScreen() {
                       onBarPress={handleChartBarPress}
                       onPillPress={handleChartPillPress}
                       onClearHighlight={handleClearHighlight}
+                      mealBreakdown={highlightedDateMealBreakdown}
                       onEditGoals={() =>
                         router.push(
                           trendMetric === "calories"
