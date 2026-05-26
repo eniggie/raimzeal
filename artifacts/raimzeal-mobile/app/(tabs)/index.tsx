@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   GestureResponderEvent,
   Linking,
   Platform,
@@ -708,6 +709,34 @@ function WeeklyCalorieTrend({
   const maxCal = Math.max(goal, ...data.map((d) => d.calories), 1);
   const todayIdx = data.length - 1;
 
+  // Keep a stable ref array, extending it if data ever grows.
+  const animValuesRef = useRef<Animated.Value[]>([]);
+  for (let i = animValuesRef.current.length; i < data.length; i++) {
+    animValuesRef.current.push(new Animated.Value(0));
+  }
+
+  useEffect(() => {
+    // Reset each bar to 0 before re-animating (handles data updates too).
+    data.forEach((_, i) => animValuesRef.current[i].setValue(0));
+
+    const animations = data.map((item, i) => {
+      const targetHeight =
+        item.calories > 0
+          ? Math.max(3, (item.calories / maxCal) * CHART_HEIGHT)
+          : 3;
+      return Animated.timing(animValuesRef.current[i], {
+        toValue: targetHeight,
+        // duration 280 ms + stagger 20 ms × 6 = 400 ms total for 7 bars.
+        duration: 280,
+        delay: i * 20,
+        useNativeDriver: false,
+      });
+    });
+    const composite = Animated.parallel(animations);
+    composite.start();
+    return () => composite.stop();
+  }, [data, maxCal]);
+
   return (
     <View style={sparkStyles.wrapper}>
       <View style={[sparkStyles.divider, { backgroundColor: colors.border }]} />
@@ -738,10 +767,6 @@ function WeeklyCalorieTrend({
             : isToday
             ? colors.primary
             : colors.primary + "55";
-          const barHeight =
-            item.calories > 0
-              ? Math.max(3, (item.calories / maxCal) * CHART_HEIGHT)
-              : 3;
 
           return (
             <TouchableOpacity
@@ -754,11 +779,11 @@ function WeeklyCalorieTrend({
               }}
             >
               <View style={[sparkStyles.barTrack, { height: CHART_HEIGHT }]}>
-                <View
+                <Animated.View
                   style={[
                     sparkStyles.bar,
                     {
-                      height: barHeight,
+                      height: animValuesRef.current[i],
                       backgroundColor: barColor,
                       borderRadius: isToday ? 4 : 3,
                       opacity: isToday ? 1 : item.calories === 0 ? 0.25 : 0.75,
