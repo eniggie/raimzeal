@@ -2609,6 +2609,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setActivePresetId(null);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     resetZoomPosition();
+    dismissCardChip();
     try {
       setThumbnailSize("m");
       await Promise.all([
