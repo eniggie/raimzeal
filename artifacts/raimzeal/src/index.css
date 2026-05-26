@@ -643,16 +643,16 @@ input[type="number"]::-webkit-outer-spin-button {
 /*
  * pb-nav — universal bottom clearance for pages that render <BottomNav />.
  *
- * The nav bar is h-16 (4rem) tall and sits at
- *   bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px))
- * so it occupies  5.5rem + safe-area-inset-bottom  from the viewport bottom.
- * We add 0.5rem breathing room → 6rem + safe-area-inset-bottom.
+ * The nav container is fixed at bottom:0 with paddingBottom:safe-area-inset-bottom.
+ * Inside, the pill is h-14 (3.5rem) with mb-4 (1rem) margin below it.
+ * Total vertical footprint: 3.5rem pill + 1rem margin + safe-area-inset-bottom.
+ * We add 1rem breathing room above the pill → 5.5rem + safe-area-inset-bottom.
  *
  * Replace any ad-hoc  pb-24 / style={{paddingBottom:…}}  on page root divs
  * with this single class so it stays consistent everywhere.
  */
 .pb-nav {
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 input[type="number"] {
