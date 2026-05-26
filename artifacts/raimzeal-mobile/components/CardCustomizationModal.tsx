@@ -1628,7 +1628,7 @@ export default function CardCustomizationModal({
     } else if (noAutoDismiss) {
       Animated.parallel([
         Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(confirmTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
       ]).start();
     } else {
       if (showProgress) {
@@ -1641,7 +1641,7 @@ export default function CardCustomizationModal({
       Animated.sequence([
         Animated.parallel([
           Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.timing(confirmTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
         ]),
         Animated.delay(holdDuration),
         Animated.parallel([
