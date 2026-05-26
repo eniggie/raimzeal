@@ -107,8 +107,8 @@ communityRouter.post(
       res.status(400).json({ error: "userName is required" });
       return;
     }
-    if (postType !== "post" && postType !== "question") {
-      res.status(400).json({ error: "postType must be 'post' or 'question'" });
+    if (postType !== "post" && postType !== "question" && postType !== "win" && postType !== "tip" && postType !== "challenge") {
+      res.status(400).json({ error: "postType must be 'post', 'question', 'win', 'tip', or 'challenge'" });
       return;
     }
     if (content.trim().length > 2000) {
