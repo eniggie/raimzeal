@@ -1347,6 +1347,7 @@ export default function CardCustomizationModal({
 
   // Timer that fires the badge-dismissed persist after the undo window expires
   const badgePersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPermissionToastShownAtRef = useRef<number>(0);
 
   useEffect(() => {
     badgeFadeAnim.stopAnimation();
@@ -1956,6 +1957,7 @@ export default function CardCustomizationModal({
     if (!visible) return;
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
+        lastPermissionToastShownAtRef.current = 0;
         AsyncStorage.getItem(STORAGE_KEY_ACTION).then((saved) => {
           const validActions: CardAction[] = ["share", "save", "both", "copy"];
           setDefaultAction(
@@ -2453,6 +2455,9 @@ export default function CardCustomizationModal({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
+        const now = Date.now();
+        if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+        lastPermissionToastShownAtRef.current = now;
         showConfirmation(
           "Photo access blocked — tap to open Settings",
           "error",

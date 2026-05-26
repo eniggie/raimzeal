@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, AppState, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+
+const COOLDOWN_MS = 30_000;
 
 /**
  * Shared permission-denied toast hook.
@@ -15,15 +17,27 @@ import { Ionicons } from "@expo/vector-icons";
  * The toast fades in (200 ms), holds for 4500 ms, then fades out (400 ms).
  * Tapping it immediately calls `Linking.openSettings()` so the user can
  * re-enable the denied permission without hunting through Settings manually.
+ *
+ * Per-session cooldown: the same toast message won't re-appear within 30 s of
+ * the last show to avoid spamming on repeated taps. The cooldown resets
+ * automatically whenever the app returns to the foreground (the user may have
+ * changed the permission in Settings).
  */
 export function usePermissionToast() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [actionIcon, setActionIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastShownAtRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        lastShownAtRef.current.clear();
+      }
+    });
     return () => {
+      subscription.remove();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
@@ -32,6 +46,12 @@ export function usePermissionToast() {
     message = "Photo access blocked — tap to open Settings",
     icon?: keyof typeof Ionicons.glyphMap,
   ) {
+    const now = Date.now();
+    const lastShown = lastShownAtRef.current.get(message) ?? 0;
+    if (now - lastShown < COOLDOWN_MS) return;
+
+    lastShownAtRef.current.set(message, now);
+
     if (timerRef.current) clearTimeout(timerRef.current);
     setToastMsg(message);
     setActionIcon(icon ?? null);
