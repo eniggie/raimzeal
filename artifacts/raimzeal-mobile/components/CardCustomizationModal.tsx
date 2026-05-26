@@ -1427,6 +1427,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const presetNameRef = useRef<TextInput>(null);
   const inlineSaveRef = useRef<View>(null);
 
+  // When the active preset changes, clear any stale draft so the next
+  // openInlineSave() pre-fills with the newly active preset's name.
+  useEffect(() => {
+    setPresetNameInput("");
+  }, [activePresetId]);
+
   // Inline-save expand/collapse animation
   const INLINE_SAVE_EXPANDED_H = 118;
   const inlineSaveHeight = useSharedValue(0);
