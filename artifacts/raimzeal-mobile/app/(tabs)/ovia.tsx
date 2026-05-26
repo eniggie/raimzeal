@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/db";
@@ -129,6 +130,8 @@ export default function OviaScreen() {
     personalRecords,
     updateProfile,
   } = useFitness();
+
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -353,11 +356,7 @@ export default function OviaScreen() {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) {
-        Alert.alert(
-          "Microphone Access",
-          "Allow microphone access in Settings to use voice input.",
-          [{ text: "OK" }]
-        );
+        showPermissionToast("Microphone access blocked — tap to open Settings");
         return;
       }
       await Audio.setAudioModeAsync({
@@ -371,7 +370,7 @@ export default function OviaScreen() {
       setIsRecording(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {
-      Alert.alert("Microphone Error", "Could not start recording. Please check microphone permissions in Settings.");
+      showPermissionToast("Microphone access blocked — tap to open Settings");
     }
   }
 
@@ -623,6 +622,7 @@ export default function OviaScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      {permissionToastElement}
     </View>
   );
 }
