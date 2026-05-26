@@ -1480,6 +1480,8 @@ export default function NutritionScreen() {
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
+  const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
+  const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
@@ -3089,6 +3091,13 @@ export default function NutritionScreen() {
     reorderFavoriteFoods(next);
     favoriteCardYsRef.current = {};
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function handleBreakdownSegmentTap(macro: "protein" | "carbs" | "fat") {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (breakdownHighlightTimer.current) clearTimeout(breakdownHighlightTimer.current);
+    setBreakdownHighlightMacro(macro);
+    breakdownHighlightTimer.current = setTimeout(() => setBreakdownHighlightMacro(null), 1500);
   }
 
   async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean }) {
@@ -6192,7 +6201,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -6220,7 +6229,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -6281,16 +6290,35 @@ export default function NutritionScreen() {
                             return (
                               <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
                                 <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
-                                  <View style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary }]} />
-                                  <View style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning }]} />
-                                  <View style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent }]} />
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein")} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs")} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat")} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
                                 </View>
                                 <View style={{ flex: 1 - calShare }} />
                               </View>
                             );
                           })()}
-                          {entries.map((log) => (
-                            <View key={log.id} style={[styles.breakdownFoodRow, { borderTopColor: colors.border }]}>
+                          {(() => {
+                            const macroKey = breakdownHighlightMacro;
+                            const maxMacroVal = macroKey
+                              ? Math.max(...entries.map((e) => e[macroKey] ?? 0), 0)
+                              : 0;
+                            const highlightColor =
+                              macroKey === "protein"
+                                ? colors.secondary
+                                : macroKey === "carbs"
+                                ? colors.warning
+                                : macroKey === "fat"
+                                ? colors.accent
+                                : null;
+                            return entries.map((log) => {
+                              const share = macroKey && maxMacroVal > 0 ? (log[macroKey] ?? 0) / maxMacroVal : 0;
+                              const bgOpacity = macroKey
+                                ? Math.max(0.08, share * 0.28)
+                                : 0;
+                              const dimmed = macroKey && share === 0;
+                              return (
+                            <View key={log.id} style={[styles.breakdownFoodRow, { borderTopColor: colors.border, backgroundColor: highlightColor && share > 0 ? highlightColor + Math.round(bgOpacity * 255).toString(16).padStart(2, "0") : "transparent", opacity: dimmed ? 0.4 : 1 }]}>
                               <Text style={[styles.breakdownFoodName, { color: colors.foreground }]} numberOfLines={1}>
                                 {log.name}
                               </Text>
@@ -6309,7 +6337,9 @@ export default function NutritionScreen() {
                                 <Ionicons name="add" size={16} color={colors.primary} />
                               </TouchableOpacity>
                             </View>
-                          ))}
+                          );
+                            });
+                          })()}
                         </View>
                       );
                     })}
@@ -6329,7 +6359,7 @@ export default function NutritionScreen() {
                 )}
 
                 <TouchableOpacity
-                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
