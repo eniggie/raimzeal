@@ -413,3 +413,33 @@ id = "8w3sfeEwoVXTLo6ytXVLI"
 uri = "file://screenshots/ipad13/05_progress.png"
 type = "image"
 title = "iPad 13\" — Progress"
+
+[[outputs]]
+id = "aWSqNyvzzDle7-2bToTAI"
+uri = "file://screenshots/applewatch/ultra3_01_workout.png"
+type = "image"
+title = "Ultra 3 — Workout (422×514)"
+
+[[outputs]]
+id = "nxqV1MXS15MvA3_D7P5eQ"
+uri = "file://screenshots/applewatch/ultra3_02_nutrition.png"
+type = "image"
+title = "Ultra 3 — Nutrition"
+
+[[outputs]]
+id = "ULUvuXSgi4slPNNk7JReh"
+uri = "file://screenshots/applewatch/ultra3_03_progress.png"
+type = "image"
+title = "Ultra 3 — Progress"
+
+[[outputs]]
+id = "VwbfuEKXiVh86cF4KjZU0"
+uri = "file://screenshots/applewatch/ultra3_04_ovia.png"
+type = "image"
+title = "Ultra 3 — Ovia AI"
+
+[[outputs]]
+id = "oQB__tOjOT6B_AkYo8aln"
+uri = "file://screenshots/applewatch/ultra3_05_community.png"
+type = "image"
+title = "Ultra 3 — Community"
