@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -92,7 +93,33 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
     setFat(suggested.fat.toString());
   }
 
-  async function handleSave() {
+  function getOutOfRangeWarning(): string | null {
+    const cal = parseNum(calories);
+    const pro = parseNum(protein);
+    const carb = parseNum(carbs);
+    const f = parseNum(fat);
+
+    const issues: string[] = [];
+
+    if (cal < 800) issues.push("calories look quite low (under 800 kcal)");
+    else if (cal > 6000) issues.push("calories look very high (over 6,000 kcal)");
+
+    if (pro < 5) issues.push("protein looks very low (under 5g)");
+    else if (pro > 700) issues.push("protein looks very high (over 700g)");
+
+    if (carb < 5) issues.push("carbs look very low (under 5g)");
+    else if (carb > 700) issues.push("carbs look very high (over 700g)");
+
+    if (f < 5) issues.push("fat looks very low (under 5g)");
+    else if (f > 700) issues.push("fat looks very high (over 700g)");
+
+    if (issues.length === 0) return null;
+
+    const list = issues.map((s) => `• ${s.charAt(0).toUpperCase() + s.slice(1)}`).join("\n");
+    return `Heads up — ${issues.length === 1 ? "this" : "a few things"} look a bit unusual:\n\n${list}\n\nAre you sure you want to save these goals?`;
+  }
+
+  async function doSave() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await setGoals({
       calories: parseNum(calories),
@@ -101,6 +128,18 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
       fat: parseNum(fat),
     });
     onClose();
+  }
+
+  async function handleSave() {
+    const warning = getOutOfRangeWarning();
+    if (warning) {
+      Alert.alert("Double-check your goals", warning, [
+        { text: "Go back", style: "cancel" },
+        { text: "Save anyway", style: "destructive", onPress: doSave },
+      ]);
+      return;
+    }
+    await doSave();
   }
 
   return (
