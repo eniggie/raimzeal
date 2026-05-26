@@ -323,3 +323,93 @@ id = "JOkJx03wIBTGoaj2h3N0R"
 uri = "file://screenshots/05_progress.png"
 type = "image"
 title = "5 — Progress"
+
+[[outputs]]
+id = "3sg5KuN5pEVRY1B-IZMa7"
+uri = "file://screenshots/iphone69/01_workout.png"
+type = "image"
+title = "6.9\" — Workout"
+
+[[outputs]]
+id = "CVNbHnBsDvJGSWS3jp7Uw"
+uri = "file://screenshots/iphone69/02_ovia_ai.png"
+type = "image"
+title = "6.9\" — Ovia AI"
+
+[[outputs]]
+id = "v2P5nC1Eh_ThLbu8yv0X4"
+uri = "file://screenshots/iphone69/03_nutrition.png"
+type = "image"
+title = "6.9\" — Nutrition"
+
+[[outputs]]
+id = "UM6MCuXwsLOYtL4OchxEL"
+uri = "file://screenshots/iphone69/04_community.png"
+type = "image"
+title = "6.9\" — Community"
+
+[[outputs]]
+id = "mzEULD0SVCUeLWxjxE-L4"
+uri = "file://screenshots/iphone69/05_progress.png"
+type = "image"
+title = "6.9\" — Progress"
+
+[[outputs]]
+id = "oLlCjbCZr3Q5h2gpx2S49"
+uri = "file://screenshots/iphone65/01_workout.png"
+type = "image"
+title = "6.5\" — Workout"
+
+[[outputs]]
+id = "9R1hgGdgasulI9n5Xlq-R"
+uri = "file://screenshots/iphone65/02_ovia_ai.png"
+type = "image"
+title = "6.5\" — Ovia AI"
+
+[[outputs]]
+id = "sB4KrSJKlmHHzXsapZcVy"
+uri = "file://screenshots/iphone65/03_nutrition.png"
+type = "image"
+title = "6.5\" — Nutrition"
+
+[[outputs]]
+id = "DNplngRFr0-COAIenkAQC"
+uri = "file://screenshots/iphone65/04_community.png"
+type = "image"
+title = "6.5\" — Community"
+
+[[outputs]]
+id = "C95uzlJLsU0I2jQP9KbKY"
+uri = "file://screenshots/iphone65/05_progress.png"
+type = "image"
+title = "6.5\" — Progress"
+
+[[outputs]]
+id = "bxE3QM4cn0KzBxzqFXwAh"
+uri = "file://screenshots/ipad13/01_workout.png"
+type = "image"
+title = "iPad 13\" — Workout"
+
+[[outputs]]
+id = "v6spfo6cidM5yatU3TsGs"
+uri = "file://screenshots/ipad13/02_ovia_ai.png"
+type = "image"
+title = "iPad 13\" — Ovia AI"
+
+[[outputs]]
+id = "4J8Fh1ddyKe9BTl-vE4IE"
+uri = "file://screenshots/ipad13/03_nutrition.png"
+type = "image"
+title = "iPad 13\" — Nutrition"
+
+[[outputs]]
+id = "iBmi9r1UC-1gNQelv03Yj"
+uri = "file://screenshots/ipad13/04_community.png"
+type = "image"
+title = "iPad 13\" — Community"
+
+[[outputs]]
+id = "8w3sfeEwoVXTLo6ytXVLI"
+uri = "file://screenshots/ipad13/05_progress.png"
+type = "image"
+title = "iPad 13\" — Progress"
