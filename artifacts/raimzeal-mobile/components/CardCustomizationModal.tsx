@@ -2946,9 +2946,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         setPresetPreviewIndex(newIdx);
         setPresetPreviewTarget(nextPreset);
         presetCardTranslateX.setValue(slideInX);
-        Animated.timing(presetCardTranslateX, {
+        Animated.spring(presetCardTranslateX, {
           toValue: 0,
-          duration: 220,
+          tension: 180,
+          friction: 14,
           useNativeDriver: true,
         }).start();
       });
