@@ -1368,6 +1368,7 @@ export default function NutritionScreen() {
   const [logTodayName, setLogTodayName] = useState<string | null>(null);
   const logTodayAnim = useRef(new Animated.Value(0)).current;
   const logTodayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLoggedToastRef = useRef(false);
 
   const { toggleFavoriteWithToast, isFavorite, starToastElement } = useToggleFavorite({
     bottomOffset: undoMeal !== null ? insets.bottom + 72 : insets.bottom + 16,
@@ -3089,7 +3090,7 @@ export default function NutritionScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
-  async function handleAddFood(food: Omit<MealLog, "id" | "date">) {
+  async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const gramMatch = food.servingLabel?.match(/^(\d+(?:\.\d+)?)g$/i) ?? null;
@@ -3143,7 +3144,7 @@ export default function NutritionScreen() {
     }
 
     const storedMeal = lastUsedMealMapRef.current[food.name] as MealType | undefined;
-    setSelectedMeal(storedMeal ?? food.mealType);
+    setSelectedMeal(opts?.forceMealType ?? storedMeal ?? food.mealType);
 
     let restoredServings = 1;
     try {
@@ -3155,8 +3156,11 @@ export default function NutritionScreen() {
     } catch {
       // ignore
     }
-    setServings(restoredServings);
-    setServingsText(String(restoredServings));
+    const finalServings = opts?.forceServings ?? restoredServings;
+    setServings(finalServings);
+    setServingsText(String(finalServings));
+
+    pendingLoggedToastRef.current = opts?.showLoggedToast ?? false;
 
     setShowModal(true);
   }
@@ -3264,6 +3268,20 @@ export default function NutritionScreen() {
       } : {}),
     };
     addMealLog(meal);
+
+    if (pendingLoggedToastRef.current) {
+      pendingLoggedToastRef.current = false;
+      if (logTodayTimerRef.current) clearTimeout(logTodayTimerRef.current);
+      setLogTodayName(meal.name);
+      logTodayAnim.setValue(0);
+      Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+      logTodayTimerRef.current = setTimeout(() => {
+        Animated.timing(logTodayAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+          setLogTodayName(null);
+        });
+        logTodayTimerRef.current = null;
+      }, 2500);
+    }
 
     // Smart Macro Remaining Alert
     const remCal = Math.round(CALORIE_GOAL - (calories + meal.calories));
@@ -6273,7 +6291,7 @@ export default function NutritionScreen() {
                                 {Math.round(log.calories)} kcal
                               </Text>
                               <TouchableOpacity
-                                onPress={() => handleLogToday(log)}
+                                onPress={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, amountGrams: log.amountGrams, nutrients100g: log.nutrients100g, servingLabel: log.servingLabel }, { forceServings: 1, forceMealType: log.mealType, showLoggedToast: true })}
                                 activeOpacity={0.7}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 style={[styles.breakdownReAddBtn, { backgroundColor: colors.primary + "1A", borderColor: colors.primary + "40" }]}
