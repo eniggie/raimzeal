@@ -4171,7 +4171,7 @@ export default function CardCustomizationModal({
                       <View style={styles.actionBtnInner}>
                         <View style={styles.actionBtnTop}>
                           <Ionicons
-                            name={isPhotoBlocked ? "lock-closed-outline" : icon}
+                            name={(!anyStatEnabled || isPhotoBlocked) ? "lock-closed-outline" : icon}
                             size={17}
                             color={isEnabled ? colors.primaryForeground : colors.mutedForeground}
                           />
