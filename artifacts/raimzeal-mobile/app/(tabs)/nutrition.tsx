@@ -4934,6 +4934,11 @@ export default function NutritionScreen() {
                     const label = isYesterday
                       ? "Yesterday"
                       : d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                    const allGoalsMet =
+                      totals.calories <= CALORIE_GOAL &&
+                      totals.protein >= PROTEIN_GOAL &&
+                      totals.carbs >= CARBS_GOAL &&
+                      totals.fat >= FAT_GOAL;
                     return (
                       <View
                         key={date}
@@ -4975,6 +4980,23 @@ export default function NutritionScreen() {
                               >
                                 <Ionicons name="arrow-up" size={10} color={colors.warning} />
                                 <Text style={[styles.backToChartBtnText, { color: colors.warning }]}>Chart</Text>
+                              </TouchableOpacity>
+                            )}
+                            {allGoalsMet && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                  Alert.alert(
+                                    "🌟 Perfect Day!",
+                                    "You hit every macro goal and stayed within your calorie target. Amazing work — keep it up!",
+                                  );
+                                }}
+                                activeOpacity={0.75}
+                                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                                style={[styles.allGoalsMetBadge, { backgroundColor: colors.success + "20", borderColor: colors.success + "50" }]}
+                              >
+                                <Ionicons name="star" size={10} color={colors.success} />
+                                <Text style={[styles.allGoalsMetText, { color: colors.success }]}>All goals met</Text>
                               </TouchableOpacity>
                             )}
                           </View>
@@ -8990,6 +9012,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   backToChartBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  allGoalsMetBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  allGoalsMetText: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
   },
