@@ -1479,6 +1479,7 @@ export default function NutritionScreen() {
   const presetLongPressHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
+  const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
 
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
@@ -6191,7 +6192,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => setDayBreakdownDate(null)}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -6199,10 +6200,19 @@ export default function NutritionScreen() {
                 variant="elevated"
               >
                 <View style={styles.breakdownSheetHeader}>
-                  <View>
-                    <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-                      {dayLabel}
-                    </Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                        {dayLabel}
+                      </Text>
+                      {breakdownReAddCount > 0 && (
+                        <View style={[styles.breakdownReAddBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={[styles.breakdownReAddBadgeText, { color: colors.primaryForeground }]}>
+                            +{breakdownReAddCount}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     {dayData && (
                       <Text style={[styles.breakdownSheetSubtitle, { color: colors.mutedForeground }]}>
                         {Math.round(dayData.totals.calories).toLocaleString()} / {CALORIE_GOAL.toLocaleString()} kcal total
@@ -6210,7 +6220,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => setDayBreakdownDate(null)}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -6291,7 +6301,7 @@ export default function NutritionScreen() {
                                 {Math.round(log.calories)} kcal
                               </Text>
                               <TouchableOpacity
-                                onPress={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, amountGrams: log.amountGrams, nutrients100g: log.nutrients100g, servingLabel: log.servingLabel }, { forceServings: 1, forceMealType: log.mealType, showLoggedToast: true })}
+                                onPress={() => { handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, amountGrams: log.amountGrams, nutrients100g: log.nutrients100g, servingLabel: log.servingLabel }, { forceServings: 1, forceMealType: log.mealType, showLoggedToast: true }); setBreakdownReAddCount((c) => c + 1); }}
                                 activeOpacity={0.7}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 style={[styles.breakdownReAddBtn, { backgroundColor: colors.primary + "1A", borderColor: colors.primary + "40" }]}
@@ -6319,7 +6329,7 @@ export default function NutritionScreen() {
                 )}
 
                 <TouchableOpacity
-                  onPress={() => setDayBreakdownDate(null)}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
@@ -9183,6 +9193,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 4,
+  },
+  breakdownReAddBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  breakdownReAddBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 16,
   },
   breakdownTotalRow: {
     flexDirection: "row",
