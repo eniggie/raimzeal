@@ -3,6 +3,7 @@ import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./lib/logger";
 import { sendWeeklyDigest, sendMidWeekMotivation } from "./routes/email";
+import { runDonationHealthProbe } from "./lib/healthProbe";
 
 export function startScheduler(): void {
   // ── Saturday 08:00 WAT (07:00 UTC) — full weekly digest ───────────────────
@@ -79,7 +80,20 @@ export function startScheduler(): void {
     { timezone: "UTC" },
   );
 
+  // ── Every 15 minutes — donation / payment health probe ────────────────────
+  cron.schedule(
+    "*/15 * * * *",
+    async () => {
+      try {
+        await runDonationHealthProbe();
+      } catch (err) {
+        logger.error({ err }, "Donation health probe job crashed");
+      }
+    },
+    { timezone: "UTC" },
+  );
+
   logger.info(
-    "Scheduler started — Saturday digest: 07:00 UTC (08:00 WAT) · Wednesday motivation: 12:00 UTC (13:00 WAT)",
+    "Scheduler started — Saturday digest: 07:00 UTC (08:00 WAT) · Wednesday motivation: 12:00 UTC (13:00 WAT) · Donation health probe: every 15 min",
   );
 }
