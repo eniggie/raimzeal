@@ -172,6 +172,7 @@ const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
 const JUMP_TO_HISTORY_KEY = "@nutrition_jump_to_history";
 const MANUAL_MACROS_KEY = "@nutrition_manual_macros";
+const JUMP_TO_MACRO_KEY = "@nutrition_jump_to_macro";
 
 interface CustomFilterPreset {
   id: string;
@@ -1165,6 +1166,7 @@ export default function NutritionScreen() {
   }, [filteredHistoryDays]);
 
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
+  const [highlightedMacro, setHighlightedMacro] = useState<"calories" | "protein" | "carbs" | "fat" | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(HIGHLIGHTED_DATE_STORAGE_KEY).then((val) => {
@@ -1194,6 +1196,20 @@ export default function NutritionScreen() {
               setTimeout(() => {
                 scrollToDateCard(val);
               }, 300);
+            }
+          });
+        })
+        .catch(() => {});
+
+      AsyncStorage.getItem(JUMP_TO_MACRO_KEY)
+        .then((macro) => {
+          if (!macro) return;
+          return AsyncStorage.removeItem(JUMP_TO_MACRO_KEY).then(() => {
+            if (macro === "calories" || macro === "protein" || macro === "carbs" || macro === "fat") {
+              setHighlightedMacro(macro);
+              setActiveTab("today");
+              const timer = setTimeout(() => setHighlightedMacro(null), 2500);
+              return () => clearTimeout(timer);
             }
           });
         })
@@ -3945,32 +3961,52 @@ export default function NutritionScreen() {
                 {/* Macro Summary */}
                 <GlassCard style={styles.macroCard}>
                   <View style={styles.macroRow}>
-                    <ProgressRing
-                      progress={calories / CALORIE_GOAL}
-                      size={90}
-                      strokeWidth={8}
-                      color={colors.primary}
-                      label={calories.toString()}
-                      sublabel="kcal"
-                    />
+                    <Animated.View
+                      style={[
+                        {
+                          borderRadius: 999,
+                          padding: 4,
+                          borderWidth: 2,
+                          borderColor: highlightedMacro === "calories"
+                            ? colors.primary
+                            : "transparent",
+                          shadowColor: colors.primary,
+                          shadowOffset: { width: 0, height: 0 },
+                          shadowOpacity: highlightedMacro === "calories" ? 0.5 : 0,
+                          shadowRadius: highlightedMacro === "calories" ? 10 : 0,
+                        },
+                      ]}
+                    >
+                      <ProgressRing
+                        progress={calories / CALORIE_GOAL}
+                        size={90}
+                        strokeWidth={8}
+                        color={colors.primary}
+                        label={calories.toString()}
+                        sublabel="kcal"
+                      />
+                    </Animated.View>
                     <View style={styles.macros}>
                       <MacroBar
                         label="Protein"
                         value={Math.round(protein)}
                         goal={PROTEIN_GOAL}
                         color={colors.secondary}
+                        isHighlighted={highlightedMacro === "protein"}
                       />
                       <MacroBar
                         label="Carbs"
                         value={Math.round(carbs)}
                         goal={CARBS_GOAL}
                         color={colors.warning}
+                        isHighlighted={highlightedMacro === "carbs"}
                       />
                       <MacroBar
                         label="Fat"
                         value={Math.round(fat)}
                         goal={FAT_GOAL}
                         color={colors.accent}
+                        isHighlighted={highlightedMacro === "fat"}
                       />
                     </View>
                   </View>
@@ -6572,11 +6608,13 @@ function MacroBar({
   value,
   goal,
   color,
+  isHighlighted = false,
 }: {
   label: string;
   value: number;
   goal: number;
   color: string;
+  isHighlighted?: boolean;
 }) {
   const colors = useColors();
   const fillRatio = Math.min(1, Math.max(0, value / goal));
@@ -6587,6 +6625,20 @@ function MacroBar({
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
 
   const glowAnim = useRef(new Animated.Value(0.5)).current;
+  const highlightAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isHighlighted) {
+      Animated.timing(highlightAnim, { toValue: 0, duration: 400, useNativeDriver: false }).start();
+      return;
+    }
+    Animated.sequence([
+      Animated.timing(highlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+      Animated.timing(highlightAnim, { toValue: 0.6, duration: 150, useNativeDriver: false }),
+      Animated.timing(highlightAnim, { toValue: 1, duration: 150, useNativeDriver: false }),
+      Animated.timing(highlightAnim, { toValue: 0, duration: 600, useNativeDriver: false }),
+    ]).start();
+  }, [isHighlighted]);
 
   useEffect(() => {
     if (!isOver) {
@@ -6614,7 +6666,19 @@ function MacroBar({
   const animatedShadowOpacity = isOver ? glowAnim : undefined;
 
   return (
-    <View style={styles.macroBarContainer}>
+    <Animated.View
+      style={[
+        styles.macroBarContainer,
+        {
+          backgroundColor: highlightAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ["transparent", color + "18"],
+          }),
+          borderRadius: 8,
+          paddingHorizontal: 4,
+        },
+      ]}
+    >
       <View style={styles.macroBarHeader}>
         <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>
           {label}
@@ -6649,7 +6713,7 @@ function MacroBar({
           </View>
         </View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 

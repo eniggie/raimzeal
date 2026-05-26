@@ -223,11 +223,11 @@ export default function HomeScreen() {
           {/* Macro goal progress rings */}
           <View style={[styles.macroRingRow, { borderTopColor: colors.border }]}>
             {[
-              { label: "Calories", value: totalCaloriesToday, goal: calorieGoal, unit: "kcal", baseColor: colors.primary },
-              { label: "Protein", value: proteinToday, goal: macroGoals.protein, unit: "g", baseColor: colors.secondary },
-              { label: "Carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", baseColor: "#f97316" },
-              { label: "Fat", value: fatToday, goal: macroGoals.fat, unit: "g", baseColor: colors.accent },
-            ].map(({ label, value, goal, unit, baseColor }, index) => {
+              { label: "Calories", macroKey: "calories", value: totalCaloriesToday, goal: calorieGoal, unit: "kcal", baseColor: colors.primary },
+              { label: "Protein", macroKey: "protein", value: proteinToday, goal: macroGoals.protein, unit: "g", baseColor: colors.secondary },
+              { label: "Carbs", macroKey: "carbs", value: carbsToday, goal: macroGoals.carbs, unit: "g", baseColor: "#f97316" },
+              { label: "Fat", macroKey: "fat", value: fatToday, goal: macroGoals.fat, unit: "g", baseColor: colors.accent },
+            ].map(({ label, macroKey, value, goal, unit, baseColor }, index) => {
               const rawRatio = goal > 0 ? value / goal : 0;
               const pct = Math.min(rawRatio, 1);
               const ringColor =
@@ -254,21 +254,32 @@ export default function HomeScreen() {
                     },
                   ]}
                 >
-                  <ProgressRing
-                    progress={pct}
-                    size={64}
-                    strokeWidth={6}
-                    color={ringColor}
-                    label={pctLabel}
-                    labelColor={isOver ? colors.warning : ringColor}
-                    animateOnMount
-                    delay={index * 100}
-                  />
-                  <Text style={[styles.macroRingName, { color: colors.mutedForeground }]}>{label}</Text>
-                  <Text style={[styles.macroRingValue, { color: ringColor }]}>
-                    {value}
-                    <Text style={[styles.macroRingGoal, { color: colors.mutedForeground }]}>/{goal}{unit}</Text>
-                  </Text>
+                  <AnimatedPressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      AsyncStorage.setItem("@nutrition_jump_to_macro", macroKey).catch(() => {});
+                      router.navigate("/(tabs)/nutrition");
+                    }}
+                    scale={0.92}
+                    style={{ alignItems: "center" }}
+                  >
+                    <ProgressRing
+                      progress={pct}
+                      size={64}
+                      strokeWidth={6}
+                      color={ringColor}
+                      label={pctLabel}
+                      labelColor={isOver ? colors.warning : ringColor}
+                      animateOnMount
+                      delay={index * 100}
+                    />
+                    <Text style={[styles.macroRingName, { color: colors.mutedForeground }]}>{label}</Text>
+                    <Text style={[styles.macroRingValue, { color: ringColor }]}>
+                      {value}
+                      <Text style={[styles.macroRingGoal, { color: colors.mutedForeground }]}>/{goal}{unit}</Text>
+                    </Text>
+                  </AnimatedPressable>
                 </View>
               );
             })}
