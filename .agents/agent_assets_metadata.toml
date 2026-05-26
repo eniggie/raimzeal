@@ -257,3 +257,9 @@ id = "xQXKCDUQoUceyisBIXeDb"
 uri = "file://screenshots/chromebook_03_progress.png"
 type = "image"
 title = "Chromebook — Progress (1920×1080)"
+
+[[outputs]]
+id = "dvEEtKHdsfqss3vdpyobV"
+uri = "file://.local/ebook/raimzeal-ebook.zip"
+type = "unspecified"
+title = "RAIMZEAL Complete Ebook — KDP-Formatted (Download)"
