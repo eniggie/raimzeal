@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./webhookHandlers";
+import { webhookRateLimit } from "./lib/rateLimiter";
 
 const app: Express = express();
 
@@ -14,8 +15,10 @@ app.set("trust proxy", 1);
 
 // ── Stripe + Billing webhooks — MUST be registered before express.json() ────
 // Stripe requires the raw Buffer; express.json() would destroy it.
+// Rate limiter applied first (before raw body parser) to block DOS floods early.
 app.post(
   "/api/billing/webhook",
+  webhookRateLimit,
   express.raw({ type: "application/json" }),
   async (req, res, next) => {
     try {
@@ -28,6 +31,7 @@ app.post(
 );
 app.post(
   "/api/stripe/webhook",
+  webhookRateLimit,
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const signature = req.headers["stripe-signature"];
