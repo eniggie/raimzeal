@@ -3040,7 +3040,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
-    showConfirmation(activePresetId ? (isRename ? "Preset renamed" : `"${name}" updated`) : `"${name}" saved`, "success");
+    showConfirmation(activePresetId ? (isRename ? `Renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success");
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
