@@ -3020,6 +3020,44 @@ export default function CardCustomizationModal({
   }
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
+
+  // Locked-button hint fade animation
+  const [lockedHintMounted, setLockedHintMounted] = useState(!anyStatEnabled);
+  const lockedHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
+  const lockedHintIsFirstRender = useRef(true);
+  useEffect(() => {
+    if (lockedHintIsFirstRender.current) {
+      lockedHintIsFirstRender.current = false;
+      return;
+    }
+    if (!anyStatEnabled) {
+      setLockedHintMounted(true);
+      if (reduceMotionRef.current) {
+        lockedHintFadeAnim.setValue(1);
+      } else {
+        lockedHintFadeAnim.setValue(0);
+        Animated.timing(lockedHintFadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      }
+    } else {
+      if (reduceMotionRef.current) {
+        lockedHintFadeAnim.setValue(0);
+        setLockedHintMounted(false);
+      } else {
+        Animated.timing(lockedHintFadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setLockedHintMounted(false);
+        });
+      }
+    }
+  }, [anyStatEnabled]);
+
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
 
   // Zoom shared values — lifted here so position survives open/close cycles
@@ -4173,10 +4211,12 @@ export default function CardCustomizationModal({
               </View>
             </>
           )}
-          {!anyStatEnabled && (
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Enable at least one stat to generate your card
-            </Text>
+          {lockedHintMounted && (
+            <Animated.View style={{ opacity: lockedHintFadeAnim }}>
+              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                Enable at least one stat to generate your card
+              </Text>
+            </Animated.View>
           )}
           {anyStatEnabled && showLongPressHint && (
             <Animated.View style={{ opacity: longPressHintFadeAnim }}>
