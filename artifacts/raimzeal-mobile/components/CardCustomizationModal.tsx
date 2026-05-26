@@ -1510,6 +1510,7 @@ export default function CardCustomizationModal({
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(8)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
+  const undoSwipeY = useRef(new Animated.Value(0)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoRemainingMsRef = useRef<number>(0);
   const undoSegmentStartRef = useRef<number>(0);
@@ -1580,6 +1581,42 @@ export default function CardCustomizationModal({
       },
       onPanResponderTerminate: () => {
         Animated.spring(confirmSwipeY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 20,
+          stiffness: 300,
+        }).start();
+      },
+    })
+  ).current;
+
+  const undoToastPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) =>
+        gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+      onPanResponderMove: (_evt, gestureState) => {
+        if (gestureState.dy < 0) {
+          undoSwipeY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          if (reduceMotionRef.current) {
+            dismissUndoToast();
+          } else {
+            dismissUndoToastAnimated();
+          }
+        } else {
+          Animated.spring(undoSwipeY, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 20,
+            stiffness: 300,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(undoSwipeY, {
           toValue: 0,
           useNativeDriver: true,
           damping: 20,
@@ -2750,9 +2787,11 @@ export default function CardCustomizationModal({
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
+    undoSwipeY.stopAnimation();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(0);
       undoTranslateY.setValue(8);
+      undoSwipeY.setValue(0);
       setUndoDeleteState(null);
       cb?.();
     } else {
@@ -2760,10 +2799,32 @@ export default function CardCustomizationModal({
         Animated.timing(undoOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
         Animated.timing(undoTranslateY, { toValue: 8, duration: 300, useNativeDriver: true }),
       ]).start(() => {
+        undoSwipeY.setValue(0);
         setUndoDeleteState(null);
         cb?.();
       });
     }
+  }
+
+  function dismissUndoToastAnimated() {
+    if (undoTimerRef.current !== null) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    undoOpacity.stopAnimation();
+    undoTranslateY.stopAnimation();
+    undoProgressAnim.stopAnimation();
+    undoSwipeY.stopAnimation();
+    Animated.parallel([
+      Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(undoSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
+      undoOpacity.setValue(0);
+      undoTranslateY.setValue(8);
+      undoSwipeY.setValue(0);
+      undoProgressAnim.setValue(1);
+      setUndoDeleteState(null);
+    });
   }
 
   function pauseUndoToast() {
@@ -2805,11 +2866,13 @@ export default function CardCustomizationModal({
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
+    undoSwipeY.stopAnimation();
     // Explicitly reset the previous toast before starting fresh so that any
     // in-flight dismiss animation can't bleed its animated values into the new one.
     undoOpacity.setValue(0);
     undoTranslateY.setValue(8);
     undoProgressAnim.setValue(1);
+    undoSwipeY.setValue(0);
     setUndoDeleteState(null);
     setUndoDeleteState({ preset, index });
     undoRemainingMsRef.current = undoMs;
@@ -4351,7 +4414,7 @@ export default function CardCustomizationModal({
             </Animated.View>
           )}
           {undoDeleteState && (
-            <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: undoTranslateY }] }]}>
+            <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: Animated.add(undoTranslateY, undoSwipeY) }] }]} {...undoToastPanResponder.panHandlers}>
               <View
                 style={[
                   styles.confirmToast,
