@@ -1719,6 +1719,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoRemainingMsRef = useRef<number>(0);
   const undoSegmentStartRef = useRef<number>(0);
+  const undoTransitionIdRef = useRef<number>(0);
 
   function dismissConfirmToast() {
     if (confirmDismissTimerRef.current !== null) {
@@ -3170,35 +3171,66 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
     undoSwipeY.stopAnimation();
-    // Explicitly reset the previous toast before starting fresh so that any
-    // in-flight dismiss animation can't bleed its animated values into the new one.
-    undoOpacity.setValue(0);
-    undoTranslateY.setValue(8);
-    undoProgressAnim.setValue(1);
-    undoSwipeY.setValue(0);
-    setUndoDeleteState(null);
-    setUndoDeleteState({ preset, index });
-    if (!toastSwipeHintSeen) {
-      triggerToastSwipeHint();
-    }
-    undoRemainingMsRef.current = undoMs;
-    undoSegmentStartRef.current = Date.now();
-    if (reduceMotionRef.current) {
-      undoOpacity.setValue(1);
-      undoTranslateY.setValue(0);
+
+    const previousToastVisible = undoDeleteState !== null;
+
+    // Bump the transition token so any in-flight fade-out callback from a
+    // previous call can detect it has been superseded and bail out.
+    undoTransitionIdRef.current += 1;
+    const myTransitionId = undoTransitionIdRef.current;
+
+    const startFreshToast = () => {
+      // Guard: a newer showUndoToast call has already taken over — do nothing.
+      if (undoTransitionIdRef.current !== myTransitionId) return;
+
+      // Defensively clear any timer that may have been scheduled by an earlier
+      // interrupted transition before starting a new one.
+      if (undoTimerRef.current !== null) {
+        clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = null;
+      }
+
+      // Reset all animated values before fading the new toast in
+      undoOpacity.setValue(0);
+      undoTranslateY.setValue(8);
+      undoProgressAnim.setValue(1);
+      undoSwipeY.setValue(0);
+      setUndoDeleteState({ preset, index });
+      if (!toastSwipeHintSeen) {
+        triggerToastSwipeHint();
+      }
+      undoRemainingMsRef.current = undoMs;
+      undoSegmentStartRef.current = Date.now();
+      if (reduceMotionRef.current) {
+        undoOpacity.setValue(1);
+        undoTranslateY.setValue(0);
+      } else {
+        Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+        Animated.timing(undoTranslateY, { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }).start();
+        Animated.timing(undoProgressAnim, {
+          toValue: 0,
+          duration: undoMs,
+          useNativeDriver: false,
+        }).start();
+      }
+      undoTimerRef.current = setTimeout(() => {
+        undoTimerRef.current = null;
+        dismissUndoToast();
+      }, undoMs);
+    };
+
+    if (previousToastVisible && !reduceMotionRef.current) {
+      // Cross-fade: briefly fade the outgoing toast to 0, then start the new one.
+      // Only proceed when the animation ran to completion (finished=true); if it
+      // was interrupted by yet another delete, that newer call owns the token and
+      // its own callback will handle the rest.
+      Animated.timing(undoOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(({ finished }) => {
+        if (finished) startFreshToast();
+      });
     } else {
-      Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      Animated.timing(undoTranslateY, { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }).start();
-      Animated.timing(undoProgressAnim, {
-        toValue: 0,
-        duration: undoMs,
-        useNativeDriver: false,
-      }).start();
+      // No previous toast visible (or reduce-motion): instant reset then fade in
+      startFreshToast();
     }
-    undoTimerRef.current = setTimeout(() => {
-      undoTimerRef.current = null;
-      dismissUndoToast();
-    }, undoMs);
   }
 
   async function handleUndoDelete() {
