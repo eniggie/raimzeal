@@ -1626,8 +1626,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           Animated.spring(confirmSwipeY, {
             toValue: 0,
             useNativeDriver: true,
-            damping: 20,
-            stiffness: 300,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
           }).start();
         }
       },
@@ -1635,8 +1637,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.spring(confirmSwipeY, {
           toValue: 0,
           useNativeDriver: true,
-          damping: 20,
-          stiffness: 300,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
         }).start();
       },
     })
@@ -1662,8 +1666,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           Animated.spring(undoSwipeY, {
             toValue: 0,
             useNativeDriver: true,
-            damping: 20,
-            stiffness: 300,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
           }).start();
         }
       },
@@ -1671,8 +1677,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.spring(undoSwipeY, {
           toValue: 0,
           useNativeDriver: true,
-          damping: 20,
-          stiffness: 300,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
         }).start();
       },
     })
@@ -3376,9 +3384,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         } else {
           Animated.spring(zoomSwipeDragY, {
             toValue: 0,
-            damping: 20,
-            stiffness: 300,
+            damping: 50,
+            stiffness: 400,
             mass: 0.6,
+            overshootClamping: true,
             useNativeDriver: true,
           }).start();
         }
@@ -3386,9 +3395,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       onPanResponderTerminate: () => {
         Animated.spring(zoomSwipeDragY, {
           toValue: 0,
-          damping: 20,
-          stiffness: 300,
+          damping: 50,
+          stiffness: 400,
           mass: 0.6,
+          overshootClamping: true,
           useNativeDriver: true,
         }).start();
       },
