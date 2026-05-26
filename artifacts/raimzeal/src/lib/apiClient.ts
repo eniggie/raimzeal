@@ -25,8 +25,10 @@ async function apiFetch<T = unknown>(
   if (!res.ok) {
     let message = `API error ${res.status}`;
     try {
-      const body = await res.json() as { error?: string };
-      if (body.error) message = body.error;
+      const body = await res.json() as { error?: string; message?: string };
+      if (body.message) message = body.message;
+      else if (body.error && body.error !== 'UPGRADE_REQUIRED') message = body.error;
+      else if (body.error) message = body.message ?? body.error;
     } catch { /* ignore */ }
     throw new Error(message);
   }

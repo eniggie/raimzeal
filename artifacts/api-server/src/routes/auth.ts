@@ -194,7 +194,8 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
       if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("user already")) {
         res.status(409).json({ error: "An account with this email already exists." });
       } else {
-        res.status(400).json({ error: createError.message });
+        req.log?.warn({ err: createError }, "Supabase createUser error");
+        res.status(400).json({ error: "Could not create account. Please try again." });
       }
       return;
     }
@@ -298,7 +299,7 @@ authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res)
     const name = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
     try {
       await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(code, name));
-    } catch (err: any) {
+    } catch (err: unknown) {
       req.log?.warn({ err }, "Failed to send email OTP resend");
       res.status(503).json({ error: "Failed to send email. Please check your inbox or try again later." });
       return;
@@ -388,9 +389,9 @@ authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async
 
     try {
       await sendSms(phoneE164, `Your RAIMZEAL verification code: ${code}. Expires in 10 minutes.`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       req.log?.warn({ err }, "Failed to send SMS OTP");
-      res.status(503).json({ error: err?.message ?? "SMS is not available at this time. Please skip this step and verify later." });
+      res.status(503).json({ error: "SMS is not available at this time. Please skip this step and verify later." });
       return;
     }
 
