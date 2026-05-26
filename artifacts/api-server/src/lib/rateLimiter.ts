@@ -119,3 +119,14 @@ export const communityMutateLimitHeavy = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many posts — please wait before posting again." },
 });
+
+// ── Stripe / Billing webhook endpoints ────────────────────────────────────────
+// 200 requests per minute per IP — generous enough for Stripe's retry bursts
+// but blocks DOS floods on the unauthenticated raw-body endpoints.
+export const webhookRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many webhook requests." },
+});
