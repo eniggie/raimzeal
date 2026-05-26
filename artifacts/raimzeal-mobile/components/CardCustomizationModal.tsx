@@ -1282,6 +1282,9 @@ const PresetChipItem = memo(function PresetChipItem({
   );
 });
 
+const PRESET_CHIP_WIDTH = 60;
+const PRESET_CHIP_GAP = 10;
+
 const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(function CardCustomizationModal({
   visible,
   onClose,
@@ -3898,7 +3901,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   decelerationRate="fast"
-                  snapToInterval={70}
+                  snapToInterval={PRESET_CHIP_WIDTH + PRESET_CHIP_GAP}
                   snapToAlignment="start"
                   contentContainerStyle={styles.presetsScroll}
                   onContentSizeChange={(w) => {
@@ -5586,14 +5589,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   presetsScroll: {
-    gap: 10,
+    gap: PRESET_CHIP_GAP,
     paddingBottom: 4,
     alignItems: "flex-start",
   },
   presetChip: {
     alignItems: "center",
     gap: 5,
-    width: 60,
+    width: PRESET_CHIP_WIDTH,
   },
   presetThumbnailFrame: {
     width: 44,
