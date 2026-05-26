@@ -33,7 +33,8 @@ import { useTier } from "@/hooks/useTier";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getApiBase } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
@@ -51,6 +52,7 @@ function resolveDefaultCardBgUri(): string | null {
 
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
+const DIGEST_SUBSCRIBED_KEY = "@digest_subscribed";
 
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
@@ -120,6 +122,9 @@ export default function ProfileScreen() {
 
   const [mealDefaultsCount, setMealDefaultsCount] = useState<number | null>(null);
 
+  const [digestSubscribed, setDigestSubscribed] = useState(false);
+  const [digestLoading, setDigestLoading] = useState(false);
+
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
   const [showFlashOverlay, setShowFlashOverlay] = useState(false);
@@ -134,6 +139,16 @@ export default function ProfileScreen() {
     import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
       AsyncStorage.getItem("@nutrition_history_date_range").then((val) => {
         if (!cancelled) setSavedHistoryDateRange(val);
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
+      AsyncStorage.getItem(DIGEST_SUBSCRIBED_KEY).then((val) => {
+        if (!cancelled) setDigestSubscribed(val === "1");
       });
     });
     return () => { cancelled = true; };
@@ -661,6 +676,44 @@ export default function ProfileScreen() {
       Alert.alert("Export Failed", "Something went wrong while generating the PDF. Please try again.");
     } finally {
       setPdfLoading(false);
+    }
+  }
+
+  async function handleDigestToggle(value: boolean) {
+    if (!authUser?.email) return;
+    setDigestLoading(true);
+    const prev = digestSubscribed;
+    setDigestSubscribed(value);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+      const endpoint = value ? "/email/digest/subscribe" : "/email/digest/unsubscribe";
+      const res = await fetch(`${getApiBase()}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(
+          value
+            ? { email: authUser.email, userName: user?.name ?? authUser.email }
+            : { email: authUser.email }
+        ),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? "Request failed");
+      }
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorage.setItem(DIGEST_SUBSCRIBED_KEY, value ? "1" : "0");
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      showPermissionToast(value ? "Subscribed to weekly digest ✓" : "Unsubscribed from digest");
+    } catch (err) {
+      setDigestSubscribed(prev);
+      Alert.alert(
+        value ? "Couldn't Subscribe" : "Couldn't Unsubscribe",
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
+    } finally {
+      setDigestLoading(false);
     }
   }
 
@@ -1459,6 +1512,32 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={() => router.push("/reminders")}
             />
+            {tier === "foundation" ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push("/membership")}
+                style={[styles.actionRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: colors.primary + "20" }]}>
+                  <Ionicons name="mail-outline" size={18} color={colors.primary} />
+                </View>
+                <Text style={[styles.actionLabel, { color: colors.mutedForeground }]}>Weekly digest emails</Text>
+                <View style={{ backgroundColor: colors.primary + "20", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginRight: 4 }}>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.primary }}>Rise+</Text>
+                </View>
+                <Ionicons name="lock-closed-outline" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : (
+              <SettingToggleRow
+                icon="mail-outline"
+                label="Weekly digest emails"
+                sublabel="Saturday digest + Wednesday mid-week boost"
+                color={colors.primary}
+                value={digestSubscribed}
+                onValueChange={handleDigestToggle}
+                loading={digestLoading}
+              />
+            )}
             <ActionRow
               icon="shield-checkmark-outline"
               label="Privacy Policy"
@@ -1575,7 +1654,7 @@ function SettingPickerRow({
 }
 
 function SettingToggleRow({
-  icon, label, sublabel, color, value, onValueChange, isLast,
+  icon, label, sublabel, color, value, onValueChange, isLast, loading,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -1584,6 +1663,7 @@ function SettingToggleRow({
   value: boolean;
   onValueChange: (v: boolean) => void;
   isLast?: boolean;
+  loading?: boolean;
 }) {
   const colors = useColors();
   return (
@@ -1604,12 +1684,16 @@ function SettingToggleRow({
           </Text>
         ) : null}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: colors.border, true: color + "80" }}
-        thumbColor={value ? color : colors.mutedForeground}
-      />
+      {loading ? (
+        <ActivityIndicator size="small" color={color} style={{ marginRight: 4 }} />
+      ) : (
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          trackColor={{ false: colors.border, true: color + "80" }}
+          thumbColor={value ? color : colors.mutedForeground}
+        />
+      )}
     </View>
   );
 }
