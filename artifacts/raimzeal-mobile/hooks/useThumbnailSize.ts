@@ -15,40 +15,45 @@ interface ThumbnailSizeContextType {
 const ThumbnailSizeContext = createContext<ThumbnailSizeContextType | null>(null);
 
 /**
- * Reads the thumbnail-size preference from AsyncStorage once at app boot and
- * exposes shared state to all consumers.  Wrap the app root with this provider
- * so the preference is available app-wide without per-component AsyncStorage
- * round-trips.
- *
- * Renders nothing until the stored value has been read so that children never
- * see the default "m" before the real preference is known, preventing a
- * visible size flash on first load.
+ * Reads the persisted thumbnail-size from AsyncStorage.  Call this once at
+ * app boot (before mounting the provider) and pass the result as `initialSize`
+ * to `ThumbnailSizeProvider` so the provider starts with the correct value
+ * immediately — no null state, no flash, no AsyncStorage race.
  */
-export function ThumbnailSizeProvider({ children }: { children: React.ReactNode }) {
-  const [thumbnailSize, setThumbnailSizeState] = useState<ThumbnailSize | null>(null);
+export async function loadInitialThumbnailSize(): Promise<ThumbnailSize> {
+  try {
+    const saved = await AsyncStorage.getItem(STORAGE_KEY);
+    if (saved && VALID_SIZES.includes(saved as ThumbnailSize)) {
+      return saved as ThumbnailSize;
+    }
+  } catch {
+    // Fall through to default
+  }
+  return DEFAULT_SIZE;
+}
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((saved) => {
-        if (saved && VALID_SIZES.includes(saved as ThumbnailSize)) {
-          setThumbnailSizeState(saved as ThumbnailSize);
-        } else {
-          setThumbnailSizeState(DEFAULT_SIZE);
-        }
-      })
-      .catch(() => {
-        setThumbnailSizeState(DEFAULT_SIZE);
-      });
-  }, []);
+interface ThumbnailSizeProviderProps {
+  children: React.ReactNode;
+  /** Pre-loaded value from `loadInitialThumbnailSize()`. Providing this avoids
+   *  any AsyncStorage read inside the provider and prevents a null/default flash. */
+  initialSize: ThumbnailSize;
+}
+
+/**
+ * Provides the app-wide thumbnail-size preference to all descendants.
+ *
+ * Pass `initialSize` from `loadInitialThumbnailSize()` (called before the
+ * provider mounts) so the correct persisted value is available on the very
+ * first render — no race condition between the provider mount and the first
+ * modal open.
+ */
+export function ThumbnailSizeProvider({ children, initialSize }: ThumbnailSizeProviderProps) {
+  const [thumbnailSize, setThumbnailSizeState] = useState<ThumbnailSize>(initialSize);
 
   const setThumbnailSize = useCallback((size: ThumbnailSize) => {
     setThumbnailSizeState(size);
     AsyncStorage.setItem(STORAGE_KEY, size).catch(() => {});
   }, []);
-
-  if (thumbnailSize === null) {
-    return null;
-  }
 
   return React.createElement(
     ThumbnailSizeContext.Provider,

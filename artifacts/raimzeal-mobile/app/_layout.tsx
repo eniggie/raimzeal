@@ -26,7 +26,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { FitnessProvider, useFitness } from "@/contexts/FitnessContext";
 import { MacroGoalsProvider } from "@/contexts/MacroGoalsContext";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
-import { ThumbnailSizeProvider } from "@/hooks/useThumbnailSize";
+import { ThumbnailSizeProvider, loadInitialThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
 import { Per100gDefaultProvider } from "@/hooks/usePer100gDefault";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
@@ -155,13 +155,21 @@ export default function RootLayout() {
   const fontsLoaded = interLoaded && groteskLoaded;
   const fontError = interError || groteskError;
 
+  const [initialThumbnailSize, setInitialThumbnailSize] = useState<ThumbnailSize | null>(null);
+
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    loadInitialThumbnailSize().then(setInitialThumbnailSize);
+  }, []);
+
+  const appReady = (fontsLoaded || !!fontError) && initialThumbnailSize !== null;
+
+  useEffect(() => {
+    if (appReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [appReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!appReady) return null;
 
   return (
     <SafeAreaProvider>
@@ -173,7 +181,7 @@ export default function RootLayout() {
                 <FitnessProvider>
                   <MacroGoalsProvider>
                     <PermissionsProvider>
-                      <ThumbnailSizeProvider>
+                      <ThumbnailSizeProvider initialSize={initialThumbnailSize}>
                         <Per100gDefaultProvider>
                           <AuthGate />
                         </Per100gDefaultProvider>
