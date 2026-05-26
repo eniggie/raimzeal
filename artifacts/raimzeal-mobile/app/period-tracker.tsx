@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { BBTChart, BBTPoint } from "@/components/BBTChart";
 
 const STORAGE_KEY = "@raimzeal_period_tracker_v1";
 const ACCENT = "#ec4899";
@@ -363,6 +364,18 @@ export default function PeriodTrackerScreen() {
     ? daysBetween(activeCycle.startDate, today) + 1
     : null;
 
+  const bbtPoints = useMemo<BBTPoint[]>(() => {
+    if (!activeCycle) return [];
+    return activeCycle.dayLogs
+      .filter((l): l is typeof l & { bbt: number } => l.bbt != null && l.bbt > 30)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((l) => ({
+        date: l.date,
+        cycleDay: daysBetween(activeCycle.startDate, l.date) + 1,
+        bbt: l.bbt,
+      }));
+  }, [activeCycle]);
+
   if (loading) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
@@ -579,6 +592,24 @@ export default function PeriodTrackerScreen() {
             <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Log Today</Text>
           </TouchableOpacity>
         </View>
+
+        {/* BBT Temperature chart */}
+        {bbtPoints.length >= 2 && (
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT + "20", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="thermometer-outline" size={16} color={ACCENT} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>Temperature</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                  Current cycle · {bbtPoints.length} reading{bbtPoints.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+            <BBTChart points={bbtPoints} />
+          </View>
+        )}
 
         {/* Recent cycles */}
         {data.cycles.length > 0 && (
