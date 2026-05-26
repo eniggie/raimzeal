@@ -43,6 +43,7 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
   const [startTime] = useState(Date.now());
   const [pendingLog, setPendingLog] = useState<WorkoutLog | null>(null);
   const [rpe, setRpe] = useState<number | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   useEffect(() => {
@@ -177,9 +178,7 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
   };
 
   const handleExit = () => {
-    if (confirm('Are you sure you want to exit? Your progress will be lost.')) {
-      navigate(`/workout/${workout?.id}`);
-    }
+    setShowExitConfirm(true);
   };
 
   if (!workout) {
@@ -269,6 +268,22 @@ export function WorkoutPlayer({ onComplete }: WorkoutPlayerProps) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-background rounded-2xl p-6 max-w-xs w-full shadow-xl space-y-4">
+            <h2 className="text-lg font-bold text-center">Exit workout?</h2>
+            <p className="text-sm text-muted-foreground text-center">Your progress will be lost.</p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowExitConfirm(false)}>
+                Keep going
+              </Button>
+              <Button variant="destructive" className="flex-1" onClick={() => navigate(`/workout/${workout?.id}`)}>
+                Exit
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between p-4">
         <Button variant="ghost" size="icon" onClick={handleExit} data-testid="button-exit">
           <X className="w-6 h-6" />
