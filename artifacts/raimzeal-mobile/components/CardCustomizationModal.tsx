@@ -4856,6 +4856,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   </View>
                   <Text style={styles.pinchHintTitle}>Pinch to zoom</Text>
                   <Text style={styles.pinchHintSub}>Double-tap to reset</Text>
+                  <Text style={styles.pinchHintDismiss}>Tap to dismiss</Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
@@ -5765,6 +5766,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.6)",
+  },
+  pinchHintDismiss: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.38)",
+    marginTop: 6,
   },
   swipeHintOverlay: {
     alignItems: "center",
