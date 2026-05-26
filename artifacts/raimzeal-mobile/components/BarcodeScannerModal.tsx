@@ -682,7 +682,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     )}
                     {error && (
                       <View style={styles.errorCard}>
-                        <Ionicons name="alert-circle-outline" size={20} color="#f87171" />
+                        <Ionicons name="barcode-outline" size={20} color="#f87171" />
                         <Text style={styles.errorText}>{error}</Text>
                         <View style={styles.errorActions}>
                           <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
@@ -773,7 +773,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                 <View style={[styles.recentPanel, { paddingBottom: insets.bottom + 16 }]}>
                   {notFoundBanner && (
                     <View style={styles.notFoundBanner}>
-                      <Ionicons name="alert-circle-outline" size={16} color="#fbbf24" />
+                      <Ionicons name="search-outline" size={16} color="#fbbf24" />
                       <Text style={styles.notFoundBannerText}>
                         Not found — try a recent product instead
                       </Text>

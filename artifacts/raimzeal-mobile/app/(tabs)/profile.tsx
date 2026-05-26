@@ -357,7 +357,7 @@ export default function ProfileScreen() {
     setShowPhotoRationaleModal(false);
     const result = await requestCameraRollPermission();
     if (result === "denied") {
-      showPermissionToast("Photo access blocked — tap to open Settings");
+      showPermissionToast("Photo access blocked — tap to open Settings", "camera-outline");
     }
   }
 

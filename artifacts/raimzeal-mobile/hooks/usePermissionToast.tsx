@@ -1,12 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Linking, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { Animated, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 /**
  * Shared permission-denied toast hook.
  *
- * Returns `showPermissionToast(message?)` to trigger the toast and
+ * Returns `showPermissionToast(message?, actionIcon?)` to trigger the toast and
  * `permissionToastElement` — the JSX to render inside your screen's root View.
+ *
+ * Pass an optional `actionIcon` to show a small action-specific icon alongside
+ * the lock icon (e.g. "camera-outline" for a save-to-camera-roll error), matching
+ * the pattern used by CardCustomizationModal for permission errors.
  *
  * The toast fades in (200 ms), holds for 4500 ms, then fades out (400 ms).
  * Tapping it immediately calls `Linking.openSettings()` so the user can
@@ -14,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
  */
 export function usePermissionToast() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [actionIcon, setActionIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -23,9 +28,13 @@ export function usePermissionToast() {
     };
   }, []);
 
-  function showPermissionToast(message = "Photo access blocked — tap to open Settings") {
+  function showPermissionToast(
+    message = "Photo access blocked — tap to open Settings",
+    icon?: keyof typeof Ionicons.glyphMap,
+  ) {
     if (timerRef.current) clearTimeout(timerRef.current);
     setToastMsg(message);
+    setActionIcon(icon ?? null);
     toastOpacity.stopAnimation();
     toastOpacity.setValue(0);
     Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
@@ -47,7 +56,14 @@ export function usePermissionToast() {
         activeOpacity={0.8}
         style={styles.toast}
       >
-        <Ionicons name="lock-closed-outline" size={14} color="#ff4436" />
+        {actionIcon ? (
+          <View style={styles.iconPair}>
+            <Ionicons name={actionIcon} size={14} color="#ff4436" />
+            <Ionicons name="lock-closed-outline" size={10} color="#ff4436" />
+          </View>
+        ) : (
+          <Ionicons name="lock-closed-outline" size={14} color="#ff4436" />
+        )}
         <Text style={styles.text}>{toastMsg}</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -75,6 +91,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     backgroundColor: "#ff443618",
     borderColor: "#ff443640",
+  },
+  iconPair: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   text: {
     fontSize: 13,
