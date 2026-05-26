@@ -4210,8 +4210,11 @@ export default function CardCustomizationModal({
                 value={longPressAndRun}
                 onValueChange={(val) => {
                   setLongPressAndRun(val);
-                  AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_AND_RUN, val ? "1" : "0").catch(() => {});
-                  onLongPressAndRunChange?.(val);
+                  if (onLongPressAndRunChange) {
+                    onLongPressAndRunChange(val);
+                  } else {
+                    AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_AND_RUN, val ? "1" : "0").catch(() => {});
+                  }
                 }}
                 trackColor={{ false: colors.muted, true: colors.primary + "99" }}
                 thumbColor={longPressAndRun ? colors.primary : colors.mutedForeground}
