@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getApiBase } from "@/lib/db";
 
 const SUGGESTIONS = [
   "Design my food plan for this week 🥗",
@@ -44,16 +45,6 @@ function stripMarkdown(text: string): string {
     .replace(/\[(.+?)\]\(.+?\)/g, "$1")
     .replace(/^\s*[-*+]\s/gm, "• ")
     .trim();
-}
-
-function getApiBase(): string {
-  if (Platform.OS === "web") return "/api";
-  // EXPO_PUBLIC_DOMAIN is injected as $REPLIT_DEV_DOMAIN by the workflow
-  const domain = process.env["EXPO_PUBLIC_DOMAIN"];
-  if (domain) return `https://${domain}/api`;
-  const explicit = process.env["EXPO_PUBLIC_API_BASE"];
-  if (explicit) return explicit;
-  return "http://localhost:80/api";
 }
 
 function buildOviaContext(

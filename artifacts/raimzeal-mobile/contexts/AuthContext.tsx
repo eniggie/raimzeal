@@ -8,11 +8,7 @@ import React, {
 import type { Session, User } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-
-function getApiBase(): string {
-  const base = process.env["EXPO_PUBLIC_API_BASE"] ?? "";
-  return base || "/api";
-}
+import { getApiBase } from "@/lib/db";
 
 async function triggerWelcomeEmail(email: string, name: string, accessToken: string): Promise<void> {
   try {
