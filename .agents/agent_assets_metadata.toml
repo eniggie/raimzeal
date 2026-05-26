@@ -263,3 +263,9 @@ id = "dvEEtKHdsfqss3vdpyobV"
 uri = "file://.local/ebook/raimzeal-ebook.zip"
 type = "unspecified"
 title = "RAIMZEAL Complete Ebook — KDP-Formatted (Download)"
+
+[[outputs]]
+id = "4rQVhI3LZMQyMnJTCqeKv"
+uri = "file://.local/ebook/raimzeal-source.zip"
+type = "unspecified"
+title = "RAIMZEAL — Full Source Code"
