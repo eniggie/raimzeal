@@ -4838,6 +4838,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
               </Animated.View>
               <View
+                pointerEvents="box-none"
                 style={[
                   styles.confirmToast,
                   confirmVariant === "error"
