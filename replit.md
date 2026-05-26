@@ -89,6 +89,8 @@ Dr. Ephraim Oviawe is an author, strategist, technologist, creative entrepreneur
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - Primary color: #2E8B57 (green) — mobile always dark theme
+- Stripe account name: **ECONTEUR LLC** (updated from "new business")
+- Stripe Account ID: `acct_1TZ9dvEhqrHThI5N`
 - Stripe donation URL: https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00
 
 ## Where things live
