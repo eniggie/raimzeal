@@ -81,3 +81,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas submit --platform android --profile production --latest --non-interactive
+
+      - name: Remove Play Store service account key
+        if: always()
+        working-directory: artifacts/raimzeal-mobile
+        run: rm -f google-play-service-account.json
