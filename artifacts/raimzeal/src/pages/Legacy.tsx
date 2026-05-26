@@ -52,6 +52,7 @@ export function Legacy() {
   const [partnership, setPartnership] = useState<Partnership | null>(null);
   const [partnerLoading, setPartnerLoading] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   const [cert, setCert] = useState<Certificate | null>(null);
   const [certLoading, setCertLoading] = useState(false);
@@ -167,7 +168,11 @@ export function Legacy() {
   }
 
   async function handleEndPartnership() {
-    if (!confirm('End this accountability partnership?')) return;
+    setShowEndConfirm(true);
+  }
+
+  async function confirmEndPartnership() {
+    setShowEndConfirm(false);
     await legacyFetch('/api/legacy/partner/end', { method: 'POST' });
     await loadPartner();
   }
@@ -364,9 +369,19 @@ export function Legacy() {
                   ✓ Active Partnership
                 </span>
                 <div className="pt-2">
-                  <Button variant="outline" size="sm" onClick={handleEndPartnership} className="text-red-400 border-red-400/30 hover:bg-red-500/10">
-                    End Partnership
-                  </Button>
+                  {showEndConfirm ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">Are you sure? This will end your partnership.</p>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline" size="sm" onClick={() => setShowEndConfirm(false)}>Cancel</Button>
+                        <Button variant="destructive" size="sm" onClick={confirmEndPartnership}>End Partnership</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={handleEndPartnership} className="text-red-400 border-red-400/30 hover:bg-red-500/10">
+                      End Partnership
+                    </Button>
+                  )}
                 </div>
               </Card>
             ) : partnership?.status === 'pending' ? (
