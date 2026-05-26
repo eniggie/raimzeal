@@ -1507,6 +1507,7 @@ export default function CardCustomizationModal({
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
   const undoOpacity = useRef(new Animated.Value(0)).current;
+  const undoTranslateY = useRef(new Animated.Value(8)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoRemainingMsRef = useRef<number>(0);
@@ -2726,13 +2727,18 @@ export default function CardCustomizationModal({
       undoTimerRef.current = null;
     }
     undoOpacity.stopAnimation();
+    undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(0);
+      undoTranslateY.setValue(8);
       setUndoDeleteState(null);
       cb?.();
     } else {
-      Animated.timing(undoOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      Animated.parallel([
+        Animated.timing(undoOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(undoTranslateY, { toValue: 8, duration: 300, useNativeDriver: true }),
+      ]).start(() => {
         setUndoDeleteState(null);
         cb?.();
       });
@@ -2776,10 +2782,12 @@ export default function CardCustomizationModal({
       undoTimerRef.current = null;
     }
     undoOpacity.stopAnimation();
+    undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
     // Explicitly reset the previous toast before starting fresh so that any
     // in-flight dismiss animation can't bleed its animated values into the new one.
     undoOpacity.setValue(0);
+    undoTranslateY.setValue(8);
     undoProgressAnim.setValue(1);
     setUndoDeleteState(null);
     setUndoDeleteState({ preset, index });
@@ -2787,8 +2795,10 @@ export default function CardCustomizationModal({
     undoSegmentStartRef.current = Date.now();
     if (reduceMotionRef.current) {
       undoOpacity.setValue(1);
+      undoTranslateY.setValue(0);
     } else {
       Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(undoTranslateY, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       Animated.timing(undoProgressAnim, {
         toValue: 0,
         duration: undoMs,
@@ -4305,7 +4315,7 @@ export default function CardCustomizationModal({
             </Animated.View>
           )}
           {undoDeleteState && (
-            <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity }]}>
+            <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: undoTranslateY }] }]}>
               <View
                 style={[
                   styles.confirmToast,
