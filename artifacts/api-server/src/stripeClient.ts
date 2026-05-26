@@ -25,6 +25,15 @@ async function fetchConnection(hostname: string, token: string, env: string) {
 }
 
 async function getCredentials(): Promise<{ publishableKey: string; secretKey: string }> {
+  // Live key takes priority — when STRIPE_LIVE_SECRET_KEY is set the app
+  // processes real payments instead of test ones.
+  const liveSecretKey = process.env["STRIPE_LIVE_SECRET_KEY"];
+  if (liveSecretKey?.startsWith("sk_live_")) {
+    const livePubKey = process.env["STRIPE_LIVE_PUBLISHABLE_KEY"] ?? "";
+    return { secretKey: liveSecretKey, publishableKey: livePubKey };
+  }
+
+  // Fall back to Replit connector (gives test-mode keys).
   const hostname = process.env["REPLIT_CONNECTORS_HOSTNAME"];
   const xReplitToken = process.env["REPL_IDENTITY"]
     ? "repl " + process.env["REPL_IDENTITY"]
