@@ -29,20 +29,20 @@ workoutLogsRouter.get("/user/workout-logs", requireAuth, async (req, res) => {
 });
 
 const ExerciseSchema = z.object({
-  name: z.string().min(1),
-  sets: z.number().int().nonnegative(),
-  reps: z.number().int().nonnegative(),
-  weight: z.number().nonnegative().optional(),
+  name: z.string().min(1).max(100),
+  sets: z.number().int().nonnegative().max(999),
+  reps: z.number().int().nonnegative().max(9999),
+  weight: z.number().nonnegative().max(9999).optional(),
 });
 
 const WorkoutLogSchema = z.object({
   id: z.string().uuid().optional(),
-  workout_id: z.string().min(1),
+  workout_id: z.string().min(1).max(100),
   workout_name: z.string().min(1).max(200),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
-  duration: z.number().int().nonnegative(),
-  calories_burned: z.number().int().nonnegative(),
-  exercises: z.array(ExerciseSchema),
+  duration: z.number().int().nonnegative().max(1440),
+  calories_burned: z.number().int().nonnegative().max(99999),
+  exercises: z.array(ExerciseSchema).max(100, "Too many exercises — max 100 per log."),
 });
 
 workoutLogsRouter.post("/user/workout-logs", requireAuth, async (req, res) => {
@@ -60,7 +60,7 @@ workoutLogsRouter.post("/user/workout-logs", requireAuth, async (req, res) => {
     if (id) {
       const { data: existing } = await supabaseAdmin
         .from("workout_logs")
-        .select("*")
+        .select("id, user_id")
         .eq("id", id)
         .maybeSingle();
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import nodemailer from "nodemailer";
+import { z } from "zod";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, emailUnsubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
@@ -482,15 +483,20 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
 
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
-emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res) => {
-  const { to, userName, type, message } = req.body as {
-    to: string; userName: string;
-    type: "motivation" | "tip" | "custom" | "weekly" | "welcome" | "midweek";
-    message?: string;
-  };
+const EmailSendSchema = z.object({
+  to: z.string().email("Invalid email address."),
+  userName: z.string().min(1).max(100),
+  type: z.enum(["motivation", "tip", "custom", "weekly", "welcome", "midweek"]),
+  message: z.string().max(2000, "Custom message too long — max 2000 characters.").optional(),
+});
 
-  if (!to || !userName) { res.status(400).json({ error: "to and userName are required." }); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.status(400).json({ error: "Invalid email address." }); return; }
+emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res) => {
+  const parse = EmailSendSchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
+    return;
+  }
+  const { to, userName, type, message } = parse.data;
 
   if (type === "weekly") {
     try { await sendWeeklyDigest(to, userName); req.log.info({ to }, "Weekly digest sent"); res.json({ success: true, message: "Weekly digest sent." }); }

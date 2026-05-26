@@ -48,47 +48,73 @@ personalRecordsRouter.post("/user/personal-records", requireAuth, async (req, re
   }
 });
 
+const CheckExerciseSchema = z.object({
+  name: z.string().min(1).max(100),
+  weight: z.number().positive().optional(),
+  reps: z.number().int().positive().optional(),
+  duration: z.number().positive().optional(),
+});
+
+const CheckPRSchema = z.object({
+  exercises: z.array(CheckExerciseSchema).max(50, "Too many exercises — max 50 per check."),
+});
+
 /**
  * Checks a completed workout's exercises against existing PRs.
  * Returns newly set PRs (if any) for the client to celebrate.
+ * Batches all existing-PR lookups into a single query to avoid N+1.
  */
 personalRecordsRouter.post("/user/personal-records/check", requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
-  const exercises = req.body.exercises as Array<{ name: string; weight?: number; reps?: number; duration?: number }> | undefined;
-  if (!Array.isArray(exercises)) { res.status(400).json({ error: "exercises array required." }); return; }
+  const parse = CheckPRSchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
+    return;
+  }
+  const { exercises } = parse.data;
 
   try {
     const newPRs: Array<{ exercise_name: string; value_type: string; value: number }> = [];
 
+    // Collect all (exercise_name, value_type, value) candidates to check
+    type Candidate = { exercise_name: string; value_type: "weight" | "reps" | "time"; value: number };
+    const candidates: Candidate[] = [];
     for (const ex of exercises) {
-      const checks: Array<{ value_type: "weight" | "reps" | "time"; value: number }> = [];
-      if (ex.weight && ex.weight > 0) checks.push({ value_type: "weight", value: ex.weight });
-      if (ex.reps && ex.reps > 0) checks.push({ value_type: "reps", value: ex.reps });
-      if (ex.duration && ex.duration > 0) checks.push({ value_type: "time", value: ex.duration });
+      if (ex.weight) candidates.push({ exercise_name: ex.name, value_type: "weight", value: ex.weight });
+      if (ex.reps)   candidates.push({ exercise_name: ex.name, value_type: "reps",   value: ex.reps });
+      if (ex.duration) candidates.push({ exercise_name: ex.name, value_type: "time", value: ex.duration });
+    }
+    if (candidates.length === 0) { res.json({ new_prs: [] }); return; }
 
-      for (const check of checks) {
-        const { data: existing } = await supabaseAdmin
-          .from("personal_records")
-          .select("value")
-          .eq("user_id", userId)
-          .eq("exercise_name", ex.name)
-          .eq("value_type", check.value_type)
-          .order("value", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    // Fetch all existing PRs for this user in a single query, then compare in-memory
+    const exerciseNames = [...new Set(candidates.map((c) => c.exercise_name))];
+    const { data: existingRecords, error: fetchError } = await supabaseAdmin
+      .from("personal_records")
+      .select("exercise_name, value_type, value")
+      .eq("user_id", userId)
+      .in("exercise_name", exerciseNames);
+    if (fetchError) throw fetchError;
 
-        const prevBest = (existing as Record<string, unknown> | null)?.value as number | null;
-        if (prevBest == null || check.value > prevBest) {
-          await supabaseAdmin.from("personal_records").insert({
-            user_id: userId,
-            exercise_name: ex.name,
-            value_type: check.value_type,
-            value: check.value,
-            achieved_at: new Date().toISOString(),
-          });
-          newPRs.push({ exercise_name: ex.name, value_type: check.value_type, value: check.value });
-        }
+    const bestMap = new Map<string, number>();
+    for (const r of (existingRecords ?? []) as Array<{ exercise_name: string; value_type: string; value: number }>) {
+      const key = `${r.exercise_name}||${r.value_type}`;
+      bestMap.set(key, Math.max(bestMap.get(key) ?? 0, r.value));
+    }
+
+    const inserts: Array<{ user_id: string; exercise_name: string; value_type: string; value: number; achieved_at: string }> = [];
+    const now = new Date().toISOString();
+    for (const c of candidates) {
+      const key = `${c.exercise_name}||${c.value_type}`;
+      const prevBest = bestMap.get(key) ?? null;
+      if (prevBest == null || c.value > prevBest) {
+        inserts.push({ user_id: userId, exercise_name: c.exercise_name, value_type: c.value_type, value: c.value, achieved_at: now });
+        newPRs.push({ exercise_name: c.exercise_name, value_type: c.value_type, value: c.value });
       }
+    }
+
+    if (inserts.length > 0) {
+      const { error: insertError } = await supabaseAdmin.from("personal_records").insert(inserts);
+      if (insertError) throw insertError;
     }
 
     res.json({ new_prs: newPRs });
