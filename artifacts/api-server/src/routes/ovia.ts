@@ -70,6 +70,45 @@ function hasPromptInjection(text: string): boolean {
  *   backtick runs       inline code and triple-backtick fences
  *   ~~text~~            strikethrough
  */
+/**
+ * Accumulates raw SSE fragments and only releases text at sentence boundaries.
+ *
+ * Why: markdown tokens such as ** or ~~ can be split across consecutive chunks,
+ * so cleanChunk() would never see both halves and the raw markers would leak.
+ * Buffering until a sentence ends guarantees every token pair is intact before
+ * we apply the regex strip pass.
+ *
+ * push()  — append a new fragment, returns everything up to the last boundary.
+ * flush() — returns whatever is still buffered (call after the stream ends).
+ *
+ * Sentence boundaries recognised:
+ *   • . ! ? followed by a space or tab (e.g. "Done. Next…")
+ *   • A newline character (paragraph breaks)
+ */
+class SentenceBuffer {
+  private buf = "";
+
+  push(chunk: string): string {
+    this.buf += chunk;
+    let lastBoundaryEnd = -1;
+    const re = /[.!?][ \t]|\n/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(this.buf)) !== null) {
+      lastBoundaryEnd = m.index + m[0].length;
+    }
+    if (lastBoundaryEnd === -1) return "";
+    const ready = this.buf.slice(0, lastBoundaryEnd);
+    this.buf = this.buf.slice(lastBoundaryEnd);
+    return ready;
+  }
+
+  flush(): string {
+    const out = this.buf;
+    this.buf = "";
+    return out;
+  }
+}
+
 function cleanChunk(text: string): string {
   return text
     .replace(/^#{1,6}\s*/gm, "")
@@ -493,6 +532,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     let toolCallName = "";
     let toolCallArgs = "";
 
+    // Buffer for the main response stream — ensures cleanChunk() always sees
+    // complete markdown tokens even when they are split across SSE fragments.
+    const mainBuf = new SentenceBuffer();
+
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
 
@@ -506,11 +549,21 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
 
       const content = delta?.content;
       if (content) {
-        const cleaned = cleanChunk(content);
-        if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        const ready = mainBuf.push(content);
+        if (ready) {
+          const cleaned = cleanChunk(ready);
+          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        }
       }
 
       if (chunk.choices[0]?.finish_reason === "tool_calls" && toolCallName === "web_search") {
+        // Flush any main-stream remainder before switching to tool handling.
+        const mainRemainder = mainBuf.flush();
+        if (mainRemainder) {
+          const cleaned = cleanChunk(mainRemainder);
+          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        }
+
         let searchQuery = "";
         try {
           searchQuery = (JSON.parse(toolCallArgs) as { query: string }).query ?? "";
@@ -547,14 +600,31 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
           stream: true,
         });
 
+        const searchBuf = new SentenceBuffer();
         for await (const c of continuation) {
           const cnt = c.choices[0]?.delta?.content;
           if (cnt) {
-            const cleaned = cleanChunk(cnt);
-            if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+            const ready = searchBuf.push(cnt);
+            if (ready) {
+              const cleaned = cleanChunk(ready);
+              if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+            }
           }
         }
+        // Flush any buffered tail from the search continuation.
+        const searchRemainder = searchBuf.flush();
+        if (searchRemainder) {
+          const cleaned = cleanChunk(searchRemainder);
+          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        }
       } else if (chunk.choices[0]?.finish_reason === "tool_calls" && toolCallName === "update_profile") {
+        // Flush any main-stream remainder before switching to tool handling.
+        const mainRemainder = mainBuf.flush();
+        if (mainRemainder) {
+          const cleaned = cleanChunk(mainRemainder);
+          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        }
+
         let profileUpdates: Record<string, unknown> = {};
         try { profileUpdates = JSON.parse(toolCallArgs) as Record<string, unknown>; } catch { /* ignore */ }
 
@@ -594,14 +664,32 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
           stream: true,
         });
 
+        const profileBuf = new SentenceBuffer();
         for await (const c of profileContinuation) {
           const cnt = c.choices[0]?.delta?.content;
           if (cnt) {
-            const cleaned = cleanChunk(cnt);
-            if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+            const ready = profileBuf.push(cnt);
+            if (ready) {
+              const cleaned = cleanChunk(ready);
+              if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+            }
           }
         }
+        // Flush any buffered tail from the profile continuation.
+        const profileRemainder = profileBuf.flush();
+        if (profileRemainder) {
+          const cleaned = cleanChunk(profileRemainder);
+          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+        }
       }
+    }
+
+    // Flush any remaining main-stream content (e.g. a sentence that never got
+    // a trailing space/newline before the stream closed).
+    const mainFinal = mainBuf.flush();
+    if (mainFinal) {
+      const cleaned = cleanChunk(mainFinal);
+      if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
     }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
