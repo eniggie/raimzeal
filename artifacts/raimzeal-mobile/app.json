@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 14,
+      "versionCode": 16,
       "minSdkVersion": 26,
       "intentFilters": [
         {
@@ -87,7 +87,7 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "RAIMZEAL reads your Apple Health data — steps, sleep, heart rate and weight — to keep your fitness stats accurate and up to date.",
+          "healthSharePermission": "RAIMZEAL reads your Apple Health data \u2014 steps, sleep, heart rate and weight \u2014 to keep your fitness stats accurate and up to date.",
           "healthUpdatePermission": "RAIMZEAL writes your workout and activity data back to Apple Health so all your apps stay in sync."
         }
       ],

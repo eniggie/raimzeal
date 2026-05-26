@@ -1,18 +1,38 @@
-# Exclude monorepo workspace folders that aren't needed for the EAS build
-../../node_modules
-../../lib
-../../artifacts/raimzeal
-../../artifacts/api-server
-../../artifacts/mockup-sandbox
-../../scripts
-../../.local
+# ── Monorepo siblings: not needed for mobile build ───────────────────────────
+../../artifacts/raimzeal/
+../../artifacts/api-server/
+../../artifacts/mockup-sandbox/
+../../lib/
+../../scripts/
+../../.local/
 
-# Local build/cache artifacts
-.expo
-dist
-static-build
+# ── Heavy workspace-root dirs ─────────────────────────────────────────────────
+../../node_modules/
+../../.pnpm-store/
+../../.turbo/
+../../.cache/
+
+# ── Mobile-local build / cache dirs ──────────────────────────────────────────
+node_modules/
+dist/
+static-build/
+.expo/
+android/
+ios/
+.gradle/
+coverage/
+
+# ── Secrets (never ship to EAS cloud) ────────────────────────────────────────
 google-play-service-account.json
-
-# Dev files
-*.log
 .env
+.env.*
+
+# ── Noise ─────────────────────────────────────────────────────────────────────
+*.map
+*.log
+*.zip
+*.gz
+*.tgz
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
