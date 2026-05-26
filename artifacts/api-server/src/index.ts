@@ -59,6 +59,36 @@ async function runSupabaseSchemaMigration() {
         content TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      -- Enable Row Level Security on all community tables so that direct
+      -- Supabase REST API access is blocked unless a policy explicitly allows it.
+      -- All mutations flow through the API server (service role, bypasses RLS),
+      -- so we only need to grant authenticated users SELECT access here.
+      ALTER TABLE community_posts    ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE community_likes    ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE community_comments ENABLE ROW LEVEL SECURITY;
+
+      -- Create SELECT policies idempotently (DO block catches duplicate_object).
+      DO $pol$
+      BEGIN
+        CREATE POLICY "community_posts_select_authenticated"
+          ON community_posts FOR SELECT TO authenticated USING (true);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $pol$;
+
+      DO $pol$
+      BEGIN
+        CREATE POLICY "community_likes_select_authenticated"
+          ON community_likes FOR SELECT TO authenticated USING (true);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $pol$;
+
+      DO $pol$
+      BEGIN
+        CREATE POLICY "community_comments_select_authenticated"
+          ON community_comments FOR SELECT TO authenticated USING (true);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $pol$;
     `);
     // Reload PostgREST schema cache via direct connection (bypasses PgBouncer).
     await pool.query(`SELECT pg_notify('pgrst', 'reload schema')`);
