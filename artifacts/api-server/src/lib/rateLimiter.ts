@@ -101,6 +101,16 @@ export const communityMutateLimitLight = rateLimit({
   message: { error: "Too many community actions — please slow down." },
 });
 
+// ── Data export ───────────────────────────────────────────────────────────────
+// 10 exports per minute per IP — each export runs up to 10 parallel DB queries
+export const exportRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many export requests — please wait before exporting again." },
+});
+
 // Heavy: post creation — 20 per hour per IP (prevents spam flooding)
 export const communityMutateLimitHeavy = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -108,4 +118,15 @@ export const communityMutateLimitHeavy = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many posts — please wait before posting again." },
+});
+
+// ── Stripe / Billing webhook endpoints ────────────────────────────────────────
+// 200 requests per minute per IP — generous enough for Stripe's retry bursts
+// but blocks DOS floods on the unauthenticated raw-body endpoints.
+export const webhookRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many webhook requests." },
 });
