@@ -103,23 +103,41 @@ communityRouter.get(
 
     const supabase = getAdminClient();
 
-    // Use * to avoid errors if optional columns (image_url, is_legacy_post) don't
-    // exist yet in this Supabase project. Missing columns just won't appear in results.
-    let query = supabase
-      .from("community_posts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    // Build a fresh base query (no is_legacy_post filter yet).
+    // Extracted as a factory so we can build it twice without shared builder state.
+    const buildQuery = () => {
+      let q = supabase
+        .from("community_posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (safePostType) q = (q as typeof q).eq("post_type", safePostType);
+      return q;
+    };
 
-    // Only filter by is_legacy_post if we're requesting inner-circle posts —
-    // if the column doesn't exist the query would fail, so we skip this filter
-    // for the default (legacyOnly=false) case and rely on the column being absent=false.
-    if (legacyOnly) {
-      query = (query as typeof query).eq("is_legacy_post", true);
+    // is_legacy_post MUST be filtered to prevent Inner Circle posts leaking into
+    // the public feed. We try the filtered query first; if the column is missing
+    // (Supabase schema not yet migrated) we fall back safely:
+    //   - legacyOnly=true  → return [] (no posts can be legacy if column absent)
+    //   - legacyOnly=false → return all posts (all are implicitly non-legacy)
+    let filteredQuery = legacyOnly
+      ? buildQuery().eq("is_legacy_post", true)
+      : (buildQuery() as ReturnType<typeof buildQuery>).or("is_legacy_post.eq.false,is_legacy_post.is.null");
+
+    let { data, error } = await filteredQuery;
+
+    // Graceful fallback if is_legacy_post column doesn't exist yet in this project.
+    if (error && (error as unknown as Record<string, unknown>)["code"] === "42703") {
+      req.log.warn({ column: "is_legacy_post" }, "is_legacy_post column missing — using fallback");
+      if (legacyOnly) {
+        // No posts can be inner-circle if the column doesn't exist.
+        res.json({ posts: [] });
+        return;
+      }
+      // Safe: all posts are implicitly non-legacy when column is absent.
+      // Build a completely fresh query (no is_legacy_post) to avoid shared builder state.
+      ({ data, error } = await buildQuery());
     }
-    if (safePostType) query = (query as typeof query).eq("post_type", safePostType);
-
-    const { data, error } = await query;
 
     if (error) {
       req.log.error({ error }, "Failed to fetch community posts");

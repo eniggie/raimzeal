@@ -40,7 +40,8 @@ async function runSupabaseSchemaMigration() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
       ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS image_url TEXT;
-      ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_legacy_post BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_legacy_post BOOLEAN DEFAULT false;
+      UPDATE community_posts SET is_legacy_post = false WHERE is_legacy_post IS NULL;
 
       CREATE TABLE IF NOT EXISTS community_likes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
