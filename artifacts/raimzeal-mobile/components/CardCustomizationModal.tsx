@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   Animated,
   Easing,
@@ -213,6 +213,17 @@ interface Props {
   initialLongPressAndRun?: boolean;
   /** Called whenever the user toggles the long-press-and-run switch. */
   onLongPressAndRunChange?: (val: boolean) => void;
+}
+
+/**
+ * Imperative handle exposed via forwardRef.
+ * Callers can scroll to and pulse the stat-toggles section regardless of
+ * whether any stats are currently enabled — useful for onboarding nudges or
+ * info banners rendered outside the modal.
+ */
+export interface CardCustomizationModalHandle {
+  /** Scroll to the VISIBLE STATS toggles and briefly highlight them. */
+  highlightStatToggles: () => void;
 }
 
 
@@ -1148,7 +1159,7 @@ const PresetChipItem = memo(function PresetChipItem({
   );
 });
 
-export default function CardCustomizationModal({
+const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(function CardCustomizationModal({
   visible,
   onClose,
   onGenerate,
@@ -1158,7 +1169,7 @@ export default function CardCustomizationModal({
   initialBadgeDismissed,
   initialLongPressAndRun,
   onLongPressAndRunChange,
-}: Props) {
+}: Props, ref) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -3028,6 +3039,8 @@ export default function CardCustomizationModal({
     ]).start();
   }
 
+  useImperativeHandle(ref, () => ({ highlightStatToggles: scrollToStatToggles }), []);
+
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
 
   // Locked-button hint fade animation
@@ -4277,21 +4290,28 @@ export default function CardCustomizationModal({
           )}
           {lockedHintMounted && (
             <Animated.View style={{ opacity: lockedHintFadeAnim }}>
-              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-                Enable at least one stat to generate your card
-              </Text>
+              <TouchableOpacity
+                onPress={scrollToStatToggles}
+                activeOpacity={0.6}
+                accessibilityRole="button"
+                accessibilityLabel="Go to stat toggles"
+              >
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                  {"Enable at least one stat to generate your card · Tap to highlight"}
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
           {disabledBtnLpHintMounted && (
             <Animated.View style={{ opacity: disabledBtnLpHintFadeAnim }}>
               <TouchableOpacity
-                onPress={dismissDisabledBtnLpHint}
+                onPress={() => { scrollToStatToggles(); dismissDisabledBtnLpHint(); }}
                 activeOpacity={0.6}
                 accessibilityRole="button"
-                accessibilityLabel="Dismiss hint"
+                accessibilityLabel="Jump to stat toggles"
               >
                 <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-                  {"Long-press any button to jump to the stat toggles · Tap to dismiss"}
+                  {"Long-press any button to jump to the stat toggles · Tap to go there now"}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
@@ -5071,7 +5091,9 @@ export default function CardCustomizationModal({
       />
     </Modal>
   );
-}
+});
+
+export default CardCustomizationModal;
 
 const styles = StyleSheet.create({
   overlay: {

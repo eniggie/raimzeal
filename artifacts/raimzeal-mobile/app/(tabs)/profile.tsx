@@ -31,12 +31,13 @@ import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal"
 import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useTier } from "@/hooks/useTier";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -132,6 +133,7 @@ export default function ProfileScreen() {
   const profileScrollRef = useRef<ScrollView>(null);
   const settingsCardYRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
+  const cardModalRef = useRef<CardCustomizationModalHandle>(null);
   const { scrollTo, openCard } = useLocalSearchParams<{ scrollTo?: string; openCard?: string }>();
 
   useEffect(() => {
@@ -560,8 +562,17 @@ export default function ProfileScreen() {
 
   const primaryGoal = user?.goals?.[0] ?? "improve_fitness";
 
+  const STORAGE_KEY_STAT_TOGGLES_NUDGE_SEEN = "@raimzeal_stat_toggles_nudge_seen";
+
   function handleOpenCardModal() {
     setShowCustomizeModal(true);
+    AsyncStorage.getItem(STORAGE_KEY_STAT_TOGGLES_NUDGE_SEEN).then((seen) => {
+      if (seen) return;
+      AsyncStorage.setItem(STORAGE_KEY_STAT_TOGGLES_NUDGE_SEEN, "1").catch(() => {});
+      setTimeout(() => {
+        cardModalRef.current?.highlightStatToggles();
+      }, 500);
+    }).catch(() => {});
   }
 
   async function handleGenerateCard({ visibleStats, customMessage, themeId, action, backgroundPhotoUri, backgroundPhotoCrop }: CardCustomizationResult): Promise<void> {
@@ -812,6 +823,7 @@ export default function ProfileScreen() {
 
       {/* Card customization modal */}
       <CardCustomizationModal
+        ref={cardModalRef}
         visible={showCustomizeModal}
         onClose={() => setShowCustomizeModal(false)}
         onGenerate={handleGenerateCard}
