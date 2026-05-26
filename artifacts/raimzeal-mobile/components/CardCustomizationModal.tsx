@@ -576,6 +576,8 @@ function ZoomableCard({
   onFirstGesture,
   onSwipeLeft,
   onSwipeRight,
+  onSwipeDown,
+  onSwipeDownProgress,
 }: {
   children: React.ReactNode;
   cardWidth: number;
@@ -590,6 +592,8 @@ function ZoomableCard({
   onFirstGesture?: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
+  onSwipeDown?: (velocityY: number) => void;
+  onSwipeDownProgress?: (dy: number) => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
@@ -633,6 +637,16 @@ function ZoomableCard({
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       translateX.value = Math.min(maxX, Math.max(-maxX, savedTranslateX.value + e.translationX));
       translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
+      // Feed swipe-down progress at scale 1 so the outer overlay can track
+      // the drag and animate along with the gesture.
+      if (
+        onSwipeDownProgress &&
+        scale.value === 1 &&
+        e.translationY > 0 &&
+        e.translationY > Math.abs(e.translationX) * 1.2
+      ) {
+        runOnJS(onSwipeDownProgress)(e.translationY);
+      }
     })
     .onEnd((e) => {
       "worklet";
@@ -642,6 +656,33 @@ function ZoomableCard({
       // pinchGesture.onEnd() and doubleTapGesture.onEnd().
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
+
+      // Swipe-down dismiss — fires from inside RNGH so it works even when
+      // the inner gesture handler has claimed the touch (e.g. when zoomed in).
+      // At scale 1 the thresholds match the outer PanResponder so behaviour
+      // is identical whether the outer or inner handler fires first.
+      // At scale > 1 we require a noticeably fast/long swipe so normal panning
+      // while zoomed is not accidentally interpreted as a dismiss gesture.
+      const isDownward =
+        e.translationY > 0 && e.translationY > Math.abs(e.translationX);
+      if (isDownward && onSwipeDown) {
+        const atScale1 = scale.value === 1;
+        const dismissAtScale1 =
+          atScale1 && (e.translationY > 80 || e.velocityY > 0.5);
+        const dismissZoomed =
+          !atScale1 && (e.velocityY > 1.2 || e.translationY > 120);
+        if (dismissAtScale1 || dismissZoomed) {
+          runOnJS(onSwipeDown)(e.velocityY);
+          return;
+        }
+      }
+
+      // Gesture didn't result in a dismiss — reset any in-progress drag
+      // animation so the overlay snaps back to its resting position.
+      if (onSwipeDownProgress) {
+        runOnJS(onSwipeDownProgress)(0);
+      }
+
       if (
         scale.value === 1 &&
         Math.abs(e.translationX) > 60 &&
@@ -655,6 +696,14 @@ function ZoomableCard({
           runOnJS(Haptics.selectionAsync)();
           runOnJS(onSwipeRight)();
         }
+      }
+    })
+    .onFinalize((_e, success) => {
+      "worklet";
+      // If the gesture was cancelled or failed mid-swipe, reset the drag
+      // animation so the overlay doesn't stay in a partially-dragged state.
+      if (!success && onSwipeDownProgress) {
+        runOnJS(onSwipeDownProgress)(0);
       }
     });
 
@@ -3370,6 +3419,35 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Swipe-down gesture to dismiss the zoom overlay
   const closeZoomRef = useRef(closeZoom);
   closeZoomRef.current = closeZoom;
+
+  // Stable handlers for ZoomableCard's onSwipeDown/onSwipeDownProgress so the
+  // inner RNGH pan gesture can drive the dismiss animation directly.  This is
+  // necessary because RNGH gestures take priority over the outer PanResponder
+  // when the card is zoomed in, meaning the PanResponder never fires.
+  const handleZoomSwipeDown = useCallback((velocityY: number) => {
+    closeZoomRef.current(velocityY);
+  }, []);
+
+  const swipeBackSpringConfig = {
+    damping: 50,
+    stiffness: 400,
+    mass: 0.6,
+    overshootClamping: true,
+    useNativeDriver: true,
+  } as const;
+
+  const handleZoomSwipeDownProgress = useCallback((dy: number) => {
+    if (dy > 0) {
+      zoomSwipeDragY.setValue(dy);
+    } else {
+      Animated.spring(zoomSwipeDragY, {
+        toValue: 0,
+        ...swipeBackSpringConfig,
+      }).start();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const zoomSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -4762,6 +4840,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               savedTranslateY={pinchSavedTranslateY}
               reduceMotionShared={reduceMotionShared}
               onFirstGesture={dismissPinchHintEarly}
+              onSwipeDown={handleZoomSwipeDown}
+              onSwipeDownProgress={handleZoomSwipeDownProgress}
             >
               {zoomIsOneToOne ? (
                 // True 1:1 render — no scaling transform applied.
