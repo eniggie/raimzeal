@@ -109,6 +109,7 @@ const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_seen";
+const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
@@ -1817,7 +1818,7 @@ export default function CardCustomizationModal({
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -1831,6 +1832,7 @@ export default function CardCustomizationModal({
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
           AsyncStorage.getItem(STORAGE_KEY_ACTIVE_PRESET),
           AsyncStorage.getItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN),
+          AsyncStorage.getItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN),
         ]);
 
         if (cancelled) return;
@@ -1918,6 +1920,13 @@ export default function CardCustomizationModal({
 
         // Swipe-to-dismiss toast hint: show once, forever
         setToastSwipeHintSeen(toastSwipeHintSeenRaw === "1");
+
+        // Disabled-button long-press hint: persisted dismissed state
+        if (disabledBtnLpHintSeenRaw === "1") {
+          setDisabledBtnLpHintDismissed(true);
+          disabledBtnLpHintFadeAnim.setValue(0);
+          setDisabledBtnLpHintMounted(false);
+        }
 
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
         const effectiveAnyStatEnabled = Object.values(effectiveStats).some(Boolean);
@@ -3057,6 +3066,61 @@ export default function CardCustomizationModal({
       }
     }
   }, [anyStatEnabled]);
+
+  // Disabled-button long-press hint: shown below action row when all stats off, dismissable & persisted
+  const [disabledBtnLpHintDismissed, setDisabledBtnLpHintDismissed] = useState(false);
+  const [disabledBtnLpHintMounted, setDisabledBtnLpHintMounted] = useState(!anyStatEnabled);
+  const disabledBtnLpHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
+  const disabledBtnLpHintIsFirstRender = useRef(true);
+  useEffect(() => {
+    if (disabledBtnLpHintIsFirstRender.current) {
+      disabledBtnLpHintIsFirstRender.current = false;
+      return;
+    }
+    if (!anyStatEnabled && !disabledBtnLpHintDismissed) {
+      setDisabledBtnLpHintMounted(true);
+      if (reduceMotionRef.current) {
+        disabledBtnLpHintFadeAnim.setValue(1);
+      } else {
+        disabledBtnLpHintFadeAnim.setValue(0);
+        Animated.timing(disabledBtnLpHintFadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      }
+    } else {
+      if (reduceMotionRef.current) {
+        disabledBtnLpHintFadeAnim.setValue(0);
+        setDisabledBtnLpHintMounted(false);
+      } else {
+        Animated.timing(disabledBtnLpHintFadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setDisabledBtnLpHintMounted(false);
+        });
+      }
+    }
+  }, [anyStatEnabled, disabledBtnLpHintDismissed]);
+
+  function dismissDisabledBtnLpHint() {
+    AsyncStorage.setItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN, "1").catch(() => {});
+    setDisabledBtnLpHintDismissed(true);
+    if (reduceMotionRef.current) {
+      disabledBtnLpHintFadeAnim.setValue(0);
+      setDisabledBtnLpHintMounted(false);
+    } else {
+      Animated.timing(disabledBtnLpHintFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setDisabledBtnLpHintMounted(false);
+      });
+    }
+  }
 
   const bottomPad = Platform.OS === "ios" ? insets.bottom : 16;
 
@@ -4216,6 +4280,20 @@ export default function CardCustomizationModal({
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 Enable at least one stat to generate your card
               </Text>
+            </Animated.View>
+          )}
+          {disabledBtnLpHintMounted && (
+            <Animated.View style={{ opacity: disabledBtnLpHintFadeAnim }}>
+              <TouchableOpacity
+                onPress={dismissDisabledBtnLpHint}
+                activeOpacity={0.6}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss hint"
+              >
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                  {"Long-press any button to jump to the stat toggles · Tap to dismiss"}
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
           {anyStatEnabled && showLongPressHint && (
