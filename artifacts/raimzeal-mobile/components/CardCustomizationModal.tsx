@@ -1143,6 +1143,7 @@ interface PresetOriginRect {
 interface PresetChipItemProps {
   preset: CardPreset;
   isActive: boolean;
+  isModified?: boolean;
   cardPreviewData: CardPreviewData;
   colors: ReturnType<typeof useColors>;
   onPress: (preset: CardPreset, originRect: PresetOriginRect) => void;
@@ -1154,6 +1155,7 @@ interface PresetChipItemProps {
 const PresetChipItem = memo(function PresetChipItem({
   preset,
   isActive,
+  isModified = false,
   cardPreviewData,
   colors,
   onPress,
@@ -1192,8 +1194,13 @@ const PresetChipItem = memo(function PresetChipItem({
         style={[
           styles.presetThumbnailFrame,
           {
-            borderColor: isActive ? colors.primary : colors.border,
+            borderColor: isActive
+              ? isModified
+                ? colors.primary + "55"
+                : colors.primary
+              : colors.border,
             borderWidth: isActive ? 2 : 1.5,
+            borderStyle: isActive && isModified ? "dashed" : "solid",
           },
         ]}
       >
@@ -1214,8 +1221,16 @@ const PresetChipItem = memo(function PresetChipItem({
           />
         ) : null}
         {isActive && (
-          <View style={[styles.presetThumbnailCheck, { backgroundColor: theme.accent }]}>
-            <Ionicons name="checkmark" size={8} color="#fff" />
+          <View
+            style={[
+              styles.presetThumbnailCheck,
+              {
+                backgroundColor: theme.accent,
+                opacity: isModified ? 0.45 : 1,
+              },
+            ]}
+          >
+            <Ionicons name={isModified ? "ellipsis-horizontal" : "checkmark"} size={8} color="#fff" />
           </View>
         )}
         <TouchableOpacity
@@ -1226,7 +1241,7 @@ const PresetChipItem = memo(function PresetChipItem({
           <Ionicons
             name="close-circle"
             size={16}
-            color={isActive ? colors.primary : colors.mutedForeground}
+            color={isActive ? (isModified ? colors.primary + "88" : colors.primary) : colors.mutedForeground}
           />
         </TouchableOpacity>
       </View>
@@ -1234,8 +1249,12 @@ const PresetChipItem = memo(function PresetChipItem({
         style={[
           styles.presetChipText,
           {
-            color: isActive ? colors.primary : colors.foreground,
-            fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
+            color: isActive
+              ? isModified
+                ? colors.primary + "99"
+                : colors.primary
+              : colors.foreground,
+            fontFamily: isActive && !isModified ? "Inter_600SemiBold" : "Inter_400Regular",
           },
         ]}
         numberOfLines={1}
@@ -1382,6 +1401,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [activePresetModified, setActivePresetModified] = useState(false);
   const [showInlineSave, setShowInlineSave] = useState(false);
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
@@ -2178,7 +2198,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
       return next;
     });
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
@@ -2194,7 +2214,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   function handleThemeChange(themeId: CardThemeId) {
     if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     setSelectedThemeId(themeId);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
@@ -2221,7 +2241,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     const wasEmpty = customMessage === '';
     const isEmpty = text === '';
     setCustomMessage(text);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     resetZoomPosition();
@@ -2607,6 +2627,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setRestoredFromStorage(false);
     setBadgeDismissed(false);
     setActivePresetId(null);
+    setActivePresetModified(false);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     resetZoomPosition();
     dismissCardChip();
@@ -2666,7 +2687,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setPendingCropUri(null);
     setBackgroundPhotoUri(uri);
     setBackgroundPhotoCrop(crop);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
@@ -2686,13 +2707,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   function handleDimLevelChange(level: number) {
     setBackgroundPhotoDimLevel(level);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
   }
 
   function handleBlurRadiusChange(radius: number) {
     setBackgroundPhotoBlurRadius(radius);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
   }
 
@@ -2702,7 +2723,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setBackgroundPhotoCrop(null);
     setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
     setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
-    setActivePresetId(null);
+    setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
@@ -2716,6 +2737,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSelectedThemeId(preset.themeId);
     setDisplayedThemeId(preset.themeId);
     setActivePresetId(preset.id);
+    setActivePresetModified(false);
     AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, preset.id).catch(() => {});
     setRestoredFromStorage(false);
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
@@ -2973,12 +2995,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       };
       updatedPresets = [...presets, newPreset];
       setActivePresetId(newPreset.id);
+      setActivePresetModified(false);
       AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, newPreset.id).catch(() => {});
     }
 
     await savePresets(updatedPresets);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
+    setActivePresetModified(false);
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
@@ -3147,6 +3171,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setPresets(updated);
     if (activePresetId === presetId) {
       setActivePresetId(null);
+      setActivePresetModified(false);
       AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     }
     showUndoToast(preset, index);
@@ -3810,6 +3835,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       key={preset.id}
                       preset={preset}
                       isActive={preset.id === activePresetId}
+                      isModified={preset.id === activePresetId && activePresetModified}
                       cardPreviewData={stableCardPreviewData}
                       colors={colors}
                       onPress={stableOpenPresetPreview}
