@@ -1481,6 +1481,7 @@ export default function NutritionScreen() {
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
   const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
+  const [breakdownBarTooltipMeal, setBreakdownBarTooltipMeal] = useState<string | null>(null);
   const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const favoritesYRef = useRef<number>(0);
@@ -6201,7 +6202,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -6229,7 +6230,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -6287,14 +6288,33 @@ export default function NutritionScreen() {
                             const protFrac = macroTotal > 0 ? protCal / macroTotal : 0;
                             const carbFrac = macroTotal > 0 ? carbCal / macroTotal : 0;
                             const fatFrac = macroTotal > 0 ? fatCal / macroTotal : 0;
+                            const protPct = Math.round(protFrac * 100);
+                            const carbPct = Math.round(carbFrac * 100);
+                            const fatPct = Math.round(fatFrac * 100);
+                            const tooltipVisible = breakdownBarTooltipMeal === meal;
+                            const showTooltip = () => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setBreakdownBarTooltipMeal(meal);
+                            };
+                            const hideTooltip = () => setBreakdownBarTooltipMeal(null);
                             return (
-                              <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
-                                <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
-                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein")} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs")} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat")} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                              <View style={{ position: "relative" }}>
+                                {tooltipVisible && (
+                                  <View style={[styles.breakdownBarTooltip, { backgroundColor: colors.foreground }]}>
+                                    <Text style={[styles.breakdownBarTooltipText, { color: colors.background }]}>
+                                      {`Protein ${protPct}%  ·  Carbs ${carbPct}%  ·  Fat ${fatPct}%`}
+                                    </Text>
+                                    <View style={[styles.breakdownBarTooltipArrow, { borderTopColor: colors.foreground }]} />
+                                  </View>
+                                )}
+                                <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
+                                  <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                  </View>
+                                  <View style={{ flex: 1 - calShare }} />
                                 </View>
-                                <View style={{ flex: 1 - calShare }} />
                               </View>
                             );
                           })()}
@@ -6359,7 +6379,7 @@ export default function NutritionScreen() {
                 )}
 
                 <TouchableOpacity
-                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); }}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
@@ -9184,6 +9204,36 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 2,
     overflow: "hidden",
+  },
+  breakdownBarTooltip: {
+    position: "absolute",
+    bottom: "100%",
+    alignSelf: "center",
+    left: 12,
+    right: 12,
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    marginBottom: 6,
+    alignItems: "center",
+    zIndex: 100,
+  },
+  breakdownBarTooltipText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0.1,
+  },
+  breakdownBarTooltipArrow: {
+    position: "absolute",
+    bottom: -5,
+    alignSelf: "center",
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
   },
   breakdownMiniBarFill: {
     flexDirection: "row",
