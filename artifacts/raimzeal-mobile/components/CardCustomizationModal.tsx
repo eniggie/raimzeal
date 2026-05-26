@@ -3924,6 +3924,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                     maxLength={32}
                     returnKeyType="done"
                     onSubmitEditing={handleSavePreset}
+                    editable={showInlineSave}
                     style={[
                       styles.inlineSaveInput,
                       {
