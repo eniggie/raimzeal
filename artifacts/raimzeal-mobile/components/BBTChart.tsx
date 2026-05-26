@@ -5,7 +5,7 @@ import { useColors } from "@/hooks/useColors";
 
 const BBT_ACCENT = "#ec4899";
 
-const CHART_H = 210;
+const CHART_H = 260;
 const LEFT_PAD = 38;
 const RIGHT_PAD = 10;
 const TOP_PAD = 18;
@@ -38,34 +38,46 @@ export function BBTChart({ points }: BBTChartProps) {
   const drawH = CHART_H - TOP_PAD - BOTTOM_PAD;
 
   const bbts = points.map((p) => p.bbt);
-  const rawMin = Math.min(...bbts);
-  const rawMax = Math.max(...bbts);
-  const minBBT = rawMin - 0.3;
-  const maxBBT = rawMax + 0.3;
-  const range = maxBBT - minBBT;
+  const minBBT = Math.min(...bbts) - 0.3;
+  const maxBBT = Math.max(...bbts) + 0.3;
+  const bbtRange = maxBBT - minBBT;
 
-  function toX(idx: number): number {
-    if (points.length <= 1) return LEFT_PAD + drawW / 2;
-    return LEFT_PAD + (idx / (points.length - 1)) * drawW;
+  const minDay = points[0].cycleDay;
+  const maxDay = points[points.length - 1].cycleDay;
+  const dayRange = Math.max(maxDay - minDay, 1);
+
+  function toX(cycleDay: number): number {
+    return LEFT_PAD + ((cycleDay - minDay) / dayRange) * drawW;
   }
 
   function toY(bbt: number): number {
-    return TOP_PAD + drawH * (1 - (bbt - minBBT) / range);
+    return TOP_PAD + drawH * (1 - (bbt - minBBT) / bbtRange);
   }
 
-  const polylinePoints = points.map((p, i) => `${toX(i).toFixed(1)},${toY(p.bbt).toFixed(1)}`).join(" ");
+  const polylinePoints = points
+    .map((p) => `${toX(p.cycleDay).toFixed(1)},${toY(p.bbt).toFixed(1)}`)
+    .join(" ");
 
   const yTickCount = 4;
   const yTicks: number[] = [];
   for (let i = 0; i <= yTickCount; i++) {
-    yTicks.push(minBBT + (range * i) / yTickCount);
+    yTicks.push(minBBT + (bbtRange * i) / yTickCount);
   }
 
-  const labelStep = points.length > 14 ? Math.ceil(points.length / 7) : 1;
+  const xAxisDays: number[] = (() => {
+    const totalDays = dayRange + 1;
+    const maxLabels = 8;
+    const step = totalDays <= maxLabels ? 1 : Math.ceil(totalDays / maxLabels);
+    const ticks: number[] = [];
+    for (let d = minDay; d <= maxDay; d += step) ticks.push(d);
+    if (ticks[ticks.length - 1] !== maxDay) ticks.push(maxDay);
+    return ticks;
+  })();
 
   return (
     <View>
       <Svg width={cardWidth} height={CHART_H}>
+        {/* Y-axis gridlines + labels */}
         {yTicks.map((val, i) => {
           const y = toY(val);
           return (
@@ -92,6 +104,21 @@ export function BBTChart({ points }: BBTChartProps) {
           );
         })}
 
+        {/* X-axis day labels */}
+        {xAxisDays.map((day) => (
+          <SvgText
+            key={day}
+            x={toX(day)}
+            y={CHART_H - 5}
+            fontSize={8.5}
+            fill={colors.mutedForeground}
+            textAnchor="middle"
+          >
+            {`D${day}`}
+          </SvgText>
+        ))}
+
+        {/* Connecting polyline */}
         <Polyline
           points={polylinePoints}
           fill="none"
@@ -102,11 +129,11 @@ export function BBTChart({ points }: BBTChartProps) {
           opacity={0.85}
         />
 
-        {points.map((p, i) => {
-          const cx = toX(i);
+        {/* Data points + hit targets */}
+        {points.map((p) => {
+          const cx = toX(p.cycleDay);
           const cy = toY(p.bbt);
           const isSelected = tooltip?.date === p.date;
-          const showLabel = i % labelStep === 0 || i === points.length - 1;
           return (
             <React.Fragment key={p.date}>
               <Circle
@@ -124,23 +151,12 @@ export function BBTChart({ points }: BBTChartProps) {
                 fill="transparent"
                 onPress={() => setTooltip(isSelected ? null : p)}
               />
-              {showLabel && (
-                <SvgText
-                  x={cx}
-                  y={CHART_H - 5}
-                  fontSize={8.5}
-                  fill={isSelected ? BBT_ACCENT : colors.mutedForeground}
-                  textAnchor="middle"
-                  fontWeight={isSelected ? "bold" : "normal"}
-                >
-                  {`D${p.cycleDay}`}
-                </SvgText>
-              )}
             </React.Fragment>
           );
         })}
       </Svg>
 
+      {/* Tooltip pill */}
       {tooltip ? (
         <View style={{ alignItems: "center", marginTop: 6 }}>
           <TouchableOpacity
@@ -166,9 +182,10 @@ export function BBTChart({ points }: BBTChartProps) {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={{ width: 1, height: 30 }} />
+        <View style={{ height: 30 }} />
       )}
 
+      {/* Legend */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <View style={{ width: 20, height: 2, backgroundColor: BBT_ACCENT, borderRadius: 1, opacity: 0.8 }} />
         <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Basal Body Temperature (°C)</Text>
