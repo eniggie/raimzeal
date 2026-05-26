@@ -1495,6 +1495,7 @@ export default function CardCustomizationModal({
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmVariant, setConfirmVariant] = useState<"success" | "error">("success");
   const [confirmIcon, setConfirmIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
+  const [confirmSecondaryIcon, setConfirmSecondaryIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
   const [confirmRetryFn, setConfirmRetryFn] = useState<(() => void) | null>(null);
   const [confirmActionFn, setConfirmActionFn] = useState<(() => void) | null>(null);
   const [confirmActionLabel, setConfirmActionLabel] = useState<string | null>(null);
@@ -1524,6 +1525,8 @@ export default function CardCustomizationModal({
     confirmProgressAnim.setValue(1);
     setConfirmHasCountdown(false);
     setConfirmMessage(null);
+    setConfirmIcon(null);
+    setConfirmSecondaryIcon(null);
     setConfirmRetryFn(null);
     setConfirmActionFn(null);
     setConfirmActionLabel(null);
@@ -1594,6 +1597,7 @@ export default function CardCustomizationModal({
     actionFn?: () => void,
     actionLabel?: string,
     holdDurationOverrideMs?: number,
+    secondaryIcon?: keyof typeof Ionicons.glyphMap,
   ) {
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
@@ -1601,6 +1605,7 @@ export default function CardCustomizationModal({
     setConfirmMessage(msg);
     setConfirmVariant(variant);
     setConfirmIcon(icon ?? null);
+    setConfirmSecondaryIcon(secondaryIcon ?? null);
     setConfirmRetryFn(retryFn ? () => retryFn : null);
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
@@ -2091,13 +2096,27 @@ export default function CardCustomizationModal({
       // "PERMISSION_DENIED" is a sentinel from the parent — show an inline error
       // toast with a tappable "Open Settings" link instead of a modal Alert.
       if (err instanceof Error && err.message === "PERMISSION_DENIED") {
+        const permIcon: keyof typeof Ionicons.glyphMap =
+          action === "save"
+            ? "camera-outline"
+            : action === "share"
+            ? "share-social-outline"
+            : action === "copy"
+            ? "copy-outline"
+            : "lock-closed-outline";
+        const permSecondaryIcon: keyof typeof Ionicons.glyphMap | undefined =
+          action === "save" || action === "share" || action === "copy"
+            ? "lock-closed-outline"
+            : undefined;
         showConfirmation(
           "Photo access blocked — tap to open Settings",
           "error",
-          "lock-closed-outline",
+          permIcon,
           undefined,
           () => Linking.openSettings(),
           "Open Settings",
+          undefined,
+          permSecondaryIcon,
         );
         return;
       }
@@ -2387,10 +2406,12 @@ export default function CardCustomizationModal({
         showConfirmation(
           "Photo access blocked — tap to open Settings",
           "error",
-          "lock-closed-outline",
+          "images-outline",
           undefined,
           () => Linking.openSettings(),
-          "Settings"
+          "Settings",
+          undefined,
+          "lock-closed-outline",
         );
         return;
       }
@@ -4248,11 +4269,26 @@ export default function CardCustomizationModal({
                       : { flexDirection: "row", alignItems: "center", gap: 6 }
                   }
                 >
-                  <Ionicons
-                    name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
-                    size={14}
-                    color={confirmVariant === "error" ? "#ff4436" : colors.primary}
-                  />
+                  {confirmSecondaryIcon ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                      <Ionicons
+                        name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
+                        size={14}
+                        color={confirmVariant === "error" ? "#ff4436" : colors.primary}
+                      />
+                      <Ionicons
+                        name={confirmSecondaryIcon}
+                        size={10}
+                        color={confirmVariant === "error" ? "#ff4436" : colors.primary}
+                      />
+                    </View>
+                  ) : (
+                    <Ionicons
+                      name={confirmVariant === "error" ? (confirmIcon ?? "alert-circle") : (confirmIcon ?? "checkmark-circle")}
+                      size={14}
+                      color={confirmVariant === "error" ? "#ff4436" : colors.primary}
+                    />
+                  )}
                   <Text
                     style={[
                       styles.confirmToastText,
