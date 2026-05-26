@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Repeat, Volume2, VolumeX } from 'lucide-react';
+import { ChevronDown, ChevronUp, Repeat, Volume2, VolumeX, Download } from 'lucide-react';
 import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
@@ -144,6 +144,64 @@ function ControlBar({
   );
 }
 
+function DownloadButton() {
+  const [state, setState] = useState<'idle' | 'recording' | 'done'>('idle');
+  const totalMs = Object.values(SCENE_DURATIONS).reduce((a, b) => a + b, 0);
+
+  const handleDownload = useCallback(() => {
+    if (state !== 'idle') return;
+    setState('recording');
+
+    const w = window.open(window.location.href, '_blank');
+
+    const cleanup = () => {
+      setState('done');
+      setTimeout(() => setState('idle'), 3000);
+    };
+
+    if (!w) {
+      cleanup();
+      return;
+    }
+
+    setTimeout(cleanup, totalMs + 2000);
+  }, [state, totalMs]);
+
+  const label =
+    state === 'recording'
+      ? 'Recording…'
+      : state === 'done'
+      ? 'Check new tab ✓'
+      : 'Download MP4';
+
+  const isRecording = state === 'recording';
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={isRecording}
+      className={`
+        flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+        transition-all duration-200 shadow-lg backdrop-blur-sm
+        ${
+          state === 'done'
+            ? 'bg-[#2E8B57] text-white cursor-default'
+            : state === 'recording'
+            ? 'bg-black/70 text-white/50 cursor-not-allowed'
+            : 'bg-[#2E8B57] hover:bg-[#3aa86a] active:scale-95 text-white cursor-pointer'
+        }
+      `}
+      aria-label={label}
+      title={label}
+    >
+      <Download
+        className={`w-4 h-4 shrink-0 ${isRecording ? 'animate-bounce' : ''}`}
+      />
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export default function VideoWithControls() {
   const isIframed = typeof window !== 'undefined' && window.self !== window.top;
 
@@ -200,6 +258,12 @@ export default function VideoWithControls() {
         muted={muted}
         onSceneChange={onSceneChange}
       />
+
+      {/* Always-visible Download button — top-right, never hidden */}
+      <div className="absolute top-4 right-4 z-50">
+        <DownloadButton />
+      </div>
+
       <div
         ref={sensorRef}
         className="absolute bottom-0 left-0 right-0 z-50 flex flex-col justify-end"
