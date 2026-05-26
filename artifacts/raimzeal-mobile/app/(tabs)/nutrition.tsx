@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -170,6 +170,7 @@ const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
+const JUMP_TO_HISTORY_KEY = "@nutrition_jump_to_history";
 const MANUAL_MACROS_KEY = "@nutrition_manual_macros";
 
 interface CustomFilterPreset {
@@ -1178,6 +1179,27 @@ export default function NutritionScreen() {
       AsyncStorage.removeItem(HIGHLIGHTED_DATE_STORAGE_KEY).catch(() => {});
     }
   }, [highlightedDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(JUMP_TO_HISTORY_KEY)
+        .then((flag) => {
+          if (flag !== "1") return;
+          return AsyncStorage.removeItem(JUMP_TO_HISTORY_KEY).then(() =>
+            AsyncStorage.getItem(HIGHLIGHTED_DATE_STORAGE_KEY)
+          ).then((val) => {
+            if (val) {
+              setHighlightedDate(val);
+              setActiveTab("history");
+              setTimeout(() => {
+                scrollToDateCard(val);
+              }, 300);
+            }
+          });
+        })
+        .catch(() => {});
+    }, [])
+  );
 
   type TrendMetric = "calories" | "protein" | "carbs" | "fat";
 

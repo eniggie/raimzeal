@@ -202,7 +202,7 @@ interface FitnessContextType extends AppState {
   getTodayMeals: () => MealLog[];
   getTodayMacros: () => { calories: number; protein: number; carbs: number; fat: number };
   getTodayWaterGlasses: () => number;
-  getWeekCalories: () => { day: string; calories: number }[];
+  getWeekCalories: () => { day: string; date: string; calories: number }[];
   /** True once AsyncStorage has been read — prevents flash-redirect to onboarding */
   stateHydrated: boolean;
   /** Mark the user as having completed health onboarding */
@@ -938,7 +938,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         .filter((m) => m.date === dateStr)
         .reduce((s, m) => s + m.calories, 0);
       const calories = logged > 0 ? logged : 0;
-      return { day: days[d.getDay()], calories };
+      return { day: days[d.getDay()], date: dateStr, calories };
     });
   }, [state.mealLogs]);
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
+  GestureResponderEvent,
   Linking,
   Platform,
   ScrollView,
@@ -8,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -286,6 +288,18 @@ export default function HomeScreen() {
           <WeeklyCalorieTrend
             data={getWeekCalories()}
             goal={calorieGoal}
+            onBarPress={async (date, e) => {
+              e.stopPropagation();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              const isToday = date === new Date().toISOString().split("T")[0];
+              if (!isToday) {
+                try {
+                  await AsyncStorage.setItem("@nutrition_highlighted_date", date);
+                  await AsyncStorage.setItem("@nutrition_jump_to_history", "1");
+                } catch {}
+              }
+              router.navigate("/(tabs)/nutrition");
+            }}
           />
         </GlassCard>
       </AnimatedPressable>
@@ -683,9 +697,11 @@ export default function HomeScreen() {
 function WeeklyCalorieTrend({
   data,
   goal,
+  onBarPress,
 }: {
-  data: { day: string; calories: number }[];
+  data: { day: string; date: string; calories: number }[];
   goal: number;
+  onBarPress?: (date: string, e: GestureResponderEvent) => void;
 }) {
   const colors = useColors();
   const CHART_HEIGHT = 48;
@@ -728,7 +744,15 @@ function WeeklyCalorieTrend({
               : 3;
 
           return (
-            <View key={i} style={sparkStyles.barCol}>
+            <TouchableOpacity
+              key={i}
+              style={sparkStyles.barCol}
+              activeOpacity={0.7}
+              onPress={(e) => {
+                e.stopPropagation();
+                onBarPress?.(item.date, e);
+              }}
+            >
               <View style={[sparkStyles.barTrack, { height: CHART_HEIGHT }]}>
                 <View
                   style={[
@@ -755,7 +779,7 @@ function WeeklyCalorieTrend({
               >
                 {item.day}
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
