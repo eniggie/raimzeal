@@ -637,8 +637,24 @@ function ZoomableCard({
       "worklet";
       const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
-      translateX.value = Math.min(maxX, Math.max(-maxX, savedTranslateX.value + e.translationX));
-      translateY.value = Math.min(maxY, Math.max(-maxY, savedTranslateY.value + e.translationY));
+      const rawX = savedTranslateX.value + e.translationX;
+      const rawY = savedTranslateY.value + e.translationY;
+      // Apply rubber-band damping (20%) when dragging past the boundary so the
+      // card follows the finger slightly beyond the edge instead of stopping hard.
+      const dampX =
+        rawX > maxX
+          ? maxX + (rawX - maxX) * 0.2
+          : rawX < -maxX
+          ? -maxX + (rawX + maxX) * 0.2
+          : rawX;
+      const dampY =
+        rawY > maxY
+          ? maxY + (rawY - maxY) * 0.2
+          : rawY < -maxY
+          ? -maxY + (rawY + maxY) * 0.2
+          : rawY;
+      translateX.value = dampX;
+      translateY.value = dampY;
       // Feed swipe-down progress at scale 1 so the outer overlay can track
       // the drag and animate along with the gesture.
       if (
@@ -652,12 +668,21 @@ function ZoomableCard({
     })
     .onEnd((e) => {
       "worklet";
-      // Boundary clamping is applied instantly in onUpdate, so no spring is
-      // needed here. If a spring is ever added to this commit path it must be
-      // gated on !reduceMotionShared.value to match the pattern used in
-      // pinchGesture.onEnd() and doubleTapGesture.onEnd().
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
+      const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
+      const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
+      // Snap back to the clamped boundary with a spring (or instantly when
+      // reduce-motion is on), matching the guard pattern in pinchGesture.onEnd().
+      if (reduceMotionShared.value) {
+        translateX.value = clampedX;
+        translateY.value = clampedY;
+      } else {
+        translateX.value = withSpring(clampedX, { damping: 22, stiffness: 280 });
+        translateY.value = withSpring(clampedY, { damping: 22, stiffness: 280 });
+      }
+      savedTranslateX.value = clampedX;
+      savedTranslateY.value = clampedY;
 
       // Swipe-down dismiss — fires from inside RNGH so it works even when
       // the inner gesture handler has claimed the touch (e.g. when zoomed in).
