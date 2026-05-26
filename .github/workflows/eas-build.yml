@@ -9,24 +9,14 @@ on:
       platform:
         description: Platform to build
         required: false
-        default: all
+        default: android
         type: choice
-        options: [all, android, ios]
+        options: [android]
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }} (production)
+    name: Build android (production)
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'push' ||
-      inputs.platform == 'all' ||
-      inputs.platform == matrix.platform
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [android, ios]
-    outputs:
-      android_build_id: ${{ steps.build.outputs.build_id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,27 +38,17 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Build ${{ matrix.platform }} (production)
-        id: build
+      - name: Build android (production)
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          BUILD_ID=$(eas build --platform ${{ matrix.platform }} --profile production \
-            --non-interactive --json --no-wait 2>/dev/null | python3 -c \
-            "import sys,json; builds=json.load(sys.stdin); print(builds[0]['id'] if isinstance(builds,list) else builds['id'])" 2>/dev/null || echo "")
-          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
-          eas build --platform ${{ matrix.platform }} --profile production --non-interactive --no-wait
+        run: eas build --platform android --profile production --non-interactive --no-wait
 
   submit-android:
     name: Submit Android to Play Store (internal)
     runs-on: ubuntu-latest
     needs: build
-    if: >
-      (github.event_name == 'push' ||
-       inputs.platform == 'all' ||
-       inputs.platform == 'android') &&
-      needs.build.result == 'success'
+    if: needs.build.result == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
