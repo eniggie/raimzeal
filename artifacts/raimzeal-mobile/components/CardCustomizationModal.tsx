@@ -4670,7 +4670,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           actionLongPressedRef.current = false;
                           return;
                         }
-                        setSelectedAction(action);
+                        if (selectedAction === action) {
+                          handleGenerate(action);
+                        } else {
+                          setSelectedAction(action);
+                        }
                       }}
                       onLongPress={() => {
                         if (!anyStatEnabled) {
