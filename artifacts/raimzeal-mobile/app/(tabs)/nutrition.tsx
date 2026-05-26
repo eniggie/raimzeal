@@ -4886,6 +4886,20 @@ export default function NutritionScreen() {
                             <Text style={[styles.historyDayDate, { color: colors.mutedForeground }]}>
                               {isYesterday ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
                             </Text>
+                            {isHighlighted && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                                }}
+                                activeOpacity={0.75}
+                                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                                style={[styles.backToChartBtn, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "60" }]}
+                              >
+                                <Ionicons name="arrow-up" size={10} color={colors.warning} />
+                                <Text style={[styles.backToChartBtnText, { color: colors.warning }]}>Chart</Text>
+                              </TouchableOpacity>
+                            )}
                           </View>
                           <View style={styles.historyDayHeaderRight}>
                             <MacroRing
@@ -8827,6 +8841,21 @@ const styles = StyleSheet.create({
   historyDayDate: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  backToChartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  backToChartBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
   historyDayBadge: {
     paddingHorizontal: 10,
