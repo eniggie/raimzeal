@@ -250,24 +250,37 @@ communityRouter.post(
       typeof imageUrl === "string" && imageUrl.startsWith("https://") ? imageUrl : null;
 
     const supabase = getAdminClient();
-    const { data, error } = await supabase
+
+    const baseInsert = {
+      user_id: userId,
+      user_name: userName.trim().slice(0, 60),
+      content: content.trim(),
+      post_type: postType,
+    };
+
+    let { data, error } = await supabase
       .from("community_posts")
-      .insert({
-        user_id: userId,                        // always from JWT
-        user_name: userName.trim().slice(0, 60),
-        content: content.trim(),
-        post_type: postType,
-        ...(safeImageUrl ? { image_url: safeImageUrl } : {}),
-      })
+      .insert({ ...baseInsert, ...(safeImageUrl ? { image_url: safeImageUrl } : {}) })
       .select()
       .single();
+
+    // PGRST204 means the column isn't in PostgREST's schema cache yet —
+    // retry without image_url so the post still goes through.
+    if (error && (error as unknown as Record<string, unknown>)["code"] === "PGRST204" && safeImageUrl) {
+      req.log.warn({ code: "PGRST204" }, "image_url column not in schema cache — posting without image");
+      ({ data, error } = await supabase
+        .from("community_posts")
+        .insert(baseInsert)
+        .select()
+        .single());
+    }
 
     if (error || !data) {
       req.log.error({ error }, "Failed to create community post");
       res.status(500).json({ error: "Failed to create post" });
       return;
     }
-    res.status(201).json({ post: data });
+    res.status(201).json({ post: data, imageDropped: !data["image_url"] && !!safeImageUrl });
   }
 );
 
