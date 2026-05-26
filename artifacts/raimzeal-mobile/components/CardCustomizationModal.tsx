@@ -1675,6 +1675,7 @@ export default function CardCustomizationModal({
     actionLabel?: string,
     holdDurationOverrideMs?: number,
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
+    keepOpen?: boolean,
   ) {
     if (confirmDismissTimerRef.current !== null) {
       clearTimeout(confirmDismissTimerRef.current);
@@ -1703,7 +1704,7 @@ export default function CardCustomizationModal({
       triggerToastSwipeHint();
     }
     const holdDuration = holdDurationOverrideMs ?? (retryFn ? 4500 : variant === "error" ? 2200 : 1600);
-    const noAutoDismiss = !holdDurationOverrideMs && !!actionFn;
+    const noAutoDismiss = (!holdDurationOverrideMs && !!actionFn) || !!keepOpen;
     const showProgress = !!holdDurationOverrideMs && !reduceMotionRef.current;
     setConfirmHasCountdown(!!holdDurationOverrideMs);
     if (reduceMotionRef.current) {
@@ -2303,7 +2304,7 @@ export default function CardCustomizationModal({
     }, 1000);
   }
 
-  function handleSetDefault(action: CardAction) {
+  async function handleSetDefault(action: CardAction) {
     actionLongPressedRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
@@ -2367,8 +2368,8 @@ export default function CardCustomizationModal({
       setDefaultAction(action);
       setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
-      showConfirmation(`★ ${label} set as default · generating…`, "success", undefined, undefined, undefined, undefined, 1800);
-      handleGenerate(action);
+      showConfirmation(`★ ${label} set as default · generating…`, "success", undefined, undefined, undefined, undefined, undefined, undefined, true);
+      await handleGenerate(action);
     } else {
       // "Set-only" mode: show confirmation alert before setting default
       const currentLabel = defaultAction === "share" ? "Share" : defaultAction === "save" ? "Save" : defaultAction === "copy" ? "Copy" : defaultAction === "both" ? "Both" : null;
