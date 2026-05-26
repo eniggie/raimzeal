@@ -14,6 +14,8 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
+import { useFitness } from "@/contexts/FitnessContext";
+import { computeSuggestedGoals } from "@/lib/tdee";
 
 interface Props {
   visible: boolean;
@@ -37,6 +39,8 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { goals, setGoals, loaded } = useMacroGoals();
+  const { user } = useFitness();
+  const suggested = computeSuggestedGoals(user);
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());
@@ -77,6 +81,15 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
       parseNum(carbs) !== goals.carbs ||
       parseNum(fat) !== goals.fat
     );
+  }
+
+  function handleUseSuggested() {
+    if (!suggested) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCalories(suggested.calories.toString());
+    setProtein(suggested.protein.toString());
+    setCarbs(suggested.carbs.toString());
+    setFat(suggested.fat.toString());
   }
 
   async function handleSave() {
@@ -133,6 +146,23 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
           <Text style={[styles.sheetSub, { color: colors.mutedForeground }]}>
             Set your daily targets — changes apply immediately.
           </Text>
+
+          {/* Use Suggested chip */}
+          {suggested && (
+            <TouchableOpacity
+              style={[
+                styles.suggestChip,
+                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+              ]}
+              onPress={handleUseSuggested}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+              <Text style={[styles.suggestChipText, { color: colors.primary }]}>
+                Use Suggested ({suggested.calories} kcal)
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Fields */}
           <View style={styles.fields}>
@@ -265,6 +295,21 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     minWidth: 56,
+  },
+  suggestChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+  },
+  suggestChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   saveBtn: {
     flexDirection: "row",
