@@ -1120,6 +1120,7 @@ interface PresetChipItemProps {
   onPress: (preset: CardPreset, originRect: PresetOriginRect) => void;
   onLongPress: () => void;
   onDelete: (id: string) => void;
+  chipRefSetter?: (el: React.ElementRef<typeof TouchableOpacity> | null) => void;
 }
 
 const PresetChipItem = memo(function PresetChipItem({
@@ -1130,12 +1131,21 @@ const PresetChipItem = memo(function PresetChipItem({
   onPress,
   onLongPress,
   onDelete,
+  chipRefSetter,
 }: PresetChipItemProps) {
   const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
   const chipRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  // Keep the latest setter in a ref so the handleRef callback stays stable
+  // (won't break memo even if the parent passes a new inline function each render)
+  const chipRefSetterRef = useRef(chipRefSetter);
+  chipRefSetterRef.current = chipRefSetter;
+  const handleChipRef = useCallback((el: React.ElementRef<typeof TouchableOpacity> | null) => {
+    (chipRef as React.MutableRefObject<React.ElementRef<typeof TouchableOpacity> | null>).current = el;
+    chipRefSetterRef.current?.(el);
+  }, []);
   return (
     <TouchableOpacity
-      ref={chipRef}
+      ref={handleChipRef}
       onPress={() => {
         if (chipRef.current) {
           chipRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
@@ -1399,6 +1409,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const presetPreviewTranslateY = useRef(new Animated.Value(0)).current;
   const presetPreviewOriginScale = useRef(new Animated.Value(1)).current;
   const presetPreviewOriginRect = useRef<PresetOriginRect>({ x: 0, y: 0, width: 0, height: 0 });
+  // Map from preset id → the chip's native TouchableOpacity node, used to
+  // re-measure origin rect when the user navigates between presets in the preview.
+  const presetChipRefsMap = useRef<Map<string, React.ElementRef<typeof TouchableOpacity> | null>>(new Map());
   const presetCardOpacity = useRef(new Animated.Value(1)).current;
   const presetCardTranslateX = useRef(new Animated.Value(0)).current;
 
@@ -2791,6 +2804,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     pinchTranslateY.value = 0;
     pinchSavedTranslateX.value = 0;
     pinchSavedTranslateY.value = 0;
+
+    // Re-measure the chip for the preset we're navigating to so that
+    // closePresetPreview() returns to the correct chip rather than the
+    // one that was originally tapped.  measureInWindow returns zeros when
+    // the chip is scrolled out of view; we treat that as "off-screen" and
+    // fall back to a fade-out (the width === 0 guard in closePresetPreview
+    // already handles this case).
+    const chipNode = presetChipRefsMap.current.get(nextPreset.id);
+    if (chipNode) {
+      chipNode.measureInWindow((x: number, y: number, width: number, height: number) => {
+        presetPreviewOriginRect.current = { x, y, width, height };
+      });
+    } else {
+      presetPreviewOriginRect.current = { x: 0, y: 0, width: 0, height: 0 };
+    }
+
     if (reduceMotionRef.current) {
       presetPreviewIndexRef.current = newIdx;
       setPresetPreviewIndex(newIdx);
@@ -3684,6 +3713,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       onPress={stableOpenPresetPreview}
                       onLongPress={stableOnPresetLongPress}
                       onDelete={stableHandleDeletePreset}
+                      chipRefSetter={(el) => presetChipRefsMap.current.set(preset.id, el)}
                     />
                   ))}
                   {presets.length < MAX_PRESETS && (
