@@ -293,3 +293,33 @@ id = "JUvHu9f-H55Uz6uNGpT7e"
 uri = "file://artifacts/raimzeal-video/public/audio/bg_music.mp3"
 type = "audio"
 title = "RAIMZEAL fitness ad background music"
+
+[[outputs]]
+id = "UIVpFSxNxHu7V-IG1cUHD"
+uri = "file://screenshots/01_workout.png"
+type = "image"
+title = "1 — Workout"
+
+[[outputs]]
+id = "T9aLj7kj_GOprykVLgApl"
+uri = "file://screenshots/02_ovia_ai.png"
+type = "image"
+title = "2 — Ovia AI"
+
+[[outputs]]
+id = "Iwlx5YbndbygZuVN33gB3"
+uri = "file://screenshots/03_nutrition.png"
+type = "image"
+title = "3 — Nutrition"
+
+[[outputs]]
+id = "O34TIABGyd0IkQRgYcun3"
+uri = "file://screenshots/04_community.png"
+type = "image"
+title = "4 — Community"
+
+[[outputs]]
+id = "JOkJx03wIBTGoaj2h3N0R"
+uri = "file://screenshots/05_progress.png"
+type = "image"
+title = "5 — Progress"
