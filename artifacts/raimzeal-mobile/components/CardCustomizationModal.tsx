@@ -5334,7 +5334,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         styles.presetPreviewNavBtn,
                         presetPreviewIndex === 0 && styles.presetPreviewNavBtnDisabled,
                       ]}
-                      onPress={() => navigatePresetPreview(-1)}
+                      onPress={() => { dismissSwipeHintEarly(); navigatePresetPreview(-1); }}
                       disabled={presetPreviewIndex === 0}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -5357,7 +5357,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         styles.presetPreviewNavBtn,
                         presetPreviewIndex === presetPreviewPresetsRef.current.length - 1 && styles.presetPreviewNavBtnDisabled,
                       ]}
-                      onPress={() => navigatePresetPreview(1)}
+                      onPress={() => { dismissSwipeHintEarly(); navigatePresetPreview(1); }}
                       disabled={presetPreviewIndex === presetPreviewPresetsRef.current.length - 1}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
