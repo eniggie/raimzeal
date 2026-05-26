@@ -1253,7 +1253,7 @@ export default function ProfileScreen() {
             />
             {settings.showRestoreBadge === false && (
               <SettingToggleRow
-                icon="refresh-circle-outline"
+                icon="eye-outline"
                 label="Show restore badge"
                 sublabel="Re-show the 'Restored from last time' indicator"
                 color={colors.primary}
