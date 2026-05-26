@@ -11,6 +11,7 @@ interface ProgressRingProps {
   strokeWidth?: number;
   color?: string;
   label?: string;
+  labelColor?: string;
   sublabel?: string;
   animateOnMount?: boolean;
   delay?: number;
@@ -22,12 +23,14 @@ export function ProgressRing({
   strokeWidth = 10,
   color,
   label,
+  labelColor,
   sublabel,
   animateOnMount = false,
   delay = 0,
 }: ProgressRingProps) {
   const colors = useColors();
   const ringColor = color ?? colors.primary;
+  const resolvedLabelColor = labelColor ?? colors.foreground;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -90,7 +93,7 @@ export function ProgressRing({
           <Text
             style={[
               styles.label,
-              { color: colors.foreground, fontSize: size * 0.18 },
+              { color: resolvedLabelColor, fontSize: size * 0.18 },
             ]}
           >
             {label}

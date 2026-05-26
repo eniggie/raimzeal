@@ -237,6 +237,9 @@ export default function HomeScreen() {
                   ? colors.warning
                   : baseColor;
               const isOver = rawRatio > 1;
+              const pctLabel = isOver
+                ? "100%+"
+                : `${Math.round(rawRatio * 100)}%`;
               return (
                 <View
                   key={label}
@@ -256,6 +259,8 @@ export default function HomeScreen() {
                     size={64}
                     strokeWidth={6}
                     color={ringColor}
+                    label={pctLabel}
+                    labelColor={isOver ? colors.warning : ringColor}
                     animateOnMount
                     delay={index * 100}
                   />
