@@ -2772,6 +2772,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setRestoredFromStorage(false);
     const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
     AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   function handleCropCancel() {
@@ -2807,6 +2814,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   function loadPreset(preset: CardPreset) {
