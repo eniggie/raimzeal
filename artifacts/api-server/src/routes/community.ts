@@ -70,7 +70,7 @@ communityRouter.post(
       .createSignedUploadUrl(path);
 
     if (error || !data) {
-      req.log.error({ error }, "Failed to create signed upload URL");
+      req.log.error({ err: error }, "Failed to create signed upload URL");
       res.status(500).json({ error: "Failed to create upload URL" });
       return;
     }
@@ -155,7 +155,7 @@ communityRouter.get(
     }
 
     if (error) {
-      req.log.error({ error }, "Failed to fetch community posts");
+      req.log.error({ err: error }, "Failed to fetch community posts");
       res.status(500).json({ error: "Failed to fetch posts" });
       return;
     }
@@ -276,7 +276,7 @@ communityRouter.post(
     }
 
     if (error || !data) {
-      req.log.error({ error }, "Failed to create community post");
+      req.log.error({ err: error }, "Failed to create community post");
       res.status(500).json({ error: "Failed to create post" });
       return;
     }
@@ -369,7 +369,7 @@ communityRouter.post(
       .single();
 
     if (error || !data) {
-      req.log.error({ error }, "Failed to create comment");
+      req.log.error({ err: error }, "Failed to create comment");
       res.status(500).json({ error: "Failed to create comment" });
       return;
     }
@@ -413,7 +413,7 @@ communityRouter.delete(
       .eq("user_id", userId);   // belt-and-suspenders: scope to owner
 
     if (error) {
-      req.log.error({ error }, "Failed to delete community post");
+      req.log.error({ err: error }, "Failed to delete community post");
       res.status(500).json({ error: "Failed to delete post" });
       return;
     }
@@ -457,7 +457,7 @@ communityRouter.delete(
       .eq("user_id", userId);   // scope to owner
 
     if (error) {
-      req.log.error({ error }, "Failed to delete community comment");
+      req.log.error({ err: error }, "Failed to delete community comment");
       res.status(500).json({ error: "Failed to delete comment" });
       return;
     }
