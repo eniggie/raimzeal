@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
@@ -7987,6 +7987,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
   );
 }
 
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
 function HistoryMacroChip({
   label,
   value,
@@ -8010,6 +8012,33 @@ function HistoryMacroChip({
     ratio < 0.8 ? "low" : ratio > 1.1 ? "over" : null;
   const badgeColor = badge === "low" ? colors.warning : colors.accent;
   const badgeLabel = badge === "low" ? "Low" : "Over";
+
+  const colorAnim = useRef(new Animated.Value(1)).current;
+  const [fromColor, setFromColor] = useState(chipColor);
+  const prevChipColorRef = useRef(chipColor);
+
+  useLayoutEffect(() => {
+    if (prevChipColorRef.current !== chipColor) {
+      prevChipColorRef.current = chipColor;
+      colorAnim.stopAnimation();
+      colorAnim.setValue(0);
+      Animated.timing(colorAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) setFromColor(chipColor);
+      });
+    }
+  }, [chipColor]);
+
+  const animBg = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "15", chipColor + "15"] });
+  const animBgPressable = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "15", chipColor + "15"] });
+  const animBorder = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "55", chipColor + "55"] });
+  const animBorderLight = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "35", chipColor + "35"] });
+  const animText = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor, chipColor] });
+  const animBarBg = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "30", chipColor + "30"] });
+
   const badgeEl = badge !== null ? (
     onBadgePress ? (
       <TouchableOpacity
@@ -8027,35 +8056,37 @@ function HistoryMacroChip({
       </View>
     )
   ) : null;
+
   const inner = (
     <>
       <View style={styles.historyMacroChipLabelRow}>
         <Text style={[styles.historyMacroChipLabel, { color: colors.mutedForeground }]}>{label}</Text>
         {badgeEl}
       </View>
-      <Text style={[styles.historyMacroChipValue, { color: chipColor }]}>
+      <Animated.Text style={[styles.historyMacroChipValue, { color: animText }]}>
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
-      </Text>
-      <View style={[styles.historyMacroChipBar, { backgroundColor: chipColor + "30" }]}>
-        <View style={[styles.historyMacroChipBarFill, { backgroundColor: chipColor, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
-      </View>
+      </Animated.Text>
+      <Animated.View style={[styles.historyMacroChipBar, { backgroundColor: animBarBg }]}>
+        <Animated.View style={[styles.historyMacroChipBarFill, { backgroundColor: animText, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
+      </Animated.View>
     </>
   );
+
   if (onPress) {
     return (
-      <TouchableOpacity
+      <AnimatedTouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
-        style={[styles.historyMacroChip, { backgroundColor: chipColor + "15", borderColor: chipColor + "55" }]}
+        style={[styles.historyMacroChip, { backgroundColor: animBgPressable, borderColor: animBorder }]}
       >
         {inner}
-      </TouchableOpacity>
+      </AnimatedTouchableOpacity>
     );
   }
   return (
-    <View style={[styles.historyMacroChip, { backgroundColor: chipColor + "15", borderColor: chipColor + "35" }]}>
+    <Animated.View style={[styles.historyMacroChip, { backgroundColor: animBg, borderColor: animBorderLight }]}>
       {inner}
-    </View>
+    </Animated.View>
   );
 }
 
