@@ -4861,7 +4861,11 @@ export default function NutritionScreen() {
                         flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
                       }}
                     >
-                      <View style={[styles.weeklyAvgCalBadge, { backgroundColor: colors.primary + "18" }]}>
+                      <View style={[styles.weeklyAvgCalBadge, {
+                          backgroundColor: trendMetric === "calories" ? colors.primary + "30" : colors.primary + "18",
+                          borderWidth: trendMetric === "calories" ? 1 : 0,
+                          borderColor: trendMetric === "calories" ? colors.primary + "99" : "transparent",
+                        }]}>
                         <Ionicons name="flame-outline" size={13} color={colors.primary} />
                         <Text style={[styles.weeklyAvgCalText, { color: colors.primary }]}>
                           {weeklyAvgSummary.avgCalories} / {CALORIE_GOAL} kcal avg/day
