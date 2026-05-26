@@ -1476,6 +1476,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     pointerEvents: inlineSaveHeight.value > 0 ? "auto" : "none",
   }));
 
+  // Collapse the inline save panel when the keyboard is dismissed via system
+  // gesture or hardware button, so the UI does not stay stuck in a half-open state.
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidHide", () => {
+      setShowInlineSave(false);
+    });
+    return () => sub.remove();
+  }, []);
+
   // Preset thumbnail preview
   const [presetPreviewTarget, setPresetPreviewTarget] = useState<CardPreset | null>(null);
   const [presetPreviewIndex, setPresetPreviewIndex] = useState(0);
