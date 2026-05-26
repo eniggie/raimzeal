@@ -1386,6 +1386,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const longPressHintSlideAnim = useRef(new Animated.Value(6)).current;
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
   // User-chosen auto-trigger delay (0 = off, 1/3/5 = seconds)
@@ -1521,17 +1522,29 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   useEffect(() => {
     if (showLongPressHint) {
       longPressHintFadeAnim.setValue(0);
+      longPressHintSlideAnim.setValue(6);
       if (reduceMotionRef.current) {
         longPressHintFadeAnim.setValue(1);
+        longPressHintSlideAnim.setValue(0);
       } else {
-        Animated.timing(longPressHintFadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+          Animated.timing(longPressHintFadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.spring(longPressHintSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 14,
+            stiffness: 180,
+            mass: 0.8,
+          }),
+        ]).start();
       }
     } else {
       longPressHintFadeAnim.setValue(0);
+      longPressHintSlideAnim.setValue(6);
     }
   }, [showLongPressHint]);
 
@@ -4580,7 +4593,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             </Animated.View>
           )}
           {anyStatEnabled && showLongPressHint && (
-            <Animated.View style={{ opacity: longPressHintFadeAnim }}>
+            <Animated.View style={{ opacity: longPressHintFadeAnim, transform: [{ translateY: longPressHintSlideAnim }] }}>
               <TouchableOpacity
                 onPress={dismissLongPressHint}
                 activeOpacity={0.6}
