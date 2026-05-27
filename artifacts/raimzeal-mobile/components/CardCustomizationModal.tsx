@@ -1509,6 +1509,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // can restart the countdown without stale closures.
   const autoTriggerActiveActionRef = useRef<CardAction | null>(null);
   const autoTriggerActiveDelayRef = useRef<number>(0);
+  // Tracks remaining seconds for the active countdown so the AppState handler
+  // can resume from the right position after the app returns to the foreground.
+  const autoTriggerRemainingRef = useRef<number>(0);
+  // True while the countdown is suspended due to the app being backgrounded.
+  const autoTriggerIsPausedRef = useRef(false);
   // Keep a ref to always call the latest handleGenerate (avoids stale closure in interval)
   const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
   // Tracks the current visible prop so the interval can guard against firing after close
@@ -2072,6 +2077,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
       autoTriggerProgressAnim.current?.stop();
       autoTriggerProgressAnim.current = null;
+      autoTriggerIsPausedRef.current = false;
       // Bump session ID so any in-flight banner fade callback becomes a no-op
       autoTriggerSessionIdRef.current += 1;
       autoTriggerBannerAnim.stopAnimation();
@@ -2339,6 +2345,57 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             validActions.includes(saved as CardAction) ? (saved as CardAction) : null
           );
         }).catch(() => {});
+
+        // Resume the countdown from where it was paused
+        if (autoTriggerIsPausedRef.current) {
+          autoTriggerIsPausedRef.current = false;
+          const remaining = autoTriggerRemainingRef.current;
+          const action = autoTriggerActiveActionRef.current;
+          const delay = autoTriggerActiveDelayRef.current;
+          if (action && delay > 0 && remaining > 0) {
+            // Restart the progress bar animation from the paused position
+            if (!reduceMotionRef.current) {
+              const progressFrom = remaining / delay;
+              autoTriggerProgress.setValue(progressFrom);
+              autoTriggerProgressAnim.current = Animated.timing(autoTriggerProgress, {
+                toValue: 0,
+                duration: remaining * 1000,
+                useNativeDriver: true,
+              });
+              autoTriggerProgressAnim.current.start();
+            }
+            // Restart the interval for the remaining seconds
+            let rem = remaining;
+            autoTriggerIntervalRef.current = setInterval(() => {
+              rem -= 1;
+              autoTriggerRemainingRef.current = rem;
+              const effectiveAction = selectedActionRef.current ?? action;
+              if (rem <= 0) {
+                clearInterval(autoTriggerIntervalRef.current!);
+                autoTriggerIntervalRef.current = null;
+                setAutoTriggerCountdown(null);
+                autoTriggerGeneratingRef.current = true;
+                setAutoTriggerGenerating(true);
+                if (visibleRef.current) {
+                  handleGenerateRef.current?.(effectiveAction);
+                }
+              } else {
+                setAutoTriggerCountdown(rem);
+                setAutoTriggerAction(effectiveAction);
+              }
+            }, 1000);
+          }
+        }
+      } else if (nextState === "background" || nextState === "inactive") {
+        // Pause the countdown while the app is not in the foreground so it
+        // does not fire silently behind the user's back.
+        if (autoTriggerIntervalRef.current !== null && !autoTriggerGeneratingRef.current) {
+          clearInterval(autoTriggerIntervalRef.current);
+          autoTriggerIntervalRef.current = null;
+          autoTriggerProgressAnim.current?.stop();
+          autoTriggerProgressAnim.current = null;
+          autoTriggerIsPausedRef.current = true;
+        }
       }
     });
     return () => subscription.remove();
@@ -2489,6 +2546,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     autoTriggerProgressAnim.current?.stop();
     autoTriggerProgressAnim.current = null;
     autoTriggerProgress.setValue(1);
+    autoTriggerIsPausedRef.current = false;
     // When generation has already started from the auto-trigger, the banner is
     // being kept visible in "generating" mode — let the useEffect watching the
     // `generating` prop handle the fade-out instead of hiding it here.
@@ -2599,6 +2657,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     // Track the active countdown's parameters so resetAutoTriggerOnInteraction can restart it.
     autoTriggerActiveActionRef.current = action;
     autoTriggerActiveDelayRef.current = delay;
+    autoTriggerIsPausedRef.current = false;
 
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
@@ -2632,8 +2691,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }).start();
 
     let remaining = DELAY;
+    autoTriggerRemainingRef.current = remaining;
     autoTriggerIntervalRef.current = setInterval(() => {
       remaining -= 1;
+      autoTriggerRemainingRef.current = remaining;
       // Prefer the user's in-session selectedAction over the defaultAction that was
       // passed in at countdown start, so the label and fired action stay in sync with
       // whichever button is currently highlighted.
