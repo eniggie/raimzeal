@@ -1,6 +1,11 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
+export const stripeWebhookEvents = pgTable("stripe_webhook_events", {
+  id: varchar("id").primaryKey(),
+  processedAt: timestamp("processed_at").notNull().defaultNow(),
+});
+
 export const legacyPartnerships = pgTable("legacy_partnerships", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId1: varchar("user_id_1").notNull(),
