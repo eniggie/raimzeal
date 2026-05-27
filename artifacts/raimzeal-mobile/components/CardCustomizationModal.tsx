@@ -1349,8 +1349,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [backgroundPhotoUri, setBackgroundPhotoUri] = useState<string | null>(null);
   const [backgroundPhotoCrop, setBackgroundPhotoCrop] = useState<CropData | null>(null);
   const [backgroundPhotoDimLevel, setBackgroundPhotoDimLevel] = useState(DEFAULT_DIM_LEVEL);
+  const backgroundPhotoDimLevelRef = useRef<number>(DEFAULT_DIM_LEVEL);
   const [backgroundPhotoBlurRadius, setBackgroundPhotoBlurRadius] = useState(DEFAULT_BLUR_RADIUS);
   const dimPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function applyDimLevel(level: number) {
+    backgroundPhotoDimLevelRef.current = level;
+    setBackgroundPhotoDimLevel(level);
+  }
   const [showCropModal, setShowCropModal] = useState(false);
   const [pendingCropUri, setPendingCropUri] = useState<string | null>(null);
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
@@ -2098,19 +2104,19 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             } else {
               setBackgroundPhotoCrop(null);
             }
-            setBackgroundPhotoDimLevel(parsed.dimLevel ?? DEFAULT_DIM_LEVEL);
+            applyDimLevel(parsed.dimLevel ?? DEFAULT_DIM_LEVEL);
             setBackgroundPhotoBlurRadius(parsed.blurRadius ?? DEFAULT_BLUR_RADIUS);
           } catch {
             // Legacy: plain URI string stored before crop was introduced
             setBackgroundPhotoUri(savedBgPhoto);
             setBackgroundPhotoCrop(null);
-            setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+            applyDimLevel(DEFAULT_DIM_LEVEL);
             setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
           }
         } else {
           setBackgroundPhotoUri(null);
           setBackgroundPhotoCrop(null);
-          setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+          applyDimLevel(DEFAULT_DIM_LEVEL);
           setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
         }
         setSelectedThemeId(effectiveTheme);
@@ -2744,7 +2750,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setCustomMessage("");
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
-    setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+    applyDimLevel(DEFAULT_DIM_LEVEL);
     setSelectedThemeId(DEFAULT_THEME_ID);
     setDisplayedThemeId(DEFAULT_THEME_ID);
     setThumbnailSize("m");
@@ -2837,7 +2843,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function handleDimLevelChange(level: number) {
-    setBackgroundPhotoDimLevel(level);
+    applyDimLevel(level);
     setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
   }
@@ -2852,7 +2858,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     setBackgroundPhotoUri(null);
     setBackgroundPhotoCrop(null);
-    setBackgroundPhotoDimLevel(DEFAULT_DIM_LEVEL);
+    applyDimLevel(DEFAULT_DIM_LEVEL);
     setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
     setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
@@ -2880,7 +2886,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setRestoredFromStorage(false);
     setBackgroundPhotoUri(preset.backgroundPhotoUri ?? null);
     setBackgroundPhotoCrop(preset.backgroundPhotoCrop ?? null);
-    setBackgroundPhotoDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
+    applyDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
     setBackgroundPhotoBlurRadius(preset.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
     resetZoomPosition();
     dismissCardChip();
@@ -3102,11 +3108,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           existingCrop?.scale !== (backgroundPhotoCrop?.scale ?? null) ||
           existingCrop?.panX !== (backgroundPhotoCrop?.panX ?? null) ||
           existingCrop?.panY !== (backgroundPhotoCrop?.panY ?? null);
-        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged && !cropChanged;
+        const dimLevelChanged = (existingPreset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL) !== backgroundPhotoDimLevelRef.current;
+        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged && !cropChanged && !dimLevelChanged;
       }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
-          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined, backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined }
+          ? { ...p, name, visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevelRef.current : undefined, backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined, backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined }
           : p
       );
     } else {
@@ -3128,7 +3135,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         themeId: selectedThemeId,
         createdAt: Date.now(),
         backgroundPhotoUri: backgroundPhotoUri ?? undefined,
-        backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined,
+        backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevelRef.current : undefined,
         backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined,
         backgroundPhotoCrop: backgroundPhotoUri && backgroundPhotoCrop ? backgroundPhotoCrop : undefined,
       };
