@@ -1493,6 +1493,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [autoTriggerBannerWidth, setAutoTriggerBannerWidth] = useState(0);
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
   const [autoTriggerBannerVisible, setAutoTriggerBannerVisible] = useState(false);
+  const [autoTriggerGenerating, setAutoTriggerGenerating] = useState(false);
+  const autoTriggerGeneratingRef = useRef(false);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
   const autoTriggerProgress = useRef(new Animated.Value(1)).current;
@@ -2075,6 +2077,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       autoTriggerBannerAnim.stopAnimation();
       autoTriggerBannerAnim.setValue(0);
       setAutoTriggerBannerVisible(false);
+      autoTriggerGeneratingRef.current = false;
+      setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
       // Dismiss any in-progress undo-delete toast so the timer doesn't fire
@@ -2485,6 +2489,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     autoTriggerProgressAnim.current?.stop();
     autoTriggerProgressAnim.current = null;
     autoTriggerProgress.setValue(1);
+    // When generation has already started from the auto-trigger, the banner is
+    // being kept visible in "generating" mode — let the useEffect watching the
+    // `generating` prop handle the fade-out instead of hiding it here.
+    if (autoTriggerGeneratingRef.current) return;
     hideAutoTriggerBanner(() => {
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
@@ -2575,6 +2583,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   selectedActionRef.current = selectedAction;
   hideAutoTriggerBannerRef.current = hideAutoTriggerBanner;
 
+  // When generation triggered by auto-trigger completes (or errors), fade the banner out
+  useEffect(() => {
+    if (!generating && autoTriggerGenerating) {
+      hideAutoTriggerBannerRef.current?.(() => {
+        autoTriggerGeneratingRef.current = false;
+        setAutoTriggerGenerating(false);
+        setAutoTriggerAction(null);
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generating]);
+
   function startAutoTrigger(action: CardAction, delay: number) {
     // Track the active countdown's parameters so resetAutoTriggerOnInteraction can restart it.
     autoTriggerActiveActionRef.current = action;
@@ -2621,15 +2641,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (remaining <= 0) {
         clearInterval(autoTriggerIntervalRef.current!);
         autoTriggerIntervalRef.current = null;
-        // Animate banner out, then clear state and fire action
-        hideAutoTriggerBannerRef.current?.(() => {
-          setAutoTriggerCountdown(null);
-          setAutoTriggerAction(null);
-          // Guard: only fire if the modal is still open
-          if (visibleRef.current) {
-            handleGenerateRef.current?.(effectiveAction);
-          }
-        });
+        // Transition banner to "generating" state and fire action immediately
+        setAutoTriggerCountdown(null);
+        autoTriggerGeneratingRef.current = true;
+        setAutoTriggerGenerating(true);
+        // Guard: only fire if the modal is still open
+        if (visibleRef.current) {
+          handleGenerateRef.current?.(effectiveAction);
+        }
       } else {
         setAutoTriggerCountdown(remaining);
         setAutoTriggerAction(effectiveAction);
@@ -4692,8 +4711,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             </View>
           </ScrollView>
 
-          {/* Auto-trigger countdown banner */}
-          {autoTriggerBannerVisible && autoTriggerAction && !generating && (
+          {/* Auto-trigger countdown banner (countdown + generating states) */}
+          {autoTriggerBannerVisible && autoTriggerAction && (
             <Animated.View
               onLayout={(e) => setAutoTriggerBannerWidth(e.nativeEvent.layout.width)}
               style={[
@@ -4714,44 +4733,55 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 },
               ]}
             >
-              <Ionicons name="flash" size={14} color={colors.primary} />
-              <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
-                {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  cancelAutoTrigger();
-                  onClose();
-                  router.navigate({ pathname: "/(tabs)/profile", params: { scrollTo: "countdown" } });
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={[styles.autoTriggerChangeLink, { color: colors.primary }]}>
-                  {hasCustomisedCountdown ? `${autoTriggerDelay}s · Change` : "Change"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close-circle" size={16} color={colors.primary} />
-              </TouchableOpacity>
-              {/* Smooth drain bar (left-anchored) — hidden for reduce-motion users */}
-              {!reduceMotion && (
-                <Animated.View
-                  style={[
-                    styles.autoTriggerBar,
-                    {
-                      backgroundColor: colors.primary + "60",
-                      transform: [
+              {autoTriggerGenerating ? (
+                <>
+                  <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 2 }} />
+                  <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
+                    {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"}…`}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="flash" size={14} color={colors.primary} />
+                  <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
+                    {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      cancelAutoTrigger();
+                      onClose();
+                      router.navigate({ pathname: "/(tabs)/profile", params: { scrollTo: "countdown" } });
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={[styles.autoTriggerChangeLink, { color: colors.primary }]}>
+                      {hasCustomisedCountdown ? `${autoTriggerDelay}s · Change` : "Change"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={16} color={colors.primary} />
+                  </TouchableOpacity>
+                  {/* Smooth drain bar (left-anchored) — hidden for reduce-motion users */}
+                  {!reduceMotion && (
+                    <Animated.View
+                      style={[
+                        styles.autoTriggerBar,
                         {
-                          translateX: autoTriggerProgress.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [-autoTriggerBannerWidth / 2, 0],
-                          }),
+                          backgroundColor: colors.primary + "60",
+                          transform: [
+                            {
+                              translateX: autoTriggerProgress.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-autoTriggerBannerWidth / 2, 0],
+                              }),
+                            },
+                            { scaleX: autoTriggerProgress },
+                          ],
                         },
-                        { scaleX: autoTriggerProgress },
-                      ],
-                    },
-                  ]}
-                />
+                      ]}
+                    />
+                  )}
+                </>
               )}
             </Animated.View>
           )}
