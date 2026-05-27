@@ -1697,6 +1697,7 @@ export default function NutritionScreen() {
     const totalAnimMs = (HISTORY_CHIP_COUNT - 1) * STAGGER_MS + PER_CHIP_DURATION;
     const dismissDelayMs = SCROLL_SETTLE_MS + totalAnimMs - HINT_FADE_DURATION;
     setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       historyChipHighlightAnims.forEach((anim, i) => {
         anim.setValue(0);
         Animated.sequence([
