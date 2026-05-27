@@ -31,7 +31,10 @@ export async function getUserTier(userId: string): Promise<Tier> {
     if (!data) return "foundation";
     const row = data as Record<string, unknown>;
     const status = row["subscription_status"] as string | null;
-    if (status !== "active") return "foundation";
+    // Include "trialing" — Stripe sets this during a free-trial period before the
+    // first charge. Trial users have accepted a paid plan and should receive its
+    // full feature set; excluding them regresses them to Foundation unexpectedly.
+    if (status !== "active" && status !== "trialing") return "foundation";
     const tier = row["subscription_tier"] as string | null;
     if (tier === "rise" || tier === "reign" || tier === "legacy") return tier;
     return "foundation";

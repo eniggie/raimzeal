@@ -37,13 +37,14 @@ export function WorkoutCreator() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [exercisesError, setExercisesError] = useState(false);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetch('/api/exercises')
       .then(r => r.json())
       .then((d: { exercises: DBExercise[] }) => setExercises(d.exercises))
-      .catch(() => {});
+      .catch(() => setExercisesError(true));
   }, []);
 
   function addExercise(ex: DBExercise) {
@@ -212,7 +213,12 @@ export function WorkoutCreator() {
               </div>
               <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or muscle…" className="mb-3" />
               <div className="overflow-y-auto flex-1 space-y-1">
-                {filteredExercises.map(ex => (
+                {exercisesError && (
+                  <p className="text-center text-destructive text-sm py-6">
+                    Could not load exercises. Please check your connection and try again.
+                  </p>
+                )}
+                {!exercisesError && filteredExercises.map(ex => (
                   <button key={ex.id} onClick={() => addExercise(ex)}
                     className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/40 transition-colors text-left"
                   >
@@ -225,7 +231,7 @@ export function WorkoutCreator() {
                     </div>
                   </button>
                 ))}
-                {filteredExercises.length === 0 && (
+                {!exercisesError && filteredExercises.length === 0 && (
                   <p className="text-center text-muted-foreground text-sm py-6">No exercises match your search</p>
                 )}
               </div>
