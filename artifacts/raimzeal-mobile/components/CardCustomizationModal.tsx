@@ -922,6 +922,7 @@ function BlurLevelSlider({ value, onChange, colors }: BlurLevelSliderProps) {
   const trackWidthSV = useSharedValue(0);
   const knobX = useSharedValue(0);
   const savedX = useSharedValue(0);
+  const lastBlurUpdateTime = useSharedValue(0);
 
   useEffect(() => {
     const w = trackWidthSV.value;
@@ -940,9 +941,13 @@ function BlurLevelSlider({ value, onChange, colors }: BlurLevelSliderProps) {
       if (w === 0) return;
       const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
       knobX.value = x;
-      const ratio = x / w;
-      const newVal = Math.round(BLUR_MIN + ratio * (BLUR_MAX - BLUR_MIN));
-      runOnJS(onChange)(newVal);
+      const now = Date.now();
+      if (now - lastBlurUpdateTime.value >= 32) {
+        lastBlurUpdateTime.value = now;
+        const ratio = x / w;
+        const newVal = Math.round(BLUR_MIN + ratio * (BLUR_MAX - BLUR_MIN));
+        runOnJS(onChange)(newVal);
+      }
     })
     .onEnd((e) => {
       "worklet";
@@ -951,6 +956,9 @@ function BlurLevelSlider({ value, onChange, colors }: BlurLevelSliderProps) {
       const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
       savedX.value = x;
       knobX.value = x;
+      const ratio = x / w;
+      const finalVal = Math.round(BLUR_MIN + ratio * (BLUR_MAX - BLUR_MIN));
+      runOnJS(onChange)(finalVal);
     });
 
   const fillStyle = useAnimatedStyle(() => ({
