@@ -42,8 +42,11 @@ export function WorkoutCreator() {
 
   useEffect(() => {
     fetch('/api/exercises')
-      .then(r => r.json())
-      .then((d: { exercises: DBExercise[] }) => setExercises(d.exercises))
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<{ exercises: DBExercise[] }>;
+      })
+      .then(d => setExercises(d.exercises))
       .catch(() => setExercisesError(true));
   }, []);
 

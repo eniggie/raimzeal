@@ -217,22 +217,24 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   // ── Persist activeFilters to localStorage ───────────────────────────────────
   useEffect(() => {
     if (!filtersHydratedRef.current) return;
-    if (activeFilters.size === 0) {
-      localStorage.removeItem(ACTIVE_FILTERS_LS_KEY);
-    } else {
-      localStorage.setItem(ACTIVE_FILTERS_LS_KEY, JSON.stringify(Array.from(activeFilters)));
-    }
+    try {
+      if (activeFilters.size === 0) {
+        localStorage.removeItem(ACTIVE_FILTERS_LS_KEY);
+      } else {
+        localStorage.setItem(ACTIVE_FILTERS_LS_KEY, JSON.stringify(Array.from(activeFilters)));
+      }
+    } catch { /* storage blocked or full — non-fatal */ }
   }, [activeFilters]);
 
   // ── Persist thresholds + presets to localStorage ────────────────────────────
   useEffect(() => {
     if (!filtersHydratedRef.current) return;
-    localStorage.setItem(THRESHOLDS_LS_KEY, JSON.stringify(filterThresholds));
+    try { localStorage.setItem(THRESHOLDS_LS_KEY, JSON.stringify(filterThresholds)); } catch { /* non-fatal */ }
   }, [filterThresholds]);
 
   useEffect(() => {
     if (!filtersHydratedRef.current) return;
-    localStorage.setItem(CUSTOM_PRESETS_LS_KEY, JSON.stringify(customPresets));
+    try { localStorage.setItem(CUSTOM_PRESETS_LS_KEY, JSON.stringify(customPresets)); } catch { /* non-fatal */ }
   }, [customPresets]);
 
   // ── Push local filter changes to Supabase ───────────────────────────────────
