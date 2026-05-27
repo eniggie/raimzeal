@@ -42,12 +42,6 @@ communityRouter.post(
   async (req, res) => {
     const userId = (req as any).userId as string;
 
-    const userTier = await getUserTier(userId);
-    if (userTier === "foundation") {
-      res.status(403).json({ error: "UPGRADE_REQUIRED", message: "Image uploads in community posts require a Rise, Reign, or Legacy plan." });
-      return;
-    }
-
     const { ext } = req.body as { ext?: unknown };
 
     const safeExt = typeof ext === "string" && /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";

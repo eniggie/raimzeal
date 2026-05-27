@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -141,6 +144,12 @@ export default function OviaScreen() {
   const [interimText, setInterimText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
+
+  // ── AI Tools panel state ────────────────────────────────────────────────────
+  type AiToolResult = { title: string; content: unknown } | null;
+  const [aiToolLoading, setAiToolLoading] = useState<"workout" | "meal" | "body" | null>(null);
+  const [aiToolResult, setAiToolResult] = useState<AiToolResult>(null);
+  const [aiToolModalVisible, setAiToolModalVisible] = useState(false);
   // Holds the AbortController for the active Ovia streaming request so we can
   // cancel it cleanly when the screen unmounts or the user navigates away.
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -451,6 +460,45 @@ export default function OviaScreen() {
     }
   }
 
+  // ── AI Tools handlers ───────────────────────────────────────────────────────
+  async function runAiTool(tool: "workout" | "meal" | "body") {
+    if (!session?.access_token) {
+      Alert.alert("Sign in required", "Please sign in to use AI Tools.");
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAiToolLoading(tool);
+    try {
+      const userCtx = buildOviaContext(
+        user, streak, workoutLogs, mealLogs, bodyMeasurements, waterIntake, personalRecords
+      );
+      const endpoint =
+        tool === "workout" ? "/ovia/workout-plan" :
+        tool === "meal"    ? "/ovia/meal-plan"    : "/ovia/body-analysis";
+      const res = await fetch(`${getApiBase()}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userContext: userCtx }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        Alert.alert("Ovia AI", body.error ?? "Could not generate. Please try again.");
+        return;
+      }
+      const data = await res.json() as Record<string, unknown>;
+      const title =
+        tool === "workout" ? "Your 7-Day Workout Plan" :
+        tool === "meal"    ? "Your 7-Day Meal Plan"    : "Body Composition Analysis";
+      const content = data["plan"] ?? data["mealPlan"] ?? data["analysis"];
+      setAiToolResult({ title, content });
+      setAiToolModalVisible(true);
+    } catch {
+      Alert.alert("Ovia AI", "Network error. Please check your connection and try again.");
+    } finally {
+      setAiToolLoading(null);
+    }
+  }
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -527,23 +575,43 @@ export default function OviaScreen() {
                 ))}
               </View>
 
-              {/* Membership upgrade hint */}
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push("/membership");
-                }}
-                style={[styles.upgradeHint, { backgroundColor: "#F59E0B10", borderColor: "#F59E0B40" }]}
-              >
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={[styles.upgradeHintText, { color: colors.mutedForeground }]}>
-                  Rise — 200 msgs/day · Reign — 500 · Legacy — unlimited
+              {/* AI Tools section */}
+              <View style={styles.aiToolsSection}>
+                <Text style={[styles.aiToolsLabel, { color: colors.mutedForeground }]}>
+                  AI TOOLS
                 </Text>
-                <Text style={{ fontSize: 11, color: "#F59E0B", fontFamily: "Inter_600SemiBold" }}>
-                  Upgrade →
-                </Text>
-              </TouchableOpacity>
+                <View style={styles.aiToolsRow}>
+                  {([ 
+                    { key: "workout" as const, icon: "barbell-outline", label: "Workout Plan", color: "#2E8B57" },
+                    { key: "meal"    as const, icon: "nutrition-outline", label: "Meal Plan",    color: "#C9A84C" },
+                    { key: "body"    as const, icon: "body-outline",     label: "Body Analysis", color: "#8B31C7" },
+                  ] as const).map((t) => (
+                    <TouchableOpacity
+                      key={t.key}
+                      activeOpacity={0.8}
+                      onPress={() => runAiTool(t.key)}
+                      disabled={aiToolLoading !== null}
+                      style={[
+                        styles.aiToolCard,
+                        {
+                          backgroundColor: t.color + "18",
+                          borderColor: t.color + "50",
+                          opacity: aiToolLoading !== null && aiToolLoading !== t.key ? 0.5 : 1,
+                        },
+                      ]}
+                    >
+                      {aiToolLoading === t.key ? (
+                        <ActivityIndicator size="small" color={t.color} />
+                      ) : (
+                        <Ionicons name={t.icon} size={22} color={t.color} />
+                      )}
+                      <Text style={[styles.aiToolCardLabel, { color: t.color }]}>
+                        {t.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
           }
           renderItem={({ item }) => <ChatBubble message={item} />}
@@ -655,9 +723,222 @@ export default function OviaScreen() {
         </View>
       </KeyboardAvoidingView>
       {permissionToastElement}
+
+      {/* AI Tool Result Modal */}
+      <Modal
+        visible={aiToolModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAiToolModalVisible(false)}
+      >
+        <AiToolResultSheet
+          result={aiToolResult}
+          onClose={() => setAiToolModalVisible(false)}
+        />
+      </Modal>
     </View>
   );
 }
+
+// ── AI Tool Result Sheet ──────────────────────────────────────────────────────
+type AiToolResultSheetProps = {
+  result: { title: string; content: unknown } | null;
+  onClose: () => void;
+};
+
+function AiToolResultSheet({ result, onClose }: AiToolResultSheetProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  function renderContent() {
+    if (!result) return null;
+    const c = result.content as Record<string, unknown> | null;
+    if (!c) return <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>No data returned.</Text>;
+
+    // Workout plan
+    if (Array.isArray((c as any)["days"]) && (c as any)["summary"] !== undefined && (c as any)["macros"] === undefined) {
+      const plan = c as { summary: string; days: Array<{ day: string; focus: string; duration_min: number; exercises: Array<{ name: string; sets: number; reps: string; notes?: string }>; rest: boolean }>; tips: string[] };
+      return (
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          <Text style={[sheetStyles.summary, { color: colors.foreground }]}>{plan.summary}</Text>
+          {plan.days?.map((d) => (
+            <View key={d.day} style={[sheetStyles.dayCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={sheetStyles.dayHeader}>
+                <Text style={[sheetStyles.dayName, { color: colors.foreground }]}>{d.day}</Text>
+                {d.rest ? (
+                  <Text style={[sheetStyles.restBadge, { color: colors.mutedForeground }]}>Rest Day</Text>
+                ) : (
+                  <Text style={[sheetStyles.focusText, { color: "#2E8B57" }]}>{d.focus} · {d.duration_min}min</Text>
+                )}
+              </View>
+              {!d.rest && d.exercises?.map((ex, i) => (
+                <View key={i} style={sheetStyles.exerciseRow}>
+                  <Text style={[sheetStyles.exName, { color: colors.foreground }]}>{ex.name}</Text>
+                  <Text style={[sheetStyles.exMeta, { color: colors.mutedForeground }]}>{ex.sets}×{ex.reps}{ex.notes ? `  ${ex.notes}` : ""}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+          {plan.tips?.length > 0 && (
+            <View style={[sheetStyles.tipsCard, { backgroundColor: "#2E8B5718", borderColor: "#2E8B5740" }]}>
+              <Text style={[sheetStyles.tipsTitle, { color: "#2E8B57" }]}>COACH TIPS</Text>
+              {plan.tips.map((t, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>• {t}</Text>)}
+            </View>
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      );
+    }
+
+    // Meal plan
+    if ((c as any)["daily_calories"] !== undefined && Array.isArray((c as any)["days"])) {
+      const mp = c as { daily_calories: number; macros: { protein_g: number; carbs_g: number; fat_g: number }; days: Array<{ day: string; meals: Array<{ type: string; name: string; calories: number; notes: string }> }>; tips: string[] };
+      return (
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          <View style={[sheetStyles.macroRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={sheetStyles.macroItem}>
+              <Text style={[sheetStyles.macroVal, { color: "#C9A84C" }]}>{mp.daily_calories}</Text>
+              <Text style={[sheetStyles.macroKey, { color: colors.mutedForeground }]}>kcal/day</Text>
+            </View>
+            <View style={sheetStyles.macroItem}>
+              <Text style={[sheetStyles.macroVal, { color: "#2E8B57" }]}>{mp.macros?.protein_g}g</Text>
+              <Text style={[sheetStyles.macroKey, { color: colors.mutedForeground }]}>Protein</Text>
+            </View>
+            <View style={sheetStyles.macroItem}>
+              <Text style={[sheetStyles.macroVal, { color: "#3b82f6" }]}>{mp.macros?.carbs_g}g</Text>
+              <Text style={[sheetStyles.macroKey, { color: colors.mutedForeground }]}>Carbs</Text>
+            </View>
+            <View style={sheetStyles.macroItem}>
+              <Text style={[sheetStyles.macroVal, { color: "#f97316" }]}>{mp.macros?.fat_g}g</Text>
+              <Text style={[sheetStyles.macroKey, { color: colors.mutedForeground }]}>Fat</Text>
+            </View>
+          </View>
+          {mp.days?.map((d) => (
+            <View key={d.day} style={[sheetStyles.dayCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[sheetStyles.dayName, { color: colors.foreground, marginBottom: 8 }]}>{d.day}</Text>
+              {d.meals?.map((m, i) => (
+                <View key={i} style={sheetStyles.mealRow}>
+                  <View style={sheetStyles.mealLeft}>
+                    <Text style={[sheetStyles.mealType, { color: "#C9A84C" }]}>{m.type}</Text>
+                    <Text style={[sheetStyles.mealName, { color: colors.foreground }]}>{m.name}</Text>
+                    {m.notes ? <Text style={[sheetStyles.mealNotes, { color: colors.mutedForeground }]}>{m.notes}</Text> : null}
+                  </View>
+                  <Text style={[sheetStyles.mealCal, { color: colors.mutedForeground }]}>{m.calories} kcal</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+          {mp.tips?.length > 0 && (
+            <View style={[sheetStyles.tipsCard, { backgroundColor: "#C9A84C18", borderColor: "#C9A84C40" }]}>
+              <Text style={[sheetStyles.tipsTitle, { color: "#C9A84C" }]}>FOOD THERAPY TIPS</Text>
+              {mp.tips.map((t, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>• {t}</Text>)}
+            </View>
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      );
+    }
+
+    // Body analysis
+    if ((c as any)["bmi"] !== undefined) {
+      const a = c as { bmi: number; bmi_category: string; estimated_body_fat_pct: number; lean_mass_kg: number; bmr_kcal: number; tdee_kcal: number; ideal_weight_range: { min: number; max: number; unit: string }; summary: string; strengths: string[]; focus_areas: string[]; recommendations: string[] };
+      return (
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+          <View style={[sheetStyles.macroRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {[
+              { label: "BMI", value: a.bmi?.toFixed(1), color: "#8B31C7" },
+              { label: "Body Fat", value: `${a.estimated_body_fat_pct?.toFixed(1)}%`, color: "#f97316" },
+              { label: "BMR", value: `${a.bmr_kcal} kcal`, color: "#2E8B57" },
+              { label: "TDEE", value: `${a.tdee_kcal} kcal`, color: "#3b82f6" },
+            ].map((item) => (
+              <View key={item.label} style={sheetStyles.macroItem}>
+                <Text style={[sheetStyles.macroVal, { color: item.color, fontSize: 15 }]}>{item.value}</Text>
+                <Text style={[sheetStyles.macroKey, { color: colors.mutedForeground }]}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={[sheetStyles.dayCard, { backgroundColor: "#8B31C718", borderColor: "#8B31C740" }]}>
+            <Text style={[sheetStyles.tipsTitle, { color: "#8B31C7" }]}>BMI: {a.bmi_category?.toUpperCase()}</Text>
+            <Text style={[sheetStyles.tipText, { color: colors.foreground }]}>{a.summary}</Text>
+            {a.ideal_weight_range && (
+              <Text style={[sheetStyles.tipText, { color: colors.mutedForeground, marginTop: 6 }]}>
+                Ideal weight range: {a.ideal_weight_range.min}–{a.ideal_weight_range.max} {a.ideal_weight_range.unit}
+              </Text>
+            )}
+          </View>
+          {a.strengths?.length > 0 && (
+            <View style={[sheetStyles.tipsCard, { backgroundColor: "#2E8B5718", borderColor: "#2E8B5740" }]}>
+              <Text style={[sheetStyles.tipsTitle, { color: "#2E8B57" }]}>STRENGTHS</Text>
+              {a.strengths.map((s, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>✓ {s}</Text>)}
+            </View>
+          )}
+          {a.focus_areas?.length > 0 && (
+            <View style={[sheetStyles.tipsCard, { backgroundColor: "#f9731618", borderColor: "#f9731640" }]}>
+              <Text style={[sheetStyles.tipsTitle, { color: "#f97316" }]}>AREAS TO IMPROVE</Text>
+              {a.focus_areas.map((s, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>→ {s}</Text>)}
+            </View>
+          )}
+          {a.recommendations?.length > 0 && (
+            <View style={[sheetStyles.tipsCard, { backgroundColor: "#3b82f618", borderColor: "#3b82f640" }]}>
+              <Text style={[sheetStyles.tipsTitle, { color: "#3b82f6" }]}>RECOMMENDATIONS</Text>
+              {a.recommendations.map((s, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>{i + 1}. {s}</Text>)}
+            </View>
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      );
+    }
+
+    return <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Could not render result.</Text>;
+  }
+
+  return (
+    <View style={[sheetStyles.sheet, { backgroundColor: colors.background, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
+      <View style={[sheetStyles.sheetHeader, { borderBottomColor: colors.border }]}>
+        <View style={{ width: 32 }} />
+        <Text style={[sheetStyles.sheetTitle, { color: colors.foreground }]} numberOfLines={1}>
+          {result?.title ?? ""}
+        </Text>
+        <TouchableOpacity onPress={onClose} style={sheetStyles.closeBtn}>
+          <Ionicons name="close" size={20} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      </View>
+      <View style={sheetStyles.sheetBody}>
+        {renderContent()}
+      </View>
+    </View>
+  );
+}
+
+const sheetStyles = StyleSheet.create({
+  sheet: { flex: 1 },
+  sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  sheetTitle: { fontSize: 16, fontFamily: "SpaceGrotesk_700Bold", flex: 1, textAlign: "center" },
+  closeBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  sheetBody: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  summary: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, marginBottom: 16 },
+  dayCard: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10 },
+  dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  dayName: { fontSize: 14, fontFamily: "SpaceGrotesk_700Bold" },
+  restBadge: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  focusText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  exerciseRow: { paddingVertical: 4, borderTopWidth: 1, borderTopColor: "#ffffff08" },
+  exName: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  exMeta: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  macroRow: { flexDirection: "row", borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10 },
+  macroItem: { flex: 1, alignItems: "center" },
+  macroVal: { fontSize: 16, fontFamily: "SpaceGrotesk_700Bold" },
+  macroKey: { fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 2 },
+  mealRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#ffffff08" },
+  mealLeft: { flex: 1 },
+  mealType: { fontSize: 9, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8, textTransform: "uppercase" },
+  mealName: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 1 },
+  mealNotes: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  mealCal: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  tipsCard: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10 },
+  tipsTitle: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 },
+  tipText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19, marginBottom: 4 },
+});
 
 function ChatBubble({ message }: { message: OviaMessage }) {
   const colors = useColors();
@@ -754,4 +1035,9 @@ const styles = StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   upgradeHint: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, marginHorizontal: 4, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   upgradeHintText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
+  aiToolsSection: { width: "100%", marginTop: 20, gap: 8 },
+  aiToolsLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, textTransform: "uppercase", paddingHorizontal: 4 },
+  aiToolsRow: { flexDirection: "row", gap: 10 },
+  aiToolCard: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 16, borderRadius: 14, borderWidth: 1 },
+  aiToolCardLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textAlign: "center" },
 });

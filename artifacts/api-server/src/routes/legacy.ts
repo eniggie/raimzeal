@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireAuth } from "../middleware/auth";
-import { getUserTier, canAccess } from "../lib/tier";
+import { getUserTier } from "../lib/tier";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, legacyPartnerships, healthReports } from "@workspace/db";
@@ -11,23 +11,9 @@ import { communityMutateLimitHeavy, communityMutateLimitLight } from "../lib/rat
 
 const legacyRouter = Router();
 
-// ── Gate: all /legacy/* routes require Legacy tier ────────────────────────────
-async function requireLegacy(req: Request, res: Response, next: NextFunction) {
-  const userId = (req as any).userId as string;
-  try {
-    const tier = await getUserTier(userId);
-    if (!canAccess(tier, "legacy")) {
-      res.status(403).json({
-        error: "This feature is exclusive to Legacy members.",
-        code: "LEGACY_REQUIRED",
-      });
-      return;
-    }
-    next();
-  } catch (err) {
-    logger.error({ err }, "requireLegacy tier check failed");
-    res.status(500).json({ error: "Could not verify membership tier." });
-  }
+// requireLegacy kept for signature compatibility but now passes all authenticated users
+function requireLegacy(_req: Request, _res: Response, next: NextFunction) {
+  next();
 }
 
 // ── GET /api/legacy/leaderboard ───────────────────────────────────────────────

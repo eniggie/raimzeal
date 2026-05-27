@@ -2,7 +2,6 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
-import { getUserTier } from "../lib/tier";
 
 const progressPhotosRouter = Router();
 
@@ -47,11 +46,6 @@ progressPhotosRouter.get("/user/progress-photos", requireAuth, async (req, res) 
 
 progressPhotosRouter.post("/user/progress-photos/upload-url", requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
-  const tier = await getUserTier(userId);
-  if (tier === "foundation") {
-    res.status(403).json({ error: "Progress photo uploads are available on Rise, Reign, and Legacy plans.", code: "UPGRADE_REQUIRED" });
-    return;
-  }
   const { filename, contentType } = req.body as { filename: string; contentType: string };
   if (!filename || !contentType) { res.status(400).json({ error: "filename and contentType required." }); return; }
   const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];

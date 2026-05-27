@@ -739,17 +739,7 @@ async function performWebSearch(query: string): Promise<string> {
 }
 
 // POST /api/ovia/transcribe — converts voice audio to text via OpenAI Whisper
-// Requires Rise or above (voice notes are a paid feature).
 oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
-  const voiceTier = await getUserTier(userId);
-  if (voiceTier === "foundation") {
-    res.status(403).json({
-      error: "Voice notes require a Rise, Reign, or Legacy plan.",
-      code: "UPGRADE_REQUIRED",
-    });
-    return;
-  }
   try {
     const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
     if (!audio) {
@@ -772,6 +762,204 @@ oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res)
   } catch (err) {
     req.log?.error({ err }, "POST /ovia/transcribe error");
     res.status(500).json({ error: "Transcription failed. Please try again." });
+  }
+});
+
+// ── POST /api/ovia/workout-plan ───────────────────────────────────────────────
+// Generates a personalised 7-day workout plan based on the user's live profile.
+oviaRouter.post("/ovia/workout-plan", oviaRateLimit, requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+  const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
+
+  const safeCtx: Record<string, unknown> = { ...userContext };
+  delete safeCtx["email"]; delete safeCtx["phone"];
+
+  const firstName = ((safeCtx.name as string) ?? "Champion").split(" ")[0];
+  const goals = Array.isArray(safeCtx.goals) ? safeCtx.goals.join(", ") : (safeCtx.goals as string) ?? "general fitness";
+  const level = (safeCtx.fitnessLevel as string) ?? "intermediate";
+  const weight = safeCtx.weight ?? "not set";
+  const units = (safeCtx.units as string) === "imperial" ? "lbs" : "kg";
+  const recentWorkouts = Array.isArray(safeCtx.recentWorkouts) ? safeCtx.recentWorkouts : [];
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 1400,
+      messages: [
+        {
+          role: "system",
+          content: `You are Ovia AI — RAIMZEAL's world-class fitness coach. Create concise, actionable, safe workout plans. Never diagnose or prescribe medical treatment. Respond ONLY with valid JSON — no markdown, no explanation outside the JSON.`,
+        },
+        {
+          role: "user",
+          content: `Create a personalised 7-day workout plan for ${firstName}.
+Profile: goals="${goals}", fitness level="${level}", weight="${weight} ${units}", recent workouts=${JSON.stringify(recentWorkouts.slice(0, 3))}.
+
+Return ONLY this JSON structure (no markdown):
+{
+  "summary": "2-sentence overview of this plan",
+  "days": [
+    { "day": "Monday", "focus": "e.g. Upper Body Strength", "duration_min": 45, "exercises": [{"name":"","sets":3,"reps":"8-12","notes":""}], "rest": false },
+    ... all 7 days, use rest:true and empty exercises[] for rest days
+  ],
+  "tips": ["3 short personalised tips"]
+}`,
+        },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let plan: unknown;
+    try { plan = JSON.parse(raw); } catch {
+      req.log.warn({ raw }, "workout-plan non-JSON response");
+      res.status(422).json({ error: "Could not generate plan. Please try again." }); return;
+    }
+    req.log.info({ userId }, "POST /ovia/workout-plan success");
+    res.json({ plan });
+  } catch (err) {
+    req.log.error({ err }, "POST /ovia/workout-plan error");
+    res.status(500).json({ error: "Could not generate workout plan. Please try again." });
+  }
+});
+
+// ── POST /api/ovia/meal-plan ──────────────────────────────────────────────────
+// Generates a personalised 7-day meal plan based on the user's live profile.
+oviaRouter.post("/ovia/meal-plan", oviaRateLimit, requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+  const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
+
+  const safeCtx: Record<string, unknown> = { ...userContext };
+  delete safeCtx["email"]; delete safeCtx["phone"];
+
+  const firstName = ((safeCtx.name as string) ?? "Champion").split(" ")[0];
+  const goals = Array.isArray(safeCtx.goals) ? safeCtx.goals.join(", ") : (safeCtx.goals as string) ?? "general health";
+  const bloodGroup = (safeCtx.bloodGroup as string) ?? null;
+  const genotype = (safeCtx.genotype as string) ?? null;
+  const calories = safeCtx.todayCalories ?? null;
+  const weight = safeCtx.weight ?? null;
+  const age = safeCtx.age ?? null;
+  const units = (safeCtx.units as string) === "imperial" ? "lbs" : "kg";
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 1600,
+      messages: [
+        {
+          role: "system",
+          content: `You are Ovia AI — RAIMZEAL's nutrition and food therapy expert. Specialise in African genotype and blood-group nutrition. Respond ONLY with valid JSON — no markdown, no text outside the JSON.`,
+        },
+        {
+          role: "user",
+          content: `Create a personalised 7-day meal plan for ${firstName}.
+Profile: goals="${goals}"${bloodGroup ? `, blood group="${bloodGroup}"` : ""}${genotype ? `, genotype="${genotype}"` : ""}${weight ? `, weight="${weight} ${units}"` : ""}${age ? `, age="${age}"` : ""}${calories ? `, today's calories logged="${calories} kcal"` : ""}.
+
+Return ONLY this JSON (no markdown):
+{
+  "daily_calories": number,
+  "macros": { "protein_g": number, "carbs_g": number, "fat_g": number },
+  "days": [
+    {
+      "day": "Monday",
+      "meals": [
+        { "type": "Breakfast", "name": "dish name", "calories": number, "notes": "brief note" },
+        { "type": "Lunch", "name": "", "calories": number, "notes": "" },
+        { "type": "Dinner", "name": "", "calories": number, "notes": "" },
+        { "type": "Snack", "name": "", "calories": number, "notes": "" }
+      ]
+    }
+    ... all 7 days
+  ],
+  "tips": ["3 food therapy tips personalised to this profile"]
+}`,
+        },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let mealPlan: unknown;
+    try { mealPlan = JSON.parse(raw); } catch {
+      req.log.warn({ raw }, "meal-plan non-JSON response");
+      res.status(422).json({ error: "Could not generate meal plan. Please try again." }); return;
+    }
+    req.log.info({ userId }, "POST /ovia/meal-plan success");
+    res.json({ mealPlan });
+  } catch (err) {
+    req.log.error({ err }, "POST /ovia/meal-plan error");
+    res.status(500).json({ error: "Could not generate meal plan. Please try again." });
+  }
+});
+
+// ── POST /api/ovia/body-analysis ──────────────────────────────────────────────
+// AI body composition analysis from the user's measurements + profile data.
+oviaRouter.post("/ovia/body-analysis", oviaRateLimit, requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+  const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
+
+  const safeCtx: Record<string, unknown> = { ...userContext };
+  delete safeCtx["email"]; delete safeCtx["phone"];
+
+  const firstName = ((safeCtx.name as string) ?? "Champion").split(" ")[0];
+  const weight = safeCtx.weight ?? null;
+  const height = safeCtx.height ?? null;
+  const age = safeCtx.age ?? null;
+  const units = (safeCtx.units as string) === "imperial" ? "imperial" : "metric";
+  const weightUnit = units === "imperial" ? "lbs" : "kg";
+  const heightUnit = units === "imperial" ? "in" : "cm";
+  const goals = Array.isArray(safeCtx.goals) ? safeCtx.goals.join(", ") : (safeCtx.goals as string) ?? "general fitness";
+  const measurements = (safeCtx.latestBodyMeasurement ?? null) as Record<string, unknown> | null;
+  const bloodGroup = (safeCtx.bloodGroup as string) ?? null;
+  const genotype = (safeCtx.genotype as string) ?? null;
+  const prs = Array.isArray(safeCtx.personalRecords) ? safeCtx.personalRecords : [];
+
+  if (!weight || !height) {
+    res.status(400).json({ error: "Weight and height are required for body analysis. Please update your profile." });
+    return;
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 1200,
+      messages: [
+        {
+          role: "system",
+          content: `You are Ovia AI — RAIMZEAL's fitness and health science expert. Provide evidence-based body composition analysis. Never diagnose medical conditions. Respond ONLY with valid JSON — no markdown, no text outside the JSON.`,
+        },
+        {
+          role: "user",
+          content: `Perform a body composition analysis for ${firstName}.
+Data: weight=${weight}${weightUnit}, height=${height}${heightUnit}${age ? `, age=${age}` : ""}${bloodGroup ? `, blood group=${bloodGroup}` : ""}${genotype ? `, genotype=${genotype}` : ""}, goals="${goals}"${measurements ? `, measurements=${JSON.stringify(measurements)}` : ""}${prs.length > 0 ? `, personal records=${JSON.stringify(prs.slice(0, 5))}` : ""}.
+
+Return ONLY this JSON (no markdown):
+{
+  "bmi": number,
+  "bmi_category": "Underweight|Normal|Overweight|Obese",
+  "estimated_body_fat_pct": number,
+  "lean_mass_kg": number,
+  "bmr_kcal": number,
+  "tdee_kcal": number,
+  "ideal_weight_range": { "min": number, "max": number, "unit": "${weightUnit}" },
+  "summary": "3-sentence personalised assessment",
+  "strengths": ["2-3 positive observations based on data"],
+  "focus_areas": ["2-3 specific areas to improve"],
+  "recommendations": ["4 actionable, science-backed recommendations tailored to this profile"]
+}`,
+        },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let analysis: unknown;
+    try { analysis = JSON.parse(raw); } catch {
+      req.log.warn({ raw }, "body-analysis non-JSON response");
+      res.status(422).json({ error: "Could not generate analysis. Please try again." }); return;
+    }
+    req.log.info({ userId }, "POST /ovia/body-analysis success");
+    res.json({ analysis });
+  } catch (err) {
+    req.log.error({ err }, "POST /ovia/body-analysis error");
+    res.status(500).json({ error: "Could not generate body analysis. Please try again." });
   }
 });
 

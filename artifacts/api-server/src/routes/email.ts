@@ -593,16 +593,11 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "Invalid email address." }); return; }
 
   const userId = (req as any).userId as string;
-  const tier = await getUserTier(userId);
-  if (tier === "foundation") {
-    res.status(403).json({ error: "UPGRADE_REQUIRED", message: "The weekly digest is available on Rise, Reign, and Legacy plans." });
-    return;
-  }
 
   try {
     await db.insert(digestSubscribers).values({ email, userName, userId, active: true })
       .onConflictDoUpdate({ target: digestSubscribers.email, set: { userName, userId, active: true } });
-    req.log.info({ email, tier }, "Digest subscriber added");
+    req.log.info({ email }, "Digest subscriber added");
     res.json({ success: true, message: "Subscribed to weekly digest." });
   } catch (err) {
     req.log.error({ err }, "POST /email/digest/subscribe error");
