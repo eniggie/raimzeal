@@ -649,6 +649,16 @@ export interface UserPreferences {
      * Synced cross-device so the preference survives reinstalls.
      */
     backgroundPhotoBlurRadius?: number;
+    /**
+     * Selected card theme ID ("forest" | "midnight" | "ember" | "royal" | "crimson").
+     * Synced cross-device so the customisation survives reinstalls.
+     */
+    cardThemeId?: string;
+    /**
+     * Visible stats toggles for the progress card.
+     * Synced cross-device so the customisation survives reinstalls.
+     */
+    cardVisibleStats?: Record<string, boolean>;
     /** Customisable Quick-Add food list for the mobile Nutrition tab */
     quickFoods?: Array<{
       name: string;

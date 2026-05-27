@@ -176,6 +176,10 @@ export interface AppState {
     backgroundPhotoBlurRadius?: number;
     /** Default card action ("share" | "save" | "copy" | "both") — synced cross-device. */
     defaultCardAction?: string;
+    /** Selected card theme ID — synced cross-device. */
+    cardThemeId?: string;
+    /** Visible stats toggles for the progress card — synced cross-device. */
+    cardVisibleStats?: Record<string, boolean>;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -441,6 +445,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.backgroundPhotoDimLevel != null ? { backgroundPhotoDimLevel: remoteSettings.backgroundPhotoDimLevel } : {}),
                     ...(remoteSettings.backgroundPhotoBlurRadius != null ? { backgroundPhotoBlurRadius: remoteSettings.backgroundPhotoBlurRadius } : {}),
                     ...(remoteSettings.defaultCardAction != null ? { defaultCardAction: remoteSettings.defaultCardAction } : {}),
+                    ...(remoteSettings.cardThemeId != null ? { cardThemeId: remoteSettings.cardThemeId } : {}),
+                    ...(remoteSettings.cardVisibleStats != null ? { cardVisibleStats: remoteSettings.cardVisibleStats } : {}),
                   }
                 : {}),
             },
@@ -903,6 +909,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("backgroundPhotoDimLevel" in updates) appSettings.backgroundPhotoDimLevel = updates.backgroundPhotoDimLevel;
       if ("backgroundPhotoBlurRadius" in updates) appSettings.backgroundPhotoBlurRadius = updates.backgroundPhotoBlurRadius;
       if ("defaultCardAction" in updates) appSettings.defaultCardAction = updates.defaultCardAction;
+      if ("cardThemeId" in updates) appSettings.cardThemeId = updates.cardThemeId;
+      if ("cardVisibleStats" in updates) appSettings.cardVisibleStats = updates.cardVisibleStats;
       if (Object.keys(appSettings).length === 0) return;
 
       // Accumulate all changes from this burst into the pending patch ref.

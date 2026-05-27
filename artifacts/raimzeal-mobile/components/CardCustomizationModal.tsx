@@ -56,7 +56,7 @@ import ShareProgressCard, {
   ShareProgressCardProps,
 } from "@/components/ShareProgressCard";
 
-const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
+export const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 export const STORAGE_KEY_BG_PHOTO = "@raimzeal_card_bg_photo";

@@ -37,7 +37,7 @@ import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captu
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -296,6 +296,37 @@ export default function ProfileScreen() {
       })
       .catch(() => {});
   }, [settings.defaultCardAction]);
+
+  // Reconcile STORAGE_KEY_THEME with the cloud-backed setting.
+  // When Supabase hydration delivers a cardThemeId (e.g. on a fresh device / reinstall),
+  // update local state so the card preview reflects the synced theme immediately and
+  // write it back to AsyncStorage so CardCustomizationModal's local read stays consistent.
+  useEffect(() => {
+    if (settings.cardThemeId === undefined) return;
+    const isValidTheme = CARD_THEMES.some((t) => t.id === settings.cardThemeId);
+    if (!isValidTheme) return;
+    setCardThemeId(settings.cardThemeId as CardThemeId);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(STORAGE_KEY_THEME, settings.cardThemeId!).catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.cardThemeId]);
+
+  // Reconcile STORAGE_KEY_STATS with the cloud-backed setting.
+  // When Supabase hydration delivers cardVisibleStats (e.g. on a fresh device / reinstall),
+  // update local state so the card preview reflects the synced stats immediately and
+  // write it back to AsyncStorage so CardCustomizationModal's local read stays consistent.
+  useEffect(() => {
+    if (settings.cardVisibleStats === undefined) return;
+    const merged: CardVisibleStats = { ...DEFAULT_VISIBLE_STATS, ...settings.cardVisibleStats };
+    setCardVisibleStats(merged);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(settings.cardVisibleStats!)).catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.cardVisibleStats]);
 
   // Reconcile cloud-backed background photo dim/blur settings with STORAGE_KEY_BG_PHOTO.
   // When Supabase hydration delivers these values (e.g. on a fresh device / reinstall),
@@ -629,6 +660,7 @@ export default function ProfileScreen() {
     setCardThemeId(themeId);
     setCardBgPhotoUri(backgroundPhotoUri);
     setCardBgPhotoCrop(backgroundPhotoCrop);
+    updateSettings({ cardThemeId: themeId, cardVisibleStats: visibleStats as unknown as Record<string, boolean> });
 
     if (action === "save" || action === "both") {
       setSaveLoading(true);
