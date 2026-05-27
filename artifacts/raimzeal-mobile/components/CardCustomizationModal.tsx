@@ -5014,6 +5014,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           STORAGE_KEY_AUTO_TRIGGER_DELAY,
                           val === 0 ? "off" : String(val)
                         ).catch(() => {});
+                        // If the countdown banner is already visible, sync it to the new
+                        // duration immediately so the bar drain rate stays proportional.
+                        if (autoTriggerIntervalRef.current !== null) {
+                          if (val === 0) {
+                            cancelAutoTrigger();
+                          } else {
+                            const action = autoTriggerActiveActionRef.current;
+                            if (action) startAutoTrigger(action, val);
+                          }
+                        }
                       }}
                       style={[
                         styles.autoTriggerDelayChip,
