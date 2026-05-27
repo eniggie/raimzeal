@@ -504,12 +504,20 @@ export default function ProfileScreen() {
   }
 
   async function handleResetRationalePrompt() {
-    await resetRationale();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      "Prompt Reset",
-      "The next time you save a progress card, the photo access explanation will appear again."
-    );
+    try {
+      await resetRationale();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Prompt Reset",
+        "The next time you save a progress card, the photo access explanation will appear again."
+      );
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Prompt Reset",
+        "The photo access prompt will reappear on this device, but the change couldn't be saved to the cloud."
+      );
+    }
   }
 
   function handleResetHints() {
