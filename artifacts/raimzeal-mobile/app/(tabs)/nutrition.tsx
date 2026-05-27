@@ -4653,7 +4653,7 @@ export default function NutritionScreen() {
                           key={`meal-${meal}`}
                           style={{
                             borderRadius: 20,
-                            shadowColor: colors.primary,
+                            shadowColor: dotColor,
                             shadowOffset: { width: 0, height: 0 },
                             shadowRadius: 8,
                             shadowOpacity: historyChipHighlightAnims[chipIdx],
