@@ -223,11 +223,12 @@ communityRouter.post(
   communityMutateLimitHeavy,
   async (req, res) => {
     const userId = (req as any).userId as string;
-    const { userName, content, postType, imageUrl } = req.body as {
+    const { userName, content, postType, imageUrl, isLegacyPost } = req.body as {
       userName?: unknown;
       content?: unknown;
       postType?: unknown;
       imageUrl?: unknown;
+      isLegacyPost?: unknown;
     };
 
     if (typeof content !== "string" || !content.trim()) {
@@ -256,6 +257,7 @@ communityRouter.post(
       user_name: userName.trim().slice(0, 60),
       content: content.trim(),
       post_type: postType,
+      is_legacy_post: isLegacyPost === true,
     };
 
     let { data, error } = await supabase

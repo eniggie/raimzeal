@@ -318,7 +318,7 @@ export function Community() {
       const res = await fetch('/api/community/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userName: displayName, content, postType, imageUrl: imageUrl ?? undefined }),
+        body: JSON.stringify({ userName: displayName, content, postType, imageUrl: imageUrl ?? undefined, isLegacyPost: communityTab === 'inner-circle' }),
       });
       if (res.ok) {
         const json = await res.json() as { post: Record<string, unknown> };
@@ -406,6 +406,22 @@ export function Community() {
       )}
 
       {(communityTab !== 'inner-circle' || userTier === 'legacy') && (<>
+
+      {/* Inner Circle welcome banner — Legacy members only */}
+      {communityTab === 'inner-circle' && (
+        <div className="px-4 pt-4 max-w-lg mx-auto w-full">
+          <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-start gap-3">
+            <span className="text-2xl mt-0.5">🏆</span>
+            <div>
+              <p className="text-sm font-bold text-yellow-400">Welcome to the Inner Circle</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                This is a private space for Legacy founders. Posts you share here are visible only to fellow Legacy members.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 pt-4 max-w-lg mx-auto w-full space-y-3">
 
         {/* RAIMZY Resources Card */}
@@ -521,6 +537,12 @@ export function Community() {
       {user && supabaseConfigured && (
         <div className="px-4 py-4 border-b border-border">
           <div className="max-w-lg mx-auto">
+            {communityTab === 'inner-circle' && (
+              <div className="flex items-center gap-1.5 mb-2 text-xs text-yellow-400 font-medium">
+                <span>🏆</span>
+                <span>Posting to Inner Circle — visible to Legacy members only</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5 mb-2.5">
               {(['post', 'win', 'question', 'tip', 'challenge'] as const).map(t => (
                 <button
@@ -644,9 +666,17 @@ export function Community() {
 
           {!loading && supabaseConfigured && !fetchError && posts.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-              <Users className="w-12 h-12 text-muted-foreground" />
-              <h3 className="font-semibold">No posts yet</h3>
-              <p className="text-muted-foreground text-sm">Be the first to share your fitness journey.</p>
+              {communityTab === 'inner-circle'
+                ? <span className="text-5xl">🏆</span>
+                : <Users className="w-12 h-12 text-muted-foreground" />}
+              <h3 className="font-semibold">
+                {communityTab === 'inner-circle' ? 'No Inner Circle posts yet' : 'No posts yet'}
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                {communityTab === 'inner-circle'
+                  ? 'Be the first Legacy member to post here. Your post will only be visible to Inner Circle members.'
+                  : 'Be the first to share your fitness journey.'}
+              </p>
             </div>
           )}
 
