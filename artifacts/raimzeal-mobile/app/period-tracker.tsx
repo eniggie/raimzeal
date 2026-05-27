@@ -19,6 +19,19 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { BBTChart, BBTPoint } from "@/components/BBTChart";
+import { FeatureDisclaimerModal, type FeatureDisclaimerConfig } from "@/components/FeatureDisclaimerModal";
+
+const PERIOD_DISCLAIMER: FeatureDisclaimerConfig = {
+  storageKey: "@raimzeal_period_disclaimer_seen",
+  icon: "rose-outline",
+  iconColor: "#ec4899",
+  title: "Period & Cycle Tracker",
+  body:
+    "This tracker is for personal wellness awareness only.\n\n" +
+    "Cycle predictions are estimates based on your logged data and are NOT accurate enough to be used as a contraceptive method. RAIMZEAL does not provide fertility or reproductive medical advice.\n\n" +
+    "For medical concerns about your cycle, please consult a licensed OB/GYN or gynaecologist.",
+  acceptLabel: "I understand — continue",
+};
 
 const STORAGE_KEY = "@raimzeal_period_tracker_v1";
 const ACCENT = "#ec4899";
@@ -386,6 +399,7 @@ export default function PeriodTrackerScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <FeatureDisclaimerModal config={PERIOD_DISCLAIMER} />
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.foreground} />

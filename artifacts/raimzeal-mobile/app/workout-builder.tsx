@@ -16,8 +16,21 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { FeatureDisclaimerModal, type FeatureDisclaimerConfig } from "@/components/FeatureDisclaimerModal";
 import type { WorkoutTemplate } from "@/constants/workoutTemplates";
 import { loadCustomWorkouts, saveCustomWorkouts } from "@/lib/customWorkouts";
+
+const WORKOUT_DISCLAIMER: FeatureDisclaimerConfig = {
+  storageKey: "@raimzeal_workout_builder_disclaimer_seen",
+  icon: "barbell-outline",
+  iconColor: "#3b82f6",
+  title: "Custom Workout Builder",
+  body:
+    "Custom workout plans are provided for educational purposes only and are not medical or physiotherapy advice.\n\n" +
+    "Consult a qualified healthcare provider or certified trainer before starting a new exercise programme, especially if you have an injury, chronic condition, or have been inactive for an extended period.\n\n" +
+    "Stop immediately if you feel pain, dizziness, or discomfort.",
+  acceptLabel: "I understand — start building",
+};
 
 export interface CustomExercise {
   name: string;
@@ -215,6 +228,7 @@ export default function WorkoutBuilderScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <FeatureDisclaimerModal config={WORKOUT_DISCLAIMER} />
       <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.foreground} />

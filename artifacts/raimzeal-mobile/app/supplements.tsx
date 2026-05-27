@@ -16,6 +16,19 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { FeatureDisclaimerModal, type FeatureDisclaimerConfig } from "@/components/FeatureDisclaimerModal";
+
+const SUPPS_DISCLAIMER: FeatureDisclaimerConfig = {
+  storageKey: "@raimzeal_supps_disclaimer_seen",
+  icon: "fitness-outline",
+  iconColor: "#f59e0b",
+  title: "Supplement Tracker",
+  body:
+    "This tracker helps you log supplements for personal awareness only.\n\n" +
+    "Always consult a qualified healthcare provider or pharmacist before starting, stopping, or changing any supplement — especially if you take prescription medications, have a medical condition, or are pregnant or breastfeeding.\n\n" +
+    "RAIMZEAL does not endorse or recommend any specific supplement.",
+  acceptLabel: "I understand — continue",
+};
 
 const STORAGE_KEY_CONFIG = "@raimzeal_supps_config_v1";
 const STORAGE_KEY_LOG_PREFIX = "@raimzeal_supps_log_";
@@ -203,6 +216,7 @@ export default function SupplementsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <FeatureDisclaimerModal config={SUPPS_DISCLAIMER} />
       <View
         style={[
           styles.header,

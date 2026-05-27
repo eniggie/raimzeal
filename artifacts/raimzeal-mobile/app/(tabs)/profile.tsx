@@ -1302,6 +1302,27 @@ export default function ProfileScreen() {
               sublabel="Daily stack · 7-day compliance"
               color="#f59e0b"
               onPress={() => router.push("/supplements")}
+            />
+            <ActionRow
+              icon="flower-outline"
+              label="Mindfulness & Gratitude"
+              sublabel="Daily journal · 5-min timer · Streak · Rise+"
+              color="#a78bfa"
+              onPress={() => router.push("/mindfulness")}
+            />
+            <ActionRow
+              icon="bar-chart-outline"
+              label="Weekly Wellness Report"
+              sublabel="Workouts · Nutrition · Sleep · Readiness · Rise+"
+              color="#10b981"
+              onPress={() => router.push("/weekly-report")}
+            />
+            <ActionRow
+              icon="flash-outline"
+              label="Community Challenges"
+              sublabel="Join · Track progress · 7 challenges"
+              color="#ef4444"
+              onPress={() => router.push("/challenges")}
               isLast
             />
           </GlassCard>
@@ -1336,6 +1357,20 @@ export default function ProfileScreen() {
               sublabel="Hot flashes · Night sweats · Mood · Rise+"
               color="#f59e0b"
               onPress={() => router.push("/menopause-tracker")}
+            />
+            <ActionRow
+              icon="rose-outline"
+              label="Cycle-Phase Sync"
+              sublabel="Workout & nutrition by cycle phase · Rise+"
+              color="#ec4899"
+              onPress={() => router.push("/cycle-sync")}
+            />
+            <ActionRow
+              icon="heart-outline"
+              label="Pregnancy Wellness"
+              sublabel="Trimester guide · Safe exercise · Nutrition · Rise+"
+              color="#f43f5e"
+              onPress={() => router.push("/pregnancy-wellness")}
               isLast
             />
           </GlassCard>
@@ -1353,6 +1388,13 @@ export default function ProfileScreen() {
               }
               color="#ef4444"
               onPress={() => router.push("/health-profile")}
+            />
+            <ActionRow
+              icon="water"
+              label="Hydration Tracker"
+              sublabel="Daily goal · Streak · 14-day history"
+              color="#3b82f6"
+              onPress={() => router.push("/hydration")}
               isLast
             />
           </GlassCard>
@@ -1395,11 +1437,32 @@ export default function ProfileScreen() {
               onPress={() => router.push("/sleep-tracker")}
             />
             <ActionRow
+              icon="happy-outline"
+              label="Wellness Check-In"
+              sublabel="Mood · Energy · Stress · Readiness score"
+              color="#10b981"
+              onPress={() => router.push("/wellness-checkin")}
+            />
+            <ActionRow
               icon="restaurant-outline"
               label="Recipe Book"
               sublabel="20 recipes · Tap to log macros"
               color="#10b981"
               onPress={() => router.push("/recipes")}
+            />
+            <ActionRow
+              icon="barbell-outline"
+              label="Adaptive Workout Suggestions"
+              sublabel="Readiness-based daily plan · Reign+"
+              color="#3b82f6"
+              onPress={() => router.push("/adaptive-workout")}
+            />
+            <ActionRow
+              icon="calendar-outline"
+              label="Weekly Meal Plan"
+              sublabel="7-day plan · Grocery list · Reign+"
+              color="#C9A84C"
+              onPress={() => router.push("/meal-plan")}
               isLast
             />
           </GlassCard>

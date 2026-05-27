@@ -32,6 +32,48 @@ const STEPS_GOAL = 10000;
 const STRIPE_DONATION_URL = "https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00";
 
 const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
+const WELLNESS_STORAGE_PREFIX = "@raimzeal_wellness_v1_";
+
+interface WellnessEntry {
+  mood: 1 | 2 | 3 | 4 | 5;
+  energy: 1 | 2 | 3 | 4 | 5;
+  stress: 1 | 2 | 3 | 4 | 5;
+  recovery: 1 | 2 | 3 | 4 | 5;
+}
+
+function calcWellnessReadiness(e: WellnessEntry): number {
+  return Math.round(((e.mood + e.energy + (6 - e.stress) + e.recovery) / 4) * 20);
+}
+
+function useTodayWellness(): { score: number | null; label: string | null; color: string | null } {
+  const [score, setScore] = useState<number | null>(null);
+  const [label, setLabel] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const todayKey = new Date().toISOString().split("T")[0];
+        const raw = await AsyncStorage.getItem(WELLNESS_STORAGE_PREFIX + todayKey);
+        if (!raw || cancelled) return;
+        const entry = JSON.parse(raw) as WellnessEntry;
+        const s = calcWellnessReadiness(entry);
+        if (!cancelled) {
+          setScore(s);
+          if (s >= 80) { setLabel("Push"); setColor("#10b981"); }
+          else if (s >= 60) { setLabel("Maintain"); setColor("#3b82f6"); }
+          else if (s >= 40) { setLabel("Recover"); setColor("#f59e0b"); }
+          else { setLabel("Rest"); setColor("#ef4444"); }
+        }
+      } catch {}
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { score, label, color };
+}
 
 function useTodaySleep(): { hours: number | null; quality: number | null } {
   const [hours, setHours] = useState<number | null>(null);
@@ -73,10 +115,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const { steps: pedometerSteps, available: pedometerAvailable } = usePedometer();
   const { hours: sleepHours, quality: sleepQuality } = useTodaySleep();
+  const { score: readinessScore, label: readinessLabel, color: readinessColor } = useTodayWellness();
   const {
     user,
     streak,
     workoutLogs,
+    waterIntake,
     bodyMeasurements,
     getTodayMacros,
     getTodayWaterGlasses,
@@ -84,6 +128,21 @@ export default function HomeScreen() {
     settings,
     getWeekCalories,
   } = useFitness();
+
+  const waterStreak = React.useMemo(() => {
+    const map = new Map(waterIntake.map((w) => [w.date, w.glasses]));
+    let s = 0;
+    const now = new Date();
+    for (let i = 0; i <= 365; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const g = map.get(key) ?? 0;
+      if (g < WATER_GOAL_GLASSES) break;
+      s++;
+    }
+    return s;
+  }, [waterIntake]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const recentWorkouts = workoutLogs.slice(0, 3);
@@ -348,15 +407,23 @@ export default function HomeScreen() {
             progress={pedometerAvailable ? Math.min(pedometerSteps / STEPS_GOAL, 1) : 0}
           />
         </TouchableOpacity>
-        <StatCard
-          icon="water-outline"
-          label="Water"
-          value={waterGlasses.toString()}
-          unit={`/ ${WATER_GOAL_GLASSES} glasses`}
-          color={colors.accent}
-          progress={waterGlasses / WATER_GOAL_GLASSES}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/hydration");
+          }}
           style={styles.gridItem}
-        />
+        >
+          <StatCard
+            icon="water-outline"
+            label={waterStreak > 0 ? `Water 🔥${waterStreak}d` : "Water"}
+            value={waterGlasses.toString()}
+            unit={`/ ${WATER_GOAL_GLASSES} glasses`}
+            color={colors.accent}
+            progress={waterGlasses / WATER_GOAL_GLASSES}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Water Quick Add */}
@@ -488,6 +555,65 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
               Track sleep quality for better recovery
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </AnimatedPressable>
+      )}
+
+      {/* Wellness Readiness Banner */}
+      {readinessScore !== null ? (
+        <AnimatedPressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/wellness-checkin");
+          }}
+          style={[
+            styles.activityBanner,
+            { backgroundColor: (readinessColor ?? "#10b981") + "15", borderColor: (readinessColor ?? "#10b981") + "35" },
+          ]}
+          scale={0.97}
+        >
+          <View style={[styles.activityIcon, { backgroundColor: (readinessColor ?? "#10b981") + "25" }]}>
+            <Ionicons name="happy-outline" size={22} color={readinessColor ?? "#10b981"} />
+          </View>
+          <View style={styles.activityInfo}>
+            <Text style={[styles.activityTitle, { color: colors.foreground }]}>
+              Wellness Readiness: {readinessScore}/100 — {readinessLabel}
+            </Text>
+            <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
+              {readinessScore >= 80
+                ? "Great day to push hard 💪"
+                : readinessScore >= 60
+                ? "Keep a steady pace today"
+                : readinessScore >= 40
+                ? "Light activity — listen to your body"
+                : "Full rest day recommended"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </AnimatedPressable>
+      ) : (
+        <AnimatedPressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/wellness-checkin");
+          }}
+          style={[
+            styles.activityBanner,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+          scale={0.97}
+        >
+          <View style={[styles.activityIcon, { backgroundColor: "#10b98120" }]}>
+            <Ionicons name="happy-outline" size={22} color="#10b981" />
+          </View>
+          <View style={styles.activityInfo}>
+            <Text style={[styles.activityTitle, { color: colors.foreground }]}>
+              Daily Wellness Check-In
+            </Text>
+            <Text style={[styles.activitySub, { color: colors.mutedForeground }]}>
+              Log mood, energy & stress for your readiness score
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />

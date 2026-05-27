@@ -674,20 +674,31 @@ export default function CommunityScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           Community
         </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setNewPostContent("");
-            setNewPostType("post");
-            setNewPostImageUri(null);
-            setShowNewPost(true);
-          }}
-          style={[styles.newPostBtn, { backgroundColor: colors.primary }]}
-        >
-          <Ionicons name="add" size={18} color={colors.primaryForeground} />
-          <Text style={[styles.newPostBtnText, { color: colors.primaryForeground }]}>
-            New Post
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          <TouchableOpacity
+            onPress={() => router.push("/challenges")}
+            style={[styles.newPostBtn, { backgroundColor: "#ef444420", borderWidth: 1, borderColor: "#ef444440" }]}
+          >
+            <Ionicons name="flash-outline" size={16} color="#ef4444" />
+            <Text style={[styles.newPostBtnText, { color: "#ef4444" }]}>
+              Challenges
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setNewPostContent("");
+              setNewPostType("post");
+              setNewPostImageUri(null);
+              setShowNewPost(true);
+            }}
+            style={[styles.newPostBtn, { backgroundColor: colors.primary }]}
+          >
+            <Ionicons name="add" size={18} color={colors.primaryForeground} />
+            <Text style={[styles.newPostBtnText, { color: colors.primaryForeground }]}>
+              New Post
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
