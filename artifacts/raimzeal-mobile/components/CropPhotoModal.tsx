@@ -17,14 +17,18 @@ import Reanimated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
+
 import ShareProgressCard, {
   CARD_WIDTH,
   ShareProgressCardProps,
 } from "@/components/ShareProgressCard";
+
+const OVERLAY_PREF_KEY = "cropCardOverlayVisible";
 
 export interface CropData {
   scale: number;
@@ -77,6 +81,7 @@ export default function CropPhotoModal({
   const [showCardOverlay, setShowCardOverlay] = useState(true);
 
   const screenW = Dimensions.get("window").width;
+
   const displayScale = Math.min(1, (screenW - 32) / CARD_WIDTH);
   const frameW = CARD_WIDTH * displayScale;
   const frameH = CROP_FRAME_HEIGHT * displayScale;
@@ -88,6 +93,16 @@ export default function CropPhotoModal({
   const savedPanX = useSharedValue(0);
   const savedPanY = useSharedValue(0);
   const overlayOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    AsyncStorage.getItem(OVERLAY_PREF_KEY).then((stored) => {
+      if (stored !== null) {
+        const saved = stored !== "false";
+        setShowCardOverlay(saved);
+        overlayOpacity.value = saved ? 1 : 0;
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -179,6 +194,7 @@ export default function CropPhotoModal({
     overlayOpacity.value = reduceMotion
       ? next ? 1 : 0
       : withTiming(next ? 1 : 0, { duration: 175 });
+    AsyncStorage.setItem(OVERLAY_PREF_KEY, String(next));
   }, [showCardOverlay, overlayOpacity, reduceMotion]);
 
   if (!photoUri) return null;
