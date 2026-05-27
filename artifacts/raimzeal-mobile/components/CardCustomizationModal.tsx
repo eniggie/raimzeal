@@ -4447,6 +4447,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   inputRange: [0, 1],
                   outputRange: [1, 0],
                 });
+                const labelColor = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.mutedForeground, colors.foreground],
+                });
+                const descColor = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.mutedForeground + "70", colors.mutedForeground],
+                });
                 return (
                   <TouchableOpacity
                     key={item.key}
@@ -4482,12 +4490,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       </Animated.View>
                     </Animated.View>
                     <View style={styles.toggleTextWrap}>
-                      <Text style={[styles.toggleLabel, { color: colors.foreground }]}>
+                      <Animated.Text style={[styles.toggleLabel, { color: labelColor }]}>
                         {item.label}
-                      </Text>
-                      <Text style={[styles.toggleDesc, { color: colors.mutedForeground }]}>
+                      </Animated.Text>
+                      <Animated.Text style={[styles.toggleDesc, { color: descColor }]}>
                         {item.description}
-                      </Text>
+                      </Animated.Text>
                     </View>
                     <Animated.View
                       style={[
