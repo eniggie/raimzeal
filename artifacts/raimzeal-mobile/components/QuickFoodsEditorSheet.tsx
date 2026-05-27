@@ -87,6 +87,7 @@ interface DragItemProps {
   itemHeightRef: React.MutableRefObject<number>;
   isActive: boolean;
   isHover: boolean;
+  isPending: boolean;
   displacement: number;
   onDragStart: (i: number) => void;
   onHover: (i: number) => void;
@@ -102,6 +103,7 @@ function DragItem({
   itemHeightRef,
   isActive,
   isHover,
+  isPending,
   displacement,
   onDragStart,
   onHover,
@@ -172,6 +174,8 @@ function DragItem({
     })
   ).current;
 
+  const destructiveColor = colors.destructive ?? "#ef4444";
+
   return (
     <Reanimated.View
       onLayout={(e) => {
@@ -181,8 +185,10 @@ function DragItem({
       style={[
         styles.item,
         {
-          backgroundColor: colors.card,
-          borderColor: isActive
+          backgroundColor: isPending ? destructiveColor + "18" : colors.card,
+          borderColor: isPending
+            ? destructiveColor + "99"
+            : isActive
             ? colors.primary + "99"
             : isHover
             ? colors.primary + "55"
@@ -201,29 +207,48 @@ function DragItem({
       <View {...panResponder.panHandlers} style={styles.dragHandle}>
         <Ionicons name="reorder-three-outline" size={22} color={colors.mutedForeground} />
       </View>
-      <View style={[styles.itemIcon, { backgroundColor: colors.primary + "20" }]}>
-        <Ionicons name="restaurant-outline" size={15} color={colors.primary} />
+      <View
+        style={[
+          styles.itemIcon,
+          { backgroundColor: isPending ? destructiveColor + "25" : colors.primary + "20" },
+        ]}
+      >
+        <Ionicons
+          name={isPending ? "trash-outline" : "restaurant-outline"}
+          size={15}
+          color={isPending ? destructiveColor : colors.primary}
+        />
       </View>
       <View style={styles.itemInfo}>
-        <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+        <Text
+          style={[styles.itemName, { color: isPending ? destructiveColor : colors.foreground }]}
+          numberOfLines={1}
+        >
           {food.name}
         </Text>
-        <Text style={[styles.itemMacros, { color: colors.mutedForeground }]}>
-          P {food.protein}g · C {food.carbs}g · F {food.fat}g
-        </Text>
+        {isPending ? (
+          <Text style={[styles.itemMacros, { color: destructiveColor }]}>
+            Tap again to remove
+          </Text>
+        ) : (
+          <Text style={[styles.itemMacros, { color: colors.mutedForeground }]}>
+            P {food.protein}g · C {food.carbs}g · F {food.fat}g
+          </Text>
+        )}
       </View>
-      <Text style={[styles.itemCal, { color: colors.primary }]}>{food.calories}</Text>
+      <Text style={[styles.itemCal, { color: isPending ? destructiveColor : colors.primary }]}>
+        {food.calories}
+      </Text>
       <Pressable
-        onPress={() => {
-          if (Platform.OS !== "web") {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }
-          onRemove(indexRef.current);
-        }}
+        onPress={() => onRemove(indexRef.current)}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={styles.removeBtn}
       >
-        <Ionicons name="close-circle" size={19} color={colors.destructive ?? "#ef4444"} />
+        <Ionicons
+          name={isPending ? "close-circle" : "close-circle-outline"}
+          size={19}
+          color={destructiveColor}
+        />
       </Pressable>
     </Reanimated.View>
   );
@@ -250,6 +275,7 @@ export function QuickFoodsEditorSheet({
   const [localFoods, setLocalFoods] = useState<QuickFood[]>([]);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [hoverIdx, setHoverIdx] = useState(-1);
+  const [pendingRemoveIdx, setPendingRemoveIdx] = useState(-1);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<QuickFood[]>([]);
   const [searching, setSearching] = useState(false);
@@ -259,6 +285,7 @@ export function QuickFoodsEditorSheet({
   const itemHeightRef = useRef(ITEM_HEIGHT);
   const indexRefsRef = useRef<Array<{ current: number }>>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -267,6 +294,11 @@ export function QuickFoodsEditorSheet({
       setSearchResults([]);
       setActiveIdx(-1);
       setHoverIdx(-1);
+      setPendingRemoveIdx(-1);
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
     }
   }, [visible]);
 
@@ -305,6 +337,14 @@ export function QuickFoodsEditorSheet({
   const handleDrop = useCallback((from: number, to: number) => {
     setActiveIdx(-1);
     setHoverIdx(-1);
+    if (from !== to) {
+      // Cancel any pending remove when the list is reordered
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
+      setPendingRemoveIdx(-1);
+    }
     if (from === to) return;
     setLocalFoods((prev) => {
       const arr = [...prev];
@@ -316,9 +356,32 @@ export function QuickFoodsEditorSheet({
   }, []);
 
   const handleRemove = useCallback((i: number) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLocalFoods((prev) => prev.filter((_, idx) => idx !== i));
-  }, []);
+    if (pendingRemoveIdx === i) {
+      // Second tap — confirm removal with heavy haptic
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
+      setPendingRemoveIdx(-1);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      setLocalFoods((prev) => prev.filter((_, idx) => idx !== i));
+    } else {
+      // First tap — enter pending state with medium haptic
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+      }
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      setPendingRemoveIdx(i);
+      pendingTimerRef.current = setTimeout(() => {
+        setPendingRemoveIdx(-1);
+        pendingTimerRef.current = null;
+      }, 1500);
+    }
+  }, [pendingRemoveIdx]);
 
   const showMaxToast = useCallback(() => {
     setMaxToast(true);
@@ -465,6 +528,7 @@ export function QuickFoodsEditorSheet({
                       itemHeightRef={itemHeightRef}
                       isActive={activeIdx === i}
                       isHover={hoverIdx === i && activeIdx !== i}
+                      isPending={pendingRemoveIdx === i}
                       displacement={getDisplacement(i)}
                       onDragStart={handleDragStart}
                       onHover={handleHover}
