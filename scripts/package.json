@@ -9,6 +9,7 @@
     "secure-community": "tsx ./src/secure-community.ts",
     "verify-community-security": "tsx ./src/verify-community-security.ts",
     "generate-ebook": "tsx ./src/generate-ebook.ts",
+    "fix-stripe-webhook": "tsx ./src/fix-stripe-webhook.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
