@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import {
   ChevronLeft, Heart, MessageCircle, Send, Loader2, WifiOff, Users, RefreshCw,
-  ExternalLink, BookOpen, ImagePlus, X, Trash2, ChevronDown, ChevronUp, Lock,
+  ExternalLink, BookOpen, ImagePlus, X, Trash2, ChevronDown, ChevronUp, Lock, Flag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -82,6 +82,25 @@ export function Community() {
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
+
+  // Report state
+  const [reportedPosts, setReportedPosts] = useState<Set<string>>(new Set());
+
+  const handleReport = async (postId: string) => {
+    if (!user) return;
+    if (reportedPosts.has(postId)) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    setReportedPosts(prev => new Set(prev).add(postId));
+    try {
+      await fetch(`/api/community/posts/${postId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: 'other' }),
+      });
+    } catch { }
+  };
 
   // Comments state
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -798,6 +817,22 @@ export function Community() {
                             : <ChevronDown className="w-3 h-3 ml-0.5" />
                           }
                         </button>
+                        {user && post.user_id !== user.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleReport(post.id)}
+                            title={reportedPosts.has(post.id) ? 'Reported' : 'Report post'}
+                            className={cn(
+                              'ml-auto flex items-center gap-1 h-8 px-2 rounded transition-colors text-xs',
+                              reportedPosts.has(post.id)
+                                ? 'text-orange-400 cursor-default'
+                                : 'text-muted-foreground hover:text-orange-400 hover:bg-muted/50'
+                            )}
+                          >
+                            <Flag className="w-3.5 h-3.5" />
+                            {reportedPosts.has(post.id) && <span>Reported</span>}
+                          </button>
+                        )}
                       </div>
 
                       {/* Comments section */}

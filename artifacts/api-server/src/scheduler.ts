@@ -17,10 +17,10 @@ const ACTIVE_STATUSES = ["active", "trialing"] as const;
  * required). Users who explicitly unsubscribed (`digest_subscribers.active =
  * false`) are excluded.
  */
-async function getPaidRecipients(): Promise<Array<{ email: string; name: string }>> {
+async function getPaidRecipients(): Promise<Array<{ email: string; name: string; streak?: number }>> {
   const { data: profiles, error } = await supabaseAdmin
     .from("profiles")
-    .select("email, name")
+    .select("email, name, streak")
     .in("subscription_tier", PAID_TIERS as unknown as string[])
     .in("subscription_status", ACTIVE_STATUSES as unknown as string[]);
 
@@ -29,7 +29,7 @@ async function getPaidRecipients(): Promise<Array<{ email: string; name: string 
   }
 
   const validProfiles = (profiles ?? []).filter(
-    (p): p is { email: string; name: string } =>
+    (p): p is { email: string; name: string; streak: number | null } =>
       typeof p.email === "string" && p.email.length > 0,
   );
 
@@ -44,7 +44,7 @@ async function getPaidRecipients(): Promise<Array<{ email: string; name: string 
 
   return validProfiles
     .filter((p) => !optedOut.has(p.email.toLowerCase()))
-    .map((p) => ({ email: p.email, name: p.name ?? "Friend" }));
+    .map((p) => ({ email: p.email, name: p.name ?? "Friend", streak: (p as { streak?: number }).streak ?? 0 }));
 }
 
 export function startScheduler(): void {
@@ -64,9 +64,9 @@ export function startScheduler(): void {
         let sent = 0;
         let failed = 0;
 
-        for (const { email, name } of recipients) {
+        for (const { email, name, streak } of recipients) {
           try {
-            await sendWeeklyDigest(email, name);
+            await sendWeeklyDigest(email, name, { streak });
             sent++;
           } catch (err) {
             failed++;

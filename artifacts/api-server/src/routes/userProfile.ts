@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
+import { generalWriteRateLimit } from "../lib/rateLimiter";
 
 const userProfileRouter = Router();
 
@@ -46,7 +47,7 @@ const ProfileUpdateSchema = z.object({
   streak: z.number().int().nonnegative().optional(),
 });
 
-userProfileRouter.put("/user/profile", requireAuth, async (req, res) => {
+userProfileRouter.put("/user/profile", requireAuth, generalWriteRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const parse = ProfileUpdateSchema.safeParse(req.body);
   if (!parse.success) {

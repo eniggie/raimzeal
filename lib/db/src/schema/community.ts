@@ -55,3 +55,17 @@ export const insertCommunityCommentSchema = createInsertSchema(communityComments
 });
 export type InsertCommunityComment = z.infer<typeof insertCommunityCommentSchema>;
 export type CommunityComment = typeof communityComments.$inferSelect;
+
+export const communityReports = pgTable(
+  "community_reports",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    postId: varchar("post_id")
+      .notNull()
+      .references(() => communityPosts.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").notNull(),
+    reason: varchar("reason", { length: 50 }).notNull().default("other"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [unique("uniq_report_per_user_post").on(table.postId, table.userId)]
+);

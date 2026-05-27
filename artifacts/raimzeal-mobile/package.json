@@ -72,6 +72,7 @@
     "expo-secure-store": "~15.0.8",
     "expo-sensors": "^15.0.8",
     "expo-sharing": "^14.0.8",
+    "expo-speech": "^56.0.3",
     "react-native-health": "^1.19.0",
     "react-native-health-connect": "^3.5.3",
     "react-native-url-polyfill": "^3.0.0",

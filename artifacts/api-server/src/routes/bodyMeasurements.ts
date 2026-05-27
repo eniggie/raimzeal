@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
+import { generalWriteRateLimit } from "../lib/rateLimiter";
 
 const bodyMeasurementsRouter = Router();
 
@@ -35,7 +36,7 @@ const BodyMeasurementSchema = z.object({
   thighs: z.number().positive().optional().nullable(),
 });
 
-bodyMeasurementsRouter.post("/user/body-measurements", requireAuth, async (req, res) => {
+bodyMeasurementsRouter.post("/user/body-measurements", requireAuth, generalWriteRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const parse = BodyMeasurementSchema.safeParse(req.body);
   if (!parse.success) {
@@ -108,7 +109,7 @@ bodyMeasurementsRouter.post("/user/body-measurements", requireAuth, async (req, 
   }
 });
 
-bodyMeasurementsRouter.delete("/user/body-measurements/:id", requireAuth, async (req, res) => {
+bodyMeasurementsRouter.delete("/user/body-measurements/:id", requireAuth, generalWriteRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const { id } = req.params;
   try {

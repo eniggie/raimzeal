@@ -215,6 +215,29 @@ export default function CommunityScreen() {
     }
   }
 
+  async function handleReport(postId: string) {
+    if (!userId) {
+      Alert.alert("Sign in required", "Please sign in to report posts.");
+      return;
+    }
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${getApiBase()}/community/posts/${postId}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: "other" }),
+      });
+      if (res.ok) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Reported", "Thank you — our team will review this post.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not submit report. Please try again.");
+    }
+  }
+
   async function handleExpandComments(postId: string) {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
@@ -527,6 +550,15 @@ export default function CommunityScreen() {
               {item.commentsCount}
             </Text>
           </TouchableOpacity>
+
+          {userId && item.userId !== userId && (
+            <TouchableOpacity
+              onPress={() => handleReport(item.id)}
+              style={[styles.actionBtn, { marginLeft: "auto" }]}
+            >
+              <Ionicons name="flag-outline" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {item.expanded && (

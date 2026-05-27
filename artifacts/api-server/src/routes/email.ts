@@ -231,15 +231,24 @@ function buildSimpleHtmlEmail(subject: string, bodyText: string): string {
   return buildHtmlEmail(subject, bodyHtml);
 }
 
-function buildWeeklyDigestHtml(email: string, firstName: string, motivation: string, tipObj: { tip: string; link: string }, insightObj: { insight: string; link: string }, resource: { name: string; url: string; desc: string }): string {
+function buildWeeklyDigestHtml(email: string, firstName: string, motivation: string, tipObj: { tip: string; link: string }, insightObj: { insight: string; link: string }, resource: { name: string; url: string; desc: string }, stats?: { streak?: number }): string {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const safeName = escapeHtml(firstName);
   const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}`;
 
+  const streakSection = (stats?.streak && stats.streak > 0)
+    ? `<div style="background:#0c1520;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 20px;margin-bottom:20px;">
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:1px;color:#f59e0b;text-transform:uppercase;">Your Streak This Week 🔥</p>
+        <p style="margin:0;font-size:15px;color:#e8e8ec;">You're on a <strong style="color:#f59e0b;">${stats.streak}-day streak</strong> — keep it alive${stats.streak >= 7 ? " 💪 One full week, outstanding!" : "!"}</p>
+      </div>`
+    : "";
+
   const bodyHtml = `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">${dateStr}</p>
     <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Good morning, ${safeName}! 🌅</p>
+
+    ${streakSection}
 
     <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Ovia AI — Weekly Motivation</p>
@@ -416,7 +425,11 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
   });
 }
 
-export async function sendWeeklyDigest(to: string, userName: string): Promise<void> {
+export async function sendWeeklyDigest(
+  to: string,
+  userName: string,
+  stats?: { streak?: number }
+): Promise<void> {
   const transporter = createTransporter();
   if (!transporter) throw new Error("SMTP not configured");
 
@@ -446,7 +459,7 @@ export async function sendWeeklyDigest(to: string, userName: string): Promise<vo
   await transporter.sendMail({
     from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`,
     to, subject, text: plainText,
-    html: buildWeeklyDigestHtml(to, firstName, motivation, tipObj, insightObj, resource),
+    html: buildWeeklyDigestHtml(to, firstName, motivation, tipObj, insightObj, resource, stats),
   });
 }
 
@@ -587,8 +600,8 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
   }
 
   try {
-    await db.insert(digestSubscribers).values({ email, userName, active: true })
-      .onConflictDoUpdate({ target: digestSubscribers.email, set: { userName, active: true } });
+    await db.insert(digestSubscribers).values({ email, userName, userId, active: true })
+      .onConflictDoUpdate({ target: digestSubscribers.email, set: { userName, userId, active: true } });
     req.log.info({ email, tier }, "Digest subscriber added");
     res.json({ success: true, message: "Subscribed to weekly digest." });
   } catch (err) {

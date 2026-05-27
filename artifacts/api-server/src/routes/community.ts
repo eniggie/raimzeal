@@ -467,5 +467,43 @@ communityRouter.delete(
   }
 );
 
+// ── Report a post ─────────────────────────────────────────────────────────────
+const VALID_REASONS = ["spam", "harassment", "misinformation", "inappropriate", "other"] as const;
+type ReportReason = (typeof VALID_REASONS)[number];
+
+communityRouter.post(
+  "/community/posts/:postId/report",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const userId = (req as any).userId as string;
+    const { postId } = req.params;
+    const raw = (req.body as { reason?: string }).reason ?? "other";
+    const reason: ReportReason = VALID_REASONS.includes(raw as ReportReason)
+      ? (raw as ReportReason)
+      : "other";
+
+    try {
+      const supabase = getAdminClient();
+      const { error } = await supabase.from("community_reports").insert({
+        post_id: postId,
+        user_id: userId,
+        reason,
+      });
+      // unique constraint violation = already reported → treat as success
+      if (error && !error.message.includes("uniq_report_per_user_post") && !error.code?.startsWith("23")) {
+        req.log.error({ err: error, userId, postId }, "POST /community/posts/:postId/report error");
+        res.status(500).json({ error: "Could not submit report." });
+        return;
+      }
+      req.log.info({ userId, postId, reason }, "Post reported");
+      res.json({ success: true });
+    } catch (err) {
+      req.log.error({ err }, "POST /community/posts/:postId/report error");
+      res.status(500).json({ error: "Could not submit report." });
+    }
+  }
+);
+
 export default communityRouter;
 

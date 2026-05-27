@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
+import { generalWriteRateLimit } from "../lib/rateLimiter";
 
 const personalRecordsRouter = Router();
 
@@ -29,7 +30,7 @@ const PRSchema = z.object({
   achieved_at: z.string().datetime().optional(),
 });
 
-personalRecordsRouter.post("/user/personal-records", requireAuth, async (req, res) => {
+personalRecordsRouter.post("/user/personal-records", requireAuth, generalWriteRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const parse = PRSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." }); return; }
@@ -124,7 +125,7 @@ personalRecordsRouter.post("/user/personal-records/check", requireAuth, async (r
   }
 });
 
-personalRecordsRouter.delete("/user/personal-records/:id", requireAuth, async (req, res) => {
+personalRecordsRouter.delete("/user/personal-records/:id", requireAuth, generalWriteRateLimit, async (req, res) => {
   const userId = (req as any).userId as string;
   const { id } = req.params;
   try {

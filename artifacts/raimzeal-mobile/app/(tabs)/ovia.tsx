@@ -662,6 +662,24 @@ export default function OviaScreen() {
 function ChatBubble({ message }: { message: OviaMessage }) {
   const colors = useColors();
   const isUser = message.role === "user";
+  const [speaking, setSpeaking] = React.useState(false);
+
+  const handleSpeak = React.useCallback(async () => {
+    const ExpoSpeech = await import("expo-speech");
+    if (speaking) {
+      ExpoSpeech.stop();
+      setSpeaking(false);
+    } else {
+      setSpeaking(true);
+      ExpoSpeech.speak(message.content, {
+        language: "en-US",
+        onDone: () => setSpeaking(false),
+        onError: () => setSpeaking(false),
+        onStopped: () => setSpeaking(false),
+      });
+    }
+  }, [speaking, message.content]);
+
   return (
     <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
       {!isUser && (
@@ -669,17 +687,35 @@ function ChatBubble({ message }: { message: OviaMessage }) {
           <Ionicons name="sparkles" size={12} color={colors.accent} />
         </View>
       )}
-      <View
-        style={[
-          styles.bubble,
-          isUser
-            ? [styles.userBubble, { backgroundColor: colors.primary }]
-            : [styles.assistantBubble, { backgroundColor: colors.card, borderColor: colors.border }],
-        ]}
-      >
-        <Text style={[styles.bubbleText, { color: isUser ? colors.primaryForeground : colors.foreground }]}>
-          {message.content}
-        </Text>
+      <View style={{ flex: 1, maxWidth: "85%" }}>
+        <View
+          style={[
+            styles.bubble,
+            isUser
+              ? [styles.userBubble, { backgroundColor: colors.primary }]
+              : [styles.assistantBubble, { backgroundColor: colors.card, borderColor: colors.border }],
+          ]}
+        >
+          <Text style={[styles.bubbleText, { color: isUser ? colors.primaryForeground : colors.foreground }]}>
+            {message.content}
+          </Text>
+        </View>
+        {!isUser && (
+          <TouchableOpacity
+            onPress={handleSpeak}
+            style={[styles.speakBtn, { borderColor: colors.border }]}
+            accessibilityLabel={speaking ? "Stop reading" : "Read aloud"}
+          >
+            <Ionicons
+              name={speaking ? "stop-circle-outline" : "volume-medium-outline"}
+              size={14}
+              color={speaking ? colors.primary : colors.mutedForeground}
+            />
+            <Text style={[styles.speakBtnText, { color: speaking ? colors.primary : colors.mutedForeground }]}>
+              {speaking ? "Stop" : "Read aloud"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -703,7 +739,9 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginBottom: 8 },
   bubbleRowUser: { justifyContent: "flex-end" },
   smallAvatar: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  bubble: { maxWidth: "78%", padding: 12, borderRadius: 16 },
+  bubble: { padding: 12, borderRadius: 16 },
+  speakBtn: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, alignSelf: "flex-start" },
+  speakBtnText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   userBubble: { borderBottomRightRadius: 4 },
   assistantBubble: { borderBottomLeftRadius: 4, borderWidth: 1 },
   bubbleText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },

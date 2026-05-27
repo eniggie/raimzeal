@@ -120,6 +120,16 @@ export const communityMutateLimitHeavy = rateLimit({
   message: { error: "Too many posts — please wait before posting again." },
 });
 
+// ── General user-data writes (profile, measurements, records) ────────────────
+// 120 requests per minute per IP — generous for real users, blocks floods
+export const generalWriteRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many requests — please slow down." },
+});
+
 // ── Stripe / Billing webhook endpoints ────────────────────────────────────────
 // 200 requests per minute per IP — generous enough for Stripe's retry bursts
 // but blocks DOS floods on the unauthenticated raw-body endpoints.
