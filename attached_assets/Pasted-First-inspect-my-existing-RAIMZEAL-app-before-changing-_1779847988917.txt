@@ -1,0 +1,103 @@
+First, inspect my existing RAIMZEAL app before changing anything.
+
+I want you to audit the current app and identify which wellness, fitness, nutrition, AI, cycle tracking, wearable, and scanning features already exist. Do not duplicate features that are already built. If a feature already exists, keep it, improve it only if needed, and connect it properly to the current navigation, database, and user flow.
+
+After the audit, add only the missing approved features below and make sure everything works with the current app structure, design system, authentication, database, and mobile layout.
+
+App name: RAIMZEAL
+Brand purpose: RAIMZEAL is a free health, fitness, meal logging, wellness, and AI-powered lifestyle app. It helps users track workouts, scan foods, monitor calories and macros, log water intake, track body progress, connect with health data, and receive personalized wellness guidance. Keep the app professional, clean, modern, mobile-friendly, and ready for Google Play and Apple App Store.
+
+Approved features to check first, then add only if missing:
+
+1. AI Cycle Syncing for Women
+Add a menstrual cycle syncing feature that adjusts workouts, nutrition, hydration, recovery, and wellness suggestions based on the user’s cycle phase. Include menstrual, follicular, ovulation, and luteal phase guidance. Use safe wellness language. Do not make medical claims.
+
+2. Fertility and Pregnancy Tracking
+Add optional fertility tracking, ovulation window tracking, pregnancy mode, trimester wellness guidance, postpartum recovery tracking, symptom notes, and gentle workout/nutrition suggestions. This must be optional and private. Include a clear disclaimer that RAIMZEAL does not replace medical advice.
+
+3. Deep Stress and Sleep Integration
+Add stress, sleep, mood, recovery, and readiness tracking. Users should be able to log sleep hours, sleep quality, stress level, mood, energy, and recovery. The app should generate a simple daily readiness score and recommend whether to push, maintain, or recover.
+
+4. Adaptive Strength Programs
+Add AI-guided workout plans that adjust based on user energy, time available, goal, fitness level, equipment, soreness, and schedule. Users should be able to choose 10, 20, 30, or 45 minute workouts. The app should suggest bodyweight, dumbbell, gym, cardio, mobility, or recovery workouts.
+
+5. Predictive Wellness Alerts
+Add non-medical wellness alerts based on user patterns. Examples: low sleep for multiple days, high stress trend, low water intake, missed workouts, unusual drop in activity, or poor recovery. These alerts must be framed as wellness suggestions, not diagnosis or medical warnings.
+
+6. Holistic Mental Health Check-ins and Mindfulness
+Add daily check-ins for mood, stress, focus, gratitude, and emotional state. Add simple breathing exercises, mindfulness timer, reflection notes, prayer or gratitude journal option, and weekly emotional trend summary. Include emergency disclaimer language for crisis terms.
+
+7. Community Challenges and Coaching
+Add community challenge functionality. Include challenges such as 7 Day Hydration Challenge, 21 Day Walking Challenge, 30 Day Fat Loss Challenge, Strength Challenge, Sleep Reset Challenge, Cycle Sync Challenge, and Workplace Wellness Challenge. Add a simple coaching area for future coach profiles, coaching plans, and user progress sharing.
+
+8. Comprehensive Nutrition Planning With Recipes
+Improve nutrition planning with meal plans, grocery lists, macro goals, recipe database, culturally diverse meals, African meals, American meals, high protein meals, weight loss meals, muscle gain meals, pregnancy friendly wellness meals, and budget meal ideas. Users should be able to save favorite meals and generate a daily meal plan.
+
+9. Wearable Integration
+Check if Google Health Connect is already integrated. If yes, improve it. If not, add a clean integration area for Google Health Connect now and prepare future support for Apple Health, Fitbit, Garmin, Samsung Health, Oura, and other wearable platforms. Track steps, activity, sleep, heart rate, HRV, calories, and recovery where available.
+
+10. AI Wellness Coach
+Add or improve an AI wellness coach that can answer user questions and generate daily guidance. The coach should help with workouts, meals, hydration, sleep, stress, recovery, cycle-aware wellness, and motivation. The coach must avoid medical diagnosis and recommend professional care when needed.
+
+11. Food Scan and Food Photo Analysis
+Improve the food scanning feature. When users scan food by barcode or food photo, the app must show detailed nutrition information, including:
+
+Food name
+Serving size
+Calories
+Protein
+Carbohydrates
+Fat
+Fiber
+Sugar
+Sodium
+Estimated health score
+Meal type
+Ingredients when available
+Allergens when available
+Suggested healthier alternatives when useful
+Whether the food supports weight loss, muscle gain, maintenance, pregnancy wellness, or general wellness
+A short AI explanation of the food in plain English
+
+The food scan result must clearly show carbs and protein first because users care about macros. Make the food scan result page clean, visual, and easy to understand. Add a macro breakdown card with protein, carbs, fat, calories, and fiber. If the scanner cannot identify the food, allow the user to manually search or enter the food.
+
+12. Smart Weekly Wellness Report
+Add a weekly report showing workouts completed, meals logged, average calories, protein, carbs, fats, water intake, sleep, mood, stress, weight change, body measurements, and recommended focus for the next week.
+
+13. Body Transformation Tracker
+Add progress photos, body measurements, weight history, waist tracking, goal tracking, and before and after timeline. Make progress private by default.
+
+14. Hydration and Reminder System
+Improve hydration tracking with daily goals, streaks, reminders, and recovery-based suggestions. Add reminders for water, workouts, meals, sleep, mindfulness, and progress check-ins.
+
+15. Safety and Legal Disclaimer Layer
+Add safety notices throughout the app. RAIMZEAL is a wellness and fitness app, not a medical device. It should not diagnose, treat, or cure medical conditions. If users mention severe pain, chest pain, pregnancy emergency, fainting, suicidal thoughts, severe bleeding, or other emergency terms, show an urgent message telling them to contact emergency services or a licensed medical professional.
+
+Important implementation rules:
+
+Before adding anything, audit the app and create a checklist of existing features and missing features.
+Skip anything that already exists unless it is broken or incomplete.
+Do not remove working features.
+Do not break authentication, database connection, navigation, existing pages, or current UI.
+Keep the app mobile-first and clean for Android and iOS.
+Use the current design style unless it needs to be improved.
+Connect all new features to the dashboard, navigation menu, and user profile.
+Save user data properly to the existing database.
+Add empty states, loading states, and error states.
+Add realistic demo data only where helpful for testing.
+Make sure all buttons, menus, forms, scanner flows, and pages work.
+After changes, run the app, test major flows, fix visible errors, and summarize what was added, what already existed, and what still needs API keys or external setup.
+
+Priority order:
+1. Food scan macro details
+2. AI wellness coach
+3. Adaptive workouts
+4. Cycle syncing
+5. Stress and sleep readiness
+6. Weekly report
+7. Nutrition planning
+8. Wearable integration
+9. Community challenges
+10. Fertility and pregnancy mode
+
+Do this carefully and make RAIMZEAL feel like a real premium wellness app, not a demo.
