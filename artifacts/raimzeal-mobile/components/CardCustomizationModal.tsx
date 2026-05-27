@@ -4993,11 +4993,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         >
                           {isPhotoBlocked ? "Enable in Settings" : subtitle}
                         </Text>
-                        {isSelected && !isPhotoBlocked && (
+                        {isSelected && !isDefault && !isPhotoBlocked && (
                           <Text style={styles.preferredLabel}>✓ Selected</Text>
                         )}
-                        {!isSelected && defaultAction === action && !isPhotoBlocked && (
-                          <Text style={styles.preferredLabel}>★ Default</Text>
+                        {isDefault && !isPhotoBlocked && (
+                          <Text style={[styles.preferredLabel, { opacity: isSelected ? 1 : 0.45 }]}>★ Default</Text>
                         )}
                       </View>
                     </TouchableOpacity>
