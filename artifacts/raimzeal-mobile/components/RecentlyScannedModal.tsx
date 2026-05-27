@@ -168,6 +168,7 @@ function ScanRow({
       renderRightActions={renderRightActions}
       rightThreshold={40}
       overshootRight={false}
+      onSwipeableOpen={() => Haptics.selectionAsync()}
       containerStyle={styles.swipeContainer}
       childrenContainerStyle={[
         styles.item,

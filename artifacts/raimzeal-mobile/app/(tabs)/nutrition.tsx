@@ -7065,6 +7065,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
         renderRightActions={renderRightActions}
         rightThreshold={60}
         overshootRight={false}
+        onSwipeableOpen={() => Haptics.selectionAsync()}
       >
         <TouchableOpacity
           activeOpacity={0.75}
@@ -7687,6 +7688,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
         renderRightActions={renderRightActions}
         rightThreshold={60}
         overshootRight={false}
+        onSwipeableOpen={() => Haptics.selectionAsync()}
       >
         <View style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
           <TouchableOpacity
