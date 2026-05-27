@@ -2,7 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./scheduler";
 import { runMigrations } from "stripe-replit-sync";
-import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
+import { getStripeSync } from "./stripeClient";
 import { validateEnv } from "./lib/validateEnv";
 import pg from "pg";
 

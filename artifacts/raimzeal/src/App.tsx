@@ -147,7 +147,7 @@ function AppContent() {
           weight: Number(meta.weight) || 160,
           fitnessLevel: (meta.fitnessLevel as UserProfile['fitnessLevel']) ?? 'beginner',
           goals: (meta.goals as string[]) ?? [],
-          units: 'imperial',
+          units: (meta.units as 'metric' | 'imperial' | undefined) ?? 'imperial',
           createdAt: user.created_at,
         };
         completeOnboarding(profile);

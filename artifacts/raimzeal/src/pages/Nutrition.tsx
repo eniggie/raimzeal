@@ -368,7 +368,12 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
     setIsDialogOpen(false);
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  // Use local calendar date so the boundary never flips at midnight UTC for
+  // users in UTC+ timezones (e.g. a user at UTC+5 at 10 pm sees their own "today").
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
   const todayWater = (state.waterIntake ?? []).find(w => w.date === today)?.glasses ?? 0;
   const waterGoal = 8;
   const mealsForDate = (state.mealLogs ?? []).filter(m => m.date === selectedDate);
@@ -387,7 +392,8 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
     }
     const weightKg = user.units === 'imperial' ? user.weight * 0.453592 : user.weight;
     const heightCm = user.units === 'imperial' ? user.height * 2.54 : user.height;
-    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * user.age + 5;
+    // Gender-neutral Mifflin-St Jeor: average of +5 (male) and -161 (female) → -78
+    const bmr = 10 * weightKg + 6.25 * heightCm - 5 * user.age - 78;
     const tdee = Math.round(bmr * 1.55);
     const protein = Math.round(weightKg * 2.2);
     const fat = Math.round(tdee * 0.25 / 9);

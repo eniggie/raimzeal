@@ -24,8 +24,9 @@ export function computeMacros(profile: {
     heightCm = heightCm * 2.54;
   }
 
-  // Mifflin-St Jeor (male formula — ~5% higher than female, safe default)
-  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  // Mifflin-St Jeor averaged across both sexes (+5 male, -161 female → midpoint -78)
+  // We don't collect biological sex, so this gender-neutral average is the fairest default.
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 78;
 
   const level = profile.fitness_level ?? "beginner";
   const activityMultiplier = level === "advanced" ? 1.8 : level === "intermediate" ? 1.6 : 1.4;

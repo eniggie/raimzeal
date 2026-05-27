@@ -141,8 +141,12 @@ export default function OviaScreen() {
   const [interimText, setInterimText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const recordingRef = useRef<Audio.Recording | null>(null);
+  // Holds the AbortController for the active Ovia streaming request so we can
+  // cancel it cleanly when the screen unmounts or the user navigates away.
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
-  // Stop any active recording when the screen unmounts or the user switches tabs
+  // Stop any active recording (and cancel any in-flight stream) when the screen
+  // unmounts or the user switches tabs.
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
@@ -150,6 +154,8 @@ export default function OviaScreen() {
         Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
         recordingRef.current = null;
       }
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
     };
   }, []);
 
@@ -256,6 +262,8 @@ export default function OviaScreen() {
     );
 
     let accumulated = "";
+    const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
     try {
       const response = await fetch(`${getApiBase()}/ovia/chat`, {
         method: "POST",
@@ -264,6 +272,7 @@ export default function OviaScreen() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ messages: allMessages, userContext }),
+        signal: abortController.signal,
       });
       if (response.status === 429) {
         const firstName = user?.name?.split(" ")[0] ?? "Champion";
@@ -333,6 +342,8 @@ export default function OviaScreen() {
         content: stripMarkdown(accumulated) || "I could not generate a response. Please try again.",
       });
     } catch (err) {
+      // AbortError is a deliberate cancellation (screen unmount / tab switch) — do not show an error.
+      if (err instanceof Error && err.name === "AbortError") return;
       const isNetworkError = err instanceof TypeError && String(err.message).toLowerCase().includes("fetch");
       addOviaMessage({
         role: "assistant",

@@ -62,6 +62,7 @@ export function Community() {
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [postError, setPostError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Inner Circle tab
@@ -281,11 +282,12 @@ export function Community() {
     if (!newPost.trim() || !user) return;
     const content = newPost.trim();
     setNewPost('');
+    setPostError('');
     setPosting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
-      if (!token) return;
+      if (!token) { setPosting(false); return; }
       const displayName = (user.user_metadata?.name as string | undefined)?.split(' ')[0]
         || user.email?.split('@')[0]
         || 'Member';
@@ -307,9 +309,17 @@ export function Community() {
               headers: { 'Content-Type': pendingImageFile.type || 'image/jpeg' },
               body: pendingImageFile,
             });
-            if (putRes.ok) imageUrl = publicUrl;
+            if (putRes.ok) {
+              imageUrl = publicUrl;
+            } else {
+              setPostError('Image upload failed — your post will be shared without the photo.');
+            }
+          } else {
+            setPostError('Image upload failed — your post will be shared without the photo.');
           }
-        } catch { }
+        } catch {
+          setPostError('Image upload failed — your post will be shared without the photo.');
+        }
         setImageUploading(false);
       }
       setPendingImageFile(null);
@@ -323,6 +333,7 @@ export function Community() {
       if (res.ok) {
         const json = await res.json() as { post: Record<string, unknown> };
         const d = json.post;
+        setPostError('');
         setPosts(prev => [{
           id: d.id as string,
           user_id: d.user_id as string,
@@ -337,8 +348,14 @@ export function Community() {
           _localLikes: 0,
           _localCommentCount: 0,
         }, ...prev]);
+      } else {
+        setNewPost(content);
+        setPostError('Could not share your post. Please try again.');
       }
-    } catch { }
+    } catch {
+      setNewPost(content);
+      setPostError('Could not share your post. Please check your connection and try again.');
+    }
     setPosting(false);
   };
 
@@ -625,6 +642,9 @@ export function Community() {
                       <X className="w-3 h-3 text-white" />
                     </button>
                   </div>
+                )}
+                {postError && (
+                  <p className="text-xs text-destructive mt-1">{postError}</p>
                 )}
               </div>
             </div>
