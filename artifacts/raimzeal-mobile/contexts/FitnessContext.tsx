@@ -174,6 +174,8 @@ export interface AppState {
     backgroundPhotoDimLevel?: number;
     /** Background photo blur radius for the share card — synced cross-device. */
     backgroundPhotoBlurRadius?: number;
+    /** Default card action ("share" | "save" | "copy" | "both") — synced cross-device. */
+    defaultCardAction?: string;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -438,6 +440,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.autoTriggerDelay != null ? { autoTriggerDelay: remoteSettings.autoTriggerDelay } : {}),
                     ...(remoteSettings.backgroundPhotoDimLevel != null ? { backgroundPhotoDimLevel: remoteSettings.backgroundPhotoDimLevel } : {}),
                     ...(remoteSettings.backgroundPhotoBlurRadius != null ? { backgroundPhotoBlurRadius: remoteSettings.backgroundPhotoBlurRadius } : {}),
+                    ...(remoteSettings.defaultCardAction != null ? { defaultCardAction: remoteSettings.defaultCardAction } : {}),
                   }
                 : {}),
             },
@@ -899,6 +902,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("autoTriggerDelay" in updates) appSettings.autoTriggerDelay = updates.autoTriggerDelay;
       if ("backgroundPhotoDimLevel" in updates) appSettings.backgroundPhotoDimLevel = updates.backgroundPhotoDimLevel;
       if ("backgroundPhotoBlurRadius" in updates) appSettings.backgroundPhotoBlurRadius = updates.backgroundPhotoBlurRadius;
+      if ("defaultCardAction" in updates) appSettings.defaultCardAction = updates.defaultCardAction;
       if (Object.keys(appSettings).length === 0) return;
 
       // Accumulate all changes from this burst into the pending patch ref.

@@ -635,6 +635,11 @@ export interface UserPreferences {
      */
     autoTriggerDelay?: string;
     /**
+     * Default card action ("share" | "save" | "copy" | "both").
+     * Synced cross-device so the preference survives reinstalls.
+     */
+    defaultCardAction?: string;
+    /**
      * Background photo dim level for the share card (0–1).
      * Synced cross-device so the preference survives reinstalls.
      */

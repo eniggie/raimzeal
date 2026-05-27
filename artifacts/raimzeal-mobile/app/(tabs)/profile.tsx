@@ -281,6 +281,22 @@ export default function ProfileScreen() {
       .catch(() => {});
   }, [settings.autoTriggerDelay]);
 
+  // Reconcile STORAGE_KEY_ACTION with the cloud-backed setting.
+  // When Supabase hydration delivers a value (e.g. on a fresh device / reinstall),
+  // update local state so the UI reflects the synced preference immediately and
+  // write it back to AsyncStorage so CardCustomizationModal's local read stays consistent.
+  useEffect(() => {
+    if (settings.defaultCardAction === undefined) return;
+    const validActions: CardAction[] = ["share", "save", "copy", "both"];
+    if (!validActions.includes(settings.defaultCardAction as CardAction)) return;
+    setDefaultCardAction(settings.defaultCardAction as CardAction);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(STORAGE_KEY_ACTION, settings.defaultCardAction!).catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.defaultCardAction]);
+
   // Reconcile cloud-backed background photo dim/blur settings with STORAGE_KEY_BG_PHOTO.
   // When Supabase hydration delivers these values (e.g. on a fresh device / reinstall),
   // merge them into the existing saved bg photo payload so CardCustomizationModal's local
@@ -314,6 +330,7 @@ export default function ProfileScreen() {
 
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
+    updateSettings({ defaultCardAction: action });
     try {
       const AsyncStorage = (
         await import("@react-native-async-storage/async-storage")
