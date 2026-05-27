@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./lib/logger";
-import { sendWeeklyDigest, sendMidWeekMotivation } from "./routes/email";
+import { sendWeeklyDigest } from "./routes/email";
 import { runDonationHealthProbe } from "./lib/healthProbe";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 
@@ -82,40 +82,6 @@ export function startScheduler(): void {
     { timezone: "UTC" },
   );
 
-  // ── Wednesday 12:00 UTC (13:00 WAT) — mid-week motivation push ────────────
-  cron.schedule(
-    "0 12 * * 3",
-    async () => {
-      logger.info("Wednesday mid-week motivation job starting");
-      try {
-        const recipients = await getPaidRecipients();
-
-        if (recipients.length === 0) {
-          logger.info("No paid subscribers — skipping Wednesday mid-week push");
-          return;
-        }
-
-        let sent = 0;
-        let failed = 0;
-
-        for (const { email, name } of recipients) {
-          try {
-            await sendMidWeekMotivation(email, name);
-            sent++;
-          } catch (err) {
-            failed++;
-            logger.warn({ email, err }, "Mid-week motivation send failed for subscriber");
-          }
-        }
-
-        logger.info({ sent, failed, total: recipients.length }, "Wednesday mid-week job complete");
-      } catch (err) {
-        logger.error({ err }, "Wednesday mid-week job crashed");
-      }
-    },
-    { timezone: "UTC" },
-  );
-
   // ── Every 15 minutes — donation / payment health probe ────────────────────
   cron.schedule(
     "*/15 * * * *",
@@ -130,6 +96,6 @@ export function startScheduler(): void {
   );
 
   logger.info(
-    "Scheduler started — Saturday digest: 07:00 UTC (08:00 WAT) · Wednesday motivation: 12:00 UTC (13:00 WAT) · Donation health probe: every 15 min",
+    "Scheduler started — Saturday digest: 07:00 UTC (08:00 WAT) · Donation health probe: every 15 min",
   );
 }
