@@ -809,6 +809,62 @@ export async function unenrollProgram(): Promise<void> {
   } catch { /* non-fatal */ }
 }
 
+// ─── Full User Data Wipe ─────────────────────────────────────────────────────
+
+/**
+ * AsyncStorage key used to remember a pending cloud-data wipe that could not
+ * be executed (e.g. because the device was offline when the user tapped
+ * "Clear Everything"). On the next profile-screen mount while online the key
+ * is detected and the wipe is retried automatically.
+ */
+export const PENDING_CLOUD_WIPE_KEY = "@pending_cloud_wipe";
+
+/**
+ * Deletes all personal health data for `userId` from every Supabase table.
+ * Runs all deletions in parallel. Throws if network / auth prevents any of
+ * them so the caller can schedule a retry via PENDING_CLOUD_WIPE_KEY.
+ *
+ * Tables cleared:
+ *   workout_logs, meal_logs, body_measurements, water_intake,
+ *   ovia_messages, personal_records, favourite_foods, progress_photos
+ *
+ * Profile row: preferences column is nulled out and personal fields are reset
+ * so no stale data re-hydrates into the app on next sign-in.
+ */
+export async function clearAllUserData(userId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+
+  const results = await Promise.allSettled([
+    supabase.from("workout_logs").delete().eq("user_id", userId),
+    supabase.from("meal_logs").delete().eq("user_id", userId),
+    supabase.from("body_measurements").delete().eq("user_id", userId),
+    supabase.from("water_intake").delete().eq("user_id", userId),
+    supabase.from("ovia_messages").delete().eq("user_id", userId),
+    supabase.from("personal_records").delete().eq("user_id", userId),
+    supabase.from("favourite_foods").delete().eq("user_id", userId),
+    supabase.from("progress_photos").delete().eq("user_id", userId),
+    supabase.from("profiles").update({
+      preferences: null,
+      age: null,
+      height: null,
+      weight: null,
+      fitness_level: null,
+      goals: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", userId),
+  ]);
+
+  const failed = results.filter((r) => {
+    if (r.status === "rejected") return true;
+    const v = (r as PromiseFulfilledResult<{ error: unknown }>).value;
+    return v?.error != null;
+  });
+
+  if (failed.length > 0) {
+    throw new Error(`Cloud wipe incomplete — ${failed.length} table(s) could not be cleared`);
+  }
+}
+
 // ─── Programs ───────────────────────────────────────────────────────────────
 
 export interface ProgramWeek {

@@ -37,7 +37,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getApiBase } from "@/lib/db";
+import { getApiBase, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
@@ -199,6 +199,30 @@ export default function ProfileScreen() {
       clearTimeout(highlightTimeout);
     };
   }, [scrollTo, countdownHighlightAnim]);
+
+  // When the Profile screen mounts while signed in, check whether a previous
+  // "Clear Everything" run left a pending cloud wipe (stored because the device
+  // was offline at the time). If found and the stored user ID matches the current
+  // user, retry the wipe now that we may be back online.
+  useEffect(() => {
+    if (!authUser?.id || !isSupabaseConfigured) return;
+    const userId = authUser.id;
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => AsyncStorage.getItem(PENDING_CLOUD_WIPE_KEY))
+      .then(async (pendingUserId) => {
+        if (!pendingUserId || pendingUserId !== userId) return;
+        try {
+          await clearAllUserData(userId);
+          const { default: AsyncStorage } = await import(
+            "@react-native-async-storage/async-storage"
+          );
+          await AsyncStorage.removeItem(PENDING_CLOUD_WIPE_KEY);
+        } catch {
+          // Still offline — leave the flag in place for next mount.
+        }
+      })
+      .catch(() => {});
+  }, [authUser?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -554,9 +578,13 @@ export default function ProfileScreen() {
   }
 
   function handleClearAppData() {
+    const isSignedIn = Boolean(authUser?.id) && isSupabaseConfigured;
+    const cloudLine = isSignedIn
+      ? " Your cloud-synced data — workouts, meals, measurements, AI history, personal records, favourite foods, and progress photos — will also be permanently deleted from the server."
+      : "";
     Alert.alert(
       "Clear All App Data",
-      "This will permanently delete your filters, goals, history, and all other stored data. This cannot be undone.",
+      `This will permanently delete your filters, goals, history, and all other stored data.${cloudLine} This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -567,13 +595,14 @@ export default function ProfileScreen() {
               const { default: AsyncStorage } = await import(
                 "@react-native-async-storage/async-storage"
               );
-              // Remove all app data except Supabase auth session tokens
-              // (sb-* keys hold the user's login session — keeping them means
-              //  the user stays signed in but all data is wiped, which is the
-              //  intended behavior for "fresh start").
+              // Remove all app data except Supabase auth session tokens and
+              // the pending-cloud-wipe key (written below if we're offline).
+              // sb-* keys hold the user's login session — keeping them means
+              // the user stays signed in but all data is wiped, which is the
+              // intended behavior for "fresh start".
               const allKeys = await AsyncStorage.getAllKeys();
               const keysToRemove = allKeys.filter(
-                (k) => !k.startsWith("sb-")
+                (k) => !k.startsWith("sb-") && k !== PENDING_CLOUD_WIPE_KEY
               );
               await AsyncStorage.multiRemove(keysToRemove);
               // Reset in-memory state for every context.
@@ -582,6 +611,21 @@ export default function ProfileScreen() {
               // the multiRemove above and recreate data on next launch.
               clearAllData();
               await setMacroGoals(DEFAULT_MACRO_GOALS);
+
+              // Attempt to wipe cloud data when signed in.
+              if (authUser?.id && isSupabaseConfigured) {
+                try {
+                  await clearAllUserData(authUser.id);
+                  // Clear any leftover pending-wipe flag on success.
+                  await AsyncStorage.removeItem(PENDING_CLOUD_WIPE_KEY);
+                } catch {
+                  // Device is offline or the request failed — store the user ID
+                  // so the cloud wipe is retried the next time the Profile screen
+                  // mounts while online.
+                  await AsyncStorage.setItem(PENDING_CLOUD_WIPE_KEY, authUser.id).catch(() => {});
+                }
+              }
+
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert(
                 "Data Cleared",
