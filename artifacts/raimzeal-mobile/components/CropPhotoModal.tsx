@@ -13,6 +13,7 @@ import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
@@ -86,6 +87,7 @@ export default function CropPhotoModal({
   const panY = useSharedValue(0);
   const savedPanX = useSharedValue(0);
   const savedPanY = useSharedValue(0);
+  const overlayOpacity = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
@@ -167,6 +169,18 @@ export default function CropPhotoModal({
     ],
   }));
 
+  const overlayAnimStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const handleToggleOverlay = useCallback(() => {
+    const next = !showCardOverlay;
+    setShowCardOverlay(next);
+    overlayOpacity.value = reduceMotion
+      ? next ? 1 : 0
+      : withTiming(next ? 1 : 0, { duration: 175 });
+  }, [showCardOverlay, overlayOpacity, reduceMotion]);
+
   if (!photoUri) return null;
 
   return (
@@ -218,9 +232,9 @@ export default function CropPhotoModal({
                 resizeMode="cover"
               />
               {/* Live card overlay */}
-              {cardOverlay && showCardOverlay && (
-                <View
-                  style={StyleSheet.absoluteFillObject}
+              {cardOverlay && (
+                <Reanimated.View
+                  style={[StyleSheet.absoluteFillObject, overlayAnimStyle]}
                   pointerEvents="none"
                 >
                   <View style={styles.cardOverlayWrap}>
@@ -232,7 +246,7 @@ export default function CropPhotoModal({
                       renderScale={displayScale}
                     />
                   </View>
-                </View>
+                </Reanimated.View>
               )}
               {/* Corner markers */}
               <View style={[styles.cornerTL, styles.cornerH]} />
@@ -251,7 +265,7 @@ export default function CropPhotoModal({
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
           {cardOverlay && (
             <TouchableOpacity
-              onPress={() => setShowCardOverlay((v) => !v)}
+              onPress={handleToggleOverlay}
               activeOpacity={0.75}
               style={styles.overlayToggleBtn}
             >
