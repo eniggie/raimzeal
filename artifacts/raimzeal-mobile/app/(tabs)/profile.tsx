@@ -1730,6 +1730,7 @@ export default function ProfileScreen() {
             <ActionRow
               icon="create-outline"
               label="Edit Profile"
+              sublabel="Name, age, weight, height & goals"
               color={colors.primary}
               onPress={() => router.push("/edit-profile")}
             />
@@ -1757,11 +1758,12 @@ export default function ProfileScreen() {
                   : handleOpenCardModal
               }
               loading={shareLoading || saveLoading}
-              sublabel={cameraRollStatus === "denied" ? "Tap to open Settings" : undefined}
+              sublabel={cameraRollStatus === "denied" ? "Tap to open Settings" : "Customise and share your progress card"}
             />
             <ActionRow
               icon="notifications-outline"
               label="Reminders & Notifications"
+              sublabel="Workout, nutrition & hydration alerts"
               color={colors.accent}
               onPress={() => router.push("/reminders")}
             />
@@ -1794,18 +1796,21 @@ export default function ProfileScreen() {
             <ActionRow
               icon="shield-checkmark-outline"
               label="Privacy Policy"
+              sublabel="How we handle your personal data"
               color={colors.warning}
               onPress={() => router.push("/privacy")}
             />
             <ActionRow
               icon="document-text-outline"
               label="Terms of Service"
+              sublabel="Rules governing use of RAIMZEAL"
               color={colors.mutedForeground}
               onPress={() => router.push("/terms")}
             />
             <ActionRow
               icon="help-circle-outline"
               label="Help & Support"
+              sublabel="Email us at support@raimzeal.com"
               color={colors.mutedForeground}
               onPress={() =>
                 Alert.alert("Support", "Email us at support@raimzeal.com")
@@ -1814,6 +1819,7 @@ export default function ProfileScreen() {
             <ActionRow
               icon="log-out-outline"
               label="Sign Out"
+              sublabel="Log out of your RAIMZEAL account"
               color={colors.destructive}
               onPress={handleLogout}
               isLast
