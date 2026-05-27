@@ -2789,10 +2789,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     if (longPressAndRun) {
       // "Long-press and run" mode: set default immediately and generate in one gesture
+      const isSwitching = defaultAction !== null && defaultAction !== action;
       setDefaultAction(action);
       setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
-      showConfirmation(`★ ${label} set as default · generating…`, "success", undefined, undefined, undefined, undefined, undefined, undefined, true);
+      showConfirmation(
+        isSwitching ? `Switched to ★ ${label} · generating…` : `★ ${label} set as default · generating…`,
+        "success", undefined, undefined, undefined, undefined, undefined, undefined, true
+      );
       await handleGenerate(action);
     } else {
       // "Set-only" mode: show confirmation alert before setting default
