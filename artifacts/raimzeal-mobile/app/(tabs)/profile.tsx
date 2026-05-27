@@ -38,7 +38,7 @@ import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captu
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -114,6 +114,7 @@ export default function ProfileScreen() {
   const [cardBgPhotoCrop, setCardBgPhotoCrop] = useState<BackgroundPhotoCrop | undefined>(undefined);
   const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
   const [autoTriggerDelay, setAutoTriggerDelay] = useState<string>("3");
+  const [hasCustomisedCountdown, setHasCustomisedCountdown] = useState(false);
 
   const [showUndoWindowModal, setShowUndoWindowModal] = useState(false);
   const [undoWindowInput, setUndoWindowInput] = useState("");
@@ -203,11 +204,12 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction, savedDelay, savedBgPhoto] = await Promise.all([
+        const [savedTheme, savedAction, savedDelay, savedBgPhoto, savedCountdownCustomised] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
           AsyncStorage.getItem(STORAGE_KEY_ACTION),
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
+          AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED),
         ]);
         if (!cancelled) {
           // Seed the default bundled background photo the first time (no saved photo yet).
@@ -239,6 +241,9 @@ export default function ProfileScreen() {
           const validDelays = ["off", "2", "3", "5"];
           if (savedDelay && validDelays.includes(savedDelay)) {
             setAutoTriggerDelay(savedDelay);
+          }
+          if (savedCountdownCustomised === "1") {
+            setHasCustomisedCountdown(true);
           }
         }
       } catch {
@@ -425,6 +430,14 @@ export default function ProfileScreen() {
   }
 
   function handlePickAutoTriggerDelay() {
+    if (!hasCustomisedCountdown) {
+      setHasCustomisedCountdown(true);
+      import("@react-native-async-storage/async-storage")
+        .then(({ default: AsyncStorage }) =>
+          AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, "1")
+        )
+        .catch(() => {});
+    }
     Alert.alert(
       "Auto-generate Countdown",
       "How long to wait before the card generates automatically when you have a default action set?",
@@ -932,6 +945,7 @@ export default function ProfileScreen() {
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
+        hasCustomisedCountdown={hasCustomisedCountdown}
       />
 
       {/* Theme color flash confirmation — appears above everything when generating */}

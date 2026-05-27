@@ -105,6 +105,7 @@ const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay";
+export const STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED = "@raimzeal_countdown_customised";
 const STORAGE_KEY_ACTIVE_PRESET = "@raimzeal_active_preset_id";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
@@ -216,6 +217,12 @@ interface Props {
   initialLongPressAndRun?: boolean;
   /** Called whenever the user toggles the long-press-and-run switch. */
   onLongPressAndRunChange?: (val: boolean) => void;
+  /**
+   * Whether the user has ever opened the countdown picker.
+   * When true the banner shows "Xs · Change" instead of plain "Change",
+   * reassuring power users that their chosen delay is still in effect.
+   */
+  hasCustomisedCountdown?: boolean;
 }
 
 /**
@@ -1341,6 +1348,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   initialBadgeDismissed,
   initialLongPressAndRun,
   onLongPressAndRunChange,
+  hasCustomisedCountdown = false,
 }: Props, ref) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -4718,7 +4726,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={[styles.autoTriggerChangeLink, { color: colors.primary }]}>Change</Text>
+                <Text style={[styles.autoTriggerChangeLink, { color: colors.primary }]}>
+                  {hasCustomisedCountdown ? `${autoTriggerDelay}s · Change` : "Change"}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={cancelAutoTrigger} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close-circle" size={16} color={colors.primary} />
