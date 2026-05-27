@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +19,59 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
+
+/**
+ * Route-level error boundary — Expo Router picks this up automatically.
+ * Shows the real error message and stack so any crash can be diagnosed
+ * instead of the generic Expo Router "Something went wrong" screen.
+ */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+        paddingTop: insets.top + 24,
+        paddingBottom: insets.bottom + 24,
+        paddingHorizontal: 24,
+        gap: 16,
+      }}
+    >
+      <Text style={{ fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", color: "#ef4444" }}>
+        Edit Profile couldn't load
+      </Text>
+      <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+        {error?.message ?? "Unknown error"}
+      </Text>
+      {!!error?.stack && (
+        <ScrollView style={{ maxHeight: 220 }}>
+          <Text
+            selectable
+            style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 16 }}
+          >
+            {error.stack}
+          </Text>
+        </ScrollView>
+      )}
+      <Pressable
+        onPress={retry}
+        style={({ pressed }) => ({
+          backgroundColor: colors.primary,
+          borderRadius: 10,
+          paddingVertical: 14,
+          alignItems: "center",
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Text style={{ color: colors.primaryForeground, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>
+          Try Again
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 const BLOOD_TYPES = ["A", "B", "AB", "O"] as const;
 const RH_FACTORS = ["+", "-"] as const;
@@ -51,16 +105,32 @@ export default function EditProfileScreen() {
   const [height, setHeight] = useState(user?.height?.toString() ?? "");
   const [weight, setWeight] = useState(user?.weight?.toString() ?? "");
   const [fitnessLevel, setFitnessLevel] = useState<"beginner" | "intermediate" | "advanced">(
-    user?.fitnessLevel ?? "intermediate"
+    (user?.fitnessLevel as "beginner" | "intermediate" | "advanced" | undefined) ?? "intermediate"
   );
-  const [goals, setGoals] = useState<string[]>(user?.goals ?? []);
-  const [units, setUnits] = useState<"metric" | "imperial">(user?.units ?? "metric");
+  // Defensive: ensure goals is always an array regardless of what came from storage
+  const [goals, setGoals] = useState<string[]>(
+    Array.isArray(user?.goals) ? user.goals : []
+  );
+  const [units, setUnits] = useState<"metric" | "imperial">(
+    (user?.units as "metric" | "imperial" | undefined) ?? "metric"
+  );
   const [location, setLocation] = useState("");
   const [locLoading, setLocLoading] = useState(false);
   const [bloodType, setBloodType] = useState<"A" | "B" | "AB" | "O" | undefined>(user?.bloodType);
   const [rhFactor, setRhFactor] = useState<"+" | "-" | undefined>(user?.rhFactor);
   const [genotype, setGenotype] = useState<"AA" | "AS" | "AC" | "SS" | "SC" | undefined>(user?.genotype);
   const [biologicalSex, setBiologicalSex] = useState<"male" | "female" | "prefer_not_to_say" | undefined>(user?.biologicalSex);
+
+  // Null guard: profile not yet loaded (context still hydrating)
+  if (!user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15 }}>
+          Loading profile…
+        </Text>
+      </View>
+    );
+  }
 
   function toggleGoal(id: string) {
     Haptics.selectionAsync();
