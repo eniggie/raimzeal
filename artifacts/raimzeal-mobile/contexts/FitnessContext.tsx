@@ -310,6 +310,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   // two concurrent reads both see the old value and one write clobbers the other.
   const pendingSettingsPatchRef = useRef<NonNullable<import("@/lib/db").UserPreferences["appSettings"]>>({});
   const settingsDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Step 1: hydrate from AsyncStorage (fast, works offline)
@@ -862,6 +863,38 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {});
     });
   }, [persist]);
+
+  // Reset hints when a different user signs in on the same device.
+  // Supabase fires SIGNED_IN for every new session, including account switches
+  // that bypass an explicit sign-out (deep links, OAuth redirects, session
+  // expiry re-logins). We compare the incoming UID against the last known UID
+  // and wipe dismissed hints whenever identity changes.
+  //
+  // The listener is registered inside the getSession() callback so that
+  // prevUserIdRef is always seeded before any SIGNED_IN event can fire,
+  // eliminating the mount-time race where an early SIGNED_IN would see a null
+  // ref and incorrectly treat the current user as a "new" identity.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let unsubscribe: (() => void) | undefined;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      prevUserIdRef.current = session?.user?.id ?? null;
+      const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+        if (event === "SIGNED_OUT") {
+          prevUserIdRef.current = null;
+          return;
+        }
+        if (event !== "SIGNED_IN") return;
+        const incomingId = newSession?.user?.id ?? null;
+        if (incomingId && incomingId !== prevUserIdRef.current) {
+          resetHints();
+        }
+        prevUserIdRef.current = incomingId;
+      });
+      unsubscribe = () => listener.subscription.unsubscribe();
+    });
+    return () => unsubscribe?.();
+  }, [resetHints]);
 
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
