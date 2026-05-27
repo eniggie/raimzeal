@@ -170,6 +170,10 @@ export interface AppState {
     longPressAndRun?: boolean;
     /** Auto-generate countdown duration ("off" | "2" | "3" | "5") — synced cross-device. */
     autoTriggerDelay?: string;
+    /** Background photo dim level for the share card (0–1) — synced cross-device. */
+    backgroundPhotoDimLevel?: number;
+    /** Background photo blur radius for the share card — synced cross-device. */
+    backgroundPhotoBlurRadius?: number;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -432,6 +436,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.reorderHintFrequency != null ? { reorderHintFrequency: remoteSettings.reorderHintFrequency } : {}),
                     ...(remoteSettings.longPressAndRun != null ? { longPressAndRun: remoteSettings.longPressAndRun } : {}),
                     ...(remoteSettings.autoTriggerDelay != null ? { autoTriggerDelay: remoteSettings.autoTriggerDelay } : {}),
+                    ...(remoteSettings.backgroundPhotoDimLevel != null ? { backgroundPhotoDimLevel: remoteSettings.backgroundPhotoDimLevel } : {}),
+                    ...(remoteSettings.backgroundPhotoBlurRadius != null ? { backgroundPhotoBlurRadius: remoteSettings.backgroundPhotoBlurRadius } : {}),
                   }
                 : {}),
             },
@@ -891,6 +897,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("reorderHintFrequency" in updates) appSettings.reorderHintFrequency = updates.reorderHintFrequency;
       if ("longPressAndRun" in updates) appSettings.longPressAndRun = updates.longPressAndRun;
       if ("autoTriggerDelay" in updates) appSettings.autoTriggerDelay = updates.autoTriggerDelay;
+      if ("backgroundPhotoDimLevel" in updates) appSettings.backgroundPhotoDimLevel = updates.backgroundPhotoDimLevel;
+      if ("backgroundPhotoBlurRadius" in updates) appSettings.backgroundPhotoBlurRadius = updates.backgroundPhotoBlurRadius;
       if (Object.keys(appSettings).length === 0) return;
 
       // Accumulate all changes from this burst into the pending patch ref.

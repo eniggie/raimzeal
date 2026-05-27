@@ -1305,7 +1305,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const reduceMotion = useReduceMotion();
-  const { settings } = useFitness();
+  const { settings, updateSettings } = useFitness();
   const { cameraRollStatus } = usePermissions();
   const reduceMotionRef = useRef(false);
   const reduceMotionShared = useSharedValue(reduceMotion);
@@ -2104,20 +2104,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             } else {
               setBackgroundPhotoCrop(null);
             }
-            applyDimLevel(parsed.dimLevel ?? DEFAULT_DIM_LEVEL);
-            setBackgroundPhotoBlurRadius(parsed.blurRadius ?? DEFAULT_BLUR_RADIUS);
+            applyDimLevel(parsed.dimLevel ?? settings.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
+            setBackgroundPhotoBlurRadius(parsed.blurRadius ?? settings.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
           } catch {
             // Legacy: plain URI string stored before crop was introduced
             setBackgroundPhotoUri(savedBgPhoto);
             setBackgroundPhotoCrop(null);
-            applyDimLevel(DEFAULT_DIM_LEVEL);
-            setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
+            applyDimLevel(settings.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
+            setBackgroundPhotoBlurRadius(settings.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
           }
         } else {
           setBackgroundPhotoUri(null);
           setBackgroundPhotoCrop(null);
-          applyDimLevel(DEFAULT_DIM_LEVEL);
-          setBackgroundPhotoBlurRadius(DEFAULT_BLUR_RADIUS);
+          applyDimLevel(settings.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
+          setBackgroundPhotoBlurRadius(settings.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
         }
         setSelectedThemeId(effectiveTheme);
         setDisplayedThemeId(effectiveTheme);
@@ -2244,6 +2244,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [selectedAction, cameraRollStatus]);
 
   // Persist the dim/blur level to AsyncStorage (debounced) whenever the user moves the sliders.
+  // Also syncs the preference to the cloud so it survives reinstalls on a new device.
   useEffect(() => {
     if (!backgroundPhotoUri) return;
     if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
@@ -2252,6 +2253,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         ? JSON.stringify({ uri: backgroundPhotoUri, ...backgroundPhotoCrop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius })
         : JSON.stringify({ uri: backgroundPhotoUri, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
       AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+      updateSettings({ backgroundPhotoDimLevel, backgroundPhotoBlurRadius });
     }, 250);
     return () => {
       if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);

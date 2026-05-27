@@ -634,6 +634,16 @@ export interface UserPreferences {
      * Synced cross-device so the setting survives reinstalls.
      */
     autoTriggerDelay?: string;
+    /**
+     * Background photo dim level for the share card (0–1).
+     * Synced cross-device so the preference survives reinstalls.
+     */
+    backgroundPhotoDimLevel?: number;
+    /**
+     * Background photo blur radius for the share card.
+     * Synced cross-device so the preference survives reinstalls.
+     */
+    backgroundPhotoBlurRadius?: number;
     /** Customisable Quick-Add food list for the mobile Nutrition tab */
     quickFoods?: Array<{
       name: string;

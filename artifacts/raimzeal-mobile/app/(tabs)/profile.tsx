@@ -281,6 +281,37 @@ export default function ProfileScreen() {
       .catch(() => {});
   }, [settings.autoTriggerDelay]);
 
+  // Reconcile cloud-backed background photo dim/blur settings with STORAGE_KEY_BG_PHOTO.
+  // When Supabase hydration delivers these values (e.g. on a fresh device / reinstall),
+  // merge them into the existing saved bg photo payload so CardCustomizationModal's local
+  // read picks them up immediately without waiting for a manual re-open.
+  useEffect(() => {
+    const dimLevel = settings.backgroundPhotoDimLevel;
+    const blurRadius = settings.backgroundPhotoBlurRadius;
+    if (dimLevel === undefined && blurRadius === undefined) return;
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO)
+          .then((raw) => {
+            if (!raw) return;
+            try {
+              const parsed = JSON.parse(raw) as Record<string, unknown>;
+              if (!parsed.uri) return;
+              const updated = {
+                ...parsed,
+                ...(dimLevel !== undefined ? { dimLevel } : {}),
+                ...(blurRadius !== undefined ? { blurRadius } : {}),
+              };
+              AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, JSON.stringify(updated)).catch(() => {});
+            } catch {
+              // ignore parse errors — leave existing payload untouched
+            }
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.backgroundPhotoDimLevel, settings.backgroundPhotoBlurRadius]);
+
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
     try {
