@@ -5130,9 +5130,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           STORAGE_KEY_AUTO_TRIGGER_DELAY,
                           val === 0 ? "off" : String(val)
                         ).catch(() => {});
-                        // If the countdown banner is already visible, sync it to the new
-                        // duration immediately so the bar drain rate stays proportional.
-                        if (autoTriggerIntervalRef.current !== null) {
+                        // If the countdown is active (running or paused while app was
+                        // backgrounded), sync it to the new duration immediately so the
+                        // bar drain rate stays proportional, or cancel it if "Off" was chosen.
+                        if (autoTriggerIntervalRef.current !== null || autoTriggerIsPausedRef.current) {
                           if (val === 0) {
                             cancelAutoTrigger();
                           } else {
