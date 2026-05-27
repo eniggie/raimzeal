@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -172,9 +172,17 @@ interface OpenFoodFactsResponse {
 
 async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
   try {
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+        { signal: controller.signal }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!res.ok) return null;
     const data: OpenFoodFactsResponse = await res.json();
     if (data.status !== 1 || !data.product) return null;
@@ -303,6 +311,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  // useRef lock — immune to stale closures and React Compiler optimisations.
+  // State-based guards (scanning/loading) had a race window where the closure
+  // captured old values, allowing multiple concurrent network calls.
+  const scanLock = useRef(false);
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -337,6 +349,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   // Reset scanner state every time the modal opens so it's always ready
   useEffect(() => {
     if (visible) {
+      scanLock.current = false;
       setScanning(true);
       setLoading(false);
       setError(null);
@@ -360,7 +373,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
   const handleBarcodeScanned = useCallback(
     async ({ data }: { data: string }) => {
-      if (!scanning || loading) return;
+      // Use a ref-based lock so this guard is never stale, even when React
+      // Compiler memoises the callback or the component re-renders rapidly.
+      if (scanLock.current) return;
+      scanLock.current = true;
+
       setScanning(false);
       setLoading(true);
       setError(null);
@@ -382,8 +399,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         setActiveTab("recent");
         loadRecentScans();
       }
+      // Lock is intentionally NOT released here — the user must tap
+      // "Scan Again" / switch tabs to re-arm the scanner.
     },
-    [scanning, loading, onFoodFound, onClose, loadRecentScans]
+    [scanLock, onFoodFound, onClose, loadRecentScans]
   );
 
   async function handleRefresh() {
@@ -408,6 +427,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleRetry() {
+    scanLock.current = false;
     setError(null);
     setCachedResult(null);
     setRefreshFailed(false);
@@ -416,6 +436,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleClose() {
+    scanLock.current = false;
     setScanning(true);
     setLoading(false);
     setError(null);
@@ -426,6 +447,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleManualEntry() {
+    scanLock.current = false;
     setScanning(true);
     setLoading(false);
     setError(null);
@@ -484,6 +506,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   function handleSwitchTab(tab: ActiveTab) {
     setActiveTab(tab);
     if (tab === "scan") {
+      scanLock.current = false;
       setScanning(true);
       setError(null);
       setCachedResult(null);
@@ -601,7 +624,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                   "datamatrix",
                 ],
               }}
-              onBarcodeScanned={scanning && activeTab === "scan" ? handleBarcodeScanned : undefined}
+              onBarcodeScanned={activeTab === "scan" ? handleBarcodeScanned : undefined}
             />
 
             {/* Overlay */}
