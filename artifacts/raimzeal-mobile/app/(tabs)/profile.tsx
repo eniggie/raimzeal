@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -99,6 +100,8 @@ export default function ProfileScreen() {
     requestCameraRollPermission,
     updateCameraRollStatus,
   } = usePermissions();
+
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
@@ -488,6 +491,16 @@ export default function ProfileScreen() {
   async function handlePhotoRationaleNotNow() {
     setShowPhotoRationaleModal(false);
     await markRationaleDismissed();
+  }
+
+  async function handleCameraAccessPress() {
+    if (cameraPermission?.granted) {
+      Alert.alert("Camera Access", "Camera access is active. RAIMZEAL can use your camera to scan food barcodes.");
+    } else if (cameraPermission?.canAskAgain === false) {
+      Linking.openSettings();
+    } else {
+      await requestCameraPermission();
+    }
   }
 
   async function handleResetRationalePrompt() {
@@ -1316,7 +1329,7 @@ export default function ProfileScreen() {
               }
               sublabelColor={
                 cameraRollStatus === "granted"
-                  ? undefined
+                  ? colors.mutedForeground
                   : colors.warning
               }
               value={
@@ -1360,6 +1373,35 @@ export default function ProfileScreen() {
                 onPress={handleResetRationalePrompt}
               />
             )}
+            <SettingPickerRow
+              icon="camera-outline"
+              label="Camera Access"
+              sublabel={
+                cameraPermission?.granted
+                  ? "Camera is active — used for barcode scanning"
+                  : cameraPermission?.canAskAgain === false
+                  ? "Permanently blocked — tap to open Settings"
+                  : "Tap to enable the camera for barcode scanning"
+              }
+              sublabelColor={
+                cameraPermission?.granted
+                  ? colors.mutedForeground
+                  : colors.warning
+              }
+              value={
+                cameraPermission?.granted
+                  ? "Active"
+                  : cameraPermission?.canAskAgain === false
+                  ? "Open Settings"
+                  : "Not granted"
+              }
+              color={
+                cameraPermission?.granted
+                  ? colors.secondary
+                  : colors.warning
+              }
+              onPress={handleCameraAccessPress}
+            />
             <ActionRow
               icon="bulb-outline"
               label="Reset all hints"
