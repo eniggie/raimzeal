@@ -285,6 +285,11 @@ function SortablePresetItem({
 }: SortablePresetItemProps) {
   const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
 
+  const trashShake = useSharedValue(0);
+  const trashAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: trashShake.value }],
+  }));
+
   const animatedStyle = useAnimatedStyle(() => {
     "worklet";
     const dIdx = draggingIdx.value;
@@ -437,16 +442,27 @@ function SortablePresetItem({
             color={isActive ? colors.primary : colors.mutedForeground}
           />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => onDeletePreset(preset.id)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name="close-circle"
-            size={20}
-            color={isActive ? colors.primary : colors.mutedForeground}
-          />
-        </TouchableOpacity>
+        <Reanimated.View style={trashAnimStyle}>
+          <TouchableOpacity
+            onPress={() => {
+              trashShake.value = withSequence(
+                withTiming(-5, { duration: 50 }),
+                withTiming(5, { duration: 50 }),
+                withTiming(-5, { duration: 50 }),
+                withTiming(5, { duration: 50 }),
+                withTiming(0, { duration: 50 }),
+              );
+              onDeletePreset(preset.id);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={isActive ? colors.primary : colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        </Reanimated.View>
       </View>
     </Reanimated.View>
   );
