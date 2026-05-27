@@ -194,7 +194,7 @@ export const charContainerVariants: Variants = {
   hidden: {},
   visible: {
     transition: { staggerChildren: 0.03, delayChildren: 0.1 },
-  },
+  } as unknown as Variants[string],
 };
 
 // Stagger configs
@@ -213,7 +213,7 @@ export const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: staggerConfigs.medium,
-  },
+  } as unknown as Variants[string],
 };
 
 export const itemVariants: Variants = {
@@ -222,7 +222,7 @@ export const itemVariants: Variants = {
     opacity: 1,
     y: 0,
     transition: { duration: 0.5, ease: 'circOut' },
-  },
+  } as unknown as Variants[string],
 };
 
 // Utilities

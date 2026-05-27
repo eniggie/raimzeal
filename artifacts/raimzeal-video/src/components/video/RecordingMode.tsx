@@ -92,7 +92,7 @@ export default function RecordingMode() {
           ]);
 
           const data = await ffmpeg.readFile('output.mp4');
-          const mp4Blob = new Blob([data], { type: 'video/mp4' });
+          const mp4Blob = new Blob([data as unknown as BlobPart], { type: 'video/mp4' });
           const url = URL.createObjectURL(mp4Blob);
           const a = document.createElement('a');
           a.href = url;
