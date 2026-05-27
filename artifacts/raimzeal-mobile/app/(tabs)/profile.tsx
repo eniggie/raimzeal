@@ -238,9 +238,15 @@ export default function ProfileScreen() {
           if (savedAction && validActions.includes(savedAction as CardAction)) {
             setDefaultCardAction(savedAction as CardAction);
           }
-          const validDelays = ["off", "2", "3", "5"];
-          if (savedDelay && validDelays.includes(savedDelay)) {
-            setAutoTriggerDelay(savedDelay);
+          const validDelays = ["off", "1", "3", "5"];
+          // Migrate legacy "2" (previously offered by the picker but removed in
+          // favour of the "1s" chip that matches the modal UI) to "1".
+          const migratedDelay = savedDelay === "2" ? "1" : savedDelay;
+          if (migratedDelay && validDelays.includes(migratedDelay)) {
+            setAutoTriggerDelay(migratedDelay);
+            if (savedDelay !== migratedDelay) {
+              AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY, migratedDelay).catch(() => {});
+            }
           }
           if (savedCountdownCustomised === "1") {
             setHasCustomisedCountdown(true);
@@ -292,15 +298,20 @@ export default function ProfileScreen() {
   // write it back to AsyncStorage so CardCustomizationModal's local read stays consistent.
   useEffect(() => {
     if (settings.autoTriggerDelay === undefined) return;
-    const validDelays = ["off", "2", "3", "5"];
-    if (!validDelays.includes(settings.autoTriggerDelay)) return;
-    setAutoTriggerDelay(settings.autoTriggerDelay);
+    const validDelays = ["off", "1", "3", "5"];
+    // Migrate legacy cloud value "2" (no longer offered in the UI) to "1" so it
+    // is restored correctly on fresh installs and synced back to cloud.
+    const delay =
+      settings.autoTriggerDelay === "2" ? "1" : settings.autoTriggerDelay;
+    if (!validDelays.includes(delay)) return;
+    setAutoTriggerDelay(delay);
+    if (delay !== settings.autoTriggerDelay) {
+      // Write the corrected value back to cloud so it doesn't keep arriving as "2".
+      updateSettings({ autoTriggerDelay: delay });
+    }
     import("@react-native-async-storage/async-storage")
       .then(({ default: AsyncStorage }) => {
-        AsyncStorage.setItem(
-          STORAGE_KEY_AUTO_TRIGGER_DELAY,
-          settings.autoTriggerDelay!
-        ).catch(() => {});
+        AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY, delay).catch(() => {});
       })
       .catch(() => {});
   }, [settings.autoTriggerDelay]);
@@ -443,7 +454,7 @@ export default function ProfileScreen() {
       "How long to wait before the card generates automatically when you have a default action set?",
       [
         { text: "Off", onPress: () => handleSetAutoTriggerDelay("off") },
-        { text: "2 seconds", onPress: () => handleSetAutoTriggerDelay("2") },
+        { text: "1 second", onPress: () => handleSetAutoTriggerDelay("1") },
         { text: "3 seconds (default)", onPress: () => handleSetAutoTriggerDelay("3") },
         { text: "5 seconds", onPress: () => handleSetAutoTriggerDelay("5") },
         { text: "Cancel", style: "cancel" },
@@ -947,6 +958,7 @@ export default function ProfileScreen() {
         onDefaultActionChange={(val) => updateSettings({ defaultCardAction: val ?? undefined })}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
+        onAutoTriggerDelayChange={handleSetAutoTriggerDelay}
         hasCustomisedCountdown={hasCustomisedCountdown}
       />
 

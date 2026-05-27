@@ -227,6 +227,13 @@ interface Props {
   /** Called whenever the user toggles the long-press-and-run switch. */
   onLongPressAndRunChange?: (val: boolean) => void;
   /**
+   * Called whenever the user picks a new auto-trigger delay inside the modal.
+   * Receives the string value ("off" | "1" | "3" | "5").
+   * When provided the parent can persist the value to the cloud alongside other
+   * synced preferences so the setting roams across devices.
+   */
+  onAutoTriggerDelayChange?: (val: string) => void;
+  /**
    * Whether the user has ever opened the countdown picker.
    * When true the banner shows "Xs · Change" instead of plain "Change",
    * reassuring power users that their chosen delay is still in effect.
@@ -1359,6 +1366,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   onDefaultActionChange,
   initialLongPressAndRun,
   onLongPressAndRunChange,
+  onAutoTriggerDelayChange,
   hasCustomisedCountdown = false,
 }: Props, ref) {
   const colors = useColors();
@@ -5126,10 +5134,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       key={val}
                       onPress={() => {
                         setAutoTriggerDelay(val);
+                        const delayStr = val === 0 ? "off" : String(val);
                         AsyncStorage.setItem(
                           STORAGE_KEY_AUTO_TRIGGER_DELAY,
-                          val === 0 ? "off" : String(val)
+                          delayStr
                         ).catch(() => {});
+                        if (onAutoTriggerDelayChange) {
+                          onAutoTriggerDelayChange(delayStr);
+                        }
                         // If the countdown is active (running or paused while app was
                         // backgrounded), sync it to the new duration immediately so the
                         // bar drain rate stays proportional, or cancel it if "Off" was chosen.
