@@ -2331,6 +2331,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   useEffect(() => {
     if (autoTriggerCountdown !== null && selectedAction !== null) {
       const requiresPhotoAccess = selectedAction === "save" || selectedAction === "both";
+      if (requiresPhotoAccess && cameraRollStatus === "restricted") {
+        cancelAutoTrigger();
+        showConfirmation(
+          "Photo access restricted by device policy — contact your admin",
+          "error",
+          "lock-closed-outline",
+        );
+        return;
+      }
       if (requiresPhotoAccess && cameraRollStatus === "denied") {
         cancelAutoTrigger();
         showConfirmation("Photo access needed — countdown cancelled", "error", "lock-closed-outline");
@@ -2611,6 +2620,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           : "layers-outline";
       showConfirmation(msg, "success", icon);
     } catch (err) {
+      // "PERMISSION_RESTRICTED" means a managed-device policy blocks access.
+      // Show a non-actionable message — no "Open Settings" link.
+      if (err instanceof Error && err.message === "PERMISSION_RESTRICTED") {
+        showConfirmation(
+          "Photo access restricted by device policy — contact your admin",
+          "error",
+          "lock-closed-outline",
+        );
+        return;
+      }
+
       // "PERMISSION_DENIED" is a sentinel from the parent — show an inline error
       // toast with a tappable "Open Settings" link instead of a modal Alert.
       if (err instanceof Error && err.message === "PERMISSION_DENIED") {

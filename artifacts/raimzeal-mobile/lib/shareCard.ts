@@ -27,8 +27,14 @@ export interface PermissionOptions {
 /**
  * Resolves camera roll permission using a cached value when available.
  * Returns true if permission is granted, false otherwise (caller handles UI).
+ * Throws an error with message "PERMISSION_RESTRICTED" when the device policy
+ * prevents access — callers should surface a non-actionable admin message.
  */
 async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
+  if (opts?.cachedStatus === "restricted") {
+    throw new Error("PERMISSION_RESTRICTED");
+  }
+
   if (opts?.cachedStatus === "granted") {
     return true;
   }
@@ -49,6 +55,12 @@ async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
     resolved = status as CameraRollPermissionStatus;
   }
   opts?.onStatusChange?.(resolved);
+
+  // Device policy restriction discovered at runtime — surface the same
+  // non-actionable sentinel as the cached path.
+  if (resolved === "restricted") {
+    throw new Error("PERMISSION_RESTRICTED");
+  }
 
   return resolved === "granted";
 }

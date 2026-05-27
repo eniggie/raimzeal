@@ -769,15 +769,22 @@ export default function ProfileScreen() {
             await captureAndShareCard(cardRef);
             resolve();
           }
-        } catch {
-          const label =
-            action === "save" ? "Couldn't save — check your permissions" :
-            action === "both" ? "Couldn't save or share the card" :
-            action === "copy" ? "Couldn't copy to clipboard" :
-            "Couldn't open share sheet";
-          // Reject with a descriptive message; the modal shows it as an inline
-          // error toast. No Alert here — the toast is the primary feedback.
-          reject(new Error(label));
+        } catch (err) {
+          // Preserve sentinel errors so the modal can show the correct message.
+          // PERMISSION_RESTRICTED → managed-device policy message (no Settings CTA)
+          // PERMISSION_DENIED    → "Open Settings" toast
+          if (err instanceof Error && (err.message === "PERMISSION_RESTRICTED" || err.message === "PERMISSION_DENIED")) {
+            reject(err);
+          } else {
+            const label =
+              action === "save" ? "Couldn't save — check your permissions" :
+              action === "both" ? "Couldn't save or share the card" :
+              action === "copy" ? "Couldn't copy to clipboard" :
+              "Couldn't open share sheet";
+            // Reject with a descriptive message; the modal shows it as an inline
+            // error toast. No Alert here — the toast is the primary feedback.
+            reject(new Error(label));
+          }
         } finally {
           setSaveLoading(false);
           setShareLoading(false);
