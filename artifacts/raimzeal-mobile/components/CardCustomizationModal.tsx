@@ -1470,6 +1470,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const hasPulsedDefaultRef = useRef(false);
   const hasUserTappedRef = useRef(false);
   const secondPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const thirdPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
@@ -2049,6 +2050,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         clearTimeout(secondPulseTimerRef.current);
         secondPulseTimerRef.current = null;
       }
+      if (thirdPulseTimerRef.current !== null) {
+        clearTimeout(thirdPulseTimerRef.current);
+        thirdPulseTimerRef.current = null;
+      }
       defaultActionPulseAnim.setValue(1);
       // Clean up any pending auto-trigger when the modal closes
       if (autoTriggerIntervalRef.current !== null) {
@@ -2266,6 +2271,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.timing(defaultActionPulseAnim, { toValue: 1.03, duration: 200, useNativeDriver: true }),
         Animated.timing(defaultActionPulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
+      // Schedule the third ultra-subtle pulse ~4 s after mount (2500 ms after the second)
+      thirdPulseTimerRef.current = setTimeout(() => {
+        thirdPulseTimerRef.current = null;
+        if (hasUserTappedRef.current) return;
+        if (reduceMotionRef.current) return;
+        Animated.sequence([
+          Animated.timing(defaultActionPulseAnim, { toValue: 1.02, duration: 250, useNativeDriver: true }),
+          Animated.timing(defaultActionPulseAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        ]).start();
+      }, 2500);
     }, 1500);
   }, [defaultAction, visible]);
 
@@ -4802,6 +4817,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         if (secondPulseTimerRef.current !== null) {
                           clearTimeout(secondPulseTimerRef.current);
                           secondPulseTimerRef.current = null;
+                        }
+                        if (thirdPulseTimerRef.current !== null) {
+                          clearTimeout(thirdPulseTimerRef.current);
+                          thirdPulseTimerRef.current = null;
                         }
                         if (!anyStatEnabled) {
                           showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
