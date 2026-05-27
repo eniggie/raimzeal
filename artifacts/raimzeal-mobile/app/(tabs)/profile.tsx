@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Animated,
@@ -133,6 +134,7 @@ export default function ProfileScreen() {
   const profileScrollRef = useRef<ScrollView>(null);
   const settingsCardYRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
+  const countdownHighlightAnim = useRef(new Animated.Value(0)).current;
   const cardModalRef = useRef<CardCustomizationModalHandle>(null);
   const { scrollTo, openCard } = useLocalSearchParams<{ scrollTo?: string; openCard?: string }>();
 
@@ -168,14 +170,31 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (scrollTo !== "countdown") return;
-    const timeout = setTimeout(() => {
+    const scrollTimeout = setTimeout(() => {
       profileScrollRef.current?.scrollTo({
         y: settingsCardYRef.current + countdownRowYRef.current,
         animated: true,
       });
     }, 350);
-    return () => clearTimeout(timeout);
-  }, [scrollTo]);
+    const highlightTimeout = setTimeout(() => {
+      countdownHighlightAnim.setValue(0);
+      AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+        if (reduceMotion) {
+          countdownHighlightAnim.setValue(1);
+          setTimeout(() => countdownHighlightAnim.setValue(0), 1200);
+        } else {
+          Animated.sequence([
+            Animated.timing(countdownHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+            Animated.timing(countdownHighlightAnim, { toValue: 0, duration: 800, useNativeDriver: false }),
+          ]).start();
+        }
+      });
+    }, 650);
+    return () => {
+      clearTimeout(scrollTimeout);
+      clearTimeout(highlightTimeout);
+    };
+  }, [scrollTo, countdownHighlightAnim]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1203,7 +1222,16 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={handlePickDefaultCardAction}
             />
-            <View onLayout={(e) => { countdownRowYRef.current = e.nativeEvent.layout.y; }}>
+            <Animated.View
+              onLayout={(e) => { countdownRowYRef.current = e.nativeEvent.layout.y; }}
+              style={{
+                backgroundColor: countdownHighlightAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["rgba(99,179,237,0)", "rgba(99,179,237,0.22)"],
+                }),
+                borderRadius: 10,
+              }}
+            >
               <SettingPickerRow
                 icon="hourglass-outline"
                 label="Auto-generate countdown"
@@ -1212,7 +1240,7 @@ export default function ProfileScreen() {
                 color={colors.accent}
                 onPress={handlePickAutoTriggerDelay}
               />
-            </View>
+            </Animated.View>
             <SettingPickerRow
               icon="timer-outline"
               label="Undo window duration"
