@@ -78,12 +78,12 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
     setFreezeLoading(false);
     setTimeout(() => setFreezeMsg(''), 3500);
   }
-  const todayWater = state.waterIntake.find(w => w.date === today)?.glasses || 0;
-  const todayMeals = state.mealLogs.filter(m => m.date === today);
+  const todayWater = (state.waterIntake ?? []).find(w => w.date === today)?.glasses || 0;
+  const todayMeals = (state.mealLogs ?? []).filter(m => m.date === today);
   const todayCalories = todayMeals.reduce((sum, m) => sum + m.calories, 0);
   const todayProtein = todayMeals.reduce((sum, m) => sum + m.protein, 0);
   
-  const scheduledToday = state.scheduledWorkouts.find(s => s.date === today);
+  const scheduledToday = (state.scheduledWorkouts ?? []).find(s => s.date === today);
   const scheduledWorkout = scheduledToday 
     ? workouts.find(w => w.id === scheduledToday.workoutId) 
     : null;
@@ -95,7 +95,7 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     const dateStr = d.toISOString().split('T')[0];
-    const dayMeals = state.mealLogs.filter(m => m.date === dateStr);
+    const dayMeals = (state.mealLogs ?? []).filter(m => m.date === dateStr);
     return {
       day: d.toLocaleDateString('en-US', { weekday: 'short' }),
       calories: dayMeals.reduce((sum, m) => sum + m.calories, 0),

@@ -59,13 +59,13 @@ async function saveWithRetry(
 
 function buildUserContext(state: AppState) {
   const today = new Date().toISOString().split('T')[0];
-  const todayMeals = state.mealLogs.filter((m) => m.date === today);
+  const todayMeals = (state.mealLogs ?? []).filter((m) => m.date === today);
   const todayCalories = todayMeals.reduce((s, m) => s + m.calories, 0);
   const todayProtein = todayMeals.reduce((s, m) => s + m.protein, 0);
   const todayCarbs = todayMeals.reduce((s, m) => s + m.carbs, 0);
   const todayFat = todayMeals.reduce((s, m) => s + m.fat, 0);
-  const todayWater = state.waterIntake.find((w) => w.date === today)?.glasses ?? 0;
-  const latestMeasurement = state.bodyMeasurements[0] ?? null;
+  const todayWater = (state.waterIntake ?? []).find((w) => w.date === today)?.glasses ?? 0;
+  const latestMeasurement = (state.bodyMeasurements ?? [])[0] ?? null;
 
   const mealBreakdown = todayMeals.reduce<Record<string, { count: number; calories: number }>>(
     (acc, m) => {
@@ -78,7 +78,7 @@ function buildUserContext(state: AppState) {
     {}
   );
 
-  const recentWorkouts = state.workoutLogs.slice(0, 5).map((w) => ({
+  const recentWorkouts = (state.workoutLogs ?? []).slice(0, 5).map((w) => ({
     name: w.workoutName,
     calories: w.caloriesBurned,
     date: w.date,

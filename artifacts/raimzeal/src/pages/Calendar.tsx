@@ -30,7 +30,7 @@ export function Calendar({ state, onScheduleWorkout }: CalendarProps) {
   const today = new Date().toISOString().split('T')[0];
 
   const getWorkoutsForDate = (dateStr: string) => {
-    return state.scheduledWorkouts.filter(s => s.date === dateStr);
+    return (state.scheduledWorkouts ?? []).filter(s => s.date === dateStr);
   };
 
   const handleSchedule = (workoutId: string) => {

@@ -113,17 +113,17 @@ function AppContent() {
 
   // Sync theme
   useEffect(() => {
-    if (state.settings.darkMode) {
+    if (state.settings?.darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [state.settings.darkMode]);
+  }, [state.settings?.darkMode]);
 
   useEffect(() => {
     document.documentElement.classList.remove('text-size-small', 'text-size-medium', 'text-size-large');
-    document.documentElement.classList.add(`text-size-${state.settings.textSize}`);
-  }, [state.settings.textSize]);
+    document.documentElement.classList.add(`text-size-${state.settings?.textSize ?? 'medium'}`);
+  }, [state.settings?.textSize]);
 
   // Auto-complete onboarding from metadata saved during Onboarding signup flow.
   // Only runs when the user has full fitness data (age/height/weight/goals) stored in metadata.

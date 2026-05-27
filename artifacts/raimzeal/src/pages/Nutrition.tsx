@@ -369,9 +369,9 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   }
 
   const today = new Date().toISOString().split('T')[0];
-  const todayWater = state.waterIntake.find(w => w.date === today)?.glasses ?? 0;
+  const todayWater = (state.waterIntake ?? []).find(w => w.date === today)?.glasses ?? 0;
   const waterGoal = 8;
-  const mealsForDate = state.mealLogs.filter(m => m.date === selectedDate);
+  const mealsForDate = (state.mealLogs ?? []).filter(m => m.date === selectedDate);
   
   const totals = mealsForDate.reduce((acc, meal) => ({
     calories: acc.calories + meal.calories,
@@ -448,7 +448,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     const dateStr = d.toISOString().split('T')[0];
-    const dayMeals = state.mealLogs.filter(m => m.date === dateStr);
+    const dayMeals = (state.mealLogs ?? []).filter(m => m.date === dateStr);
     return {
       day: d.toLocaleDateString('en-US', { weekday: 'short' }),
       calories: dayMeals.reduce((s, m) => s + m.calories, 0),

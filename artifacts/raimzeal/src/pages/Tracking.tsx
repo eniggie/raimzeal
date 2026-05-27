@@ -58,11 +58,11 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
       weight: m.weight,
     }));
 
-  const latestWeight = state.bodyMeasurements[0]?.weight || state.user?.weight || 0;
-  const previousWeight = state.bodyMeasurements[1]?.weight || latestWeight;
+  const latestWeight = (state.bodyMeasurements ?? [])[0]?.weight || state.user?.weight || 0;
+  const previousWeight = (state.bodyMeasurements ?? [])[1]?.weight || latestWeight;
   const weightChange = latestWeight - previousWeight;
 
-  const workoutsThisWeek = state.workoutLogs.filter(log => {
+  const workoutsThisWeek = (state.workoutLogs ?? []).filter(log => {
     const logDate = new Date(log.date);
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -252,7 +252,7 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
               {(() => {
                 const cutoff = new Date();
                 cutoff.setDate(cutoff.getDate() - (workoutRange === 'week' ? 7 : 30));
-                const filtered = state.workoutLogs.filter(l => new Date(l.date) >= cutoff);
+                const filtered = (state.workoutLogs ?? []).filter(l => new Date(l.date) >= cutoff);
                 const totalMins = filtered.reduce((s, l) => s + l.duration, 0);
                 const totalCal = filtered.reduce((s, l) => s + l.caloriesBurned, 0);
 
@@ -330,7 +330,7 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
             </TabsContent>
 
             <TabsContent value="prs" className="mt-4 space-y-3">
-              {state.personalRecords.map((pr, i) => (
+              {(state.personalRecords ?? []).map((pr, i) => (
                 <Card key={i} className="p-3" data-testid={`card-pr-${i}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
