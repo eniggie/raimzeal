@@ -210,6 +210,15 @@ interface Props {
    */
   initialBadgeDismissed?: boolean;
   /**
+   * Cloud-backed initial value of the preferred action.
+   * When provided it overrides AsyncStorage on first open, ensuring the
+   * setting is restored correctly on a fresh device / reinstall.
+   * Pass `null` to indicate the user has explicitly cleared their preference.
+   */
+  initialDefaultAction?: CardAction | null;
+  /** Called whenever the user sets or clears their preferred action. */
+  onDefaultActionChange?: (val: CardAction | null) => void;
+  /**
    * Cloud-backed initial value of the long-press-and-run preference.
    * When provided it overrides AsyncStorage on first open, ensuring the
    * setting is restored correctly on a fresh device / reinstall.
@@ -1346,6 +1355,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   cardPreviewData,
   onBadgeDismiss,
   initialBadgeDismissed,
+  initialDefaultAction,
+  onDefaultActionChange,
   initialLongPressAndRun,
   onLongPressAndRunChange,
   hasCustomisedCountdown = false,
@@ -2192,9 +2203,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         setBadgeDismissed(dismissedFlag === "1" || initialBadgeDismissed === true);
         setChipDismissCount(parseInt(savedChipDismissCount ?? "0", 10) || 0);
         const validActions: CardAction[] = ["share", "save", "both", "copy"];
-        const resolvedAction = validActions.includes(savedAction as CardAction)
+        const asyncStorageAction = validActions.includes(savedAction as CardAction)
           ? (savedAction as CardAction)
           : null;
+        // Preferred action: cloud value (initialDefaultAction) wins when provided
+        // (authenticated user on a fresh device); fall back to AsyncStorage.
+        const resolvedAction = initialDefaultAction !== undefined
+          ? initialDefaultAction
+          : asyncStorageAction;
         setDefaultAction(resolvedAction);
         setSelectedAction(resolvedAction);
 
@@ -2564,6 +2580,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {
       // best-effort — never block the primary action
     });
+    onDefaultActionChange?.(action);
     setDefaultAction(action);
     setSelectedAction(action);
     try {
@@ -2763,6 +2780,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       setDefaultAction(action);
                       setSelectedAction(action);
                       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+                      onDefaultActionChange?.(action);
                       showConfirmation(`★ ${label} set as preferred`, "success");
                     },
                   },
@@ -2776,6 +2794,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             onPress: () => {
               setDefaultAction(null);
               AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
+              onDefaultActionChange?.(null);
               // Restore the long-press hint so the user knows they can set one again
               AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
               setShowLongPressHint(true);
@@ -2793,6 +2812,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setDefaultAction(action);
       setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+      onDefaultActionChange?.(action);
       showConfirmation(
         isSwitching ? `Switched to ★ ${label} · generating…` : `★ ${label} set as default · generating…`,
         "success", undefined, undefined, undefined, undefined, undefined, undefined, true
@@ -2817,6 +2837,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               setDefaultAction(action);
               setSelectedAction(action);
               AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
+              onDefaultActionChange?.(action);
               showConfirmation(`★ ${label} set as preferred`, "success");
             },
           },
@@ -5184,6 +5205,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                             if (active) {
                               setDefaultAction(null);
                               AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
+                              onDefaultActionChange?.(null);
                               AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
                               setShowLongPressHint(true);
                               showConfirmation("Preference cleared", "success");
@@ -5191,6 +5213,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                               setDefaultAction(key);
                               setSelectedAction(key);
                               AsyncStorage.setItem(STORAGE_KEY_ACTION, key).catch(() => {});
+                              onDefaultActionChange?.(key);
                               showConfirmation(`★ ${label} set as preferred`, "success");
                             }
                           }}

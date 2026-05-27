@@ -943,6 +943,8 @@ export default function ProfileScreen() {
         cardPreviewData={cardProps}
         onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
+        initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : undefined}
+        onDefaultActionChange={(val) => updateSettings({ defaultCardAction: val ?? undefined })}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
         hasCustomisedCountdown={hasCustomisedCountdown}
