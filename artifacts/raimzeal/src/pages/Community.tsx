@@ -90,38 +90,41 @@ export function Community() {
   const [commentPosting, setCommentPosting] = useState<Set<string>>(new Set());
 
   const loadPosts = useCallback(async (tab: 'feed' | 'inner-circle' = communityTab) => {
-    if (!supabaseConfigured) { setLoading(false); return; }
     setLoading(true);
     setFetchError('');
     try {
-      const { data, error } = await supabase
-        .from('community_posts')
-        .select('id, user_id, user_name, content, post_type, likes_count, comments_count, created_at, image_url')
-        .eq('is_legacy_post', tab === 'inner-circle')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      const rows = data ?? [];
+      const legacyOnly = tab === 'inner-circle';
+      const url = `/api/community/posts${legacyOnly ? '?legacyOnly=true' : ''}`;
 
-      const uniqueUserIds = [...new Set(rows.map(p => p.user_id as string))];
-      const tierMap: Record<string, string> = {};
-      if (uniqueUserIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, subscription_tier')
-          .in('id', uniqueUserIds);
-        for (const p of profiles ?? []) {
-          const raw = p as Record<string, unknown>;
-          tierMap[raw['id'] as string] = (raw['subscription_tier'] as string | null) ?? 'foundation';
-        }
+      // Inner Circle requires a Bearer token; attach one if available
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (legacyOnly && supabaseConfigured) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+        throw new Error((body['error'] as string) || `HTTP ${res.status}`);
+      }
+      const body = await res.json() as { posts: Array<Record<string, unknown>> };
+      const rows = body.posts ?? [];
+
       setPosts(rows.map(p => ({
-        ...p,
-        author_tier: tierMap[p.user_id] ?? 'foundation',
+        id: p['id'] as string,
+        user_id: p['userId'] as string,
+        user_name: p['userName'] as string,
+        content: p['content'] as string,
+        post_type: p['postType'] as string,
+        likes_count: p['likesCount'] as number,
+        comments_count: p['commentsCount'] as number,
+        created_at: p['createdAt'] as string,
+        image_url: (p['imageUrl'] as string | null) ?? null,
+        author_tier: (p['authorTier'] as string) ?? 'foundation',
         _localLiked: false,
-        _localLikes: p.likes_count,
-        _localCommentCount: p.comments_count,
+        _localLikes: p['likesCount'] as number,
+        _localCommentCount: p['commentsCount'] as number,
       })));
     } catch {
       setFetchError("Couldn't load posts. Check your connection and try again.");
