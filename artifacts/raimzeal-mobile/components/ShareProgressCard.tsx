@@ -452,13 +452,11 @@ const ShareProgressCardBase = forwardRef<View, ShareProgressCardProps>(
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
-            <View style={[styles.logoBox, { backgroundColor: theme.accent }]}>
-              <Image
-                source={require("@/assets/images/icon.png")}
-                style={styles.logoImage}
-                resizeMode="cover"
-              />
-            </View>
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <View>
               <Text style={styles.brandName}>RAIMZEAL</Text>
               <Text style={[styles.brandTagline, { color: theme.accent }]}>PROGRESS REPORT</Text>
