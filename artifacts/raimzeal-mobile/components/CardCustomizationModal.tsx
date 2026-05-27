@@ -1229,6 +1229,10 @@ const PresetChipItem = memo(function PresetChipItem({
             customMessage={preset.customMessage}
             themeId={preset.themeId}
             renderScale={PRESET_THUMB_SCALE}
+            backgroundPhotoUri={preset.backgroundPhotoUri}
+            backgroundPhotoCrop={preset.backgroundPhotoCrop}
+            backgroundPhotoDimLevel={preset.backgroundPhotoDimLevel}
+            backgroundPhotoBlurRadius={preset.backgroundPhotoBlurRadius}
           />
         </View>
         {preset.backgroundPhotoUri ? (
