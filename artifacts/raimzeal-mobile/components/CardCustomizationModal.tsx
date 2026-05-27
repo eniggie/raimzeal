@@ -1150,7 +1150,7 @@ interface PresetChipItemProps {
   cardPreviewData: CardPreviewData;
   colors: ReturnType<typeof useColors>;
   onPress: (preset: CardPreset, originRect: PresetOriginRect) => void;
-  onLongPress: () => void;
+  onLongPress: (preset: CardPreset) => void;
   onDelete: (id: string) => void;
   chipRefSetter?: (el: React.ElementRef<typeof TouchableOpacity> | null) => void;
 }
@@ -1202,7 +1202,7 @@ const PresetChipItem = memo(function PresetChipItem({
           onPress(preset, { x: 0, y: 0, width: 0, height: 0 });
         }
       }}
-      onLongPress={onLongPress}
+      onLongPress={() => onLongPress(preset)}
       delayLongPress={350}
       activeOpacity={0.75}
       style={styles.presetChip}
@@ -1468,7 +1468,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [presetNameInput, setPresetNameInput] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
+  const [renameTargetPreset, setRenameTargetPreset] = useState<CardPreset | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [renamingPreset, setRenamingPreset] = useState(false);
   const presetNameRef = useRef<TextInput>(null);
+  const renameInputRef = useRef<TextInput>(null);
   const inlineSaveRef = useRef<View>(null);
 
   // When the active preset changes, clear any stale draft so the next
@@ -3348,9 +3352,23 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     showUndoToast(preset, index);
   }
 
-  function onPresetLongPress() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setReorderMode(true);
+  async function handleRenameConfirm() {
+    const name = renameInput.trim();
+    if (!name || !renameTargetPreset) return;
+    setRenamingPreset(true);
+    const updatedPresets = presets.map((p) =>
+      p.id === renameTargetPreset.id ? { ...p, name } : p
+    );
+    await savePresets(updatedPresets);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setPresets(updatedPresets);
+    if (renameTargetPreset.id === activePresetId) {
+      setPresetSavedAt(Date.now());
+    }
+    setRenamingPreset(false);
+    setRenameTargetPreset(null);
+    setRenameInput("");
+    showConfirmation(`Renamed to "${name}"`, "success");
   }
 
   function scrollToStatToggles() {
@@ -3874,7 +3892,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     []
   );
 
-  const stableOnPresetLongPress = useCallback(() => setReorderMode(true), []);
+  const stableOnPresetLongPress = useCallback((preset: CardPreset) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setRenameTargetPreset(preset);
+    setRenameInput(preset.name);
+    setTimeout(() => renameInputRef.current?.focus(), 150);
+  }, []);
 
   const handleThemeChangeRef = useRef(handleThemeChange);
   handleThemeChangeRef.current = handleThemeChange;
@@ -3983,22 +4006,38 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginBottom: 0 }]}>
                 PRESETS
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  if (showInlineSave) {
-                    setShowInlineSave(false);
-                    setPresetNameInput("");
-                  } else {
-                    openInlineSave();
-                  }
-                }}
-                style={[styles.savePresetBtn, { backgroundColor: showInlineSave ? colors.muted : colors.primary + "18", borderColor: showInlineSave ? colors.border : colors.primary + "40" }]}
-              >
-                <Ionicons name={showInlineSave ? "close-outline" : activePresetId ? "save-outline" : "add-circle-outline"} size={13} color={showInlineSave ? colors.mutedForeground : colors.primary} />
-                <Text style={[styles.savePresetBtnText, { color: showInlineSave ? colors.mutedForeground : colors.primary }]}>
-                  {showInlineSave ? "Cancel" : activePresetId ? "Update Preset" : "Save Preset"}
-                </Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {presets.length > 1 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setReorderMode(true);
+                    }}
+                    style={[styles.savePresetBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  >
+                    <Ionicons name="reorder-three-outline" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.savePresetBtnText, { color: colors.mutedForeground }]}>
+                      Manage
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    if (showInlineSave) {
+                      setShowInlineSave(false);
+                      setPresetNameInput("");
+                    } else {
+                      openInlineSave();
+                    }
+                  }}
+                  style={[styles.savePresetBtn, { backgroundColor: showInlineSave ? colors.muted : colors.primary + "18", borderColor: showInlineSave ? colors.border : colors.primary + "40" }]}
+                >
+                  <Ionicons name={showInlineSave ? "close-outline" : activePresetId ? "save-outline" : "add-circle-outline"} size={13} color={showInlineSave ? colors.mutedForeground : colors.primary} />
+                  <Text style={[styles.savePresetBtnText, { color: showInlineSave ? colors.mutedForeground : colors.primary }]}>
+                    {showInlineSave ? "Cancel" : activePresetId ? "Update Preset" : "Save Preset"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {presets.length === 0 ? (
@@ -4086,7 +4125,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 </View>
                 {presets.length > 1 && settings.reorderHintFrequency !== "never" && (
                   <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
-                    Long-press any preset to reorder
+                    Long-press to rename · Manage to reorder
                   </Text>
                 )}
               </>
@@ -5581,6 +5620,98 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             </>
           )}
         </Animated.View>
+      </Modal>
+
+      {/* Inline rename prompt */}
+      <Modal
+        visible={!!renameTargetPreset}
+        animationType="fade"
+        transparent
+        onRequestClose={() => { setRenameTargetPreset(null); setRenameInput(""); }}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center" }}
+          activeOpacity={1}
+          onPress={() => { setRenameTargetPreset(null); setRenameInput(""); }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={{
+              width: 300,
+              borderRadius: 16,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 20,
+              gap: 14,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+              Rename preset
+            </Text>
+            <TextInput
+              ref={renameInputRef}
+              value={renameInput}
+              onChangeText={setRenameInput}
+              placeholder="Preset name"
+              placeholderTextColor={colors.mutedForeground}
+              maxLength={32}
+              returnKeyType="done"
+              onSubmitEditing={handleRenameConfirm}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontSize: 14,
+                fontFamily: "Inter_400Regular",
+                color: colors.foreground,
+                backgroundColor: colors.background,
+              }}
+            />
+            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "right", marginTop: -8 }}>
+              {renameInput.trim().length}/32
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setRenameTargetPreset(null); setRenameInput(""); }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: colors.muted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleRenameConfirm}
+                disabled={!renameInput.trim() || renamingPreset}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: "center",
+                  backgroundColor: renameInput.trim() ? colors.primary : colors.muted,
+                }}
+              >
+                {renamingPreset ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: renameInput.trim() ? colors.primaryForeground : colors.mutedForeground }}>
+                    Save
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       <CropPhotoModal
