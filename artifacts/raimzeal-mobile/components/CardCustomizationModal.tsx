@@ -1443,6 +1443,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Monotonically-increasing session counter; callbacks check against this so
   // any in-flight fade from a prior session becomes a no-op.
   const autoTriggerSessionIdRef = useRef(0);
+  // Refs that mirror the active countdown's action and delay so resetAutoTriggerOnInteraction
+  // can restart the countdown without stale closures.
+  const autoTriggerActiveActionRef = useRef<CardAction | null>(null);
+  const autoTriggerActiveDelayRef = useRef<number>(0);
   // Keep a ref to always call the latest handleGenerate (avoids stale closure in interval)
   const handleGenerateRef = useRef<((action: CardAction) => Promise<void>) | null>(null);
   // Tracks the current visible prop so the interval can guard against firing after close
@@ -2331,6 +2335,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function handleMessageChange(text: string) {
+    // Each keystroke counts as interaction — reset the auto-trigger countdown so the
+    // timer doesn't fire while the user is still typing their custom message.
+    resetAutoTriggerOnInteraction();
     const wasEmpty = customMessage === '';
     const isEmpty = text === '';
     setCustomMessage(text);
@@ -2489,6 +2496,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   hideAutoTriggerBannerRef.current = hideAutoTriggerBanner;
 
   function startAutoTrigger(action: CardAction, delay: number) {
+    // Track the active countdown's parameters so resetAutoTriggerOnInteraction can restart it.
+    autoTriggerActiveActionRef.current = action;
+    autoTriggerActiveDelayRef.current = delay;
+
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
       autoTriggerIntervalRef.current = null;
@@ -2544,6 +2555,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         setAutoTriggerAction(effectiveAction);
       }
     }, 1000);
+  }
+
+  // Resets the auto-trigger countdown when the user interacts with the settings panel
+  // (scroll, touch, etc.), preventing accidental triggers while they are still deciding.
+  // Calling this when no countdown is active is a safe no-op.
+  function resetAutoTriggerOnInteraction() {
+    if (autoTriggerIntervalRef.current === null) return;
+    const action = autoTriggerActiveActionRef.current;
+    const delay = autoTriggerActiveDelayRef.current;
+    if (!action || delay <= 0) return;
+    startAutoTrigger(action, delay);
   }
 
   async function handleSetDefault(action: CardAction) {
@@ -3891,6 +3913,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               paddingBottom: bottomPad + 8,
             },
           ]}
+          onTouchStart={resetAutoTriggerOnInteraction}
         >
           {/* Handle bar */}
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
@@ -3942,7 +3965,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             scrollEnabled={!reorderMode}
-            onScrollBeginDrag={() => { if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); } }}
+            onScrollBeginDrag={() => {
+              resetAutoTriggerOnInteraction();
+              if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
+            }}
           >
             <View
               onStartShouldSetResponder={() => showInlineSave}
@@ -4442,7 +4468,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               <TextInput
                 value={customMessage}
                 onChangeText={handleMessageChange}
-                onFocus={() => { if (showInlineSave) setShowInlineSave(false); }}
+                onFocus={() => {
+                  resetAutoTriggerOnInteraction();
+                  if (showInlineSave) setShowInlineSave(false);
+                }}
                 placeholder="Add a motivational quote or personal note…"
                 placeholderTextColor={colors.mutedForeground}
                 maxLength={120}
