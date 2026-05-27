@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAuth, optionalAuth } from "../middleware/auth";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
 import { randomUUID } from "crypto";
-import { getUserTier } from "../lib/tier";
 
 // Supabase project URL — fall back to the known project ref if the env var
 // contains the anon key value instead of the URL (a common misconfiguration).
@@ -96,16 +95,11 @@ communityRouter.get(
       ? (q["postType"] as (typeof validTypes)[number])
       : undefined;
 
-    // Inner Circle is private — requires an authenticated Legacy member.
+    // Inner Circle is visible to all authenticated users.
     if (legacyOnly) {
       const userId = (req as any).userId as string | undefined;
       if (!userId) {
         res.status(401).json({ error: "Authentication required" });
-        return;
-      }
-      const userTier = await getUserTier(userId);
-      if (userTier !== "legacy") {
-        res.status(403).json({ error: "Inner Circle requires Legacy membership" });
         return;
       }
     }

@@ -11,6 +11,71 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck-api"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck-mobile"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "typecheck-web"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "healthcheck"
+
+[[workflows.workflow]]
+name = "typecheck-api"
+author = "agent"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run typecheck"
+
+[[workflows.workflow]]
+name = "typecheck-mobile"
+author = "agent"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/raimzeal-mobile run typecheck"
+
+[[workflows.workflow]]
+name = "typecheck-web"
+author = "agent"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/raimzeal run typecheck"
+
+[[workflows.workflow]]
+name = "healthcheck"
+author = "agent"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "curl -sf http://localhost:80/api/healthz && echo 'API healthy'"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true

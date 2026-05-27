@@ -101,7 +101,7 @@ export default function ProgressPhotosScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { tier: photoTier, loading: tierLoading } = useTier(session?.user?.id ?? null);
-  const canUploadPhotos = photoTier !== "foundation";
+  const canUploadPhotos = true;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);

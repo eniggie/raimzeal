@@ -127,8 +127,6 @@ export default function AdaptiveWorkoutScreen() {
   const [score, setScore] = useState<number | null>(null);
   const [suggestion, setSuggestion] = useState<SuggestedWorkout | null>(null);
 
-  const isReign = tier === "reign" || tier === "legacy";
-
   useEffect(() => {
     AsyncStorage.getItem(WELLNESS_PREFIX + todayKey()).then((raw) => {
       const today = new Date().toISOString().split("T")[0];
@@ -148,28 +146,6 @@ export default function AdaptiveWorkoutScreen() {
     });
   }, [workoutLogs]);
 
-  if (!isReign) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerRow, { paddingTop: topPad + 16 }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="chevron-back" size={26} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Adaptive Workouts</Text>
-        </View>
-        <View style={styles.gateWrap}>
-          <Ionicons name="barbell-outline" size={48} color="#3b82f6" />
-          <Text style={[styles.gateTitle, { color: colors.foreground }]}>Reign Plan & Above</Text>
-          <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            AI-driven workout suggestions based on your daily readiness score — available on the Reign plan ($19.99/mo).
-          </Text>
-          <AnimatedPressable onPress={() => router.push("/membership")} style={[styles.gateBtn, { backgroundColor: "#3b82f6" }]} scale={0.97}>
-            <Text style={styles.gateBtnText}>Upgrade to Reign</Text>
-          </AnimatedPressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <>

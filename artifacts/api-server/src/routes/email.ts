@@ -5,7 +5,7 @@ import { db, digestSubscribers } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { emailSendRateLimit, emailVerifyRateLimit, emailSubscribeRateLimit, emailUnsubscribeRateLimit, digestSendNowRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
-import { getUserTier } from "../lib/tier";
+
 
 const emailRouter = Router();
 

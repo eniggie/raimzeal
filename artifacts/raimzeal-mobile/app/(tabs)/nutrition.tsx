@@ -1077,14 +1077,6 @@ export default function NutritionScreen() {
         inRange.push({ date, value: val });
       }
     }
-    if (userTierNutrition === "foundation") {
-      Alert.alert(
-        "Rise+ Feature",
-        "Advanced macro drilldown is available on Rise, Reign, and Legacy plans. Upgrade to see your per-day breakdown.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setMacroDrillDown({ label, macro, goal, color, badge, avgValue: avg, outOfRangeDays: outOfRange, inRangeDays: inRange });
   }

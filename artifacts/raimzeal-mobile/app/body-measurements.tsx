@@ -331,8 +331,8 @@ export default function BodyMeasurementsScreen() {
               </View>
             </View>
 
-            {/* Body Composition Insights — Reign+ exclusive */}
-            {isReign && sortedMeasurements.length >= 2 ? (() => {
+            {/* Body Composition Insights */}
+            {sortedMeasurements.length >= 2 ? (() => {
               const oldest = sortedMeasurements[sortedMeasurements.length - 1];
               const daysDiff = Math.max(1, (new Date(latest!.date).getTime() - new Date(oldest.date).getTime()) / (1000 * 60 * 60 * 24));
               const totalChange = latest!.weight - oldest.weight;
@@ -362,17 +362,7 @@ export default function BodyMeasurementsScreen() {
                   </Text>
                 </View>
               );
-            })() : !isReign ? (
-              <View style={[styles.insightsCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <View style={styles.insightsHeader}>
-                  <Ionicons name="lock-closed" size={16} color={colors.mutedForeground} />
-                  <Text style={[styles.insightsTitle, { color: colors.mutedForeground }]}>Body Composition Insights</Text>
-                </View>
-                <Text style={[styles.insightRow, { color: colors.mutedForeground }]}>
-                  Weight trends, BMI analysis, weekly rate of change and progress insights. Available on Reign & Legacy plans.
-                </Text>
-              </View>
-            ) : null}
+            })() : null}
 
             {sortedMeasurements.length > 0 && (
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>

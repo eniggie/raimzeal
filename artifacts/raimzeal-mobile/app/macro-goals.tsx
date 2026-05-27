@@ -203,9 +203,8 @@ export default function MacroGoalsScreen() {
           Set your personal daily nutrition targets. These are used for progress rings and macro tracking across the app.
         </Text>
 
-        {/* Suggested for you banner — Reign+ exclusive feature */}
+        {/* Suggested for you banner */}
         {suggested && (
-          isReign ? (
             <View
               style={[
                 styles.suggestionBanner,
@@ -333,22 +332,6 @@ export default function MacroGoalsScreen() {
                 )}
               </View>
             </View>
-          ) : (
-            <View style={[styles.suggestionBanner, { backgroundColor: colors.muted, borderColor: colors.border, opacity: 0.9 }]}>
-              <View style={[styles.suggestionIconWrap, { backgroundColor: colors.border }]}>
-                <Ionicons name="lock-closed" size={18} color={colors.mutedForeground} />
-              </View>
-              <View style={styles.suggestionBody}>
-                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
-                  Custom Macro Recommendations
-                </Text>
-                <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
-                  Personalised TDEE-based macro targets calculated from your profile. Available on Reign & Legacy plans.
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
-            </View>
-          )
         )}
 
         {/* Goal inputs */}

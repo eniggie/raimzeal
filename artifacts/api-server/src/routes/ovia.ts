@@ -401,25 +401,15 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
       }
     }
 
-    // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter
-    // Limits are tier-based: Foundation=10, Rise=200, Reign=500, Legacy=unlimited.
+    // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter.
+    // All users share the same generous daily limit on this free non-profit platform.
     const userId = (req as any).userId as string;
     const oviaModel = "gpt-4o-mini";
-    const userTier = await getUserTier(userId);
-    const oviaLimit =
-      userTier === "legacy" ? 100_000 :
-      userTier === "reign"  ? 500 :
-      userTier === "rise"   ? 200 :
-      10;
-    const oviaLimitLabel =
-      userTier === "legacy" ? "unlimited" :
-      userTier === "reign"  ? "500" :
-      userTier === "rise"   ? "200" :
-      "10";
+    const oviaLimit = 100;
     const quota = consumeUserDailyQuota(userId, oviaLimit);
     if (!quota.allowed) {
       res.status(429).json({
-        error: `Daily Ovia AI limit reached (${oviaLimitLabel} messages/day on your ${userTier} plan). Please try again tomorrow.`,
+        error: `Daily Ovia AI limit reached (${oviaLimit} messages/day). Please try again tomorrow.`,
         code: "OVIA_QUOTA_EXCEEDED",
         remaining: 0,
       });

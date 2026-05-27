@@ -99,7 +99,6 @@ export default function LegacyScreen() {
 
   // Load data when tab changes
   useEffect(() => {
-    if (tier !== "legacy") return;
     if (tab === "leaderboard") loadLeaderboard();
     else if (tab === "report") loadReport();
     else if (tab === "partner") loadPartner();
@@ -211,29 +210,6 @@ export default function LegacyScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  if (tier !== "legacy") {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={colors.foreground} />
-        </TouchableOpacity>
-        <View style={styles.gateWrap}>
-          <Ionicons name="trophy" size={56} color="#fbbf24" />
-          <Text style={[styles.gateTitle, { color: colors.foreground }]}>Legacy Exclusive</Text>
-          <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            These features are reserved for Legacy members — the highest level of the RAIMZEAL community.
-          </Text>
-          <TouchableOpacity
-            style={[styles.upgradeBtnGate, { backgroundColor: "#fbbf24" }]}
-            onPress={() => router.push("/membership")}
-          >
-            <Text style={styles.upgradeBtnText}>Upgrade to Legacy</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     );
   }

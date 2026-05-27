@@ -72,8 +72,6 @@ export default function MenopauseTrackerScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { tier, loading: tierLoading } = useTier(user?.id ?? null);
-  const isRise = tier === "rise" || tier === "reign" || tier === "legacy";
-
   const [data, setData] = useState<MenopauseData>({ entries: [] });
   const [loading, setLoading] = useState(true);
   const [logModal, setLogModal] = useState(false);
@@ -134,37 +132,6 @@ export default function MenopauseTrackerScreen() {
     );
   }
 
-  if (!isRise) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Menopause Tracker</Text>
-        </View>
-        <View style={styles.paywallContainer}>
-          <View style={[styles.paywallCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.paywallIcon, { backgroundColor: ACCENT + "20" }]}>
-              <Ionicons name="lock-closed" size={32} color={ACCENT} />
-            </View>
-            <Text style={[styles.paywallTitle, { color: colors.foreground }]}>Menopause Tracker</Text>
-            <Text style={[styles.paywallBody, { color: colors.mutedForeground }]}>
-              Track hot flashes, night sweats, mood, sleep, and 14 other symptoms daily to understand your body during menopause. Available on Rise, Reign & Legacy plans.
-            </Text>
-            <TouchableOpacity
-              style={[styles.upgradeBtn, { backgroundColor: ACCENT }]}
-              onPress={() => router.push("/membership")}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="star-outline" size={18} color="#fff" />
-              <Text style={styles.upgradeBtnText}>Upgrade to Rise</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  }
 
   const currentStage = STAGES.find((s) => s.id === data.stage);
   const freqMap: Record<string, number> = {};

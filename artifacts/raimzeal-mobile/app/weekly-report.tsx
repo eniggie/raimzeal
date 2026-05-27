@@ -93,8 +93,6 @@ export default function WeeklyReportScreen() {
   const [weekData, setWeekData] = useState<WeekData | null>(null);
   const [focusTip, setFocusTip] = useState("");
 
-  const isRise = tier === "rise" || tier === "reign" || tier === "legacy";
-
   useEffect(() => {
     const days = last7DayKeys();
     Promise.all([
@@ -151,28 +149,6 @@ export default function WeeklyReportScreen() {
     return `${start.toLocaleDateString("en", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en", { month: "short", day: "numeric" })}`;
   })();
 
-  if (!isRise) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerRow, { paddingTop: topPad + 16 }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="chevron-back" size={26} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Weekly Wellness Report</Text>
-        </View>
-        <View style={styles.gateWrap}>
-          <Ionicons name="bar-chart-outline" size={48} color={colors.primary} />
-          <Text style={[styles.gateTitle, { color: colors.foreground }]}>Rise Plan & Above</Text>
-          <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            Your weekly summary of workouts, nutrition, sleep, hydration, and readiness — available on the Rise plan ($9.99/mo).
-          </Text>
-          <AnimatedPressable onPress={() => router.push("/membership")} style={[styles.gateBtn, { backgroundColor: colors.primary }]} scale={0.97}>
-            <Text style={styles.gateBtnText}>Upgrade to Rise</Text>
-          </AnimatedPressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <ScrollView

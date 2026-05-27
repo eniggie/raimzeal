@@ -3,15 +3,12 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { logger } from "../lib/logger";
-import { getUserTier, canAccess } from "../lib/tier";
 
 const workoutLogsRouter = Router();
 
 workoutLogsRouter.get("/user/workout-logs", requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
-  const userTier = await getUserTier(userId);
-  // Rise+ gets extended history (up to 500). Foundation is capped at 90 entries.
-  const maxLimit = canAccess(userTier, "rise") ? 500 : 90;
+  const maxLimit = 500;
   const limit = Math.min(Number(req.query.limit) || 100, maxLimit);
   try {
     const { data, error } = await supabaseAdmin
@@ -21,7 +18,7 @@ workoutLogsRouter.get("/user/workout-logs", requireAuth, async (req, res) => {
       .order("date", { ascending: false })
       .limit(limit);
     if (error) throw error;
-    res.json({ logs: data ?? [], tier: userTier, historyLimit: maxLimit });
+    res.json({ logs: data ?? [], historyLimit: maxLimit });
   } catch (err) {
     logger.error({ err }, "GET /user/workout-logs error");
     res.status(500).json({ error: "Could not fetch workout logs." });

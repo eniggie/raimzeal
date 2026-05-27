@@ -803,10 +803,6 @@ export default function ProfileScreen() {
 
   function handleExportPdf() {
     if (pdfLoading) return;
-    if (tier === "foundation") {
-      Alert.alert("Rise+ Feature", "Data export is available on Rise, Reign, and Legacy plans. Upgrade to download your full health report.", [{ text: "OK" }]);
-      return;
-    }
     import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
       AsyncStorage.getItem("@nutrition_history_date_range").then((cv) => {
         setSavedHistoryDateRange(cv);
@@ -1782,32 +1778,15 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={() => router.push("/reminders")}
             />
-            {tier === "foundation" ? (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push("/membership")}
-                style={[styles.actionRow, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-              >
-                <View style={[styles.actionIconWrap, { backgroundColor: colors.primary + "20" }]}>
-                  <Ionicons name="mail-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={[styles.actionLabel, { color: colors.mutedForeground }]}>Weekly digest emails</Text>
-                <View style={{ backgroundColor: colors.primary + "20", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginRight: 4 }}>
-                  <Text style={{ fontSize: 11, fontFamily: "Inter_500Medium", color: colors.primary }}>Rise+</Text>
-                </View>
-                <Ionicons name="lock-closed-outline" size={14} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            ) : (
-              <SettingToggleRow
-                icon="mail-outline"
-                label="Weekly digest emails"
-                sublabel="Saturday digest + Wednesday mid-week boost"
-                color={colors.primary}
-                value={digestSubscribed}
-                onValueChange={handleDigestToggle}
-                loading={digestLoading}
-              />
-            )}
+            <SettingToggleRow
+              icon="mail-outline"
+              label="Weekly digest emails"
+              sublabel="Saturday digest + Wednesday mid-week boost"
+              color={colors.primary}
+              value={digestSubscribed}
+              onValueChange={handleDigestToggle}
+              loading={digestLoading}
+            />
             <ActionRow
               icon="shield-checkmark-outline"
               label="Privacy Policy"

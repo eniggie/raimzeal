@@ -123,14 +123,6 @@ export default function CommunityScreen() {
   const loadPosts = useCallback(
     async (tab: FeedTab = feedTab) => {
       setLoadError(false);
-      // Non-legacy users cannot access Inner Circle — skip the fetch entirely
-      // so we never hit the server's 403 gate for restricted content.
-      if (tab === "inner-circle" && !tierLoading && tier !== "legacy") {
-        setPosts([]);
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
       try {
         const isInnerCircle = tab === "inner-circle";
         const filter = tab === "questions" ? "question" : undefined;
@@ -787,23 +779,6 @@ export default function CommunityScreen() {
         })}
       </View>
 
-      {feedTab === "inner-circle" && tier !== "legacy" && (
-        <View style={[styles.centered, { padding: 32, gap: 12 }]}>
-          <Ionicons name="trophy" size={48} color="#fbbf24" />
-          <Text style={[styles.headerTitle, { color: colors.foreground, textAlign: "center", fontSize: 18 }]}>
-            Legacy Members Only
-          </Text>
-          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 13, lineHeight: 20, fontFamily: "Inter_400Regular" }}>
-            The Inner Circle is a private space for Legacy founders to connect, share insights, and support each other.
-          </Text>
-          <TouchableOpacity
-            style={{ backgroundColor: "#fbbf24", paddingHorizontal: 24, paddingVertical: 11, borderRadius: 12, marginTop: 4 }}
-            onPress={() => router.push("/membership")}
-          >
-            <Text style={{ color: "#000", fontFamily: "Inter_700Bold", fontSize: 14 }}>Upgrade to Legacy</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {loading ? (
         <View style={styles.centered}>
@@ -1043,10 +1018,6 @@ export default function CommunityScreen() {
               <TouchableOpacity
                 style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
                 onPress={() => {
-                  if (!tierLoading && tier === "foundation") {
-                    Alert.alert("Rise+ Feature", "Attaching images to community posts is available on Rise, Reign, and Legacy plans. Upgrade to unlock this feature.", [{ text: "OK" }]);
-                    return;
-                  }
                   Alert.alert(
                     "Add a photo",
                     undefined,

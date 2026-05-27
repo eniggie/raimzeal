@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireAuth } from "../middleware/auth";
-import { getUserTier } from "../lib/tier";
+
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, legacyPartnerships, healthReports } from "@workspace/db";

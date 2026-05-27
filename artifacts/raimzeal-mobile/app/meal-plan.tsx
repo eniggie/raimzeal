@@ -115,8 +115,6 @@ export default function MealPlanScreen() {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [planSeed, setPlanSeed] = useState(0);
 
-  const isReign = tier === "reign" || tier === "legacy";
-
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) {
@@ -149,28 +147,6 @@ export default function MealPlanScreen() {
   const groceryList = buildGroceryList(plan);
   const dayMeals = plan[selectedDay] ?? {} as Record<MealType, string>;
 
-  if (!isReign) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerRow, { paddingTop: topPad + 16 }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="chevron-back" size={26} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Meal Plans</Text>
-        </View>
-        <View style={styles.gateWrap}>
-          <Ionicons name="restaurant-outline" size={48} color={colors.secondary} />
-          <Text style={[styles.gateTitle, { color: colors.foreground }]}>Reign Plan & Above</Text>
-          <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            Weekly meal plans with auto-generated grocery lists available on the Reign plan ($19.99/mo).
-          </Text>
-          <AnimatedPressable onPress={() => router.push("/membership")} style={[styles.gateBtn, { backgroundColor: colors.secondary }]} scale={0.97}>
-            <Text style={styles.gateBtnText}>Upgrade to Reign</Text>
-          </AnimatedPressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <ScrollView

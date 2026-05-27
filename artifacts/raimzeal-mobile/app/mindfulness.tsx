@@ -68,8 +68,6 @@ export default function MindfulnessScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const breathScale = useRef(new Animated.Value(1)).current;
 
-  const isRise = tier === "rise" || tier === "reign" || tier === "legacy";
-
   useEffect(() => {
     const days = last7Days();
     AsyncStorage.multiGet(days.map((d) => STORAGE_PREFIX + d.key)).then((results) => {
@@ -132,28 +130,6 @@ export default function MindfulnessScreen() {
   const secs = (timeLeft % 60).toString().padStart(2, "0");
   const days = last7Days();
 
-  if (!isRise) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerRow, { paddingTop: topPad + 16 }]}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="chevron-back" size={26} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Mindfulness & Gratitude</Text>
-        </View>
-        <View style={styles.gateWrap}>
-          <Ionicons name="flower-outline" size={48} color="#a78bfa" />
-          <Text style={[styles.gateTitle, { color: colors.foreground }]}>Rise Plan & Above</Text>
-          <Text style={[styles.gateSub, { color: colors.mutedForeground }]}>
-            Daily gratitude journal, mindfulness timer, and emotional trend tracking available on the Rise plan ($9.99/mo).
-          </Text>
-          <AnimatedPressable onPress={() => router.push("/membership")} style={[styles.gateBtn, { backgroundColor: "#a78bfa" }]} scale={0.97}>
-            <Text style={styles.gateBtnText}>Upgrade to Rise</Text>
-          </AnimatedPressable>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <ScrollView
