@@ -74,11 +74,42 @@ Dr. Ephraim Oviawe is an author, strategist, technologist, creative entrepreneur
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+
+## Bug Detection & Validation
+
+Four permanent checks are registered in the Checks panel (run them any time to catch bugs):
+
+| Check | Command | What it catches |
+|-------|---------|-----------------|
+| `typecheck-api` | `pnpm --filter @workspace/api-server run typecheck` | Type errors in the API server |
+| `typecheck-mobile` | `pnpm --filter @workspace/raimzeal-mobile run typecheck` | Type errors in the mobile app |
+| `typecheck-web` | `pnpm --filter @workspace/raimzeal run typecheck` | Type errors in the web app |
+| `healthcheck` | `curl -sf http://localhost:80/api/healthz` | API server is up and responding |
+
+**After every significant change**, run all four checks before shipping.
+
+### Bug Fix History (major sessions)
+
+| Date | Area | Fix |
+|------|------|-----|
+| 2026-05 | All platforms | Removed all tier/paywall gates — every feature now free for all signed-in users |
+| 2026-05 | API: community.ts | Inner Circle no longer 403s non-legacy users |
+| 2026-05 | API: ovia.ts | Flattened tier-based AI quota → 100 msgs/day for everyone |
+| 2026-05 | API: workoutLogs.ts | Removed Foundation 90-entry history cap (now 500 for all) |
+| 2026-05 | Mobile: 15 screens | Removed gate screens: cycle-sync, PCOS, menopause, mindfulness, weekly-report, adaptive-workout, meal-plan, pregnancy-wellness, body-measurements, macro-goals, legacy, progress-photos, community (image upload + Inner Circle), profile (PDF export + digest toggle), nutrition (macro drilldown) |
+| 2026-05 | Mobile: ovia.tsx | Added AI Tools section: Workout Plan, Meal Plan, Body Analysis cards |
+| 2026-05 | expo-speech | Updated to 14.0.8 (SDK 54 compatible) |
+
+### Known pitfalls to watch
+- `CardCustomizationModal.tsx` is ~3400+ lines — read in sections, never rewrite in full
+- API server crashes with `EADDRINUSE` if restarted while old process is alive — run `fuser -k 8080/tcp` to clear the port
+- Never run `pnpm dev` at workspace root — always use `restart_workflow`
+- `tier.ts` `getUserTier()` / `canAccess()` still exist for Stripe/subscription display logic — do NOT remove them; just never use them as content gates
 
 ## Stack
 
