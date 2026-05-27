@@ -4455,17 +4455,24 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   inputRange: [0, 1],
                   outputRange: [colors.mutedForeground + "70", colors.mutedForeground],
                 });
+                const rowBg = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["transparent", colors.primary + "08"],
+                });
                 return (
                   <TouchableOpacity
                     key={item.key}
                     onPress={() => toggleStat(item.key)}
                     activeOpacity={0.7}
+                  >
+                  <Animated.View
                     style={[
                       styles.toggleRow,
                       index < STAT_TOGGLES.length - 1 && {
                         borderBottomWidth: 1,
                         borderBottomColor: colors.border,
                       },
+                      { backgroundColor: rowBg },
                     ]}
                   >
                     <Animated.View
@@ -4516,6 +4523,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         ]}
                       />
                     </Animated.View>
+                  </Animated.View>
                   </TouchableOpacity>
                 );
               })}
