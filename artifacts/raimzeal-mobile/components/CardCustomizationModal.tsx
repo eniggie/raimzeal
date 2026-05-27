@@ -619,6 +619,8 @@ function ZoomableCard({
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
 
+  const atBoundary = useSharedValue(0);
+
   const pinchGesture = Gesture.Pinch()
     .onBegin(() => {
       "worklet";
@@ -626,7 +628,22 @@ function ZoomableCard({
     })
     .onUpdate((e) => {
       "worklet";
-      scale.value = Math.min(4, Math.max(1, savedScale.value * e.scale));
+      const raw = savedScale.value * e.scale;
+      const clamped = Math.min(4, Math.max(1, raw));
+      scale.value = clamped;
+      if (clamped <= 1) {
+        if (atBoundary.value !== 1) {
+          atBoundary.value = 1;
+          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        }
+      } else if (clamped >= 4) {
+        if (atBoundary.value !== 4) {
+          atBoundary.value = 4;
+          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        }
+      } else {
+        atBoundary.value = 0;
+      }
     })
     .onEnd(() => {
       "worklet";
