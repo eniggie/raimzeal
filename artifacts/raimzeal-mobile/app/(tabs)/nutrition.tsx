@@ -2956,7 +2956,7 @@ export default function NutritionScreen() {
 
   function resetAllThresholds() {
     Alert.alert(
-      "Reset All Filters",
+      "Reset All Thresholds to Default?",
       "This will restore all thresholds to their default values.",
       [
         { text: "Cancel", style: "cancel" },
