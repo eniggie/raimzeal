@@ -2210,13 +2210,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }, 1500);
   }, [defaultAction, visible]);
 
-  // When the user switches their selected action while a countdown is running, immediately
-  // update the banner label so it stays in sync with the highlighted button.
+  // When the user switches their selected action while a countdown is running, either cancel
+  // the countdown (if the new action is photo-blocked) or update the banner label to stay in sync.
   useEffect(() => {
     if (autoTriggerCountdown !== null && selectedAction !== null) {
+      const requiresPhotoAccess = selectedAction === "save" || selectedAction === "both";
+      if (requiresPhotoAccess && cameraRollStatus === "denied") {
+        cancelAutoTrigger();
+        showConfirmation("Photo access needed — countdown cancelled", "error", "lock-closed-outline");
+        return;
+      }
       setAutoTriggerAction(selectedAction);
     }
-  }, [selectedAction]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAction, cameraRollStatus]);
 
   // Persist the dim/blur level to AsyncStorage (debounced) whenever the user moves the sliders.
   useEffect(() => {
