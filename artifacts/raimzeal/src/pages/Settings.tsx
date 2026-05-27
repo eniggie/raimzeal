@@ -505,14 +505,14 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                     <div>
                       <Label>Blood Type</Label>
                       <Select
-                        value={editForm.bloodType || ''}
-                        onValueChange={v => setEditForm(p => ({ ...p, bloodType: v as UserProfile['bloodType'] | '' }))}
+                        value={editForm.bloodType || '_none'}
+                        onValueChange={v => setEditForm(p => ({ ...p, bloodType: (v === '_none' ? '' : v) as UserProfile['bloodType'] | '' }))}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="_none">Not set</SelectItem>
                           <SelectItem value="A">A</SelectItem>
                           <SelectItem value="B">B</SelectItem>
                           <SelectItem value="AB">AB</SelectItem>
@@ -523,14 +523,14 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                     <div>
                       <Label>Rh Factor</Label>
                       <Select
-                        value={editForm.rhFactor || ''}
-                        onValueChange={v => setEditForm(p => ({ ...p, rhFactor: v as UserProfile['rhFactor'] | '' }))}
+                        value={editForm.rhFactor || '_none'}
+                        onValueChange={v => setEditForm(p => ({ ...p, rhFactor: (v === '_none' ? '' : v) as UserProfile['rhFactor'] | '' }))}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="_none">Not set</SelectItem>
                           <SelectItem value="+">Positive (+)</SelectItem>
                           <SelectItem value="-">Negative (−)</SelectItem>
                         </SelectContent>
@@ -539,14 +539,14 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                     <div>
                       <Label>Genotype</Label>
                       <Select
-                        value={editForm.genotype || ''}
-                        onValueChange={v => setEditForm(p => ({ ...p, genotype: v as UserProfile['genotype'] | '' }))}
+                        value={editForm.genotype || '_none'}
+                        onValueChange={v => setEditForm(p => ({ ...p, genotype: (v === '_none' ? '' : v) as UserProfile['genotype'] | '' }))}
                       >
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Not set</SelectItem>
+                          <SelectItem value="_none">Not set</SelectItem>
                           <SelectItem value="AA">AA</SelectItem>
                           <SelectItem value="AS">AS</SelectItem>
                           <SelectItem value="AC">AC</SelectItem>
