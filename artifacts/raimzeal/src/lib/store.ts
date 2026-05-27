@@ -245,7 +245,7 @@ function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> 
       }
     : undefined;
 
-  const workoutLogs: WorkoutLog[] = data.workout_logs.map(l => ({
+  const workoutLogs: WorkoutLog[] = (data.workout_logs ?? []).map(l => ({
     id: l.id,
     workoutId: l.workout_id,
     workoutName: l.workout_name,
@@ -255,7 +255,7 @@ function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> 
     exercises: l.exercises,
   }));
 
-  const mealLogs: MealLog[] = data.meal_logs.map(m => ({
+  const mealLogs: MealLog[] = (data.meal_logs ?? []).map(m => ({
     id: m.id,
     date: m.date,
     name: m.name,
@@ -266,7 +266,7 @@ function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> 
     mealType: m.meal_type,
   }));
 
-  const bodyMeasurements: BodyMeasurement[] = data.body_measurements.map(m => ({
+  const bodyMeasurements: BodyMeasurement[] = (data.body_measurements ?? []).map(m => ({
     id: m.id,
     date: m.date,
     weight: m.weight,
@@ -277,9 +277,9 @@ function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> 
     thighs: m.thighs ?? undefined,
   }));
 
-  const waterIntake = data.water_intake.map(w => ({ date: w.date, glasses: w.glasses }));
+  const waterIntake = (data.water_intake ?? []).map(w => ({ date: w.date, glasses: w.glasses }));
 
-  const scheduledWorkouts: ScheduledWorkout[] = data.scheduled_workouts.map(s => ({
+  const scheduledWorkouts: ScheduledWorkout[] = (data.scheduled_workouts ?? []).map(s => ({
     id: s.id,
     workoutId: s.workout_id,
     workoutName: s.workout_name,
@@ -341,7 +341,16 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
         setState({
           ...defaultState,
           ...parsed,
-          settings: { ...defaultState.settings, ...(parsed.settings || {}) },
+          // Guard every array field — old localStorage snapshots (or a partial
+          // cloud-write race) may have stored null/object instead of an array,
+          // which causes a crash on .length/.map() calls in render.
+          workoutLogs: Array.isArray(parsed.workoutLogs) ? parsed.workoutLogs : defaultState.workoutLogs,
+          mealLogs: Array.isArray(parsed.mealLogs) ? parsed.mealLogs : defaultState.mealLogs,
+          bodyMeasurements: Array.isArray(parsed.bodyMeasurements) ? parsed.bodyMeasurements : defaultState.bodyMeasurements,
+          waterIntake: Array.isArray(parsed.waterIntake) ? parsed.waterIntake : defaultState.waterIntake,
+          scheduledWorkouts: Array.isArray(parsed.scheduledWorkouts) ? parsed.scheduledWorkouts : defaultState.scheduledWorkouts,
+          personalRecords: Array.isArray(parsed.personalRecords) ? parsed.personalRecords : defaultState.personalRecords,
+          settings: { ...defaultState.settings, ...(parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {}) },
         });
       } catch {
         setState(defaultState);

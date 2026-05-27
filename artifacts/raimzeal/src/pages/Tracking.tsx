@@ -346,7 +346,7 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
                   </div>
                 </Card>
               ))}
-              {state.personalRecords.length === 0 && (
+              {(state.personalRecords ?? []).length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No personal records yet</p>

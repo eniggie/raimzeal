@@ -129,11 +129,11 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
           <div className="flex flex-col items-end gap-1">
             {onUpdateSettings && (
               <button
-                onClick={() => onUpdateSettings({ darkMode: !state.settings.darkMode })}
+                onClick={() => onUpdateSettings({ darkMode: !(state.settings?.darkMode ?? true) })}
                 className="mb-1 p-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors"
-                title={state.settings.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={(state.settings?.darkMode ?? true) ? 'Switch to light mode' : 'Switch to dark mode'}
               >
-                {state.settings.darkMode
+                {(state.settings?.darkMode ?? true)
                   ? <Sun className="w-4 h-4 text-yellow-400" />
                   : <Moon className="w-4 h-4 text-muted-foreground" />}
               </button>
@@ -449,7 +449,7 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
           </motion.div>
         )}
 
-        {state.workoutLogs.length > 0 && (
+        {(state.workoutLogs ?? []).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -487,7 +487,7 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
           </motion.div>
         )}
 
-        {state.personalRecords.length > 0 && (
+        {(state.personalRecords ?? []).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

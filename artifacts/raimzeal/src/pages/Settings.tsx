@@ -577,11 +577,11 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="text-xs text-muted-foreground">Day Streak</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{state.workoutLogs.length}</div>
+                <div className="text-2xl font-bold">{(state.workoutLogs ?? []).length}</div>
                 <div className="text-xs text-muted-foreground">Workouts</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{state.personalRecords.length}</div>
+                <div className="text-2xl font-bold">{(state.personalRecords ?? []).length}</div>
                 <div className="text-xs text-muted-foreground">PRs</div>
               </div>
             </div>
@@ -752,7 +752,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="text-sm text-muted-foreground">Use dark theme</div>
               </div>
               <Switch
-                checked={state.settings.darkMode}
+                checked={state.settings?.darkMode ?? true}
                 onCheckedChange={v => onUpdateSettings({ darkMode: v })}
               />
             </div>
@@ -766,7 +766,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="text-sm text-muted-foreground">Adjust reading comfort</div>
               </div>
               <Select
-                value={state.settings.textSize}
+                value={state.settings?.textSize ?? 'medium'}
                 onValueChange={v => onUpdateSettings({ textSize: v as AppState['settings']['textSize'] })}
               >
                 <SelectTrigger className="w-28 h-8">
@@ -789,7 +789,7 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="text-sm text-muted-foreground">Workout reminders</div>
               </div>
               <Switch
-                checked={state.settings.notifications}
+                checked={state.settings?.notifications ?? true}
                 onCheckedChange={v => onUpdateSettings({ notifications: v })}
               />
             </div>
@@ -807,11 +807,11 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
               <div className="flex-1">
                 <div className="font-medium">Weight Unit</div>
                 <div className="text-sm text-muted-foreground">
-                  {state.settings.weightUnit === 'kg' ? 'Kilograms (kg)' : 'Pounds (lbs)'}
+                  {(state.settings?.weightUnit ?? 'lbs') === 'kg' ? 'Kilograms (kg)' : 'Pounds (lbs)'}
                 </div>
               </div>
               <Select
-                value={state.settings.weightUnit}
+                value={state.settings?.weightUnit ?? 'lbs'}
                 onValueChange={v => onUpdateSettings({ weightUnit: v as 'lbs' | 'kg' })}
               >
                 <SelectTrigger className="w-24 h-8">
