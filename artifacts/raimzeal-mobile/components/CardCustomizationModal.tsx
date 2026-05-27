@@ -5145,123 +5145,82 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
             {(() => {
               const photoBlocked = cameraRollStatus === "denied";
-              const clearPreferenceItem = defaultAction
-                ? [
-                    {
-                      text: "Clear preference",
-                      style: "destructive" as const,
-                      onPress: () => {
-                        setDefaultAction(null);
-                        AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
-                        AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
-                        setShowLongPressHint(true);
-                        showConfirmation("Preference cleared", "success");
-                      },
-                    },
-                  ]
-                : [];
-              const actionItems: { text: string; onPress: () => void }[] = [
-                {
-                  text: "Share",
-                  onPress: () => {
-                    setDefaultAction("share");
-                    setSelectedAction("share");
-                    AsyncStorage.setItem(STORAGE_KEY_ACTION, "share").catch(() => {});
-                    showConfirmation("★ Share set as preferred", "success");
-                  },
-                },
-                ...(!photoBlocked
-                  ? [
-                      {
-                        text: "Save",
-                        onPress: () => {
-                          setDefaultAction("save");
-                          setSelectedAction("save");
-                          AsyncStorage.setItem(STORAGE_KEY_ACTION, "save").catch(() => {});
-                          showConfirmation("★ Save set as preferred", "success");
-                        },
-                      },
-                    ]
-                  : []),
-                {
-                  text: "Copy",
-                  onPress: () => {
-                    setDefaultAction("copy");
-                    setSelectedAction("copy");
-                    AsyncStorage.setItem(STORAGE_KEY_ACTION, "copy").catch(() => {});
-                    showConfirmation("★ Copy set as preferred", "success");
-                  },
-                },
-                ...(!photoBlocked
-                  ? [
-                      {
-                        text: "Both",
-                        onPress: () => {
-                          setDefaultAction("both");
-                          setSelectedAction("both");
-                          AsyncStorage.setItem(STORAGE_KEY_ACTION, "both").catch(() => {});
-                          showConfirmation("★ Both set as preferred", "success");
-                        },
-                      },
-                    ]
-                  : []),
+              const actions: { key: CardAction; label: string }[] = [
+                { key: "share", label: "Share" },
+                ...(!photoBlocked ? [{ key: "save" as CardAction, label: "Save" }] : []),
+                { key: "copy", label: "Copy" },
+                ...(!photoBlocked ? [{ key: "both" as CardAction, label: "Both" }] : []),
               ];
               return (
-                <TouchableOpacity
-                  style={styles.longPressSettingText}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Alert.alert(
-                      "Preferred action",
-                      defaultAction
-                        ? `Current preferred: ${defaultAction === "share" ? "Share" : defaultAction === "save" ? "Save" : defaultAction === "copy" ? "Copy" : "Both"}. Choose a new one or clear it.`
-                        : "Choose a preferred action. It will auto-trigger after a countdown each time you open the card builder.",
-                      [{ text: "Cancel", style: "cancel" }, ...actionItems, ...clearPreferenceItem]
-                    );
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Preferred action: ${defaultAction ?? "None"}. Tap to change.`}
-                >
-                  <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
-                    Preferred action
-                  </Text>
-                  <Text
-                    style={[
-                      styles.longPressSettingDesc,
-                      { color: defaultAction ? colors.primary : colors.mutedForeground },
-                    ]}
-                  >
-                    {defaultAction === "share"
-                      ? "Share"
-                      : defaultAction === "save"
-                      ? "Save"
-                      : defaultAction === "copy"
-                      ? "Copy"
-                      : defaultAction === "both"
-                      ? "Both"
-                      : "None — long-press an action to set one"}
-                  </Text>
-                </TouchableOpacity>
+                <>
+                  <View style={styles.longPressSettingText}>
+                    <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
+                      Preferred action
+                    </Text>
+                    <Text
+                      style={[
+                        styles.longPressSettingDesc,
+                        { color: defaultAction ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      {defaultAction === "share"
+                        ? "Share"
+                        : defaultAction === "save"
+                        ? "Save"
+                        : defaultAction === "copy"
+                        ? "Copy"
+                        : defaultAction === "both"
+                        ? "Both"
+                        : "None"}
+                    </Text>
+                  </View>
+                  <View style={styles.autoTriggerDelaySegmented}>
+                    {actions.map(({ key, label }) => {
+                      const active = defaultAction === key;
+                      return (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => {
+                            if (active) {
+                              setDefaultAction(null);
+                              AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
+                              AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
+                              setShowLongPressHint(true);
+                              showConfirmation("Preference cleared", "success");
+                            } else {
+                              setDefaultAction(key);
+                              setSelectedAction(key);
+                              AsyncStorage.setItem(STORAGE_KEY_ACTION, key).catch(() => {});
+                              showConfirmation(`★ ${label} set as preferred`, "success");
+                            }
+                          }}
+                          style={[
+                            styles.autoTriggerDelayChip,
+                            active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: active }}
+                          accessibilityLabel={
+                            active
+                              ? `${label}, currently selected. Tap to clear.`
+                              : `Set ${label} as preferred action`
+                          }
+                        >
+                          <Text
+                            style={[
+                              styles.autoTriggerDelayChipText,
+                              { color: active ? "#fff" : colors.mutedForeground },
+                            ]}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
               );
             })()}
-            {defaultAction && (
-              <TouchableOpacity
-                onPress={() => {
-                  setDefaultAction(null);
-                  AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
-                  AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
-                  setShowLongPressHint(true);
-                  showConfirmation("Preference cleared", "success");
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="Clear preferred action"
-              >
-                <Text style={[styles.longPressSettingDesc, { color: colors.mutedForeground }]}>
-                  Clear
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
           {confirmMessage && (
             <Animated.View
