@@ -125,6 +125,7 @@ export default function ProfileScreen() {
   const [savedHistoryDateRange, setSavedHistoryDateRange] = useState<string | null>(null);
   const [showExportRangeModal, setShowExportRangeModal] = useState(false);
   const [exportRangeSelection, setExportRangeSelection] = useState<DateRangeOption>("all");
+  const [pendingClearAfterExport, setPendingClearAfterExport] = useState(false);
 
   const [mealDefaultsCount, setMealDefaultsCount] = useState<number | null>(null);
 
@@ -577,6 +578,52 @@ export default function ProfileScreen() {
     );
   }
 
+  async function doClearEverything() {
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      // Remove all app data except Supabase auth session tokens and
+      // the pending-cloud-wipe key (written below if we're offline).
+      // sb-* keys hold the user's login session — keeping them means
+      // the user stays signed in but all data is wiped, which is the
+      // intended behavior for "fresh start".
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter(
+        (k) => !k.startsWith("sb-") && k !== PENDING_CLOUD_WIPE_KEY
+      );
+      await AsyncStorage.multiRemove(keysToRemove);
+      // Reset in-memory state for every context.
+      // clearAllData() resets FitnessContext state (including hints) WITHOUT
+      // calling persist(), so no stale AsyncStorage.setItem can race against
+      // the multiRemove above and recreate data on next launch.
+      clearAllData();
+      await setMacroGoals(DEFAULT_MACRO_GOALS);
+
+      // Attempt to wipe cloud data when signed in.
+      if (authUser?.id && isSupabaseConfigured) {
+        try {
+          await clearAllUserData(authUser.id);
+          // Clear any leftover pending-wipe flag on success.
+          await AsyncStorage.removeItem(PENDING_CLOUD_WIPE_KEY);
+        } catch {
+          // Device is offline or the request failed — store the user ID
+          // so the cloud wipe is retried the next time the Profile screen
+          // mounts while online.
+          await AsyncStorage.setItem(PENDING_CLOUD_WIPE_KEY, authUser.id).catch(() => {});
+        }
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        "Data Cleared",
+        "All app data has been reset. You can start fresh."
+      );
+    } catch {
+      Alert.alert("Error", "Could not clear app data. Please try again.");
+    }
+  }
+
   function handleClearAppData() {
     const isSignedIn = Boolean(authUser?.id) && isSupabaseConfigured;
     const cloudLine = isSignedIn
@@ -588,53 +635,17 @@ export default function ProfileScreen() {
       [
         { text: "Cancel", style: "cancel" },
         {
+          text: "Export First",
+          onPress: () => {
+            if (pdfLoading) return;
+            setPendingClearAfterExport(true);
+            handleExportPdf();
+          },
+        },
+        {
           text: "Clear Everything",
           style: "destructive",
-          onPress: async () => {
-            try {
-              const { default: AsyncStorage } = await import(
-                "@react-native-async-storage/async-storage"
-              );
-              // Remove all app data except Supabase auth session tokens and
-              // the pending-cloud-wipe key (written below if we're offline).
-              // sb-* keys hold the user's login session — keeping them means
-              // the user stays signed in but all data is wiped, which is the
-              // intended behavior for "fresh start".
-              const allKeys = await AsyncStorage.getAllKeys();
-              const keysToRemove = allKeys.filter(
-                (k) => !k.startsWith("sb-") && k !== PENDING_CLOUD_WIPE_KEY
-              );
-              await AsyncStorage.multiRemove(keysToRemove);
-              // Reset in-memory state for every context.
-              // clearAllData() resets FitnessContext state (including hints) WITHOUT
-              // calling persist(), so no stale AsyncStorage.setItem can race against
-              // the multiRemove above and recreate data on next launch.
-              clearAllData();
-              await setMacroGoals(DEFAULT_MACRO_GOALS);
-
-              // Attempt to wipe cloud data when signed in.
-              if (authUser?.id && isSupabaseConfigured) {
-                try {
-                  await clearAllUserData(authUser.id);
-                  // Clear any leftover pending-wipe flag on success.
-                  await AsyncStorage.removeItem(PENDING_CLOUD_WIPE_KEY);
-                } catch {
-                  // Device is offline or the request failed — store the user ID
-                  // so the cloud wipe is retried the next time the Profile screen
-                  // mounts while online.
-                  await AsyncStorage.setItem(PENDING_CLOUD_WIPE_KEY, authUser.id).catch(() => {});
-                }
-              }
-
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(
-                "Data Cleared",
-                "All app data has been reset. You can start fresh."
-              );
-            } catch {
-              Alert.alert("Error", "Could not clear app data. Please try again.");
-            }
-          },
+          onPress: doClearEverything,
         },
       ]
     );
@@ -1101,12 +1112,24 @@ export default function ProfileScreen() {
         transparent
         animationType="fade"
         visible={showExportRangeModal}
-        onRequestClose={() => setShowExportRangeModal(false)}
+        onRequestClose={() => {
+          setShowExportRangeModal(false);
+          if (pendingClearAfterExport) {
+            setPendingClearAfterExport(false);
+            handleClearAppData();
+          }
+        }}
         statusBarTranslucent
       >
         <TouchableOpacity
           activeOpacity={1}
-          onPress={() => setShowExportRangeModal(false)}
+          onPress={() => {
+            setShowExportRangeModal(false);
+            if (pendingClearAfterExport) {
+              setPendingClearAfterExport(false);
+              handleClearAppData();
+            }
+          }}
           style={styles.undoModalBackdrop}
         >
           <TouchableOpacity
@@ -1164,7 +1187,13 @@ export default function ProfileScreen() {
             })}
             <View style={styles.undoModalButtons}>
               <TouchableOpacity
-                onPress={() => setShowExportRangeModal(false)}
+                onPress={() => {
+                  setShowExportRangeModal(false);
+                  if (pendingClearAfterExport) {
+                    setPendingClearAfterExport(false);
+                    handleClearAppData();
+                  }
+                }}
                 style={[styles.undoModalBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.undoModalBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
@@ -1172,7 +1201,11 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setShowExportRangeModal(false);
-                  runPdfExport(exportRangeSelection);
+                  const wasPending = pendingClearAfterExport;
+                  if (wasPending) setPendingClearAfterExport(false);
+                  runPdfExport(exportRangeSelection).then(() => {
+                    if (wasPending) handleClearAppData();
+                  });
                 }}
                 style={[styles.undoModalBtn, styles.undoModalBtnPrimary, { backgroundColor: colors.primary }]}
               >
