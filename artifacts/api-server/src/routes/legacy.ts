@@ -150,18 +150,29 @@ legacyRouter.post(
     const safeImageUrl =
       typeof imageUrl === "string" && imageUrl.startsWith("https://") ? imageUrl : null;
 
-    const { data, error } = await supabaseAdmin
+    const baseInsert = {
+      user_id:        userId,
+      user_name:      userName.trim().slice(0, 60),
+      content:        content.trim(),
+      post_type:      postType,
+      is_legacy_post: true,
+    };
+
+    let { data, error } = await supabaseAdmin
       .from("community_posts")
-      .insert({
-        user_id:        userId,
-        user_name:      userName.trim().slice(0, 60),
-        content:        content.trim(),
-        post_type:      postType,
-        is_legacy_post: true,
-        ...(safeImageUrl ? { image_url: safeImageUrl } : {}),
-      })
+      .insert({ ...baseInsert, ...(safeImageUrl ? { image_url: safeImageUrl } : {}) })
       .select()
       .single();
+
+    // PGRST204 = column not yet in PostgREST schema cache — retry without optional image_url.
+    if (error && (error as unknown as Record<string, unknown>)["code"] === "PGRST204") {
+      req.log.warn({ code: "PGRST204" }, "legacy post schema cache miss — retrying without image_url");
+      ({ data, error } = await supabaseAdmin
+        .from("community_posts")
+        .insert(baseInsert)
+        .select()
+        .single());
+    }
 
     if (error || !data) {
       req.log.error({ error }, "Failed to create Legacy community post");

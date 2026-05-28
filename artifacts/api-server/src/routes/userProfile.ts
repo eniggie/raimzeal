@@ -70,12 +70,28 @@ userProfileRouter.put("/user/profile", requireAuth, generalWriteRateLimit, async
     if (d.app_settings !== undefined) updates["app_settings"] = d.app_settings;
     if (d.streak !== undefined) updates["streak"] = d.streak;
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from("profiles")
       .update(updates)
       .eq("id", userId)
       .select()
       .single();
+
+    // PGRST204 = new optional columns not yet in PostgREST schema cache — retry without them.
+    if (error && (error as unknown as Record<string, unknown>)["code"] === "PGRST204") {
+      logger.warn({ code: "PGRST204" }, "profile update schema cache miss — retrying without optional columns");
+      const fallback = { ...updates };
+      delete fallback["blood_type"];
+      delete fallback["rh_factor"];
+      delete fallback["genotype"];
+      ({ data, error } = await supabaseAdmin
+        .from("profiles")
+        .update(fallback)
+        .eq("id", userId)
+        .select()
+        .single());
+    }
+
     if (error) throw error;
     res.json({ profile: data });
   } catch (err) {

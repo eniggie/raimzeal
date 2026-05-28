@@ -49,7 +49,6 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useTier } from "@/hooks/useTier";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
@@ -946,7 +945,6 @@ export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user } = useFitness();
-  const { tier: userTierNutrition } = useTier(user?.id ?? null);
   const { goals: macroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
