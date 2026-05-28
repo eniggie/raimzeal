@@ -1452,6 +1452,7 @@ export default function NutritionScreen() {
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
   const chipGlowAnims = useRef<Record<string, Animated.Value>>({});
   const presetChipScaleAnims = useRef<Record<string, Animated.Value>>({});
+  const presetChipGlowAnims = useRef<Record<string, Animated.Value>>({});
   const prevActivePresetIdRef = useRef<string | null>(null);
 
   const historyChipFadeAnims = useRef(
@@ -2515,8 +2516,13 @@ export default function NutritionScreen() {
     if (!presetChipScaleAnims.current[preset.id]) {
       presetChipScaleAnims.current[preset.id] = new Animated.Value(1);
     }
+    if (!presetChipGlowAnims.current[preset.id]) {
+      presetChipGlowAnims.current[preset.id] = new Animated.Value(0);
+    }
     const scaleAnim = presetChipScaleAnims.current[preset.id];
+    const glowAnim = presetChipGlowAnims.current[preset.id];
     scaleAnim.setValue(1);
+    glowAnim.setValue(0);
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.15,
@@ -2530,6 +2536,10 @@ export default function NutritionScreen() {
         bounciness: 8,
         useNativeDriver: true,
       }),
+    ]).start();
+    Animated.sequence([
+      Animated.timing(glowAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
     ]).start();
     const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
     const keys = preset.filterKeys.filter((k) => validKeys.has(k));
@@ -3676,16 +3686,30 @@ export default function NutritionScreen() {
                           if (!presetChipScaleAnims.current[preset.id]) {
                             presetChipScaleAnims.current[preset.id] = new Animated.Value(1);
                           }
+                          if (!presetChipGlowAnims.current[preset.id]) {
+                            presetChipGlowAnims.current[preset.id] = new Animated.Value(0);
+                          }
                           const presetScale = presetChipScaleAnims.current[preset.id];
+                          const presetGlow = presetChipGlowAnims.current[preset.id];
                           return (
                           <Animated.View
                             key={preset.id}
                             style={[
                               styles.presetChip,
-                              { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
+                              { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55", overflow: "hidden" },
                               { transform: [{ scale: presetScale }] },
                             ]}
                           >
+                            <Animated.View
+                              pointerEvents="none"
+                              style={{
+                                position: "absolute",
+                                top: 0, left: 0, right: 0, bottom: 0,
+                                borderRadius: 20,
+                                backgroundColor: colors.secondary + "60",
+                                opacity: presetGlow,
+                              }}
+                            />
                             <TouchableOpacity
                               onPress={() => applyPreset(preset)}
                               onLongPress={() => openEditPresetModal(preset)}
@@ -4484,29 +4508,52 @@ export default function NutritionScreen() {
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={[styles.filterScroll, { paddingVertical: 2, marginBottom: 4 }]}
                       >
-                        {customPresets.map((preset) => (
-                          <TouchableOpacity
-                            key={preset.id}
-                            onPress={() => applyPreset(preset)}
-                            onLongPress={() => openEditPresetModal(preset)}
-                            delayLongPress={500}
-                            activeOpacity={0.75}
-                            style={[
-                              styles.presetChip,
-                              { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55" },
-                            ]}
-                          >
-                            <View style={styles.presetChipInner}>
-                              <Ionicons name="bookmark" size={12} color={colors.secondary} />
-                              <Text
-                                style={[styles.presetChipText, { color: colors.secondary }]}
-                                numberOfLines={1}
+                        {customPresets.map((preset) => {
+                          if (!presetChipScaleAnims.current[preset.id]) {
+                            presetChipScaleAnims.current[preset.id] = new Animated.Value(1);
+                          }
+                          if (!presetChipGlowAnims.current[preset.id]) {
+                            presetChipGlowAnims.current[preset.id] = new Animated.Value(0);
+                          }
+                          const presetScale = presetChipScaleAnims.current[preset.id];
+                          const presetGlow = presetChipGlowAnims.current[preset.id];
+                          return (
+                            <Animated.View
+                              key={preset.id}
+                              style={[
+                                styles.presetChip,
+                                { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55", overflow: "hidden" },
+                                { transform: [{ scale: presetScale }] },
+                              ]}
+                            >
+                              <Animated.View
+                                pointerEvents="none"
+                                style={{
+                                  position: "absolute",
+                                  top: 0, left: 0, right: 0, bottom: 0,
+                                  borderRadius: 20,
+                                  backgroundColor: colors.secondary + "60",
+                                  opacity: presetGlow,
+                                }}
+                              />
+                              <TouchableOpacity
+                                onPress={() => applyPreset(preset)}
+                                onLongPress={() => openEditPresetModal(preset)}
+                                delayLongPress={500}
+                                activeOpacity={0.75}
+                                style={styles.presetChipInner}
                               >
-                                {preset.name}
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+                                <Ionicons name="bookmark" size={12} color={colors.secondary} />
+                                <Text
+                                  style={[styles.presetChipText, { color: colors.secondary }]}
+                                  numberOfLines={1}
+                                >
+                                  {preset.name}
+                                </Text>
+                              </TouchableOpacity>
+                            </Animated.View>
+                          );
+                        })}
                       </ScrollView>
                     )}
                   </>
