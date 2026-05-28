@@ -1452,6 +1452,7 @@ export default function NutritionScreen() {
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
   const chipGlowAnims = useRef<Record<string, Animated.Value>>({});
   const presetChipScaleAnims = useRef<Record<string, Animated.Value>>({});
+  const prevActivePresetIdRef = useRef<string | null>(null);
 
   const historyChipFadeAnims = useRef(
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
@@ -1523,6 +1524,46 @@ export default function NutritionScreen() {
     setHistoryFilterPanelOpen(false);
     setRecentScanCount(0);
   }, [dataResetCount]);
+
+  // Detect when any preset chip transitions from active → inactive and play
+  // a spring-down animation on it, regardless of what caused the filter change.
+  useEffect(() => {
+    const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+    let currentActivePresetId: string | null = null;
+    for (const p of customPresets) {
+      const pKeys = p.filterKeys.filter((k) => validKeys.has(k));
+      if (
+        pKeys.length > 0 &&
+        pKeys.length === activeFilters.size &&
+        pKeys.every((k) => activeFilters.has(k))
+      ) {
+        currentActivePresetId = p.id;
+        break;
+      }
+    }
+    const prevId = prevActivePresetIdRef.current;
+    if (prevId && prevId !== currentActivePresetId) {
+      if (!presetChipScaleAnims.current[prevId]) {
+        presetChipScaleAnims.current[prevId] = new Animated.Value(1);
+      }
+      const deactAnim = presetChipScaleAnims.current[prevId];
+      Animated.sequence([
+        Animated.spring(deactAnim, {
+          toValue: 0.88,
+          speed: 40,
+          bounciness: 4,
+          useNativeDriver: true,
+        }),
+        Animated.spring(deactAnim, {
+          toValue: 1,
+          speed: 30,
+          bounciness: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevActivePresetIdRef.current = currentActivePresetId;
+  }, [activeFilters, customPresets]);
 
   const markDateSeen = useCallback((date: string) => {
     if (!seenDatesRef.current.has(date)) {
