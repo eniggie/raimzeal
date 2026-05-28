@@ -403,7 +403,14 @@ export default function OviaScreen() {
       await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const uri = recording.getURI();
-      if (!uri || !session?.access_token) return;
+      if (!uri) {
+        Alert.alert("Voice Input", "Recording failed — please try again.");
+        return;
+      }
+      if (!session?.access_token) {
+        Alert.alert("Voice Input", "Please sign in to use voice input.");
+        return;
+      }
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setInterimText("Transcribing…");
@@ -422,26 +429,6 @@ export default function OviaScreen() {
       });
 
       setInterimText("");
-
-      // Handle tier gate: 403 UPGRADE_REQUIRED means voice is a paid feature
-      if (response.status === 403) {
-        const errData = await response.json() as { error?: string; code?: string };
-        if (errData.code === "UPGRADE_REQUIRED") {
-          Alert.alert(
-            "Voice Input — Paid Feature",
-            "Voice-to-text requires a Rise, Reign, or Legacy plan.\n\nUpgrade in the Membership screen to unlock voice input, advanced coaching, and more.",
-            [
-              { text: "Not Now", style: "cancel" },
-              {
-                text: "View Plans",
-                onPress: () => router.push("/membership"),
-              },
-            ]
-          );
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json() as { text?: string; error?: string };

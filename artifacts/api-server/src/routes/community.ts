@@ -211,12 +211,11 @@ communityRouter.post(
   communityMutateLimitHeavy,
   async (req, res) => {
     const userId = (req as any).userId as string;
-    const { userName, content, postType, imageUrl, isLegacyPost } = req.body as {
+    const { userName, content, postType, imageUrl } = req.body as {
       userName?: unknown;
       content?: unknown;
       postType?: unknown;
       imageUrl?: unknown;
-      isLegacyPost?: unknown;
     };
 
     if (typeof content !== "string" || !content.trim()) {
@@ -240,12 +239,13 @@ communityRouter.post(
 
     const supabase = getAdminClient();
 
+    // Never set is_legacy_post on regular posts — the DB defaults it to false.
+    // Sending the field causes PGRST204 when PostgREST's schema cache is stale.
     const baseInsert = {
       user_id: userId,
       user_name: userName.trim().slice(0, 60),
       content: content.trim(),
       post_type: postType,
-      is_legacy_post: isLegacyPost === true,
     };
 
     let { data, error } = await supabase
@@ -254,10 +254,10 @@ communityRouter.post(
       .select()
       .single();
 
-    // PGRST204 means the column isn't in PostgREST's schema cache yet —
+    // PGRST204 means a column isn't in PostgREST's schema cache yet —
     // retry without image_url so the post still goes through.
-    if (error && (error as unknown as Record<string, unknown>)["code"] === "PGRST204" && safeImageUrl) {
-      req.log.warn({ code: "PGRST204" }, "image_url column not in schema cache — posting without image");
+    if (error && (error as unknown as Record<string, unknown>)["code"] === "PGRST204") {
+      req.log.warn({ code: "PGRST204", message: (error as unknown as Record<string, unknown>)["message"] }, "schema cache miss — retrying without optional columns");
       ({ data, error } = await supabase
         .from("community_posts")
         .insert(baseInsert)
