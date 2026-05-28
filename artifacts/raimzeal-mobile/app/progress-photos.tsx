@@ -21,7 +21,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useTier } from "@/hooks/useTier";
 import { useFocusEffect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/db";
@@ -100,7 +99,6 @@ export default function ProgressPhotosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
-  const { tier: photoTier, loading: tierLoading } = useTier(session?.user?.id ?? null);
   const canUploadPhotos = true;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -477,10 +475,6 @@ export default function ProgressPhotosScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              if (!canUploadPhotos) {
-                Alert.alert("Rise+ Feature", "Progress photo uploads are available on Rise, Reign, and Legacy plans. Upgrade to start tracking your visual transformation.", [{ text: "OK" }]);
-                return;
-              }
               Alert.alert(
                 "Add Photo",
                 "Choose a source",
@@ -600,10 +594,6 @@ export default function ProgressPhotosScreen() {
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              if (!canUploadPhotos) {
-                Alert.alert("Rise+ Feature", "Progress photo uploads are available on Rise, Reign, and Legacy plans. Upgrade to start tracking your visual transformation.", [{ text: "OK" }]);
-                return;
-              }
               Alert.alert("Add Photo", "Choose a source", [
                 { text: "Take Photo", onPress: () => void handleTakePhoto() },
                 { text: "Choose from Library", onPress: () => void handleAddPhoto() },

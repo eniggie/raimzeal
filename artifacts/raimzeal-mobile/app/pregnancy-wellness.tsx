@@ -17,7 +17,6 @@ import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { FeatureDisclaimerModal, type FeatureDisclaimerConfig } from "@/components/FeatureDisclaimerModal";
-import { useTier } from "@/hooks/useTier";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "@raimzeal_pregnancy_v1";
@@ -152,7 +151,6 @@ export default function PregnancyWellnessScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [weekNumber, setWeekNumber] = useState<number>(8);

@@ -15,7 +15,6 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTier } from "@/hooks/useTier";
 
 const STORAGE_KEY = "@raimzeal_menopause_tracker_v1";
 const ACCENT = "#f59e0b";
@@ -71,7 +70,6 @@ export default function MenopauseTrackerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { tier, loading: tierLoading } = useTier(user?.id ?? null);
   const [data, setData] = useState<MenopauseData>({ entries: [] });
   const [loading, setLoading] = useState(true);
   const [logModal, setLogModal] = useState(false);
@@ -124,7 +122,7 @@ export default function MenopauseTrackerScreen() {
     });
   }
 
-  if (tierLoading || loading) {
+  if (loading) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
         <Ionicons name="sunny-outline" size={40} color={ACCENT} />

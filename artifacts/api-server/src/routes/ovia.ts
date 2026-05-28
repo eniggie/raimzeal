@@ -3,7 +3,6 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { getUserTier } from "../lib/tier";
 
 const oviaRouter = Router();
 

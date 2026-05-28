@@ -15,7 +15,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
-import { useTier } from "@/hooks/useTier";
 import { useAuth } from "@/contexts/AuthContext";
 
 const STORAGE_KEY = "@raimzeal_meal_plan_v1";
@@ -106,7 +105,6 @@ export default function MealPlanScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [plan, setPlan] = useState<WeekPlan>(generateWeekPlan(0));

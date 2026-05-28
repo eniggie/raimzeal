@@ -19,7 +19,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, BodyMeasurement } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTier } from "@/hooks/useTier";
 
 function generateId(): string {
   return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -71,8 +70,6 @@ export default function BodyMeasurementsScreen() {
   const { bodyMeasurements, addBodyMeasurement, user, settings } = useFitness();
 
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
-  const isReign = tier === "reign" || tier === "legacy";
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const unitLabel = settings.weightUnit === "lbs" ? "lbs" : "kg";

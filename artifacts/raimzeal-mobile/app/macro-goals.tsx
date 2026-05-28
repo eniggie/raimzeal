@@ -21,7 +21,6 @@ import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext
 import { useFitness } from "@/contexts/FitnessContext";
 import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTier } from "@/hooks/useTier";
 
 interface GoalField {
   key: "calories" | "protein" | "carbs" | "fat";
@@ -39,8 +38,6 @@ export default function MacroGoalsScreen() {
   const { goals, setGoals, loaded } = useMacroGoals();
   const { user } = useFitness();
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
-  const isReign = tier === "reign" || tier === "legacy";
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());

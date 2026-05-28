@@ -17,7 +17,6 @@ import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { FeatureDisclaimerModal, type FeatureDisclaimerConfig } from "@/components/FeatureDisclaimerModal";
 import { useFitness } from "@/contexts/FitnessContext";
-import { useTier } from "@/hooks/useTier";
 import { useAuth } from "@/contexts/AuthContext";
 
 const WELLNESS_PREFIX = "@raimzeal_wellness_v1_";
@@ -120,7 +119,6 @@ export default function AdaptiveWorkoutScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
   const { workoutLogs } = useFitness();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 

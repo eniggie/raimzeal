@@ -15,7 +15,6 @@ import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { useFitness } from "@/contexts/FitnessContext";
-import { useTier } from "@/hooks/useTier";
 import { useAuth } from "@/contexts/AuthContext";
 
 const SLEEP_PREFIX = "@raimzeal_sleep_v1_";
@@ -87,7 +86,6 @@ export default function WeeklyReportScreen() {
   const router = useRouter();
   const { workoutLogs, mealLogs, waterIntake, getTodayMacros } = useFitness();
   const { user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [weekData, setWeekData] = useState<WeekData | null>(null);
