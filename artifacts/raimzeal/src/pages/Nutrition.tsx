@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { 
   ChevronLeft, ChevronRight, Plus, Search, Scan, Utensils, 
   Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus,
-  CalendarDays, Filter, Trash2
+  CalendarDays, Filter, Trash2, Bookmark, BookmarkCheck
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
@@ -114,6 +114,8 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [editingFilter, setEditingFilter] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
+  const [presetName, setPresetName] = useState('');
 
   // Refs to break the push↔pull loop (same pattern as mobile)
   const filtersHydratedRef = useRef(false);
@@ -362,6 +364,29 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
     if (!def) return;
     setFilterThresholds(prev => ({ ...prev, [key]: def.defaultThreshold }));
     if (editingFilter === key) setEditingFilter(null);
+  }
+
+  // ─── Custom presets ──────────────────────────────────────────────────────────
+  function savePreset() {
+    const name = presetName.trim();
+    if (!name || activeFilters.size === 0) return;
+    const preset: CustomFilterPreset = {
+      id: crypto.randomUUID(),
+      name,
+      filterKeys: Array.from(activeFilters),
+    };
+    setCustomPresets(prev => [...prev, preset]);
+    setPresetName('');
+    setIsSavingPreset(false);
+  }
+
+  function deletePreset(id: string) {
+    setCustomPresets(prev => prev.filter(p => p.id !== id));
+  }
+
+  function applyPreset(preset: CustomFilterPreset) {
+    const validKeys = new Set(FILTER_DEFS.map(d => d.key));
+    setActiveFilters(new Set(preset.filterKeys.filter(k => validKeys.has(k))));
   }
 
   // ─── Photo scan ─────────────────────────────────────────────────────────────
@@ -813,6 +838,50 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
 
               {/* Nutrient filter chips */}
               <div className="mt-4">
+                {/* Saved preset chips */}
+                {customPresets.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <BookmarkCheck className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">Saved presets</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {customPresets.map(preset => {
+                        const isActive = preset.filterKeys.length > 0 &&
+                          preset.filterKeys.every(k => activeFilters.has(k)) &&
+                          activeFilters.size === preset.filterKeys.length;
+                        return (
+                          <div
+                            key={preset.id}
+                            className={cn(
+                              'flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all',
+                              isActive
+                                ? 'bg-primary/15 text-primary border-primary/40'
+                                : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30'
+                            )}
+                            data-testid={`preset-chip-${preset.id}`}
+                          >
+                            <button
+                              onClick={() => applyPreset(preset)}
+                              className="pl-2.5 pr-1.5 py-1 hover:opacity-80 transition-opacity"
+                              title={`Apply: ${preset.filterKeys.join(', ')}`}
+                            >
+                              {preset.name}
+                            </button>
+                            <button
+                              onClick={() => deletePreset(preset.id)}
+                              className="pr-2 pl-0.5 py-1 hover:text-destructive transition-colors rounded-r-full"
+                              aria-label={`Delete preset ${preset.name}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-1.5 mb-2">
                   <Filter className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">Filter by nutrient</span>
@@ -925,6 +994,47 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                     </div>
                   );
                 })()}
+
+                {/* Save as preset */}
+                {activeFilters.size > 0 && !isSavingPreset && (
+                  <button
+                    onClick={() => { setIsSavingPreset(true); setPresetName(''); }}
+                    className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    data-testid="button-save-preset"
+                  >
+                    <Bookmark className="w-3.5 h-3.5" />
+                    Save as preset
+                  </button>
+                )}
+                {isSavingPreset && (
+                  <div className="mt-2 flex items-center gap-2 bg-muted/50 border border-border rounded-xl px-3 py-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <Bookmark className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Preset name…"
+                      value={presetName}
+                      onChange={e => setPresetName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') savePreset(); if (e.key === 'Escape') setIsSavingPreset(false); }}
+                      className="flex-1 text-xs bg-background border border-border rounded-lg px-2 py-1 focus:outline-none focus:border-primary transition-colors"
+                      autoFocus
+                      maxLength={40}
+                    />
+                    <button
+                      onClick={savePreset}
+                      disabled={!presetName.trim()}
+                      className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 shrink-0"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsSavingPreset(false)}
+                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      aria-label="Cancel"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="relative mt-3">
