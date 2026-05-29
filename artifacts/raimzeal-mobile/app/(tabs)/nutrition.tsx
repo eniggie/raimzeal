@@ -1393,6 +1393,8 @@ export default function NutritionScreen() {
   const presetRenameUndoTotalDurationMsRef = useRef<number>(0);
   const presetRenameUndoAnim = useRef(new Animated.Value(0)).current;
   const presetRenameUndoProgressAnim = useRef(new Animated.Value(1)).current;
+  const presetDeleteOffsetAnim = useRef(new Animated.Value(0)).current;
+  const presetRenameOffsetAnim = useRef(new Animated.Value(0)).current;
 
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -2011,6 +2013,11 @@ export default function NutritionScreen() {
     const durationMs = durationSec * 1000;
     setDeletedPreset(preset);
     setPresetUndoCountdown(durationSec);
+    if (renamedPreset !== null) {
+      Animated.timing(presetDeleteOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
+    } else {
+      presetDeleteOffsetAnim.setValue(0);
+    }
     presetUndoAnim.setValue(0);
     presetUndoProgressAnim.setValue(1);
     presetUndoTimerStartRef.current = Date.now();
@@ -2053,7 +2060,11 @@ export default function NutritionScreen() {
   function dismissPresetUndoToast(forReplacement = false) {
     presetUndoProgressAnim.stopAnimation();
     Animated.timing(presetUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      if (!forReplacement) setDeletedPreset(null);
+      if (!forReplacement) {
+        setDeletedPreset(null);
+        presetDeleteOffsetAnim.setValue(0);
+        Animated.timing(presetRenameOffsetAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start();
+      }
     });
     if (presetUndoTimerRef.current) {
       clearTimeout(presetUndoTimerRef.current);
@@ -2078,7 +2089,11 @@ export default function NutritionScreen() {
   function dismissPresetRenameUndoToast(forReplacement = false) {
     presetRenameUndoProgressAnim.stopAnimation();
     Animated.timing(presetRenameUndoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      if (!forReplacement) setRenamedPreset(null);
+      if (!forReplacement) {
+        setRenamedPreset(null);
+        presetRenameOffsetAnim.setValue(0);
+        Animated.timing(presetDeleteOffsetAnim, { toValue: 0, duration: 180, useNativeDriver: false }).start();
+      }
     });
     if (presetRenameUndoTimerRef.current) {
       clearTimeout(presetRenameUndoTimerRef.current);
@@ -2098,6 +2113,11 @@ export default function NutritionScreen() {
     const durationMs = durationSec * 1000;
     setRenamedPreset({ old: oldPreset, newName });
     setPresetRenameUndoCountdown(durationSec);
+    if (deletedPreset !== null) {
+      Animated.timing(presetRenameOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
+    } else {
+      presetRenameOffsetAnim.setValue(0);
+    }
     presetRenameUndoAnim.setValue(0);
     presetRenameUndoProgressAnim.setValue(1);
     presetRenameUndoTimerStartRef.current = Date.now();
@@ -6708,7 +6728,7 @@ export default function NutritionScreen() {
                 },
               ],
               opacity: presetUndoAnim,
-              bottom: insets.bottom + 16,
+              bottom: Animated.add(insets.bottom + 16, presetDeleteOffsetAnim),
             },
           ]}
         >
@@ -6753,7 +6773,7 @@ export default function NutritionScreen() {
                 },
               ],
               opacity: presetRenameUndoAnim,
-              bottom: insets.bottom + 16,
+              bottom: Animated.add(insets.bottom + 16, presetRenameOffsetAnim),
             },
           ]}
         >
