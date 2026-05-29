@@ -54,7 +54,7 @@ import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
-import { useMacroGoals } from "@/contexts/MacroGoalsContext";
+import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
 import { BarcodeScannerModal, ScannedFood, getRecentScans } from "@/components/BarcodeScannerModal";
@@ -945,7 +945,7 @@ export default function NutritionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user } = useFitness();
-  const { goals: macroGoals } = useMacroGoals();
+  const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
   const CARBS_GOAL = macroGoals.carbs;
@@ -1332,6 +1332,8 @@ export default function NutritionScreen() {
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const filterThresholdsRef = useRef<FilterThresholds>(filterThresholds);
   filterThresholdsRef.current = filterThresholds;
+  const macroGoalsRef = useRef<MacroGoals>(macroGoals);
+  macroGoalsRef.current = macroGoals;
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
   const [thresholdEditValue, setThresholdEditValue] = useState<string>("");
 
@@ -2431,6 +2433,18 @@ export default function NutritionScreen() {
             }
             setFilterThresholds((prev) => ({ ...prev, ...validated }));
           }
+          if (prefs.macroGoals !== undefined && typeof prefs.macroGoals === "object") {
+            const g = prefs.macroGoals as Record<string, unknown>;
+            const cal = g["calories"], pro = g["protein"], car = g["carbs"], fa = g["fat"];
+            if (
+              typeof cal === "number" && cal > 0 &&
+              typeof pro === "number" && pro > 0 &&
+              typeof car === "number" && car > 0 &&
+              typeof fa === "number" && fa > 0
+            ) {
+              setMacroGoals({ calories: Math.round(cal), protein: Math.round(pro), carbs: Math.round(car), fat: Math.round(fa) });
+            }
+          }
         });
       })
       .catch(() => {})
@@ -2454,9 +2468,10 @@ export default function NutritionScreen() {
         activeFilters: Array.from(activeFilters),
         customPresets,
         filterThresholds,
+        macroGoals,
       }).catch(() => {});
     });
-  }, [activeFilters, customPresets, filterThresholds]);
+  }, [activeFilters, customPresets, filterThresholds, macroGoals]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -2523,6 +2538,32 @@ export default function NutritionScreen() {
                 );
                 setFilterThresholds((prev) => ({ ...prev, ...validated }));
                 if (hasChanges) showFilterSyncToast();
+              }
+            }
+            if (p["macroGoals"] && typeof p["macroGoals"] === "object") {
+              const g = p["macroGoals"] as Record<string, unknown>;
+              const cal = g["calories"], pro = g["protein"], car = g["carbs"], fa = g["fat"];
+              if (
+                typeof cal === "number" && cal > 0 &&
+                typeof pro === "number" && pro > 0 &&
+                typeof car === "number" && car > 0 &&
+                typeof fa === "number" && fa > 0
+              ) {
+                const incoming: MacroGoals = {
+                  calories: Math.round(cal),
+                  protein: Math.round(pro),
+                  carbs: Math.round(car),
+                  fat: Math.round(fa),
+                };
+                const cur = macroGoalsRef.current;
+                if (
+                  incoming.calories !== cur.calories ||
+                  incoming.protein !== cur.protein ||
+                  incoming.carbs !== cur.carbs ||
+                  incoming.fat !== cur.fat
+                ) {
+                  setMacroGoals(incoming);
+                }
               }
             }
             setTimeout(() => { applyingRemoteRef.current = false; }, 0);
