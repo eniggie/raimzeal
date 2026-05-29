@@ -1330,6 +1330,8 @@ export default function NutritionScreen() {
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
+  const filterThresholdsRef = useRef<FilterThresholds>(filterThresholds);
+  filterThresholdsRef.current = filterThresholds;
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
   const [thresholdEditValue, setThresholdEditValue] = useState<string>("");
 
@@ -1367,6 +1369,10 @@ export default function NutritionScreen() {
   const [presetSavedMessage, setPresetSavedMessage] = useState<string | null>(null);
   const presetSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetSavedAnim = useRef(new Animated.Value(0)).current;
+
+  const [filterSyncToastVisible, setFilterSyncToastVisible] = useState(false);
+  const filterSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filterSyncAnim = useRef(new Animated.Value(0)).current;
 
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1982,6 +1988,19 @@ export default function NutritionScreen() {
     }, 2000);
   }
 
+  function showFilterSyncToast() {
+    if (filterSyncTimerRef.current) clearTimeout(filterSyncTimerRef.current);
+    setFilterSyncToastVisible(true);
+    filterSyncAnim.setValue(0);
+    Animated.spring(filterSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    filterSyncTimerRef.current = setTimeout(() => {
+      Animated.timing(filterSyncAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setFilterSyncToastVisible(false);
+      });
+      filterSyncTimerRef.current = null;
+    }, 2000);
+  }
+
   function showPresetDeletedToast(preset: CustomFilterPreset) {
     dismissPresetUndoToast(true);
     if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
@@ -2498,7 +2517,12 @@ export default function NutritionScreen() {
                 queuedThresholdUpdatesRef.current = { ...queuedThresholdUpdatesRef.current, ...queued };
               }
               if (Object.keys(validated).length > 0) {
+                const current = filterThresholdsRef.current;
+                const hasChanges = Object.keys(validated).some(
+                  (k) => validated[k] !== current[k]
+                );
                 setFilterThresholds((prev) => ({ ...prev, ...validated }));
+                if (hasChanges) showFilterSyncToast();
               }
             }
             setTimeout(() => { applyingRemoteRef.current = false; }, 0);
@@ -2512,6 +2536,10 @@ export default function NutritionScreen() {
       }
       if (suppressTimerRef.current) {
         clearTimeout(suppressTimerRef.current);
+      }
+      if (filterSyncTimerRef.current) {
+        clearTimeout(filterSyncTimerRef.current);
+        filterSyncTimerRef.current = null;
       }
     };
   }, []);
@@ -6737,6 +6765,34 @@ export default function NutritionScreen() {
           <Ionicons name="bookmark" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
           <Text style={[styles.starToastText, { color: colors.foreground }]}>
             {presetSavedMessage}
+          </Text>
+        </Animated.View>
+      )}
+
+      {filterSyncToastVisible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: filterSyncAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: filterSyncAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="sync-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
+          <Text style={[styles.starToastText, { color: colors.foreground }]}>
+            Filters updated from another device
           </Text>
         </Animated.View>
       )}
