@@ -12,6 +12,7 @@ import {
   NativeSyntheticEvent,
   PanResponder,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -6638,7 +6639,9 @@ export default function NutritionScreen() {
       })()}
 
       {undoMeal !== null && (
-        <Animated.View
+        <AnimatedPressable
+          onPressIn={handleUndoPressIn}
+          onPressOut={handleUndoPressOut}
           style={[
             styles.undoToast,
             {
@@ -6657,7 +6660,7 @@ export default function NutritionScreen() {
             },
           ]}
         >
-          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.undoToastText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
             "{undoMeal.name}" deleted
           </Text>
           <AnimatedCountdown value={undoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
@@ -6679,7 +6682,7 @@ export default function NutritionScreen() {
               },
             ]}
           />
-        </Animated.View>
+        </AnimatedPressable>
       )}
 
       {restoredLabel !== null && (
@@ -6739,7 +6742,9 @@ export default function NutritionScreen() {
       {starToastElement}
 
       {deletedPreset !== null && (
-        <Animated.View
+        <AnimatedPressable
+          onPressIn={handlePresetUndoPressIn}
+          onPressOut={handlePresetUndoPressOut}
           style={[
             styles.undoToast,
             {
@@ -6758,7 +6763,7 @@ export default function NutritionScreen() {
             },
           ]}
         >
-          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.undoToastText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
             Preset "{deletedPreset.name}" deleted
           </Text>
           <AnimatedCountdown value={presetUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
@@ -6780,11 +6785,13 @@ export default function NutritionScreen() {
               },
             ]}
           />
-        </Animated.View>
+        </AnimatedPressable>
       )}
 
       {renamedPreset !== null && (
-        <Animated.View
+        <AnimatedPressable
+          onPressIn={handlePresetRenameUndoPressIn}
+          onPressOut={handlePresetRenameUndoPressOut}
           style={[
             styles.undoToast,
             {
@@ -6803,7 +6810,7 @@ export default function NutritionScreen() {
             },
           ]}
         >
-          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+          <Text style={[styles.undoToastText, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
             Preset renamed to "{renamedPreset.newName}"
           </Text>
           <AnimatedCountdown value={presetRenameUndoCountdown} style={[styles.undoCountdownText, { color: colors.mutedForeground }]} />
@@ -6825,7 +6832,7 @@ export default function NutritionScreen() {
               },
             ]}
           />
-        </Animated.View>
+        </AnimatedPressable>
       )}
 
       {presetSavedMessage !== null && (
@@ -8364,6 +8371,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
 }
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function HistoryMacroChip({
   label,
