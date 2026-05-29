@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   FlatList,
+  Keyboard,
   LayoutAnimation,
   Modal,
   NativeScrollEvent,
@@ -1395,6 +1396,7 @@ export default function NutritionScreen() {
   const presetRenameUndoProgressAnim = useRef(new Animated.Value(1)).current;
   const presetDeleteOffsetAnim = useRef(new Animated.Value(0)).current;
   const presetRenameOffsetAnim = useRef(new Animated.Value(0)).current;
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
 
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -1826,6 +1828,30 @@ export default function NutritionScreen() {
       if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const duration = Platform.OS === "ios" ? 250 : 150;
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      Animated.timing(keyboardHeightAnim, {
+        toValue: e.endCoordinates.height,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      Animated.timing(keyboardHeightAnim, {
+        toValue: 0,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [keyboardHeightAnim]);
 
   useEffect(() => {
     AsyncStorage.getItem(LAST_USED_MEAL_KEY)
@@ -6773,7 +6799,7 @@ export default function NutritionScreen() {
                 },
               ],
               opacity: presetRenameUndoAnim,
-              bottom: Animated.add(insets.bottom + 16, presetRenameOffsetAnim),
+              bottom: Animated.add(Animated.add(insets.bottom + 16, presetRenameOffsetAnim), keyboardHeightAnim),
             },
           ]}
         >
