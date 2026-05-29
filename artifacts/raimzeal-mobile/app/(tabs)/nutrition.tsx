@@ -3096,6 +3096,16 @@ export default function NutritionScreen() {
             setFilterThresholds(next);
             AsyncStorage.setItem(THRESHOLDS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (isSupabaseConfigured) {
+              supabase.auth.getSession().then(({ data: { session } }) => {
+                if (!session?.user) return;
+                upsertUserPreferences(session.user.id, {
+                  activeFilters: Array.from(activeFilters),
+                  customPresets,
+                  filterThresholds: next,
+                }).catch(() => {});
+              });
+            }
             closeThresholdEdit();
           },
         },
