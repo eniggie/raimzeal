@@ -112,6 +112,8 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+  const [editingFilter, setEditingFilter] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
 
   // Refs to break the push↔pull loop (same pattern as mobile)
   const filtersHydratedRef = useRef(false);
@@ -325,6 +327,42 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
       return next;
     });
   }, []);
+
+  function openThresholdEdit(key: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (editingFilter === key) {
+      setEditingFilter(null);
+      return;
+    }
+    const def = FILTER_DEFS.find(d => d.key === key);
+    const current = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
+    setEditingFilter(key);
+    setEditingValue(String(current));
+  }
+
+  function closeThresholdEdit() {
+    setEditingFilter(null);
+  }
+
+  function adjustThreshold(delta: number) {
+    const parsed = parseInt(editingValue, 10) || 0;
+    setEditingValue(String(Math.max(0, parsed + delta)));
+  }
+
+  function saveThreshold() {
+    if (!editingFilter) return;
+    const parsed = parseInt(editingValue, 10);
+    if (isNaN(parsed) || parsed < 0) return;
+    setFilterThresholds(prev => ({ ...prev, [editingFilter]: parsed }));
+    setEditingFilter(null);
+  }
+
+  function resetThreshold(key: string) {
+    const def = FILTER_DEFS.find(d => d.key === key);
+    if (!def) return;
+    setFilterThresholds(prev => ({ ...prev, [key]: def.defaultThreshold }));
+    if (editingFilter === key) setEditingFilter(null);
+  }
 
   // ─── Photo scan ─────────────────────────────────────────────────────────────
   async function handlePhotoScan(file: File) {
@@ -792,23 +830,101 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                     const active = activeFilters.has(def.key);
                     const threshold = filterThresholds[def.key] ?? def.defaultThreshold;
                     const symbol = def.direction === 'gte' ? '≥' : '≤';
+                    const isEditing = editingFilter === def.key;
                     return (
-                      <button
+                      <div
                         key={def.key}
-                        onClick={() => toggleFilter(def.key)}
                         className={cn(
-                          'px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                          'flex items-center rounded-full border text-xs font-medium transition-all overflow-hidden',
                           active
                             ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                            : 'bg-muted/40 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
+                            : 'bg-muted/40 text-muted-foreground border-border'
                         )}
                         data-testid={`filter-chip-${def.key}`}
                       >
-                        {def.label} {symbol}{threshold}{def.unit}
-                      </button>
+                        <button
+                          onClick={() => toggleFilter(def.key)}
+                          className="pl-2.5 pr-1.5 py-1 hover:opacity-80 transition-opacity"
+                        >
+                          {def.label}
+                        </button>
+                        <button
+                          onClick={(e) => openThresholdEdit(def.key, e)}
+                          title="Adjust threshold"
+                          className={cn(
+                            'pr-2.5 pl-1 py-1 rounded-r-full transition-all',
+                            isEditing
+                              ? 'bg-white/20 underline underline-offset-2'
+                              : 'hover:bg-white/10 opacity-80 hover:opacity-100'
+                          )}
+                        >
+                          {symbol}{threshold}{def.unit}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
+
+                {/* Inline threshold editor */}
+                {editingFilter && (() => {
+                  const def = FILTER_DEFS.find(d => d.key === editingFilter);
+                  if (!def) return null;
+                  const symbol = def.direction === 'gte' ? '≥' : '≤';
+                  const isDefault = (filterThresholds[def.key] ?? def.defaultThreshold) === def.defaultThreshold;
+                  return (
+                    <div className="mt-2 flex items-center gap-2 bg-muted/50 border border-border rounded-xl px-3 py-2 text-sm animate-in fade-in slide-in-from-top-1 duration-150">
+                      <span className="text-xs font-medium text-muted-foreground shrink-0">
+                        {def.label} {symbol}
+                      </span>
+                      <button
+                        onClick={() => adjustThreshold(-1)}
+                        className="w-6 h-6 rounded-full border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0"
+                        aria-label="Decrease"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editingValue}
+                        onChange={e => setEditingValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveThreshold(); if (e.key === 'Escape') closeThresholdEdit(); }}
+                        className="w-16 text-center text-sm font-semibold bg-background border border-border rounded-lg py-0.5 focus:outline-none focus:border-primary transition-colors"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => adjustThreshold(1)}
+                        className="w-6 h-6 rounded-full border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0"
+                        aria-label="Increase"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <span className="text-xs text-muted-foreground shrink-0">{def.unit}</span>
+                      <button
+                        onClick={saveThreshold}
+                        className="ml-auto px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0"
+                      >
+                        Set
+                      </button>
+                      {!isDefault && (
+                        <button
+                          onClick={() => resetThreshold(def.key)}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          title="Reset to default"
+                        >
+                          Reset
+                        </button>
+                      )}
+                      <button
+                        onClick={closeThresholdEdit}
+                        className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        aria-label="Close"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="relative mt-3">
