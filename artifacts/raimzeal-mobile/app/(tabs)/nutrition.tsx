@@ -2281,6 +2281,8 @@ export default function NutritionScreen() {
   const suppressRemoteRef = useRef(false);
   const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingRemoteRef = useRef(false);
+  const draggingThresholdKeyRef = useRef<string | null>(null);
+  const queuedThresholdUpdatesRef = useRef<FilterThresholds>({});
 
   useEffect(() => {
     const VALID_DATE_RANGES = new Set(["all", "7d", "30d"]);
@@ -2479,13 +2481,25 @@ export default function NutritionScreen() {
             }
             if (p["filterThresholds"] && typeof p["filterThresholds"] === "object") {
               const validated: FilterThresholds = {};
+              const queued: FilterThresholds = {};
+              const activeKey = draggingThresholdKeyRef.current;
               for (const def of FILTER_DEFS) {
                 const v = (p["filterThresholds"] as Record<string, unknown>)[def.key];
                 if (typeof v === "number" && isFinite(v) && v >= 0) {
-                  validated[def.key] = Math.round(v);
+                  const rounded = Math.round(v);
+                  if (def.key === activeKey) {
+                    queued[def.key] = rounded;
+                  } else {
+                    validated[def.key] = rounded;
+                  }
                 }
               }
-              setFilterThresholds((prev) => ({ ...prev, ...validated }));
+              if (Object.keys(queued).length > 0) {
+                queuedThresholdUpdatesRef.current = { ...queuedThresholdUpdatesRef.current, ...queued };
+              }
+              if (Object.keys(validated).length > 0) {
+                setFilterThresholds((prev) => ({ ...prev, ...validated }));
+              }
             }
             setTimeout(() => { applyingRemoteRef.current = false; }, 0);
           }
@@ -2655,12 +2669,20 @@ export default function NutritionScreen() {
     }
     const def = FILTER_DEFS.find((d) => d.key === key);
     const current = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
+    draggingThresholdKeyRef.current = key;
+    queuedThresholdUpdatesRef.current = {};
     setThresholdEditKey(key);
     setThresholdEditValue(String(current));
   }
 
   function closeThresholdEdit() {
     extendFilterHint();
+    draggingThresholdKeyRef.current = null;
+    const queued = queuedThresholdUpdatesRef.current;
+    queuedThresholdUpdatesRef.current = {};
+    if (Object.keys(queued).length > 0) {
+      setFilterThresholds((prev) => ({ ...prev, ...queued }));
+    }
     setThresholdEditKey(null);
   }
 
