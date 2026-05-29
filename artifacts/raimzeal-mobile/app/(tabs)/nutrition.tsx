@@ -1520,8 +1520,9 @@ export default function NutritionScreen() {
   useEffect(() => {
     if (dataResetCount === 0 || dataResetCount === prevResetCountRef.current) return;
     prevResetCountRef.current = dataResetCount;
+    const defaults = getDefaultThresholds();
     setActiveFilters(new Set());
-    setFilterThresholds(getDefaultThresholds());
+    setFilterThresholds(defaults);
     setCustomPresets([]);
     setHistoryDateRange("all");
     setHistoryMealFilter("all");
@@ -1531,6 +1532,16 @@ export default function NutritionScreen() {
     setActiveTab("today");
     setHistoryFilterPanelOpen(false);
     setRecentScanCount(0);
+    if (isSupabaseConfigured) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        upsertUserPreferences(session.user.id, {
+          activeFilters: [],
+          customPresets: [],
+          filterThresholds: defaults,
+        }).catch(() => {});
+      });
+    }
   }, [dataResetCount]);
 
   // Detect when any preset chip transitions from active → inactive and play
