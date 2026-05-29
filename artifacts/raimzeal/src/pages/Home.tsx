@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
   Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart, Snowflake,
-  Moon, Sun, Wind, BedDouble
+  Moon, Sun, Wind, BedDouble, Smartphone, X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from '@/lib/supabase';
@@ -45,6 +45,12 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
   const [streakFreezes, setStreakFreezes] = useState(0);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [freezeMsg, setFreezeMsg] = useState('');
+  const [showAndroidBanner, setShowAndroidBanner] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (localStorage.getItem('rz_android_banner_dismissed')) return false;
+    const ua = navigator.userAgent.toLowerCase();
+    return ua.includes('android') || (ua.includes('mobile') && !ua.includes('iphone') && !ua.includes('ipad'));
+  });
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
@@ -112,8 +118,44 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
     { icon: BedDouble, label: 'Sleep', href: '/sleep', color: 'bg-indigo-500/20 text-indigo-400' },
   ];
 
+  function dismissAndroidBanner() {
+    localStorage.setItem('rz_android_banner_dismissed', '1');
+    setShowAndroidBanner(false);
+  }
+
   return (
     <div className="min-h-screen bg-background pb-nav">
+      {/* Android download banner */}
+      <AnimatePresence>
+        {showAndroidBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -40 }}
+            transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
+            className="sticky top-0 z-40 mx-3 mt-3"
+          >
+            <div className="rounded-2xl border border-primary/25 bg-primary/10 backdrop-blur-md px-4 py-3 flex items-center gap-3 shadow-lg">
+              <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <Smartphone className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold leading-tight">Get the Android App</p>
+                <p className="text-xs text-muted-foreground leading-tight">Download & install directly on your phone</p>
+              </div>
+              <Link href="/download">
+                <Button size="sm" className="rounded-xl text-xs px-3 h-8 shrink-0">
+                  Download
+                </Button>
+              </Link>
+              <button onClick={dismissAndroidBanner} className="text-muted-foreground hover:text-foreground transition-colors shrink-0 ml-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="px-4 pt-6 pb-4 space-y-6 max-w-lg mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -10 }}

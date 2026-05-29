@@ -46,6 +46,7 @@ import { PublicProfileSettings } from '@/pages/PublicProfileSettings';
 import { Privacy } from '@/pages/Privacy';
 import { TermsOfService } from '@/pages/TermsOfService';
 import { Support } from '@/pages/Support';
+import { Download } from '@/pages/Download';
 import { Welcome } from '@/pages/Welcome';
 import { Breathing } from '@/pages/Breathing';
 import { Calculators } from '@/pages/Calculators';
@@ -337,6 +338,7 @@ function App() {
               <Route path="/privacy"><Privacy /></Route>
               <Route path="/terms"><TermsOfService /></Route>
               <Route path="/support"><Support /></Route>
+              <Route path="/download"><Download /></Route>
               {/* Auth flow */}
               <Route path="/forgot-password"><ForgotPassword /></Route>
               <Route path="/reset-password"><ResetPassword /></Route>
