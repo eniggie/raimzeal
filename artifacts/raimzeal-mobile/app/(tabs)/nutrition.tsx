@@ -1437,6 +1437,7 @@ export default function NutritionScreen() {
   const historyResetSlideAnim = useRef(new Animated.Value(16)).current;
   const todayResetFadeAnim = useRef(new Animated.Value(0)).current;
   const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
+  const searchLoadingDimAnim = useRef(new Animated.Value(1)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyChipDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
@@ -1504,6 +1505,14 @@ export default function NutritionScreen() {
   useEffect(() => {
     refreshRecentScanCount();
   }, [refreshRecentScanCount]);
+
+  useEffect(() => {
+    Animated.timing(searchLoadingDimAnim, {
+      toValue: searchLoading ? 0.5 : 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [searchLoading]);
 
   // Reset filter/history UI state whenever the user clears all app data.
   // dataResetCount increments once per clear; skip count === 0 (initial mount).
@@ -3759,7 +3768,7 @@ export default function NutritionScreen() {
                       return (
                         <Animated.View
                           key={filter.key}
-                          style={{ transform: [{ scale: chipScale }] }}
+                          style={{ transform: [{ scale: chipScale }], opacity: isZeroCount ? 1 : searchLoadingDimAnim }}
                         >
                         <TouchableOpacity
                           key={filter.key}
@@ -3796,7 +3805,7 @@ export default function NutritionScreen() {
                                 : isZeroCount
                                 ? colors.border + "60"
                                 : colors.border,
-                              opacity: isZeroCount || searchLoading ? 0.5 : 1,
+                              opacity: isZeroCount ? 0.5 : 1,
                               overflow: "hidden",
                             },
                           ]}
@@ -3947,7 +3956,7 @@ export default function NutritionScreen() {
                     {
                       color: previewFilterKey ? colors.secondary : colors.primary,
                       transform: [{ scale: filterSummaryScaleAnim }],
-                      opacity: searchLoading ? 0.45 : 1,
+                      opacity: searchLoadingDimAnim.interpolate({ inputRange: [0.5, 1], outputRange: [0.45, 1] }),
                     },
                   ]}
                 >
