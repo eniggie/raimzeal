@@ -2160,10 +2160,11 @@ export default function NutritionScreen() {
     const durationMs = durationSec * 1000;
     setDeletedPreset(preset);
     setPresetUndoCountdown(durationSec);
+    presetDeleteOffsetAnim.setValue(0);
     if (renamedPreset !== null) {
-      Animated.timing(presetDeleteOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
+      Animated.timing(presetRenameOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
     } else {
-      presetDeleteOffsetAnim.setValue(0);
+      presetRenameOffsetAnim.setValue(0);
     }
     presetUndoAnim.setValue(0);
     presetUndoProgressAnim.setValue(1);
@@ -2260,10 +2261,11 @@ export default function NutritionScreen() {
     const durationMs = durationSec * 1000;
     setRenamedPreset({ old: oldPreset, newName });
     setPresetRenameUndoCountdown(durationSec);
+    presetRenameOffsetAnim.setValue(0);
     if (deletedPreset !== null) {
-      Animated.timing(presetRenameOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
+      Animated.timing(presetDeleteOffsetAnim, { toValue: 64, duration: 180, useNativeDriver: false }).start();
     } else {
-      presetRenameOffsetAnim.setValue(0);
+      presetDeleteOffsetAnim.setValue(0);
     }
     presetRenameUndoAnim.setValue(0);
     presetRenameUndoProgressAnim.setValue(1);
