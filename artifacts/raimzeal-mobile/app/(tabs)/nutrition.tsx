@@ -1032,7 +1032,7 @@ export default function NutritionScreen() {
         seen.add(log.name);
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
-      if (result.length >= 5) break;
+      if (result.length >= 20) break;
     }
     return result;
   }, [mealLogs, favoriteFoods, recentlyStarredNames]);
@@ -1368,6 +1368,7 @@ export default function NutritionScreen() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
   const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
+  const [recentFoodsExpanded, setRecentFoodsExpanded] = useState(false);
   const [defaultPer100g] = usePer100gDefault();
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
@@ -5170,7 +5171,7 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </Animated.View>
                     )}
-                    {recentFoods.map((food, idx) => {
+                    {(recentFoodsExpanded ? recentFoods : recentFoods.slice(0, 5)).map((food, idx) => {
                       const canToggleRecent = !!(food.nutrients100g && food.servingLabel);
                       const showingRecent100g = canToggleRecent && recentFoodsPer100g.has(food.name);
                       const displayRecentCalories = showingRecent100g ? food.nutrients100g!.calories : food.calories;
@@ -5298,6 +5299,25 @@ export default function NutritionScreen() {
                       </TouchableOpacity>
                       );
                     })}
+                    {recentFoods.length > 5 && (
+                      <TouchableOpacity
+                        onPress={() => setRecentFoodsExpanded((prev) => !prev)}
+                        activeOpacity={0.7}
+                        style={{
+                          alignSelf: "center",
+                          marginTop: 4,
+                          marginBottom: 2,
+                          paddingVertical: 6,
+                          paddingHorizontal: 16,
+                          borderRadius: 20,
+                          backgroundColor: colors.primary + "18",
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>
+                          {recentFoodsExpanded ? "Show less" : `See all (${recentFoods.length})`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 )}
 
