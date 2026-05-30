@@ -1348,6 +1348,8 @@ export default function NutritionScreen() {
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const filterThresholdsRef = useRef<FilterThresholds>(filterThresholds);
   filterThresholdsRef.current = filterThresholds;
+  const activeFiltersRef = useRef<Set<string>>(activeFilters);
+  activeFiltersRef.current = activeFilters;
   const macroGoalsRef = useRef<MacroGoals>(macroGoals);
   macroGoalsRef.current = macroGoals;
   const [thresholdEditKey, setThresholdEditKey] = useState<string | null>(null);
@@ -1414,6 +1416,8 @@ export default function NutritionScreen() {
   const keyboardHeightAnim = useRef(new Animated.Value(0)).current;
 
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+  const customPresetsRef = useRef<CustomFilterPreset[]>(customPresets);
+  customPresetsRef.current = customPresets;
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [savePresetName, setSavePresetName] = useState("");
 
@@ -2658,11 +2662,19 @@ export default function NutritionScreen() {
             // threshold modal is open. The modal is a separate overlay focused on a
             // single number input; filter chip and preset changes from another device
             // don't conflict with that UI and are safe to land right away.
+            // shouldShowToast is accumulated across all three branches so a single
+            // remote update that touches multiple fields only fires the toast once.
+            let shouldShowToast = false;
             if (Array.isArray(p["activeFilters"])) {
               const restored = (p["activeFilters"] as unknown[]).filter(
                 (k): k is string => typeof k === "string" && validKeys.has(k)
               );
+              const currentFilters = activeFiltersRef.current;
+              const hasFilterChanges =
+                restored.length !== currentFilters.size ||
+                restored.some((k) => !currentFilters.has(k));
               setActiveFilters(new Set(restored));
+              if (hasFilterChanges) shouldShowToast = true;
             }
             if (Array.isArray(p["customPresets"])) {
               const valid = (p["customPresets"] as unknown[]).filter(
@@ -2673,7 +2685,17 @@ export default function NutritionScreen() {
                   typeof (item as CustomFilterPreset).name === "string" &&
                   Array.isArray((item as CustomFilterPreset).filterKeys)
               );
+              const currentPresets = customPresetsRef.current;
+              const hasPresetChanges =
+                valid.length !== currentPresets.length ||
+                valid.some(
+                  (vp, i) =>
+                    vp.id !== currentPresets[i]?.id ||
+                    vp.name !== currentPresets[i]?.name ||
+                    JSON.stringify(vp.filterKeys) !== JSON.stringify(currentPresets[i]?.filterKeys)
+                );
               setCustomPresets(valid);
+              if (hasPresetChanges) shouldShowToast = true;
             }
             if (p["filterThresholds"] && typeof p["filterThresholds"] === "object") {
               const validated: FilterThresholds = {};
@@ -2704,9 +2726,10 @@ export default function NutritionScreen() {
                   (k) => validated[k] !== current[k]
                 );
                 setFilterThresholds((prev) => ({ ...prev, ...validated }));
-                if (hasChanges) showFilterSyncToast();
+                if (hasChanges) shouldShowToast = true;
               }
             }
+            if (shouldShowToast) showFilterSyncToast();
             if (p["macroGoals"] && typeof p["macroGoals"] === "object") {
               const g = p["macroGoals"] as Record<string, unknown>;
               const cal = g["calories"], pro = g["protein"], car = g["carbs"], fa = g["fat"];
