@@ -966,6 +966,83 @@ export default function ProfileScreen() {
   }
 
   async function handleLogout() {
+    // Check for a pending cloud wipe BEFORE showing the sign-out confirmation.
+    // If the user cleared their data while offline, the cloud records were never
+    // deleted. Signing out now would leave those records in Supabase forever.
+    const { default: AsyncStorage } = await import(
+      "@react-native-async-storage/async-storage"
+    );
+    const pendingWipeUserId = await AsyncStorage.getItem(PENDING_CLOUD_WIPE_KEY).catch(() => null);
+    const hasPendingWipe =
+      pendingWipeUserId != null &&
+      authUser?.id != null &&
+      pendingWipeUserId === authUser.id;
+
+    // Shared helper — runs the full sign-out sequence regardless of which
+    // alert path led here. resetHints() must run first (needs the active
+    // session to clear remote dismissedHints).
+    async function doSignOut() {
+      resetHints();
+      try {
+        await signOut();
+      } catch {
+        Alert.alert(
+          "Sign Out Failed",
+          "Could not sign out. Please check your connection and try again."
+        );
+        return;
+      }
+      resetState();
+      if (!isSupabaseConfigured) {
+        Alert.alert("Signed out", "You have been signed out.");
+      }
+    }
+
+    if (hasPendingWipe) {
+      // Warn the user that their cloud data has not been wiped yet and offer
+      // a chance to retry before signing out.
+      Alert.alert(
+        "Cloud Data Wipe Pending",
+        "You cleared your data while offline. Your health records haven't been deleted from the cloud yet — they'll remain in Supabase if you sign out now.\n\nWould you like to retry the wipe before signing out?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Sign Out Anyway",
+            style: "destructive",
+            onPress: doSignOut,
+          },
+          {
+            text: "Retry & Sign Out",
+            onPress: async () => {
+              try {
+                await clearAllUserData(authUser!.id);
+                await AsyncStorage.removeItem(PENDING_CLOUD_WIPE_KEY);
+              } catch {
+                // Still offline or request failed — inform the user and let
+                // them decide whether to sign out knowing data remains.
+                Alert.alert(
+                  "Still Offline",
+                  "Your cloud data could not be wiped — you appear to be offline. Your health records will remain in Supabase until you sign in again and the wipe is retried.\n\nSign out anyway?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Sign Out",
+                      style: "destructive",
+                      onPress: doSignOut,
+                    },
+                  ]
+                );
+                return;
+              }
+              await doSignOut();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // No pending wipe — show the standard confirmation.
     Alert.alert(
       "Sign Out",
       "Are you sure you want to sign out?",
@@ -974,25 +1051,7 @@ export default function ProfileScreen() {
         {
           text: "Sign Out",
           style: "destructive",
-          onPress: async () => {
-            // Reset hints BEFORE signing out so the active session is still
-            // available to clear remote dismissedHints in Supabase preferences.
-            // resetHints() is fire-and-forget for the remote path — local state
-            // is cleared synchronously regardless of network outcome.
-            resetHints();
-            // Sign out from Supabase. If it fails, local state stays intact
-            // so the user is not left in a ghost session.
-            try {
-              await signOut();
-            } catch {
-              Alert.alert("Sign Out Failed", "Could not sign out. Please check your connection and try again.");
-              return;
-            }
-            resetState();
-            if (!isSupabaseConfigured) {
-              Alert.alert("Signed out", "You have been signed out.");
-            }
-          },
+          onPress: doSignOut,
         },
       ]
     );
