@@ -4301,7 +4301,7 @@ export default function NutritionScreen() {
                     )}
                     <Animated.View
                       style={{
-                        opacity: todayResetFadeAnim,
+                        opacity: Animated.multiply(todayResetFadeAnim, searchLoadingDimAnim),
                         transform: [{ translateX: todayResetSlideAnim }],
                       }}
                       pointerEvents={hasCustomThresholds ? "auto" : "none"}
@@ -4321,19 +4321,21 @@ export default function NutritionScreen() {
                       </TouchableOpacity>
                     </Animated.View>
                     {activeFilters.size > 0 && (
-                      <TouchableOpacity
-                        onPress={clearFilters}
-                        style={[
-                          styles.filterClearBtn,
-                          { borderColor: colors.border },
-                        ]}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <Ionicons name="close" size={13} color={colors.mutedForeground} />
-                        <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
-                          Clear
-                        </Text>
-                      </TouchableOpacity>
+                      <Animated.View style={{ opacity: searchLoadingDimAnim }}>
+                        <TouchableOpacity
+                          onPress={clearFilters}
+                          style={[
+                            styles.filterClearBtn,
+                            { borderColor: colors.border },
+                          ]}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons name="close" size={13} color={colors.mutedForeground} />
+                          <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
+                            Clear
+                          </Text>
+                        </TouchableOpacity>
+                      </Animated.View>
                     )}
                   </View>
                 </View>
