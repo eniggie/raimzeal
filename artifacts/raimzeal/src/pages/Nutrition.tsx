@@ -507,7 +507,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
       if (!res.ok || d.error) { setAnalyzeError(d.error ?? 'Could not analyze photo.'); return; }
       setAnalyzedMeal({ name: d.name!, calories: d.calories!, protein_g: d.protein_g!, carbs_g: d.carbs_g!, fat_g: d.fat_g!, confidence: d.confidence!, notes: d.notes });
     } catch { setAnalyzeError('Could not analyze photo.'); }
-    setIsAnalyzing(false);
+    finally { setIsAnalyzing(false); }
   }
 
   function logAnalyzedMeal() {
