@@ -75,7 +75,20 @@ function parseOFF(p: OFFProduct): QuickFood | null {
     Math.round((useServing
       ? (n.fat_serving ?? n.fat_100g ?? 0)
       : (n.fat_100g ?? 0)) * 10) / 10;
-  return { name, calories, protein, carbs, fat, mealType: "snack", servingLabel };
+  const has100g =
+    n["energy-kcal_100g"] !== undefined ||
+    n.proteins_100g !== undefined ||
+    n.carbohydrates_100g !== undefined ||
+    n.fat_100g !== undefined;
+  const nutrients100g = has100g
+    ? {
+        calories: Math.round(n["energy-kcal_100g"] ?? 0),
+        protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
+        carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
+        fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+      }
+    : undefined;
+  return { name, calories, protein, carbs, fat, mealType: "snack", servingLabel, nutrients100g };
 }
 
 // ─── Draggable item ───────────────────────────────────────────────────────────
