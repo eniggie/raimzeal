@@ -44,6 +44,7 @@ import {
   PRESET_LONG_PRESS_HINT_KEY,
   QUICK_FOOD_GRAMS_HINT_KEY,
   FAV_FOOD_GRAMS_HINT_KEY,
+  PRESET_REORDER_HINT_KEY,
 } from "@/lib/hints";
 
 import { Swipeable } from "react-native-gesture-handler";
@@ -1495,6 +1496,10 @@ export default function NutritionScreen() {
   const presetLongPressHintShownRef = useRef(false);
   const presetLongPressHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetHintPendingRef = useRef(false);
+
+  const [presetReorderHintVisible, setPresetReorderHintVisible] = useState(false);
+  const presetReorderHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const presetReorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevDismissedHintsLenRef = useRef<number | null>(null);
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
@@ -1771,6 +1776,19 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setPresetLongPressHintVisible(false));
     dismissHint(PRESET_LONG_PRESS_HINT_KEY);
+  }
+
+  function dismissPresetReorderHint() {
+    if (presetReorderHintTimerRef.current) {
+      clearTimeout(presetReorderHintTimerRef.current);
+      presetReorderHintTimerRef.current = null;
+    }
+    Animated.timing(presetReorderHintFadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setPresetReorderHintVisible(false));
+    dismissHint(PRESET_REORDER_HINT_KEY);
   }
 
   function handleHistoryFilterHintPress() {
@@ -2797,6 +2815,19 @@ export default function NutritionScreen() {
     setActiveReorderPresetIdx(-1);
     setHoverReorderPresetIdx(-1);
     setIsReorderingPresets(true);
+    if (!isHintDismissed(PRESET_REORDER_HINT_KEY)) {
+      presetReorderHintFadeAnim.setValue(0);
+      setPresetReorderHintVisible(true);
+      Animated.timing(presetReorderHintFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      if (presetReorderHintTimerRef.current) {
+        clearTimeout(presetReorderHintTimerRef.current);
+      }
+      presetReorderHintTimerRef.current = setTimeout(dismissPresetReorderHint, 3000);
+    }
   }
 
   function exitPresetReorderMode() {
@@ -2951,6 +2982,14 @@ export default function NutritionScreen() {
   useEffect(() => {
     return () => {
       if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (presetReorderHintTimerRef.current) {
+        clearTimeout(presetReorderHintTimerRef.current);
+      }
     };
   }, []);
 
@@ -3906,6 +3945,30 @@ export default function NutritionScreen() {
                       </Animated.Text>
                     )}
 
+                    {isReorderingPresets && presetReorderHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.secondary + "40",
+                            opacity: presetReorderHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="swap-horizontal-outline" size={14} color={colors.secondary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Drag chips left or right to reorder
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissPresetReorderHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
+
                     {isReorderingPresets ? (
                       <ScrollView
                         horizontal
@@ -4732,6 +4795,29 @@ export default function NutritionScreen() {
                       >
                         Hold a chip to edit or delete it
                       </Animated.Text>
+                    )}
+                    {isReorderingPresets && presetReorderHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.secondary + "40",
+                            opacity: presetReorderHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="swap-horizontal-outline" size={14} color={colors.secondary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Drag chips left or right to reorder
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissPresetReorderHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
                     )}
                     {isReorderingPresets ? (
                       <ScrollView
