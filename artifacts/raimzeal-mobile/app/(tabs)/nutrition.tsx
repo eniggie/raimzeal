@@ -1369,7 +1369,7 @@ export default function NutritionScreen() {
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
   const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
   const [recentFoodsExpanded, setRecentFoodsExpanded] = useState(false);
-  const [defaultPer100g] = usePer100gDefault();
+  const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
 
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
@@ -1426,6 +1426,10 @@ export default function NutritionScreen() {
   const [goalsSyncToastVisible, setGoalsSyncToastVisible] = useState(false);
   const goalsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goalsSyncAnim = useRef(new Animated.Value(0)).current;
+
+  const [per100gToastMessage, setPer100gToastMessage] = useState<string | null>(null);
+  const per100gToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const per100gToastAnim = useRef(new Animated.Value(0)).current;
 
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2231,6 +2235,15 @@ export default function NutritionScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (per100gToastTimerRef.current) {
+        clearTimeout(per100gToastTimerRef.current);
+        per100gToastTimerRef.current = null;
+      }
+    };
+  }, []);
+
   function dismissPresetSavedToast(forReplacement = false) {
     presetSavedAnim.stopAnimation();
     Animated.timing(presetSavedAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
@@ -2291,6 +2304,27 @@ export default function NutritionScreen() {
     Animated.spring(goalsSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     goalsSyncTimerRef.current = setTimeout(() => {
       dismissGoalsSyncToast();
+    }, 2000);
+  }
+
+  function dismissPer100gToast(forReplacement = false) {
+    per100gToastAnim.stopAnimation();
+    Animated.timing(per100gToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setPer100gToastMessage(null);
+    });
+    if (per100gToastTimerRef.current) {
+      clearTimeout(per100gToastTimerRef.current);
+      per100gToastTimerRef.current = null;
+    }
+  }
+
+  function showPer100gToast(message: string) {
+    dismissPer100gToast(true);
+    setPer100gToastMessage(message);
+    per100gToastAnim.setValue(0);
+    Animated.spring(per100gToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    per100gToastTimerRef.current = setTimeout(() => {
+      dismissPer100gToast();
     }, 2000);
   }
 
@@ -4302,6 +4336,50 @@ export default function NutritionScreen() {
                 </TouchableOpacity>
               )}
             </View>}
+
+            {/* Per-100g default indicator pill — only on Today tab */}
+            {activeTab === "today" && (
+              <TouchableOpacity
+                onPress={() => {
+                  const next = !defaultPer100g;
+                  setDefaultPer100g(next);
+                  showPer100gToast(next ? "Default switched to per 100g" : "Default switched to per serving");
+                }}
+                activeOpacity={0.75}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                style={styles.per100gPill}
+              >
+                <View
+                  style={[
+                    styles.per100gPillInner,
+                    {
+                      backgroundColor: defaultPer100g ? colors.primary + "18" : colors.muted,
+                      borderColor: defaultPer100g ? colors.primary + "40" : colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="scale-outline"
+                    size={11}
+                    color={defaultPer100g ? colors.primary : colors.mutedForeground}
+                  />
+                  <Text
+                    style={[
+                      styles.per100gPillText,
+                      { color: defaultPer100g ? colors.primary : colors.mutedForeground },
+                    ]}
+                  >
+                    {defaultPer100g ? "per 100g" : "per serving"}
+                  </Text>
+                  <Ionicons
+                    name="swap-horizontal-outline"
+                    size={10}
+                    color={defaultPer100g ? colors.primary : colors.mutedForeground}
+                    style={{ opacity: 0.7 }}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* Filter chips — shown while searching on Today tab */}
             {activeTab === "today" && isSearching && (
@@ -7840,6 +7918,34 @@ export default function NutritionScreen() {
         </Animated.View>
       )}
 
+      {per100gToastMessage !== null && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: per100gToastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: per100gToastAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="scale-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
+          <Text style={[styles.starToastText, { color: colors.foreground }]}>
+            {per100gToastMessage}
+          </Text>
+        </Animated.View>
+      )}
+
       {macroAlert !== null && (
         <View
           pointerEvents="box-none"
@@ -9708,6 +9814,22 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === "ios" ? 12 : 8,
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  per100gPill: {
+    alignSelf: "flex-start",
+  },
+  per100gPillInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  per100gPillText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
   searchInput: {
     flex: 1,
