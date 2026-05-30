@@ -7953,12 +7953,21 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                 ]}
               />
               <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
-              {perGramRef.current !== null && (
-                <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
-                  · macros scale
-                </Text>
-              )}
             </View>
+            {(() => {
+              const pg = perGramRef.current;
+              const n = parseFloat(editGramsText);
+              if (!pg || isNaN(n) || n <= 0) return null;
+              const cal = Math.round(pg.calories * n);
+              const pro = Math.round(pg.protein * n * 10) / 10;
+              const carb = Math.round(pg.carbs * n * 10) / 10;
+              const fat = Math.round(pg.fat * n * 10) / 10;
+              return (
+                <Text style={[styles.gramsPreview, { color: colors.mutedForeground }]}>
+                  ~{cal} kcal · {pro}g P · {carb}g C · {fat}g F at {n}g
+                </Text>
+              );
+            })()}
 
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
@@ -8615,12 +8624,21 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                 ]}
               />
               <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
-              {perGramRef.current !== null && (
-                <Text style={[styles.gramsHint, { color: colors.mutedForeground }]}>
-                  · macros scale
-                </Text>
-              )}
             </View>
+            {(() => {
+              const pg = perGramRef.current;
+              const n = parseFloat(editGramsText);
+              if (!pg || isNaN(n) || n <= 0) return null;
+              const cal = Math.round(pg.calories * n);
+              const pro = Math.round(pg.protein * n * 10) / 10;
+              const carb = Math.round(pg.carbs * n * 10) / 10;
+              const fat = Math.round(pg.fat * n * 10) / 10;
+              return (
+                <Text style={[styles.gramsPreview, { color: colors.mutedForeground }]}>
+                  ~{cal} kcal · {pro}g P · {carb}g C · {fat}g F at {n}g
+                </Text>
+              );
+            })()}
 
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
@@ -9361,6 +9379,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     flex: 1,
+  },
+  gramsPreview: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+    marginBottom: 4,
   },
   editFieldLabel: {
     fontSize: 11,
