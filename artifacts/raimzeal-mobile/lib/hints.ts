@@ -13,6 +13,8 @@ export const QUICK_FOOD_GRAMS_HINT_KEY =
   "@nutrition_quick_food_grams_hint_dismissed";
 export const FAV_FOOD_GRAMS_HINT_KEY =
   "@nutrition_fav_food_grams_hint_dismissed";
+export const RECENT_FOOD_GRAMS_HINT_KEY =
+  "@nutrition_recent_food_grams_hint_dismissed";
 export const PRESET_REORDER_HINT_KEY =
   "@nutrition_preset_reorder_hint_dismissed";
 export const INFO_BUTTON_TOOLTIP_KEY =

@@ -44,6 +44,7 @@ import {
   PRESET_LONG_PRESS_HINT_KEY,
   QUICK_FOOD_GRAMS_HINT_KEY,
   FAV_FOOD_GRAMS_HINT_KEY,
+  RECENT_FOOD_GRAMS_HINT_KEY,
   PRESET_REORDER_HINT_KEY,
   INFO_BUTTON_TOOLTIP_KEY,
 } from "@/lib/hints";
@@ -1464,6 +1465,10 @@ export default function NutritionScreen() {
   const favGramsHintFadeAnim = useRef(new Animated.Value(0)).current;
   const favGramsHintShownRef = useRef(false);
 
+  const [recentGramsHintVisible, setRecentGramsHintVisible] = useState(false);
+  const recentGramsHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const recentGramsHintShownRef = useRef(false);
+
   const [resultCountVisible, setResultCountVisible] = useState(false);
   const resultCountFadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -1527,7 +1532,7 @@ export default function NutritionScreen() {
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
   const pendingScrollFavoriteRef = useRef<string | null>(null);
-  const selectedFoodSourceRef = useRef<"quick" | "fav" | null>(null);
+  const selectedFoodSourceRef = useRef<"quick" | "fav" | "recent" | null>(null);
   const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
@@ -1733,6 +1738,15 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start(() => setFavGramsHintVisible(false));
     dismissHint(FAV_FOOD_GRAMS_HINT_KEY);
+  }
+
+  function dismissRecentGramsHint() {
+    Animated.timing(recentGramsHintFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setRecentGramsHintVisible(false));
+    dismissHint(RECENT_FOOD_GRAMS_HINT_KEY);
   }
 
   function dismissHistoryFilterHint() {
@@ -1984,6 +1998,19 @@ export default function NutritionScreen() {
     favGramsHintFadeAnim.setValue(0);
     setFavGramsHintVisible(true);
     Animated.timing(favGramsHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  useEffect(() => {
+    if (recentGramsHintShownRef.current) return;
+    recentGramsHintShownRef.current = true;
+    if (isHintDismissed(RECENT_FOOD_GRAMS_HINT_KEY)) return;
+    recentGramsHintFadeAnim.setValue(0);
+    setRecentGramsHintVisible(true);
+    Animated.timing(recentGramsHintFadeAnim, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
@@ -3610,7 +3637,7 @@ export default function NutritionScreen() {
     breakdownHighlightTimer.current = setTimeout(() => setBreakdownHighlightMacro(null), 1500);
   }
 
-  async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean; source?: "quick" | "fav" }) {
+  async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean; source?: "quick" | "fav" | "recent" }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     selectedFoodSourceRef.current = opts?.source ?? null;
 
@@ -3828,6 +3855,8 @@ export default function NutritionScreen() {
         dismissQuickGramsHint();
       } else if (selectedFoodSourceRef.current === "fav") {
         dismissFavGramsHint();
+      } else if (selectedFoodSourceRef.current === "recent") {
+        dismissRecentGramsHint();
       }
     }
 
@@ -4855,6 +4884,29 @@ export default function NutritionScreen() {
                     <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
                       Recent Foods
                     </Text>
+                    {recentGramsHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary + "40",
+                            opacity: recentGramsHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="scale-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Tap a food to enter grams and scale macros
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissRecentGramsHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
                     {recentFoods.map((food, idx) => {
                       const canToggleRecent = !!(food.nutrients100g && food.servingLabel);
                       const showingRecent100g = canToggleRecent && recentFoodsPer100g.has(food.name);
@@ -4874,7 +4926,7 @@ export default function NutritionScreen() {
                       <TouchableOpacity
                         key={`recent-${food.name}-${idx}`}
                         activeOpacity={0.8}
-                        onPress={() => handleAddFood(food)}
+                        onPress={() => handleAddFood(food, { source: "recent" })}
                         onLongPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                           setPreviewSheetFood({
