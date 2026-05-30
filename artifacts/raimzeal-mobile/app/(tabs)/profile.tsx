@@ -9,6 +9,7 @@ import {
   Linking,
   Modal,
   Platform,
+  FlatList,
   ScrollView,
   StyleSheet,
   Switch,
@@ -55,7 +56,15 @@ function resolveDefaultCardBgUri(): string | null {
 
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
+const LAST_USED_SERVING_KEY = "@nutrition_last_used_serving";
 const DIGEST_SUBSCRIBED_KEY = "@digest_subscribed";
+
+type MealDefaultEntry = {
+  name: string;
+  grams?: number;
+  meal?: string;
+  serving?: number;
+};
 const LAST_EXPORT_KEY = "@profile_last_export_timestamp";
 
 const GOAL_LABELS: Record<string, string> = {
@@ -129,6 +138,8 @@ export default function ProfileScreen() {
   const [pendingClearAfterExport, setPendingClearAfterExport] = useState(false);
 
   const [mealDefaultsCount, setMealDefaultsCount] = useState<number | null>(null);
+  const [showMealDefaultsSheet, setShowMealDefaultsSheet] = useState(false);
+  const [mealDefaultsEntries, setMealDefaultsEntries] = useState<MealDefaultEntry[]>([]);
 
   const [digestSubscribed, setDigestSubscribed] = useState(false);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -682,13 +693,19 @@ export default function ProfileScreen() {
       const { default: AsyncStorage } = await import(
         "@react-native-async-storage/async-storage"
       );
-      const [gramsRaw, mealRaw] = await Promise.all([
+      const [gramsRaw, mealRaw, servingRaw] = await Promise.all([
         AsyncStorage.getItem(LAST_USED_GRAMS_KEY),
         AsyncStorage.getItem(LAST_USED_MEAL_KEY),
+        AsyncStorage.getItem(LAST_USED_SERVING_KEY),
       ]);
-      const gramsMap: Record<string, unknown> = gramsRaw ? JSON.parse(gramsRaw) : {};
-      const mealMap: Record<string, unknown> = mealRaw ? JSON.parse(mealRaw) : {};
-      const foodNames = new Set([...Object.keys(gramsMap), ...Object.keys(mealMap)]);
+      const gramsMap: Record<string, number> = gramsRaw ? JSON.parse(gramsRaw) : {};
+      const mealMap: Record<string, string> = mealRaw ? JSON.parse(mealRaw) : {};
+      const servingMap: Record<string, number> = servingRaw ? JSON.parse(servingRaw) : {};
+      const foodNames = new Set([
+        ...Object.keys(gramsMap),
+        ...Object.keys(mealMap),
+        ...Object.keys(servingMap),
+      ]);
       setMealDefaultsCount(foodNames.size);
     } catch {
       setMealDefaultsCount(null);
@@ -699,10 +716,73 @@ export default function ProfileScreen() {
     loadMealDefaultsCount();
   }, []);
 
-  function handleClearMealDefaults() {
+  async function handleClearMealDefaults() {
+    if (mealDefaultsCount === 0) return;
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      const [gramsRaw, mealRaw, servingRaw] = await Promise.all([
+        AsyncStorage.getItem(LAST_USED_GRAMS_KEY),
+        AsyncStorage.getItem(LAST_USED_MEAL_KEY),
+        AsyncStorage.getItem(LAST_USED_SERVING_KEY),
+      ]);
+      const gramsMap: Record<string, number> = gramsRaw ? JSON.parse(gramsRaw) : {};
+      const mealMap: Record<string, string> = mealRaw ? JSON.parse(mealRaw) : {};
+      const servingMap: Record<string, number> = servingRaw ? JSON.parse(servingRaw) : {};
+      const allNames = new Set([
+        ...Object.keys(gramsMap),
+        ...Object.keys(mealMap),
+        ...Object.keys(servingMap),
+      ]);
+      const entries: MealDefaultEntry[] = [...allNames].map((name) => ({
+        name,
+        grams: gramsMap[name],
+        meal: mealMap[name],
+        serving: servingMap[name],
+      }));
+      setMealDefaultsEntries(entries);
+      setShowMealDefaultsSheet(true);
+    } catch {
+      Alert.alert("Error", "Could not load saved defaults. Please try again.");
+    }
+  }
+
+  async function handleClearOneDefault(foodName: string) {
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      const [gramsRaw, mealRaw, servingRaw] = await Promise.all([
+        AsyncStorage.getItem(LAST_USED_GRAMS_KEY),
+        AsyncStorage.getItem(LAST_USED_MEAL_KEY),
+        AsyncStorage.getItem(LAST_USED_SERVING_KEY),
+      ]);
+      const gramsMap: Record<string, number> = gramsRaw ? JSON.parse(gramsRaw) : {};
+      const mealMap: Record<string, string> = mealRaw ? JSON.parse(mealRaw) : {};
+      const servingMap: Record<string, number> = servingRaw ? JSON.parse(servingRaw) : {};
+      delete gramsMap[foodName];
+      delete mealMap[foodName];
+      delete servingMap[foodName];
+      await Promise.all([
+        AsyncStorage.setItem(LAST_USED_GRAMS_KEY, JSON.stringify(gramsMap)),
+        AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(mealMap)),
+        AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(servingMap)),
+      ]);
+      const updated = mealDefaultsEntries.filter((e) => e.name !== foodName);
+      setMealDefaultsEntries(updated);
+      setMealDefaultsCount(updated.length);
+      if (updated.length === 0) setShowMealDefaultsSheet(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {
+      Alert.alert("Error", "Could not clear that food's defaults. Please try again.");
+    }
+  }
+
+  function handleClearAllDefaults() {
     Alert.alert(
-      "Clear Remembered Defaults",
-      "This will reset the remembered grams amount and meal type for every food. The next time you open a food, it will show the original defaults.",
+      "Clear All Defaults",
+      "This will reset the remembered grams, servings, and meal type for every food.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -716,13 +796,12 @@ export default function ProfileScreen() {
               await Promise.all([
                 AsyncStorage.removeItem(LAST_USED_GRAMS_KEY),
                 AsyncStorage.removeItem(LAST_USED_MEAL_KEY),
+                AsyncStorage.removeItem(LAST_USED_SERVING_KEY),
               ]);
+              setMealDefaultsEntries([]);
               setMealDefaultsCount(0);
+              setShowMealDefaultsSheet(false);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(
-                "Defaults Cleared",
-                "All remembered grams amounts and meal types have been reset."
-              );
             } catch {
               Alert.alert("Error", "Could not clear defaults. Please try again.");
             }
@@ -1197,6 +1276,76 @@ export default function ProfileScreen() {
                 <Text style={[styles.undoModalBtnText, { color: "#fff" }]}>Save</Text>
               </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Per-food remembered defaults sheet */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={showMealDefaultsSheet}
+        onRequestClose={() => setShowMealDefaultsSheet(false)}
+        statusBarTranslucent
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowMealDefaultsSheet(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}
+        >
+          <TouchableOpacity activeOpacity={1} style={[styles.defaultsSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.defaultsSheetHandle} />
+            <Text style={[styles.defaultsSheetTitle, { color: colors.foreground }]}>Remembered Defaults</Text>
+            <Text style={[styles.defaultsSheetSubtitle, { color: colors.mutedForeground }]}>
+              Tap the trash icon to clear one food's saved grams, servings, and meal type.
+            </Text>
+            <FlatList
+              data={mealDefaultsEntries}
+              keyExtractor={(item) => item.name}
+              style={{ maxHeight: 360 }}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.border }} />}
+              renderItem={({ item }) => (
+                <View style={styles.defaultsEntryRow}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={[styles.defaultsEntryName, { color: colors.foreground }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                      {item.grams !== undefined && (
+                        <View style={[styles.defaultsChip, { backgroundColor: colors.accent + "20" }]}>
+                          <Text style={[styles.defaultsChipText, { color: colors.accent }]}>{item.grams}g</Text>
+                        </View>
+                      )}
+                      {item.serving !== undefined && item.serving !== 1 && (
+                        <View style={[styles.defaultsChip, { backgroundColor: colors.primary + "20" }]}>
+                          <Text style={[styles.defaultsChipText, { color: colors.primary }]}>×{item.serving} serving{item.serving !== 1 ? "s" : ""}</Text>
+                        </View>
+                      )}
+                      {item.meal !== undefined && (
+                        <View style={[styles.defaultsChip, { backgroundColor: colors.mutedForeground + "20" }]}>
+                          <Text style={[styles.defaultsChipText, { color: colors.mutedForeground }]}>{item.meal}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleClearOneDefault(item.name)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.defaultsTrashBtn, { backgroundColor: colors.destructive + "15" }]}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+            <TouchableOpacity
+              onPress={handleClearAllDefaults}
+              style={[styles.defaultsClearAllBtn, { backgroundColor: colors.destructive + "15", borderColor: colors.destructive + "40" }]}
+            >
+              <Ionicons name="trash-outline" size={15} color={colors.destructive} />
+              <Text style={[styles.defaultsClearAllText, { color: colors.destructive }]}>Clear all</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -2213,4 +2362,15 @@ const styles = StyleSheet.create({
   exportRangeRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
   exportRangeLabel: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
   exportRangeCurrentTag: { fontSize: 11, fontFamily: "Inter_500Medium", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, overflow: "hidden" },
+  defaultsSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
+  defaultsSheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#88888866", alignSelf: "center", marginBottom: 8 },
+  defaultsSheetTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold" },
+  defaultsSheetSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginBottom: 4 },
+  defaultsEntryRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12 },
+  defaultsEntryName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  defaultsChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  defaultsChipText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  defaultsTrashBtn: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  defaultsClearAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 14, borderWidth: 1, marginTop: 4 },
+  defaultsClearAllText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });
