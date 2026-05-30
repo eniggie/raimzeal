@@ -3306,6 +3306,25 @@ export default function NutritionScreen() {
 
   function clearFilters() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
+    for (const p of customPresets) {
+      const pKeys = p.filterKeys.filter((k) => validKeys.has(k));
+      if (
+        pKeys.length > 0 &&
+        pKeys.length === activeFilters.size &&
+        pKeys.every((k) => activeFilters.has(k))
+      ) {
+        if (!presetChipScaleAnims.current[p.id]) {
+          presetChipScaleAnims.current[p.id] = new Animated.Value(1);
+        }
+        const anim = presetChipScaleAnims.current[p.id];
+        Animated.sequence([
+          Animated.spring(anim, { toValue: 0.88, speed: 40, bounciness: 4, useNativeDriver: true }),
+          Animated.spring(anim, { toValue: 1, speed: 30, bounciness: 6, useNativeDriver: true }),
+        ]).start();
+        break;
+      }
+    }
     setActiveFilters(new Set());
   }
 
