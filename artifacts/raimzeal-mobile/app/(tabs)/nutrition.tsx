@@ -1322,6 +1322,8 @@ export default function NutritionScreen() {
   const [recentScanCount, setRecentScanCount] = useState(0);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualMacrosPrefilledFor, setManualMacrosPrefilledFor] = useState<string | null>(null);
+  const [showMacroDefaultsSheet, setShowMacroDefaultsSheet] = useState(false);
+  const [macroDefaultsEntries, setMacroDefaultsEntries] = useState<{ name: string; calories: string; protein: string; carbs: string; fat: string }[]>([]);
   const [showQuickEditor, setShowQuickEditor] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
@@ -3589,6 +3591,53 @@ export default function NutritionScreen() {
                 }).catch(() => {});
               });
             }
+          },
+        },
+      ]
+    );
+  }
+
+  function openMacroDefaultsSheet() {
+    AsyncStorage.getItem(MANUAL_MACROS_KEY)
+      .then((raw) => {
+        const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+          raw ? JSON.parse(raw) : {};
+        const entries = Object.entries(map).map(([name, vals]) => ({ name, ...vals }));
+        setMacroDefaultsEntries(entries);
+        setShowMacroDefaultsSheet(true);
+      })
+      .catch(() => {
+        setMacroDefaultsEntries([]);
+        setShowMacroDefaultsSheet(true);
+      });
+  }
+
+  function deleteMacroDefault(foodName: string) {
+    setMacroDefaultsEntries((prev) => prev.filter((e) => e.name !== foodName));
+    AsyncStorage.getItem(MANUAL_MACROS_KEY)
+      .then((raw) => {
+        const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+          raw ? JSON.parse(raw) : {};
+        delete map[foodName];
+        return AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify(map));
+      })
+      .catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function clearAllMacroDefaults() {
+    Alert.alert(
+      "Clear All Saved Macros",
+      "Remove all remembered macro values? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setMacroDefaultsEntries([]);
+            AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify({})).catch(() => {});
           },
         },
       ]
@@ -6328,6 +6377,16 @@ export default function NutritionScreen() {
               </TouchableOpacity>
             )}
 
+            <TouchableOpacity
+              onPress={openMacroDefaultsSheet}
+              style={{ flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, marginTop: 6, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8, backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border }}
+            >
+              <Ionicons name="bookmark-outline" size={13} color={colors.mutedForeground} />
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                Manage saved macros
+              </Text>
+            </TouchableOpacity>
+
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Add to meal
             </Text>
@@ -6402,6 +6461,81 @@ export default function NutritionScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* Macro Defaults Management Sheet */}
+      <Modal
+        visible={showMacroDefaultsSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMacroDefaultsSheet(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <GlassCard
+            style={[styles.modalCard, { backgroundColor: colors.card, maxHeight: "80%" }]}
+            variant="elevated"
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                Saved Macro Defaults
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowMacroDefaultsSheet(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {macroDefaultsEntries.length === 0 ? (
+              <Text style={{ fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", paddingVertical: 24 }}>
+                No saved macro defaults yet.
+              </Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                {macroDefaultsEntries.map((entry) => (
+                  <View
+                    key={entry.name}
+                    style={[styles.macroDefaultsRow, { borderBottomColor: colors.border }]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.macroDefaultsFoodName, { color: colors.foreground }]}>
+                        {entry.name}
+                      </Text>
+                      <Text style={[styles.macroDefaultsMacroLine, { color: colors.mutedForeground }]}>
+                        {`${entry.calories} kcal · ${entry.protein}g P · ${entry.carbs}g C · ${entry.fat}g F`}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => deleteMacroDefault(entry.name)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={[styles.macroDefaultsDeleteBtn, { backgroundColor: colors.muted }]}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            {macroDefaultsEntries.length > 0 && (
+              <TouchableOpacity
+                onPress={clearAllMacroDefaults}
+                style={[styles.macroDefaultsClearAllBtn, { borderColor: "#ef444466" }]}
+              >
+                <Text style={{ fontSize: 13, color: "#ef4444", fontFamily: "Inter_500Medium" }}>
+                  Clear all
+                </Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => setShowMacroDefaultsSheet(false)}
+              style={[styles.modalCancelBtn, { borderColor: colors.border, marginTop: 8 }]}
+            >
+              <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                Done
+              </Text>
+            </TouchableOpacity>
           </GlassCard>
         </View>
       </Modal>
@@ -9765,6 +9899,37 @@ const styles = StyleSheet.create({
   macrosFromMemoryHintText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  macroDefaultsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  macroDefaultsFoodName: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 2,
+  },
+  macroDefaultsMacroLine: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  macroDefaultsDeleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  macroDefaultsClearAllBtn: {
+    alignSelf: "center",
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   modalNutrients: {
     flexDirection: "row",
