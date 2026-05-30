@@ -3501,6 +3501,13 @@ export default function NutritionScreen() {
                 return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
               })
               .catch(() => {});
+            AsyncStorage.getItem(LAST_USED_SERVING_KEY)
+              .then((raw) => {
+                const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+                delete map[foodName];
+                return AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
             showPresetSavedToast(`Defaults cleared for "${foodName}"`);
           },
         },
