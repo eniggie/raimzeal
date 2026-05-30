@@ -47,6 +47,8 @@ import {
   RECENT_FOOD_GRAMS_HINT_KEY,
   PRESET_REORDER_HINT_KEY,
   INFO_BUTTON_TOOLTIP_KEY,
+  FAV_RESET_DEFAULTS_HINT_KEY,
+  RECENT_RESET_DEFAULTS_HINT_KEY,
 } from "@/lib/hints";
 
 import { Swipeable } from "react-native-gesture-handler";
@@ -1470,6 +1472,16 @@ export default function NutritionScreen() {
   const recentGramsHintFadeAnim = useRef(new Animated.Value(0)).current;
   const recentGramsHintShownRef = useRef(false);
 
+  const [favResetDefaultsHintVisible, setFavResetDefaultsHintVisible] = useState(false);
+  const favResetDefaultsHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const favResetDefaultsHintShownRef = useRef(false);
+  const favResetDefaultsHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [recentResetDefaultsHintVisible, setRecentResetDefaultsHintVisible] = useState(false);
+  const recentResetDefaultsHintFadeAnim = useRef(new Animated.Value(0)).current;
+  const recentResetDefaultsHintShownRef = useRef(false);
+  const recentResetDefaultsHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [resultCountVisible, setResultCountVisible] = useState(false);
   const resultCountFadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -1750,6 +1762,32 @@ export default function NutritionScreen() {
     dismissHint(RECENT_FOOD_GRAMS_HINT_KEY);
   }
 
+  function dismissFavResetDefaultsHint() {
+    if (favResetDefaultsHintTimerRef.current) {
+      clearTimeout(favResetDefaultsHintTimerRef.current);
+      favResetDefaultsHintTimerRef.current = null;
+    }
+    Animated.timing(favResetDefaultsHintFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setFavResetDefaultsHintVisible(false));
+    dismissHint(FAV_RESET_DEFAULTS_HINT_KEY);
+  }
+
+  function dismissRecentResetDefaultsHint() {
+    if (recentResetDefaultsHintTimerRef.current) {
+      clearTimeout(recentResetDefaultsHintTimerRef.current);
+      recentResetDefaultsHintTimerRef.current = null;
+    }
+    Animated.timing(recentResetDefaultsHintFadeAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => setRecentResetDefaultsHintVisible(false));
+    dismissHint(RECENT_RESET_DEFAULTS_HINT_KEY);
+  }
+
   function dismissHistoryFilterHint() {
     if (historyFilterHintTimerRef.current) {
       clearTimeout(historyFilterHintTimerRef.current);
@@ -2017,6 +2055,46 @@ export default function NutritionScreen() {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  useEffect(() => {
+    if (favoriteFoods.length === 0) return;
+    if (favResetDefaultsHintShownRef.current) return;
+    favResetDefaultsHintShownRef.current = true;
+    if (isHintDismissed(FAV_RESET_DEFAULTS_HINT_KEY)) return;
+    favResetDefaultsHintFadeAnim.setValue(0);
+    setFavResetDefaultsHintVisible(true);
+    Animated.timing(favResetDefaultsHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    favResetDefaultsHintTimerRef.current = setTimeout(() => {
+      dismissFavResetDefaultsHint();
+    }, 4000);
+    return () => {
+      if (favResetDefaultsHintTimerRef.current) clearTimeout(favResetDefaultsHintTimerRef.current);
+    };
+  }, [favoriteFoods.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (recentFoods.length === 0) return;
+    if (recentResetDefaultsHintShownRef.current) return;
+    recentResetDefaultsHintShownRef.current = true;
+    if (isHintDismissed(RECENT_RESET_DEFAULTS_HINT_KEY)) return;
+    recentResetDefaultsHintFadeAnim.setValue(0);
+    setRecentResetDefaultsHintVisible(true);
+    Animated.timing(recentResetDefaultsHintFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    recentResetDefaultsHintTimerRef.current = setTimeout(() => {
+      dismissRecentResetDefaultsHint();
+    }, 4000);
+    return () => {
+      if (recentResetDefaultsHintTimerRef.current) clearTimeout(recentResetDefaultsHintTimerRef.current);
+    };
+  }, [recentFoods.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     return () => {
@@ -4792,6 +4870,29 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </Animated.View>
                     )}
+                    {!isReordering && favResetDefaultsHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary + "40",
+                            opacity: favResetDefaultsHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Hold a card to reset its remembered defaults
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissFavResetDefaultsHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
                     {isReordering ? (
                       reorderItems.map((food, idx) => (
                         <DraggableFavItem
@@ -4918,6 +5019,29 @@ export default function NutritionScreen() {
                         </Text>
                         <TouchableOpacity
                           onPress={dismissRecentGramsHint}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close" size={14} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </Animated.View>
+                    )}
+                    {recentResetDefaultsHintVisible && (
+                      <Animated.View
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary + "40",
+                            opacity: recentResetDefaultsHintFadeAnim,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Hold a card to reset its remembered defaults
+                        </Text>
+                        <TouchableOpacity
+                          onPress={dismissRecentResetDefaultsHint}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
                           <Ionicons name="close" size={14} color={colors.mutedForeground} />

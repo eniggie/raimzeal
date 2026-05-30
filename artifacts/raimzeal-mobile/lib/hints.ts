@@ -19,3 +19,7 @@ export const PRESET_REORDER_HINT_KEY =
   "@nutrition_preset_reorder_hint_dismissed";
 export const INFO_BUTTON_TOOLTIP_KEY =
   "@nutrition_info_button_tooltip_seen";
+export const FAV_RESET_DEFAULTS_HINT_KEY =
+  "@nutrition_fav_reset_defaults_hint_dismissed";
+export const RECENT_RESET_DEFAULTS_HINT_KEY =
+  "@nutrition_recent_reset_defaults_hint_dismissed";
