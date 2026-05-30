@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Smartphone, Download as DownloadIcon, Shield, CheckCircle2, ChevronRight, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Smartphone, Download as DownloadIcon, Shield, CheckCircle2, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 
-const APK_URL = 'https://expo.dev/accounts/econteur/projects/raimzeal/builds';
-const DIRECT_APK_URL: string | null = null;
+const DIRECT_APK_URL: string | null = import.meta.env.VITE_APK_DOWNLOAD_URL ?? null;
 
 const steps = [
   {
@@ -79,17 +78,15 @@ export function Download() {
         >
           {DIRECT_APK_URL ? (
             <Button asChild size="lg" className="w-full gap-2 text-base font-semibold h-14 rounded-2xl">
-              <a href={DIRECT_APK_URL} download>
+              <a href={DIRECT_APK_URL} download="RAIMZEAL.apk">
                 <DownloadIcon className="w-5 h-5" />
                 Download APK (Android)
               </a>
             </Button>
           ) : (
-            <Button asChild size="lg" className="w-full gap-2 text-base font-semibold h-14 rounded-2xl">
-              <a href={APK_URL} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-5 h-5" />
-                Get APK from Expo Builds
-              </a>
+            <Button size="lg" disabled className="w-full gap-2 text-base font-semibold h-14 rounded-2xl opacity-60 cursor-not-allowed">
+              <Clock className="w-5 h-5" />
+              APK build in progress — check back soon
             </Button>
           )}
 
