@@ -2006,29 +2006,45 @@ export default function NutritionScreen() {
     };
   }, []);
 
+  function dismissPresetSavedToast(forReplacement = false) {
+    presetSavedAnim.stopAnimation();
+    Animated.timing(presetSavedAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setPresetSavedMessage(null);
+    });
+    if (presetSavedTimerRef.current) {
+      clearTimeout(presetSavedTimerRef.current);
+      presetSavedTimerRef.current = null;
+    }
+  }
+
   function showPresetSavedToast(name: string, message?: string) {
-    if (presetSavedTimerRef.current) clearTimeout(presetSavedTimerRef.current);
+    dismissPresetSavedToast(true);
     setPresetSavedMessage(message ?? `Preset "${name}" saved`);
     presetSavedAnim.setValue(0);
     Animated.spring(presetSavedAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     presetSavedTimerRef.current = setTimeout(() => {
-      Animated.timing(presetSavedAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setPresetSavedMessage(null);
-      });
-      presetSavedTimerRef.current = null;
+      dismissPresetSavedToast();
     }, 2000);
   }
 
+  function dismissFilterSyncToast(forReplacement = false) {
+    filterSyncAnim.stopAnimation();
+    Animated.timing(filterSyncAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setFilterSyncToastVisible(false);
+    });
+    if (filterSyncTimerRef.current) {
+      clearTimeout(filterSyncTimerRef.current);
+      filterSyncTimerRef.current = null;
+    }
+  }
+
   function showFilterSyncToast() {
-    if (filterSyncTimerRef.current) clearTimeout(filterSyncTimerRef.current);
+    dismissFilterSyncToast(true);
     setFilterSyncToastVisible(true);
     filterSyncAnim.setValue(0);
     Animated.spring(filterSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     filterSyncTimerRef.current = setTimeout(() => {
-      Animated.timing(filterSyncAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setFilterSyncToastVisible(false);
-      });
-      filterSyncTimerRef.current = null;
+      dismissFilterSyncToast();
     }, 2000);
   }
 
@@ -2257,8 +2273,19 @@ export default function NutritionScreen() {
     }
   }
 
+  function dismissRestoredToast(forReplacement = false) {
+    restoredAnim.stopAnimation();
+    Animated.timing(restoredAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setRestoredLabel(null);
+    });
+    if (restoredTimerRef.current) {
+      clearTimeout(restoredTimerRef.current);
+      restoredTimerRef.current = null;
+    }
+  }
+
   function showRestoredToast(dateStr: string) {
-    if (restoredTimerRef.current) clearTimeout(restoredTimerRef.current);
+    dismissRestoredToast(true);
     const d = new Date(dateStr + "T12:00:00");
     const today = new Date();
     const yesterday = new Date(Date.now() - 86400000);
@@ -2274,10 +2301,7 @@ export default function NutritionScreen() {
     restoredAnim.setValue(0);
     Animated.spring(restoredAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     restoredTimerRef.current = setTimeout(() => {
-      Animated.timing(restoredAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setRestoredLabel(null);
-      });
-      restoredTimerRef.current = null;
+      dismissRestoredToast();
     }, 2500);
   }
 
@@ -2311,15 +2335,27 @@ export default function NutritionScreen() {
       amountGrams: log.amountGrams,
       nutrients100g: log.nutrients100g,
     });
-    if (logTodayTimerRef.current) clearTimeout(logTodayTimerRef.current);
-    setLogTodayName(log.name);
+    showLogTodayToast(log.name);
+  }
+
+  function dismissLogTodayToast(forReplacement = false) {
+    logTodayAnim.stopAnimation();
+    Animated.timing(logTodayAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setLogTodayName(null);
+    });
+    if (logTodayTimerRef.current) {
+      clearTimeout(logTodayTimerRef.current);
+      logTodayTimerRef.current = null;
+    }
+  }
+
+  function showLogTodayToast(name: string) {
+    dismissLogTodayToast(true);
+    setLogTodayName(name);
     logTodayAnim.setValue(0);
     Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     logTodayTimerRef.current = setTimeout(() => {
-      Animated.timing(logTodayAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setLogTodayName(null);
-      });
-      logTodayTimerRef.current = null;
+      dismissLogTodayToast();
     }, 2500);
   }
 
@@ -3492,16 +3528,7 @@ export default function NutritionScreen() {
 
     if (pendingLoggedToastRef.current) {
       pendingLoggedToastRef.current = false;
-      if (logTodayTimerRef.current) clearTimeout(logTodayTimerRef.current);
-      setLogTodayName(meal.name);
-      logTodayAnim.setValue(0);
-      Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
-      logTodayTimerRef.current = setTimeout(() => {
-        Animated.timing(logTodayAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-          setLogTodayName(null);
-        });
-        logTodayTimerRef.current = null;
-      }, 2500);
+      showLogTodayToast(meal.name);
     }
 
     // Smart Macro Remaining Alert
