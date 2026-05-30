@@ -3721,6 +3721,9 @@ export default function NutritionScreen() {
 
   async function handleScannedFood(food: ScannedFood, forceGrams?: string) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const lastMeal: MealLog["mealType"] =
+      (lastUsedMealMapRef.current[food.name] as MealLog["mealType"] | undefined) ?? "snack";
+    setSelectedMeal(lastMeal);
     setSelectedFood({ ...food, mealType: "snack" });
     setSelectedFoodServingLabel(food.servingLabel);
     setSelectedFoodIsApiResult(true);
@@ -3765,18 +3768,6 @@ export default function NutritionScreen() {
     }
     setGrams(lastGrams);
     setGramsPreFillHint(isRemembered ? lastGrams : null);
-
-    let lastMeal: MealLog["mealType"] = "snack";
-    try {
-      const raw = await AsyncStorage.getItem(LAST_USED_MEAL_KEY);
-      if (raw) {
-        const map: Record<string, string> = JSON.parse(raw);
-        if (map[food.name]) lastMeal = map[food.name] as MealLog["mealType"];
-      }
-    } catch {
-      // ignore
-    }
-    setSelectedMeal(lastMeal);
 
     let restoredPer100g = false;
     if (food.servingLabel && food.nutrients100g) {
