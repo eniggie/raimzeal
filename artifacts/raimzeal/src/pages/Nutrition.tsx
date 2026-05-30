@@ -41,6 +41,8 @@ interface CustomFilterPreset {
   id: string;
   name: string;
   filterKeys: string[];
+  /** Threshold snapshot captured at save time, keyed by filterKey. */
+  thresholds?: Record<string, number>;
 }
 
 type FilterThresholds = Record<string, number>;
@@ -435,10 +437,18 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   function savePreset() {
     const name = presetName.trim();
     if (!name || activeFilters.size === 0) return;
+    // Snapshot the current threshold for every filter in this preset so the
+    // tooltip can show the saved values, not the current global thresholds.
+    const snapshotThresholds: Record<string, number> = {};
+    for (const key of activeFilters) {
+      const def = FILTER_DEFS.find(d => d.key === key);
+      snapshotThresholds[key] = filterThresholds[key] ?? def?.defaultThreshold ?? 0;
+    }
     const preset: CustomFilterPreset = {
       id: crypto.randomUUID(),
       name,
       filterKeys: Array.from(activeFilters),
+      thresholds: snapshotThresholds,
     };
     setCustomPresets(prev => [...prev, preset]);
     setPresetName('');
@@ -983,7 +993,9 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                                     {preset.filterKeys.map(key => {
                                       const def = FILTER_DEFS.find(d => d.key === key);
                                       if (!def) return null;
-                                      const threshold = filterThresholds[key] ?? def.defaultThreshold;
+                                      // Use the threshold snapshotted at save time; fall back to
+                                      // the default for presets saved before this field existed.
+                                      const threshold = preset.thresholds?.[key] ?? def.defaultThreshold;
                                       const symbol = def.direction === 'gte' ? '≥' : '≤';
                                       return (
                                         <li key={key} className="flex items-center gap-1.5 text-xs">
