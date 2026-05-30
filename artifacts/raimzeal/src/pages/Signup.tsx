@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { COUNTRIES_SORTED } from '@/lib/countries';
+import { useAuth } from '@/contexts/AuthContext';
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
@@ -36,6 +37,7 @@ function validatePassword(pw: string): string {
 }
 
 export default function Signup({ onLogin }: Props) {
+  const { signUp } = useAuth();
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -100,34 +102,27 @@ export default function Signup({ onLogin }: Props) {
     const phoneE164 = getPhoneE164();
     const phone = form.localPhone ? form.dialCode + form.localPhone : '';
 
-    try {
-      const res = await fetch(`${BASE}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-          fullName: form.fullName.trim(),
-          phone,
-          phoneE164,
-          country: form.country,
-          city: form.city.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Something went wrong.');
-        setLoading(false);
-        return;
+    const { error: signUpError } = await signUp(form.email, form.password, {
+      full_name: form.fullName.trim(),
+      name: form.fullName.trim(),
+      phone,
+      phone_e164: phoneE164,
+      country: form.country,
+      city: form.city.trim(),
+    });
+
+    setLoading(false);
+
+    if (signUpError) {
+      if (signUpError.toLowerCase().includes('already registered') || signUpError.toLowerCase().includes('already exists')) {
+        setError('An account with this email already exists. Try signing in instead.');
+      } else {
+        setError(signUpError);
       }
-      // Store credentials temporarily for auto sign-in after email verification
-      sessionStorage.setItem('pending_auth', JSON.stringify({ email: form.email, password: form.password }));
-      window.location.href = `${BASE}/verify-email?email=${encodeURIComponent(form.email)}`;
-    } catch {
-      setError('Network error. Please check your connection.');
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    window.location.href = `${BASE}/verify-email?email=${encodeURIComponent(form.email)}`;
   }
 
   return (

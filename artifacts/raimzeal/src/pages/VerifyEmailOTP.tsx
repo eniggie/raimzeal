@@ -1,121 +1,40 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Mail } from 'lucide-react';
+import { Loader2, Mail, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, '') ?? '';
 
 export default function VerifyEmailOTP() {
   const email = new URLSearchParams(window.location.search).get('email') ?? '';
-  const [digits, setDigits] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
+  const { resendConfirmation } = useAuth();
   const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
-  useEffect(() => {
-    inputRefs.current[0]?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (cooldown <= 0) { clearInterval(timerRef.current); return; }
-    timerRef.current = setInterval(() => setCooldown((c) => c - 1), 1000);
-    return () => clearInterval(timerRef.current);
-  }, [cooldown > 0]);
-
-  function handleDigit(value: string, index: number) {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const next = [...digits];
-    next[index] = digit;
-    setDigits(next);
-    setError('');
-    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
-    if (next.every((d) => d !== '') && digit) verify(next.join(''));
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent, index: number) {
-    if (e.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  }
-
-  function handlePaste(e: React.ClipboardEvent) {
-    e.preventDefault();
-    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!text) return;
-    const next = [...digits];
-    for (let i = 0; i < text.length; i++) next[i] = text[i];
-    setDigits(next);
-    if (text.length === 6) verify(text);
-    else inputRefs.current[text.length]?.focus();
-  }
-
-  async function verify(code?: string) {
-    const otp = code ?? digits.join('');
-    if (otp.length < 6) { setError('Please enter all 6 digits.'); return; }
-    if (!email) { setError('Email address missing. Please restart signup.'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch(`${BASE}/api/auth/verify-email-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Invalid code.');
-        setDigits(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
-        setLoading(false);
-        return;
-      }
-      setSuccess(true);
-      // Auto sign-in using stored credentials
-      const stored = sessionStorage.getItem('pending_auth');
-      if (stored) {
-        const { email: storedEmail, password } = JSON.parse(stored);
-        sessionStorage.removeItem('pending_auth');
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email: storedEmail, password });
-        if (signInError) {
-          // Sign-in failed — redirect to login page
-          window.location.href = `${BASE}/`;
-          return;
-        }
-      }
-      // Navigate to verify-phone
-      window.location.href = `${BASE}/verify-phone`;
-    } catch {
-      setError('Network error. Please try again.');
-      setLoading(false);
-    }
-  }
-
-  async function resend() {
-    if (!email) return;
+  async function handleResend() {
+    if (!email || cooldown > 0) return;
     setResending(true);
     setError('');
-    try {
-      const res = await fetch(`${BASE}/api/auth/send-email-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Failed to resend.');
+    const { error: resendError } = await resendConfirmation(email);
+    setResending(false);
+    if (resendError) {
+      if (resendError.toLowerCase().includes('rate limit') || resendError.toLowerCase().includes('too many')) {
+        setError('Too many requests — please wait a minute before trying again.');
       } else {
-        setCooldown(60);
+        setError(resendError);
       }
-    } catch {
-      setError('Network error.');
-    } finally {
-      setResending(false);
+    } else {
+      setResent(true);
+      setCooldown(60);
+      const interval = setInterval(() => {
+        setCooldown((c) => {
+          if (c <= 1) { clearInterval(interval); return 0; }
+          return c - 1;
+        });
+      }, 1000);
     }
   }
 
@@ -136,64 +55,62 @@ export default function VerifyEmailOTP() {
 
         <div>
           <h1 className="text-2xl font-bold font-display">Check your email</h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            We sent a 6-digit code to{' '}
-            <span className="font-medium text-foreground">{email || 'your email'}</span>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            We sent a confirmation link to{' '}
+            <span className="font-medium text-foreground">{email || 'your email'}</span>.
+            {' '}Click it to activate your account.
           </p>
         </div>
 
-        {/* OTP boxes */}
-        <div className="flex gap-2.5 justify-center" onPaste={handlePaste}>
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              ref={(r) => { inputRefs.current[i] = r; }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={d}
-              onChange={(e) => handleDigit(e.target.value, i)}
-              onKeyDown={(e) => handleKeyDown(e, i)}
-              className={cn(
-                'w-12 h-14 rounded-xl border-2 text-center text-2xl font-bold transition-colors bg-muted/40',
-                'focus:outline-none focus:border-primary',
-                d ? 'border-primary text-foreground' : 'border-border text-foreground',
-                error && !d && 'border-destructive',
-                success && 'border-[#2E8B57] bg-[#2E8B57]/10 text-[#2E8B57]'
-              )}
-              disabled={loading || success}
-            />
-          ))}
+        {/* Instructions card */}
+        <div className="bg-muted/40 rounded-xl p-4 text-sm text-muted-foreground text-left space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+            <span>Check your spam or junk folder</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+            <span>The link expires in 24 hours</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-primary shrink-0" />
+            <span>After clicking, come back and sign in</span>
+          </div>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        {/* Resend button */}
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleResend}
+          disabled={resending || cooldown > 0}
+        >
+          {resending ? (
+            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Sending…</>
+          ) : resent && cooldown > 0 ? (
+            `Email sent ✓ — resend in ${cooldown}s`
+          ) : (
+            'Resend confirmation email'
+          )}
+        </Button>
 
         <Button
           size="lg"
-          className="w-full h-12"
-          onClick={() => verify()}
-          disabled={loading || success || digits.join('').length < 6}
+          className="w-full"
+          onClick={() => { window.location.href = `${BASE}/`; }}
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : success ? '✓ Verified!' : 'Verify email'}
+          Go to Sign In
         </Button>
 
-        <div className="text-sm text-muted-foreground">
-          {cooldown > 0 ? (
-            <span>Resend available in {cooldown}s</span>
-          ) : (
-            <button
-              type="button"
-              disabled={resending}
-              onClick={resend}
-              className="text-primary font-medium hover:underline disabled:opacity-50"
-            >
-              {resending ? 'Sending…' : "Didn't receive it? Resend"}
-            </button>
-          )}
-        </div>
-
         <p className="text-xs text-muted-foreground">
-          Check your spam folder if you don't see it. The code expires in 10 minutes.
+          Wrong email?{' '}
+          <a href={`${BASE}/signup`} className="text-primary hover:underline font-medium">
+            Sign up again
+          </a>
         </p>
       </motion.div>
     </div>
