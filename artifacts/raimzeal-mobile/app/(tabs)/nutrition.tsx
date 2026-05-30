@@ -3597,7 +3597,7 @@ export default function NutritionScreen() {
   function handleResetFoodDefaults(foodName: string) {
     Alert.alert(
       "Reset Defaults",
-      `Clear the remembered gram amount and meal for "${foodName}"?`,
+      `Clear the remembered gram amount, meal, and view preference for "${foodName}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -3627,6 +3627,13 @@ export default function NutritionScreen() {
                 const map: Record<string, number> = raw ? JSON.parse(raw) : {};
                 delete map[foodName];
                 return AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
+            AsyncStorage.getItem(LAST_USED_VIEW_KEY)
+              .then((raw) => {
+                const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+                delete map[foodName];
+                return AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(map));
               })
               .catch(() => {});
             showPresetSavedToast(`Defaults cleared for "${foodName}"`);
