@@ -1367,6 +1367,8 @@ export default function NutritionScreen() {
   const indexRefsRef = useRef<React.MutableRefObject<number>[]>([]);
   const itemHeightRef = useRef(DRAG_FAV_ITEM_HEIGHT);
   const lastUsedMealMapRef = useRef<Record<string, string>>({});
+  const lastUsedGramsMapRef = useRef<Record<string, string>>({});
+  const lastUsedServingsMapRef = useRef<Record<string, number>>({});
 
   const [undoMeal, setUndoMeal] = useState<MealLog | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1995,6 +1997,16 @@ export default function NutritionScreen() {
     AsyncStorage.getItem(LAST_USED_MEAL_KEY)
       .then((raw) => {
         if (raw) lastUsedMealMapRef.current = JSON.parse(raw) as Record<string, string>;
+      })
+      .catch(() => {});
+    AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
+      .then((raw) => {
+        if (raw) lastUsedGramsMapRef.current = JSON.parse(raw) as Record<string, string>;
+      })
+      .catch(() => {});
+    AsyncStorage.getItem(LAST_USED_SERVING_KEY)
+      .then((raw) => {
+        if (raw) lastUsedServingsMapRef.current = JSON.parse(raw) as Record<string, number>;
       })
       .catch(() => {});
   }, []);
@@ -3594,6 +3606,8 @@ export default function NutritionScreen() {
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             delete lastUsedMealMapRef.current[foodName];
+            delete lastUsedGramsMapRef.current[foodName];
+            delete lastUsedServingsMapRef.current[foodName];
             AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
               .then((raw) => {
                 const map: Record<string, number> = raw ? JSON.parse(raw) : {};
@@ -3836,17 +3850,10 @@ export default function NutritionScreen() {
     let restoredServings = 1;
     let servingsFromStorage = false;
     if (food.servingLabel) {
-      try {
-        const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
-        if (raw) {
-          const map: Record<string, number> = JSON.parse(raw);
-          if (map[food.name] != null) {
-            restoredServings = map[food.name];
-            servingsFromStorage = true;
-          }
-        }
-      } catch {
-        // ignore
+      const remembered = lastUsedServingsMapRef.current[food.name];
+      if (remembered != null) {
+        restoredServings = remembered;
+        servingsFromStorage = true;
       }
     }
     setServings(restoredServings);
@@ -3856,17 +3863,10 @@ export default function NutritionScreen() {
     let lastGrams = forceGrams ?? "100";
     let isRemembered = false;
     if (!forceGrams && !food.servingLabel) {
-      try {
-        const raw = await AsyncStorage.getItem(LAST_USED_GRAMS_KEY);
-        if (raw) {
-          const map: Record<string, string> = JSON.parse(raw);
-          if (map[food.name]) {
-            lastGrams = map[food.name];
-            isRemembered = true;
-          }
-        }
-      } catch {
-        // ignore
+      const remembered = lastUsedGramsMapRef.current[food.name];
+      if (remembered) {
+        lastGrams = remembered;
+        isRemembered = true;
       }
     }
     setGrams(lastGrams);
@@ -3938,6 +3938,7 @@ export default function NutritionScreen() {
     macroAlertTimer.current = setTimeout(() => setMacroAlert(null), 5000);
 
     if (isGramsMode && parsedGrams > 0) {
+      lastUsedGramsMapRef.current[name] = grams;
       AsyncStorage.getItem(LAST_USED_GRAMS_KEY)
         .then((raw) => {
           const map: Record<string, string> = raw ? JSON.parse(raw) : {};
@@ -3965,6 +3966,7 @@ export default function NutritionScreen() {
       .catch(() => {});
 
     if (!isGramsMode) {
+      lastUsedServingsMapRef.current[name] = servings;
       AsyncStorage.getItem(LAST_USED_SERVING_KEY)
         .then((raw) => {
           const map: Record<string, number> = raw ? JSON.parse(raw) : {};
