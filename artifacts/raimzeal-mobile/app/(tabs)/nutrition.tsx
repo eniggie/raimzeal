@@ -1334,6 +1334,7 @@ export default function NutritionScreen() {
   const [grams, setGrams] = useState("100");
   const [gramsPreFillHint, setGramsPreFillHint] = useState<string | null>(null);
   const [servingsPreFillHint, setServingsPreFillHint] = useState(false);
+  const [macrosFromMemory, setMacrosFromMemory] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
@@ -3794,13 +3795,23 @@ export default function NutritionScreen() {
             const pro = parseFloat(saved.protein);
             const crb = parseFloat(saved.carbs);
             const fat = parseFloat(saved.fat);
+            const resolvedCal = Number.isFinite(cal) ? cal : food.calories;
+            const resolvedPro = Number.isFinite(pro) ? pro : food.protein;
+            const resolvedCrb = Number.isFinite(crb) ? crb : food.carbs;
+            const resolvedFat = Number.isFinite(fat) ? fat : food.fat;
+            const differs =
+              resolvedCal !== food.calories ||
+              resolvedPro !== food.protein ||
+              resolvedCrb !== food.carbs ||
+              resolvedFat !== food.fat;
             foodWithMacros = {
               ...food,
-              calories: Number.isFinite(cal) ? cal : food.calories,
-              protein: Number.isFinite(pro) ? pro : food.protein,
-              carbs: Number.isFinite(crb) ? crb : food.carbs,
-              fat: Number.isFinite(fat) ? fat : food.fat,
+              calories: resolvedCal,
+              protein: resolvedPro,
+              carbs: resolvedCrb,
+              fat: resolvedFat,
             };
+            if (differs) setMacrosFromMemory(true);
           }
         }
       } catch {
@@ -3998,6 +4009,7 @@ export default function NutritionScreen() {
     setGramsPreFillHint(null);
     setModalShowPer100g(false);
     setSelectedFoodNutrients100g(undefined);
+    setMacrosFromMemory(false);
   }
 
   function handleConfirmManual() {
@@ -6513,7 +6525,7 @@ export default function NutritionScreen() {
         visible={showModal}
         transparent
         animationType="slide"
-        onRequestClose={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
+        onRequestClose={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -6714,6 +6726,19 @@ export default function NutritionScreen() {
                       color={colors.accent}
                     />
                   </View>
+                  {macrosFromMemory && (
+                    <TouchableOpacity
+                      onPress={() => setMacrosFromMemory(false)}
+                      style={[styles.macrosFromMemoryHint, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="bookmark-outline" size={12} color={colors.mutedForeground} style={{ marginRight: 4 }} />
+                      <Text style={[styles.macrosFromMemoryHintText, { color: colors.mutedForeground }]}>
+                        Using your saved values
+                      </Text>
+                      <Ionicons name="close" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+                  )}
                 </>
               );
             })()}
@@ -6757,7 +6782,7 @@ export default function NutritionScreen() {
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
+                onPress={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -9726,6 +9751,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 4,
     textAlign: "right",
+  },
+  macrosFromMemoryHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  macrosFromMemoryHintText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   modalNutrients: {
     flexDirection: "row",
