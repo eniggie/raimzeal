@@ -2618,6 +2618,10 @@ export default function NutritionScreen() {
             const p = prefs as Record<string, unknown>;
             const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
             applyingRemoteRef.current = true;
+            // activeFilters and customPresets are applied immediately even when a
+            // threshold modal is open. The modal is a separate overlay focused on a
+            // single number input; filter chip and preset changes from another device
+            // don't conflict with that UI and are safe to land right away.
             if (Array.isArray(p["activeFilters"])) {
               const restored = (p["activeFilters"] as unknown[]).filter(
                 (k): k is string => typeof k === "string" && validKeys.has(k)
@@ -2638,12 +2642,17 @@ export default function NutritionScreen() {
             if (p["filterThresholds"] && typeof p["filterThresholds"] === "object") {
               const validated: FilterThresholds = {};
               const queued: FilterThresholds = {};
-              const activeKey = draggingThresholdKeyRef.current;
+              // While ANY threshold modal is open (draggingThresholdKeyRef !== null),
+              // defer ALL incoming threshold values — not just the key being edited.
+              // This prevents mid-edit jumps when the remote device updates a different
+              // threshold at the same time. Deferred values are flushed in
+              // closeThresholdEdit() once the user dismisses the modal.
+              const anyModalOpen = draggingThresholdKeyRef.current !== null;
               for (const def of FILTER_DEFS) {
                 const v = (p["filterThresholds"] as Record<string, unknown>)[def.key];
                 if (typeof v === "number" && isFinite(v) && v >= 0) {
                   const rounded = Math.round(v);
-                  if (def.key === activeKey) {
+                  if (anyModalOpen) {
                     queued[def.key] = rounded;
                   } else {
                     validated[def.key] = rounded;
