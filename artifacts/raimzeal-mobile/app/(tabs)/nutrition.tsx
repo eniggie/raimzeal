@@ -1328,6 +1328,7 @@ export default function NutritionScreen() {
   const [servingsText, setServingsText] = useState("1");
   const [grams, setGrams] = useState("100");
   const [gramsPreFillHint, setGramsPreFillHint] = useState<string | null>(null);
+  const [servingsPreFillHint, setServingsPreFillHint] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
@@ -3498,17 +3499,22 @@ export default function NutritionScreen() {
       setModalShowPer100g(false);
       setGrams("100");
       setGramsPreFillHint(null);
+      setServingsPreFillHint(false);
     }
 
     const storedMeal = lastUsedMealMapRef.current[food.name] as MealType | undefined;
     setSelectedMeal(opts?.forceMealType ?? storedMeal ?? food.mealType);
 
     let restoredServings = 1;
+    let servingsFromStorage = false;
     try {
       const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
       if (raw) {
         const map: Record<string, number> = JSON.parse(raw);
-        if (map[food.name] != null) restoredServings = map[food.name];
+        if (map[food.name] != null) {
+          restoredServings = map[food.name];
+          servingsFromStorage = true;
+        }
       }
     } catch {
       // ignore
@@ -3516,6 +3522,7 @@ export default function NutritionScreen() {
     const finalServings = opts?.forceServings ?? restoredServings;
     setServings(finalServings);
     setServingsText(String(finalServings));
+    setServingsPreFillHint(opts?.forceServings == null && servingsFromStorage);
 
     pendingLoggedToastRef.current = opts?.showLoggedToast ?? false;
 
@@ -3531,12 +3538,16 @@ export default function NutritionScreen() {
     setSelectedFoodUnit(food.unit ?? "g");
 
     let restoredServings = 1;
+    let servingsFromStorage = false;
     if (food.servingLabel) {
       try {
         const raw = await AsyncStorage.getItem(LAST_USED_SERVING_KEY);
         if (raw) {
           const map: Record<string, number> = JSON.parse(raw);
-          if (map[food.name] != null) restoredServings = map[food.name];
+          if (map[food.name] != null) {
+            restoredServings = map[food.name];
+            servingsFromStorage = true;
+          }
         }
       } catch {
         // ignore
@@ -3544,6 +3555,7 @@ export default function NutritionScreen() {
     }
     setServings(restoredServings);
     setServingsText(String(restoredServings));
+    setServingsPreFillHint(servingsFromStorage);
 
     let lastGrams = forceGrams ?? "100";
     let isRemembered = false;
@@ -6158,6 +6170,7 @@ export default function NutritionScreen() {
                         <TouchableOpacity
                           onPress={() => {
                             if (servings > 0.5) {
+                              if (servingsPreFillHint) setServingsPreFillHint(false);
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               setServings((s) => {
                                 const steps = Math.round(s * 200) / 100;
@@ -6184,6 +6197,7 @@ export default function NutritionScreen() {
                             setServingsText(normalized);
                             const n = parseFloat(normalized);
                             if (!isNaN(n) && n > 0) setServings(n);
+                            if (servingsPreFillHint) setServingsPreFillHint(false);
                           }}
                           onBlur={() => {
                             const n = parseFloat(servingsText);
@@ -6198,6 +6212,7 @@ export default function NutritionScreen() {
                         />
                         <TouchableOpacity
                           onPress={() => {
+                            if (servingsPreFillHint) setServingsPreFillHint(false);
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setServings((s) => {
                               const steps = Math.round(s * 200) / 100;
@@ -6212,6 +6227,11 @@ export default function NutritionScreen() {
                           <Ionicons name="add" size={16} color={colors.foreground} />
                         </TouchableOpacity>
                       </View>
+                      {servingsPreFillHint && (
+                        <Text style={[styles.gramsLastUsedHint, { color: colors.mutedForeground }]}>
+                          Last used
+                        </Text>
+                      )}
                     </View>
                   )}
                   <View style={styles.modalNutrients}>
