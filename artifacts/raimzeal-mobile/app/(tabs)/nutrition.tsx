@@ -3740,6 +3740,13 @@ export default function NutritionScreen() {
                 return AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(map));
               })
               .catch(() => {});
+            AsyncStorage.getItem(EDIT_PER100G_PREF_KEY)
+              .then((raw) => {
+                const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                delete map[foodName];
+                return AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
             showPresetSavedToast(`Defaults cleared for "${foodName}"`);
           },
         },
@@ -3878,11 +3885,15 @@ export default function NutritionScreen() {
 
       let restoredPer100g = false;
       try {
-        const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+        const raw = await AsyncStorage.getItem(EDIT_PER100G_PREF_KEY);
         if (raw) {
-          let map: Record<string, boolean> = {};
-          try { map = JSON.parse(raw); } catch { /* ignore */ }
-          if (map[food.name] !== undefined) restoredPer100g = map[food.name];
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = JSON.parse(raw);
+          const entry = map[food.name];
+          if (entry !== null && typeof entry === "object") {
+            restoredPer100g = entry.per100g;
+          } else if (typeof entry === "boolean") {
+            restoredPer100g = entry;
+          }
         }
       } catch {
         // ignore
@@ -3999,10 +4010,15 @@ export default function NutritionScreen() {
     let restoredPer100g = false;
     if (food.servingLabel && food.nutrients100g) {
       try {
-        const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
+        const raw = await AsyncStorage.getItem(EDIT_PER100G_PREF_KEY);
         if (raw) {
-          const map: Record<string, boolean> = JSON.parse(raw);
-          if (map[food.name] !== undefined) restoredPer100g = map[food.name];
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = JSON.parse(raw);
+          const entry = map[food.name];
+          if (entry !== null && typeof entry === "object") {
+            restoredPer100g = entry.per100g;
+          } else if (typeof entry === "boolean") {
+            restoredPer100g = entry;
+          }
         }
       } catch {
         // ignore
@@ -4101,11 +4117,11 @@ export default function NutritionScreen() {
     }
 
     if (canToggleServing) {
-      AsyncStorage.getItem(LAST_USED_VIEW_KEY)
+      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY)
         .then((raw) => {
-          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-          map[name] = modalShowPer100g;
-          return AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(map));
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+          map[name] = { per100g: modalShowPer100g, grams: 0 };
+          return AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
         })
         .catch(() => {});
     }
@@ -6870,6 +6886,15 @@ export default function NutritionScreen() {
                             setModalShowPer100g(false);
                             setServings(1);
                             setServingsText("1");
+                            if (selectedFood) {
+                              AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                                try {
+                                  const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                                  map[selectedFood.name] = { per100g: false, grams: 0 };
+                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                                } catch {}
+                              });
+                            }
                           }
                         }}
                         style={[
@@ -6890,6 +6915,15 @@ export default function NutritionScreen() {
                             setModalShowPer100g(true);
                             setGrams("100");
                             setGramsPreFillHint(null);
+                            if (selectedFood) {
+                              AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                                try {
+                                  const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                                  map[selectedFood.name] = { per100g: true, grams: 0 };
+                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                                } catch {}
+                              });
+                            }
                           }
                         }}
                         style={[
@@ -8245,7 +8279,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
           const entry = map[log.name];
           const pref = entry !== null && typeof entry === "object" ? entry : null;
-          const isStale = !pref || pref.grams !== log.amountGrams;
+          const isStale = !pref || (pref.grams > 0 && pref.grams !== log.amountGrams);
           if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
@@ -8923,7 +8957,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
           const entry = map[log.name];
           const pref = entry !== null && typeof entry === "object" ? entry : null;
-          const isStale = !pref || pref.grams !== log.amountGrams;
+          const isStale = !pref || (pref.grams > 0 && pref.grams !== log.amountGrams);
           if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
