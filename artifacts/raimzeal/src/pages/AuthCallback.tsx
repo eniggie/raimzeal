@@ -16,10 +16,14 @@ export function AuthCallback() {
       }
     });
 
-    // Fallback: if already signed in, go home
+    // Fallback: if already signed in, redirect appropriately.
+    // Guard against sending a password-recovery visitor to / before onAuthStateChange fires.
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        if (session) setLocation('/');
+        if (!session) return;
+        const params = window.location.search + window.location.hash;
+        const isRecovery = params.includes('type=recovery');
+        setLocation(isRecovery ? '/reset-password' : '/');
       })
       .catch(() => {
         // Session restore failed — stay on callback page; onAuthStateChange will handle SIGNED_IN

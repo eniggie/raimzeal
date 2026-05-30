@@ -147,6 +147,22 @@ Tier logic lives in `artifacts/api-server/src/lib/tier.ts` — use `getUserTier(
 
 Core features (workouts, tracking, basic Ovia) remain free forever — Foundation is still free.
 
+## DEBUGGER Mode
+
+**DEBUGGER** is the standing convention for full production QA and bug-fix passes on RAIMZEAL. Run it any time quality must be validated end-to-end.
+
+**Rules (non-negotiable):**
+1. No full rewrites — surgical fixes only.
+2. No feature removal.
+3. No schema changes without explicit explanation.
+4. Fix only **confirmed** bugs (code-path analysis required).
+5. Typecheck + screenshot after every fix batch.
+6. Run all four permanent checks (typecheck-api, typecheck-mobile, typecheck-web, healthcheck) before marking a session complete.
+
+Reference `.agents/memory/debugger-mode.md` for the full checklist structure.
+
+---
+
 ## User preferences
 
 - Primary green: #2E8B57

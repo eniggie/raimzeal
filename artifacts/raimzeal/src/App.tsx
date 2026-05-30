@@ -67,7 +67,7 @@ function Redirect({ to }: { to: string }) {
 
 function SignupRoute() {
   const [, navigate] = useLocation();
-  return <Signup onLogin={() => navigate('/')} />;
+  return <Signup onLogin={() => navigate('/login')} />;
 }
 
 function LoginRoute() {

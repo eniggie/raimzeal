@@ -1,0 +1,2 @@
+- [Auth migration — Supabase native](auth-migration.md) — web app uses supabase.auth.* directly; no custom OTP routes; sync-profile upserts on SIGNED_IN.
+- [DEBUGGER mode](debugger-mode.md) — convention for full production QA passes: no rewrites, fix confirmed issues only, test after every fix.
