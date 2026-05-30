@@ -963,6 +963,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                     const threshold = filterThresholds[def.key] ?? def.defaultThreshold;
                     const symbol = def.direction === 'gte' ? '≥' : '≤';
                     const isEditing = editingFilter === def.key;
+                    const isNonDefault = threshold !== def.defaultThreshold;
                     return (
                       <div
                         key={def.key}
@@ -990,6 +991,14 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                               : 'hover:bg-white/10 opacity-80 hover:opacity-100'
                           )}
                         >
+                          {isNonDefault && (
+                            <span
+                              className={cn(
+                                'inline-block w-1.5 h-1.5 rounded-full mr-0.5 align-middle',
+                                active ? 'bg-primary-foreground/70' : 'bg-amber-400'
+                              )}
+                            />
+                          )}
                           {symbol}{threshold}{def.unit}
                         </button>
                       </div>

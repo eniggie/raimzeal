@@ -4146,6 +4146,9 @@ export default function NutritionScreen() {
                       const active = activeFilters.has(filter.key);
                       const countForFilter = filterResultCounts[filter.key];
                       const isZeroCount = !active && countForFilter !== undefined && countForFilter === 0;
+                      const filterDef = FILTER_DEFS.find((d) => d.key === filter.key);
+                      const isNonDefault = filterDef != null &&
+                        (filterThresholds[filter.key] ?? filterDef.defaultThreshold) !== filterDef.defaultThreshold;
                       if (!chipScaleAnims.current[filter.key]) {
                         chipScaleAnims.current[filter.key] = new Animated.Value(1);
                       }
@@ -4231,6 +4234,20 @@ export default function NutritionScreen() {
                           >
                             {filter.chipLabel}
                           </Text>
+                          {isNonDefault && (
+                            <View
+                              style={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: 3,
+                                backgroundColor: active
+                                  ? colors.primaryForeground + "aa"
+                                  : colors.secondary,
+                                marginLeft: 2,
+                                alignSelf: "center",
+                              }}
+                            />
+                          )}
                           {!active && countForFilter !== undefined && (
                             <View
                               style={[
