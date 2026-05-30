@@ -1561,6 +1561,7 @@ export default function NutritionScreen() {
     const defaults = getDefaultThresholds();
     setActiveFilters(new Set());
     setFilterThresholds(defaults);
+    AsyncStorage.removeItem(THRESHOLDS_STORAGE_KEY).catch(() => {});
     setCustomPresets([]);
     setHistoryDateRange("all");
     setHistoryMealFilter("all");
