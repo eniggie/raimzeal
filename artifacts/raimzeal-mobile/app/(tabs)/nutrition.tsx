@@ -6013,12 +6013,8 @@ export default function NutritionScreen() {
               onBlur={() => {
                 const name = manualForm.name.trim();
                 if (!name) return;
-                AsyncStorage.getItem(LAST_USED_MEAL_KEY)
-                  .then((raw) => {
-                    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
-                    if (map[name]) setManualMeal(map[name] as "breakfast" | "lunch" | "dinner" | "snack");
-                  })
-                  .catch(() => {});
+                const savedMeal = lastUsedMealMapRef.current[name] as MealType | undefined;
+                if (savedMeal) setManualMeal(savedMeal);
                 AsyncStorage.getItem(MANUAL_MACROS_KEY)
                   .then((raw) => {
                     if (!raw) return;
