@@ -1319,6 +1319,7 @@ export default function NutritionScreen() {
   const [showRecentScans, setShowRecentScans] = useState(false);
   const [recentScanCount, setRecentScanCount] = useState(0);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualMacrosPrefilledFor, setManualMacrosPrefilledFor] = useState<string | null>(null);
   const [showQuickEditor, setShowQuickEditor] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
@@ -3813,6 +3814,7 @@ export default function NutritionScreen() {
   function handleManualEntry() {
     setManualForm(EMPTY_MANUAL);
     setManualMeal("snack");
+    setManualMacrosPrefilledFor(null);
     setShowManualEntry(true);
   }
 
@@ -6033,12 +6035,16 @@ export default function NutritionScreen() {
               placeholder="Food name"
               placeholderTextColor={colors.mutedForeground}
               value={manualForm.name}
-              onChangeText={(v) => setManualForm((f) => ({ ...f, name: v }))}
+              onChangeText={(v) => {
+                setManualForm((f) => ({ ...f, name: v }));
+                setManualMacrosPrefilledFor(null);
+              }}
               onBlur={() => {
                 const name = manualForm.name.trim();
                 if (!name) return;
                 const savedMeal = lastUsedMealMapRef.current[name] as MealType | undefined;
                 if (savedMeal) setManualMeal(savedMeal);
+                const snapshotForm = manualForm;
                 AsyncStorage.getItem(MANUAL_MACROS_KEY)
                   .then((raw) => {
                     if (!raw) return;
@@ -6046,6 +6052,16 @@ export default function NutritionScreen() {
                       JSON.parse(raw);
                     const saved = map[name];
                     if (!saved) return;
+                    const nextCalories = snapshotForm.calories === "" ? saved.calories : snapshotForm.calories;
+                    const nextProtein = snapshotForm.protein === "" ? saved.protein : snapshotForm.protein;
+                    const nextCarbs = snapshotForm.carbs === "" ? saved.carbs : snapshotForm.carbs;
+                    const nextFat = snapshotForm.fat === "" ? saved.fat : snapshotForm.fat;
+                    const anyApplied =
+                      nextCalories !== snapshotForm.calories ||
+                      nextProtein !== snapshotForm.protein ||
+                      nextCarbs !== snapshotForm.carbs ||
+                      nextFat !== snapshotForm.fat;
+                    if (!anyApplied) return;
                     setManualForm((f) => ({
                       ...f,
                       calories: f.calories === "" ? saved.calories : f.calories,
@@ -6053,6 +6069,7 @@ export default function NutritionScreen() {
                       carbs: f.carbs === "" ? saved.carbs : f.carbs,
                       fat: f.fat === "" ? saved.fat : f.fat,
                     }));
+                    setManualMacrosPrefilledFor(name);
                   })
                   .catch(() => {});
               }}
@@ -6128,6 +6145,43 @@ export default function NutritionScreen() {
                 </View>
               );
             })()}
+
+            {manualMacrosPrefilledFor !== null && (
+              <TouchableOpacity
+                onPress={() => {
+                  const foodName = manualMacrosPrefilledFor;
+                  AsyncStorage.getItem(MANUAL_MACROS_KEY)
+                    .then((raw) => {
+                      const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+                        raw ? JSON.parse(raw) : {};
+                      delete map[foodName];
+                      return AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify(map));
+                    })
+                    .catch(() => {});
+                  setManualForm((f) => ({ ...f, calories: "", protein: "", carbs: "", fat: "" }));
+                  setManualMacrosPrefilledFor(null);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  alignSelf: "flex-start",
+                  gap: 4,
+                  marginTop: 2,
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                  borderRadius: 8,
+                  backgroundColor: colors.muted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Ionicons name="close-circle-outline" size={14} color={colors.mutedForeground} />
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                  Clear saved macros
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
               Add to meal
