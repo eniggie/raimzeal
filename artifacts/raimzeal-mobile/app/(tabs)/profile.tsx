@@ -133,6 +133,7 @@ export default function ProfileScreen() {
   const [digestLoading, setDigestLoading] = useState(false);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
+  const flashAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const [flashColor, setFlashColor] = useState<string>(CARD_THEMES[0].accent);
   const [showFlashOverlay, setShowFlashOverlay] = useState(false);
 
@@ -788,15 +789,23 @@ export default function ProfileScreen() {
       setShareLoading(true);
     }
 
-    // Brief glow flash in the selected theme color as a visual confirmation
+    // Brief glow flash in the selected theme color as a visual confirmation.
+    // Stop any in-flight flash animation before starting a new one so a rapid
+    // double-tap cannot leave a stale .start() callback that hides the new flash.
     const chosenTheme = CARD_THEMES.find((t) => t.id === themeId) ?? CARD_THEMES[0];
     setFlashColor(chosenTheme.accent);
     setShowFlashOverlay(true);
+    flashAnimRef.current?.stop();
     flashOpacity.setValue(0);
-    Animated.sequence([
+    const flashAnim = Animated.sequence([
       Animated.timing(flashOpacity, { toValue: 0.28, duration: 130, useNativeDriver: true }),
       Animated.timing(flashOpacity, { toValue: 0, duration: 480, useNativeDriver: true }),
-    ]).start(() => setShowFlashOverlay(false));
+    ]);
+    flashAnimRef.current = flashAnim;
+    flashAnim.start(() => {
+      flashAnimRef.current = null;
+      setShowFlashOverlay(false);
+    });
 
     // Wrap runAfterInteractions in a Promise so the modal can await the result
     // and show a confirmation only after the action resolves successfully.
