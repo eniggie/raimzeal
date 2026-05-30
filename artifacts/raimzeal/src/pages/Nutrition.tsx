@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { 
   ChevronLeft, ChevronRight, Plus, Search, Scan, Utensils, 
   Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus,
-  CalendarDays, Filter, Trash2, Bookmark, BookmarkCheck
+  CalendarDays, Filter, Trash2, Bookmark, BookmarkCheck, GripVertical
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
@@ -112,6 +112,8 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [filterThresholds, setFilterThresholds] = useState<FilterThresholds>(getDefaultThresholds);
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
+  const [dragPresetId, setDragPresetId] = useState<string | null>(null);
+  const [dragOverPresetId, setDragOverPresetId] = useState<string | null>(null);
   const [editingFilter, setEditingFilter] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [isSavingPreset, setIsSavingPreset] = useState(false);
@@ -913,20 +915,51 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                         const isActive = preset.filterKeys.length > 0 &&
                           preset.filterKeys.every(k => activeFilters.has(k)) &&
                           activeFilters.size === preset.filterKeys.length;
+                        const isDragging = dragPresetId === preset.id;
+                        const isDragOver = dragOverPresetId === preset.id && !isDragging;
                         return (
                           <div
                             key={preset.id}
+                            draggable
+                            onDragStart={() => setDragPresetId(preset.id)}
+                            onDragOver={(e) => { e.preventDefault(); setDragOverPresetId(preset.id); }}
+                            onDragLeave={() => setDragOverPresetId(null)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (dragPresetId && dragPresetId !== preset.id) {
+                                setCustomPresets(prev => {
+                                  const next = [...prev];
+                                  const fromIdx = next.findIndex(p => p.id === dragPresetId);
+                                  const toIdx = next.findIndex(p => p.id === preset.id);
+                                  if (fromIdx === -1 || toIdx === -1) return prev;
+                                  const [removed] = next.splice(fromIdx, 1);
+                                  next.splice(toIdx, 0, removed);
+                                  return next;
+                                });
+                              }
+                              setDragPresetId(null);
+                              setDragOverPresetId(null);
+                            }}
+                            onDragEnd={() => { setDragPresetId(null); setDragOverPresetId(null); }}
                             className={cn(
-                              'flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all',
+                              'flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none',
                               isActive
                                 ? 'bg-primary/15 text-primary border-primary/40'
-                                : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30'
+                                : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30',
+                              isDragging && 'opacity-40 scale-95',
+                              isDragOver && 'ring-2 ring-primary/50 border-primary/50'
                             )}
                             data-testid={`preset-chip-${preset.id}`}
                           >
+                            <span
+                              className="pl-2 pr-0.5 py-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                              aria-hidden
+                            >
+                              <GripVertical className="w-3 h-3" />
+                            </span>
                             <button
                               onClick={() => applyPreset(preset)}
-                              className="pl-2.5 pr-1.5 py-1 hover:opacity-80 transition-opacity"
+                              className="px-1.5 py-1 hover:opacity-80 transition-opacity"
                               title={`Apply: ${preset.filterKeys.join(', ')}`}
                             >
                               {preset.name}
