@@ -8242,8 +8242,11 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     if (hasGrams) {
       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
         try {
-          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-          if (map[log.name] === true && perGramRef.current) {
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+          const entry = map[log.name];
+          const pref = entry !== null && typeof entry === "object" ? entry : null;
+          const isStale = !pref || pref.grams !== log.amountGrams;
+          if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
             setEditGrams(100);
@@ -8480,8 +8483,8 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                       setEditShowPer100g(false);
                       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
                         try {
-                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-                          map[log.name] = false;
+                          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = { per100g: false, grams: log.amountGrams ?? 0 };
                           AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
                         } catch {}
                       });
@@ -8528,8 +8531,8 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                       setEditShowPer100g(true);
                       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
                         try {
-                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-                          map[log.name] = true;
+                          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = { per100g: true, grams: log.amountGrams ?? 0 };
                           AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
                         } catch {}
                       });
@@ -8917,8 +8920,11 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     if (hasGrams) {
       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
         try {
-          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-          if (map[log.name] === true && perGramRef.current) {
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+          const entry = map[log.name];
+          const pref = entry !== null && typeof entry === "object" ? entry : null;
+          const isStale = !pref || pref.grams !== log.amountGrams;
+          if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
             setEditGrams(100);
@@ -9149,8 +9155,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                       setEditShowPer100g(false);
                       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
                         try {
-                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-                          map[log.name] = false;
+                          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = { per100g: false, grams: log.amountGrams ?? 0 };
                           AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
                         } catch {}
                       });
@@ -9199,8 +9205,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                       setEditShowPer100g(true);
                       AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
                         try {
-                          const map: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-                          map[log.name] = true;
+                          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                          map[log.name] = { per100g: true, grams: log.amountGrams ?? 0 };
                           AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
                         } catch {}
                       });
