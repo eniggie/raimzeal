@@ -4,7 +4,7 @@ import { Link } from 'wouter';
 import { 
   ChevronLeft, ChevronRight, Plus, Search, Scan, Utensils, 
   Beef, Wheat, Droplets, X, Camera, Loader2, CheckCircle2, AlertCircle, Minus,
-  CalendarDays, Filter, Trash2, Bookmark, BookmarkCheck, GripVertical
+  CalendarDays, Filter, Trash2, Bookmark, BookmarkCheck, GripVertical, Pencil
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase, supabaseConfigured } from '@/lib/supabase';
@@ -116,6 +116,8 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   const [customPresets, setCustomPresets] = useState<CustomFilterPreset[]>([]);
   const [dragPresetId, setDragPresetId] = useState<string | null>(null);
   const [dragOverPresetId, setDragOverPresetId] = useState<string | null>(null);
+  const [renamingPresetId, setRenamingPresetId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const [editingFilter, setEditingFilter] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [isSavingPreset, setIsSavingPreset] = useState(false);
@@ -457,6 +459,23 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
 
   function deletePreset(id: string) {
     setCustomPresets(prev => prev.filter(p => p.id !== id));
+  }
+
+  function startRename(preset: CustomFilterPreset) {
+    setRenamingPresetId(preset.id);
+    setRenameValue(preset.name);
+  }
+
+  function commitRename(id: string) {
+    const trimmed = renameValue.trim();
+    if (trimmed) {
+      setCustomPresets(prev => prev.map(p => p.id === id ? { ...p, name: trimmed } : p));
+    }
+    setRenamingPresetId(null);
+  }
+
+  function cancelRename() {
+    setRenamingPresetId(null);
   }
 
   function applyPreset(preset: CustomFilterPreset) {
@@ -927,12 +946,13 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                           activeFilters.size === preset.filterKeys.length;
                         const isDragging = dragPresetId === preset.id;
                         const isDragOver = dragOverPresetId === preset.id && !isDragging;
+                        const isRenaming = renamingPresetId === preset.id;
                         return (
                           <div
                             key={preset.id}
-                            draggable
-                            onDragStart={() => setDragPresetId(preset.id)}
-                            onDragOver={(e) => { e.preventDefault(); setDragOverPresetId(preset.id); }}
+                            draggable={!isRenaming}
+                            onDragStart={() => { if (!isRenaming) setDragPresetId(preset.id); }}
+                            onDragOver={(e) => { e.preventDefault(); if (!isRenaming) setDragOverPresetId(preset.id); }}
                             onDragLeave={() => setDragOverPresetId(null)}
                             onDrop={(e) => {
                               e.preventDefault();
@@ -952,36 +972,71 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                             }}
                             onDragEnd={() => { setDragPresetId(null); setDragOverPresetId(null); }}
                             className={cn(
-                              'relative group flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none',
-                              isActive
+                              'relative group flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all select-none',
+                              isRenaming
+                                ? 'cursor-text ring-2 ring-primary/60 border-primary/50 bg-background'
+                                : 'cursor-grab active:cursor-grabbing',
+                              !isRenaming && (isActive
                                 ? 'bg-primary/15 text-primary border-primary/40'
-                                : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30',
+                                : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30'),
                               isDragging && 'opacity-40 scale-95',
                               isDragOver && 'ring-2 ring-primary/50 border-primary/50'
                             )}
                             data-testid={`preset-chip-${preset.id}`}
                           >
-                            <span
-                              className="pl-2 pr-0.5 py-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                              aria-hidden
-                            >
-                              <GripVertical className="w-3 h-3" />
-                            </span>
+                            {!isRenaming && (
+                              <span
+                                className="pl-2 pr-0.5 py-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                aria-hidden
+                              >
+                                <GripVertical className="w-3 h-3" />
+                              </span>
+                            )}
+                            {isRenaming ? (
+                              <input
+                                autoFocus
+                                value={renameValue}
+                                onChange={e => setRenameValue(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') { e.preventDefault(); commitRename(preset.id); }
+                                  if (e.key === 'Escape') cancelRename();
+                                }}
+                                onBlur={() => commitRename(preset.id)}
+                                className="px-2 py-1 w-28 bg-transparent text-foreground text-xs outline-none"
+                                aria-label="Rename preset"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => applyPreset(preset)}
+                                onDoubleClick={(e) => { e.preventDefault(); startRename(preset); }}
+                                className="px-1.5 py-1 hover:opacity-80 transition-opacity"
+                              >
+                                {preset.name}
+                              </button>
+                            )}
+                            {!isRenaming && (
+                              <button
+                                onClick={() => startRename(preset)}
+                                className="pl-0.5 py-1 hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+                                aria-label={`Rename preset ${preset.name}`}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            )}
                             <button
-                              onClick={() => applyPreset(preset)}
-                              className="px-1.5 py-1 hover:opacity-80 transition-opacity"
-                            >
-                              {preset.name}
-                            </button>
-                            <button
-                              onClick={() => deletePreset(preset.id)}
-                              className="pr-2 pl-0.5 py-1 hover:text-destructive transition-colors rounded-r-full"
-                              aria-label={`Delete preset ${preset.name}`}
+                              onClick={() => { if (isRenaming) cancelRename(); else deletePreset(preset.id); }}
+                              className={cn(
+                                'pr-2 pl-0.5 py-1 transition-colors rounded-r-full',
+                                isRenaming
+                                  ? 'text-muted-foreground hover:text-foreground'
+                                  : 'hover:text-destructive'
+                              )}
+                              aria-label={isRenaming ? 'Cancel rename' : `Delete preset ${preset.name}`}
                             >
                               <X className="w-3 h-3" />
                             </button>
-                            {/* Hover popover — lists each filter + its saved threshold */}
-                            <div
+                            {/* Hover popover — lists each filter + its saved threshold; hidden while renaming */}
+                            {!isRenaming && <div
                               role="tooltip"
                               className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 hidden group-hover:block group-focus-within:block"
                             >
@@ -1007,7 +1062,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                                   </ul>
                                 )}
                               </div>
-                            </div>
+                            </div>}
                           </div>
                         );
                       })}
