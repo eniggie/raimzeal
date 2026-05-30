@@ -327,66 +327,108 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
     };
   }, []);
 
-  // ── BroadcastChannel: broadcast local filter changes to other tabs ───────────
+  // ── Cross-tab filter sync ─────────────────────────────────────────────────────
+  // Primary: BroadcastChannel (all modern browsers).
+  // Fallback: localStorage + "storage" event (older Safari / mobile WebKit).
+  // The "storage" event only fires in *other* tabs, so there is no echo loop.
+  const LS_FILTER_SYNC_KEY = 'raimzeal_filter_sync_v1';
+
+  // Shared helper — applies a validated filter payload received from another tab.
+  // Must only be called after checking suppressRemoteRef.
+  function applyFilterPayload(p: Record<string, unknown>) {
+    if (!p || typeof p !== 'object') return;
+    const validKeys = new Set(FILTER_DEFS.map(d => d.key));
+    applyingRemoteRef.current = true;
+    if (Array.isArray(p['activeFilters'])) {
+      const restored = (p['activeFilters'] as unknown[]).filter(
+        (k): k is string => typeof k === 'string' && validKeys.has(k)
+      );
+      setActiveFilters(new Set(restored));
+    }
+    if (Array.isArray(p['customPresets'])) {
+      const valid = (p['customPresets'] as unknown[]).filter(
+        (item): item is CustomFilterPreset =>
+          item !== null &&
+          typeof item === 'object' &&
+          typeof (item as CustomFilterPreset).id === 'string' &&
+          typeof (item as CustomFilterPreset).name === 'string' &&
+          Array.isArray((item as CustomFilterPreset).filterKeys)
+      );
+      setCustomPresets(valid);
+    }
+    if (p['filterThresholds'] && typeof p['filterThresholds'] === 'object') {
+      const validated: FilterThresholds = {};
+      for (const def of FILTER_DEFS) {
+        const v = (p['filterThresholds'] as Record<string, unknown>)[def.key];
+        if (typeof v === 'number' && isFinite(v) && v >= 0) {
+          validated[def.key] = Math.round(v);
+        }
+      }
+      setFilterThresholds(prev => ({ ...prev, ...validated }));
+    }
+    setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+  }
+
+  // ── Broadcast: send local filter changes to other tabs ───────────────────────
   useEffect(() => {
     if (!filtersHydratedRef.current || !cloudSyncReadyRef.current) return;
     if (supabaseConfigured) return;
     if (applyingRemoteRef.current) return;
+    const payload = {
+      activeFilters: Array.from(activeFilters),
+      customPresets,
+      filterThresholds,
+    };
+    let usedBroadcastChannel = false;
     try {
       const bc = new BroadcastChannel('raimzeal_filters');
-      bc.postMessage({
-        activeFilters: Array.from(activeFilters),
-        customPresets,
-        filterThresholds,
-      });
+      bc.postMessage(payload);
       bc.close();
-    } catch { /* BroadcastChannel not supported — non-fatal */ }
+      usedBroadcastChannel = true;
+    } catch { /* BroadcastChannel not supported */ }
+    if (!usedBroadcastChannel) {
+      // localStorage fallback: writing a new value triggers the "storage" event
+      // in every other tab that has the listener registered below.
+      try {
+        localStorage.setItem(LS_FILTER_SYNC_KEY, JSON.stringify(payload));
+      } catch { /* non-fatal — e.g. private-browsing quota exceeded */ }
+    }
   }, [activeFilters, customPresets, filterThresholds]);
 
-  // ── BroadcastChannel: receive filter changes from other tabs ─────────────────
+  // ── Receive: apply filter changes arriving from other tabs ───────────────────
   useEffect(() => {
     if (supabaseConfigured) return;
     let bc: BroadcastChannel | null = null;
+    let usedBroadcastChannel = false;
     try {
       bc = new BroadcastChannel('raimzeal_filters');
       bc.onmessage = (event: MessageEvent) => {
         if (suppressRemoteRef.current) return;
-        const p = event.data as Record<string, unknown>;
-        if (!p || typeof p !== 'object') return;
-        const validKeys = new Set(FILTER_DEFS.map(d => d.key));
-        applyingRemoteRef.current = true;
-        if (Array.isArray(p['activeFilters'])) {
-          const restored = (p['activeFilters'] as unknown[]).filter(
-            (k): k is string => typeof k === 'string' && validKeys.has(k)
-          );
-          setActiveFilters(new Set(restored));
-        }
-        if (Array.isArray(p['customPresets'])) {
-          const valid = (p['customPresets'] as unknown[]).filter(
-            (item): item is CustomFilterPreset =>
-              item !== null &&
-              typeof item === 'object' &&
-              typeof (item as CustomFilterPreset).id === 'string' &&
-              typeof (item as CustomFilterPreset).name === 'string' &&
-              Array.isArray((item as CustomFilterPreset).filterKeys)
-          );
-          setCustomPresets(valid);
-        }
-        if (p['filterThresholds'] && typeof p['filterThresholds'] === 'object') {
-          const validated: FilterThresholds = {};
-          for (const def of FILTER_DEFS) {
-            const v = (p['filterThresholds'] as Record<string, unknown>)[def.key];
-            if (typeof v === 'number' && isFinite(v) && v >= 0) {
-              validated[def.key] = Math.round(v);
-            }
-          }
-          setFilterThresholds(prev => ({ ...prev, ...validated }));
-        }
-        setTimeout(() => { applyingRemoteRef.current = false; }, 0);
+        applyFilterPayload(event.data as Record<string, unknown>);
       };
-    } catch { /* BroadcastChannel not supported — non-fatal */ }
+      usedBroadcastChannel = true;
+    } catch { /* BroadcastChannel not supported */ }
+
+    // "storage" event fires only in tabs that did NOT write the key, making it
+    // a perfect cross-tab signal with no echo. Attach when BroadcastChannel is
+    // unavailable (older Safari on iOS, some embedded WebViews).
+    function handleStorage(e: StorageEvent) {
+      if (e.key !== LS_FILTER_SYNC_KEY || !e.newValue) return;
+      if (suppressRemoteRef.current) return;
+      try {
+        applyFilterPayload(JSON.parse(e.newValue) as Record<string, unknown>);
+      } catch { /* non-fatal — malformed JSON */ }
+    }
+
+    if (!usedBroadcastChannel) {
+      window.addEventListener('storage', handleStorage);
+    }
+
     return () => {
       try { bc?.close(); } catch { /* non-fatal */ }
+      if (!usedBroadcastChannel) {
+        window.removeEventListener('storage', handleStorage);
+      }
     };
   }, []);
 
