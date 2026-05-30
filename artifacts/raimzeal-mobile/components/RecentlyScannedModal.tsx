@@ -25,6 +25,7 @@ import {
   ScannedFood,
 } from "@/components/BarcodeScannerModal";
 import { ScanEditSheet } from "@/components/ScanEditSheet";
+import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view_v2";
 const SWIPE_HINT_KEY = "@scan_swipe_hint_v1";
@@ -34,11 +35,7 @@ async function saveViewPreference(barcode: string, per100g: boolean): Promise<vo
     const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
     let viewMap: Record<string, boolean> = {};
     try { viewMap = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
-    if (per100g) {
-      viewMap[barcode] = true;
-    } else {
-      delete viewMap[barcode];
-    }
+    viewMap[barcode] = per100g;
     await AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(viewMap));
   } catch {
     // Non-fatal
@@ -311,6 +308,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [loading, setLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
+  const [defaultPer100g] = usePer100gDefault();
   const [runSwipeHint, setRunSwipeHint] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const pendingDeleteRef = useRef<PendingDelete | null>(null);
@@ -341,7 +339,10 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     const restoredPer100g = new Set<string>();
     for (const scan of data) {
       const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
-      if (canToggle && viewMap[scan.barcode] === true) {
+      if (!canToggle) continue;
+      const saved = viewMap[scan.barcode];
+      const showPer100g = saved !== undefined ? saved : defaultPer100g;
+      if (showPer100g) {
         restoredPer100g.add(scan.barcode);
       }
     }
@@ -353,7 +354,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     }
 
     setLoading(false);
-  }, []);
+  }, [defaultPer100g]);
 
   React.useEffect(() => {
     if (visible) {
