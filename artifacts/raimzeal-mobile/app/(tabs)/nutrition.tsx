@@ -946,7 +946,7 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user, dismissedHints } = useFitness();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
@@ -1483,6 +1483,8 @@ export default function NutritionScreen() {
   const presetLongPressHintFadeAnim = useRef(new Animated.Value(0)).current;
   const presetLongPressHintShownRef = useRef(false);
   const presetLongPressHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const presetHintPendingRef = useRef(false);
+  const prevDismissedHintsLenRef = useRef<number | null>(null);
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
@@ -3027,6 +3029,37 @@ export default function NutritionScreen() {
     }).start();
     presetLongPressHintTimerRef.current = setTimeout(dismissPresetLongPressHint, 4000);
   }, [customPresets.length]);
+
+  useEffect(() => {
+    const prev = prevDismissedHintsLenRef.current;
+    prevDismissedHintsLenRef.current = dismissedHints.length;
+    if (prev === null || prev === 0) return;
+    if (dismissedHints.length === 0) {
+      presetLongPressHintShownRef.current = false;
+      presetHintPendingRef.current = true;
+    }
+  }, [dismissedHints]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!presetHintPendingRef.current) return;
+      if (customPresets.length === 0) return;
+      if (isHintDismissed(PRESET_LONG_PRESS_HINT_KEY)) return;
+      presetHintPendingRef.current = false;
+      presetLongPressHintShownRef.current = true;
+      presetLongPressHintFadeAnim.setValue(0);
+      setPresetLongPressHintVisible(true);
+      Animated.timing(presetLongPressHintFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      if (presetLongPressHintTimerRef.current) {
+        clearTimeout(presetLongPressHintTimerRef.current);
+      }
+      presetLongPressHintTimerRef.current = setTimeout(dismissPresetLongPressHint, 4000);
+    }, [customPresets.length, isHintDismissed])
+  );
 
   const shouldShowFilterSummary =
     activeTab === "today" && isSearching && searchDone &&

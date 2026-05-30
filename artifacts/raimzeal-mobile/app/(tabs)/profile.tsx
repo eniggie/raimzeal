@@ -1502,7 +1502,7 @@ export default function ProfileScreen() {
             <ActionRow
               icon="bulb-outline"
               label="Reset all hints"
-              sublabel="Re-show one-time tips for filters and reordering"
+              sublabel="Re-show one-time tips for filters, reordering, and preset long-press"
               color={colors.accent}
               onPress={handleResetHints}
             />
