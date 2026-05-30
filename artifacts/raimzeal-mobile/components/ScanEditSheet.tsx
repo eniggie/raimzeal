@@ -176,7 +176,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
             />
 
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              Nutrition (per serving)
+              {`Nutrition · ${food?.servingLabel ? `per ${food.servingLabel}` : "per 100g"}`}
             </Text>
 
             <View style={styles.macroRow}>
