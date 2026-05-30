@@ -21,6 +21,7 @@ import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext
 import { useFitness } from "@/contexts/FitnessContext";
 import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 import { useAuth } from "@/contexts/AuthContext";
+import { upsertUserPreferences } from "@/lib/db";
 
 interface GoalField {
   key: "calories" | "protein" | "carbs" | "fat";
@@ -141,7 +142,11 @@ export default function MacroGoalsScreen() {
       return;
     }
 
-    await setGoals({ calories: cal, protein: pro, carbs: car, fat: fa });
+    const newGoals = { calories: cal, protein: pro, carbs: car, fat: fa };
+    await setGoals(newGoals);
+    if (authUser?.id) {
+      upsertUserPreferences(authUser.id, { macroGoals: newGoals }).catch(() => {});
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   }
