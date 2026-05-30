@@ -2817,6 +2817,8 @@ export default function NutritionScreen() {
     });
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     setReorderPresetsItems([...next]);
+    setCustomPresets(next);
+    AsyncStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
     setActiveReorderPresetIdx(-1);
     setHoverReorderPresetIdx(-1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
