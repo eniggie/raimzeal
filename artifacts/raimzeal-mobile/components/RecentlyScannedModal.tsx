@@ -634,16 +634,16 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                     onLongPress={() => handleLongPress(scan)}
                     onRemove={() => handleRemove(scan.barcode)}
                     runHintAnimation={index === 0 && runSwipeHint}
-                    onToggle100g={() =>
+                    onToggle100g={() => {
+                      const nowPer100g = !per100gScans.has(scan.barcode);
                       setPer100gScans((prev) => {
                         const next = new Set(prev);
-                        const nowPer100g = !next.has(scan.barcode);
                         if (nowPer100g) next.add(scan.barcode);
                         else next.delete(scan.barcode);
-                        saveViewPreference(scan.barcode, nowPer100g);
                         return next;
-                      })
-                    }
+                      });
+                      saveViewPreference(scan.barcode, nowPer100g);
+                    }}
                   />
                 );
               })}
