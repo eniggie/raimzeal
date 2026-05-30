@@ -2808,6 +2808,21 @@ export default function NutritionScreen() {
     setHoverReorderPresetIdx(-1);
   }
 
+  function deletePresetInReorderMode(id: string) {
+    const preset = reorderPresetsRef.current.find((p) => p.id === id);
+    const next = reorderPresetsRef.current.filter((p) => p.id !== id);
+    reorderPresetsRef.current = next;
+    next.forEach((_, i) => {
+      if (indexRefsPresetRef.current[i]) indexRefsPresetRef.current[i].current = i;
+    });
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    setReorderPresetsItems([...next]);
+    setActiveReorderPresetIdx(-1);
+    setHoverReorderPresetIdx(-1);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (preset) showPresetDeletedToast(preset);
+  }
+
   function handlePresetReorderDrop(from: number, to: number) {
     setActiveReorderPresetIdx(-1);
     setHoverReorderPresetIdx(-1);
@@ -3909,7 +3924,7 @@ export default function NutritionScreen() {
                             onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
                             onHover={setHoverReorderPresetIdx}
                             onDrop={handlePresetReorderDrop}
-                            onDelete={deleteCustomPreset}
+                            onDelete={deletePresetInReorderMode}
                             colors={colors}
                           />
                         ))}
@@ -4736,7 +4751,7 @@ export default function NutritionScreen() {
                             onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
                             onHover={setHoverReorderPresetIdx}
                             onDrop={handlePresetReorderDrop}
-                            onDelete={deleteCustomPreset}
+                            onDelete={deletePresetInReorderMode}
                             colors={colors}
                           />
                         ))}
