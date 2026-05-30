@@ -14,7 +14,7 @@ const COOLDOWN_MS = 30_000;
  * the lock icon (e.g. "camera-outline" for a save-to-camera-roll error), matching
  * the pattern used by CardCustomizationModal for permission errors.
  *
- * The toast fades in (200 ms), holds for 4500 ms, then fades out (400 ms).
+ * The toast fades in (200 ms), holds for 4500 ms, then fades out (220 ms).
  * Tapping it immediately calls `Linking.openSettings()` so the user can
  * re-enable the denied permission without hunting through Settings manually.
  *
@@ -22,6 +22,14 @@ const COOLDOWN_MS = 30_000;
  * the last show to avoid spamming on repeated taps. The cooldown resets
  * automatically whenever the app returns to the foreground (the user may have
  * changed the permission in Settings).
+ *
+ * Dismiss pattern: dismissPermissionToast(forReplacement) follows the same
+ * contract as the nutrition-tab dismiss helpers:
+ *  - stopAnimation() to halt any in-flight animation
+ *  - 220 ms fade-out whose callback only nulls state when forReplacement=false
+ *  - clearTimeout on the auto-dismiss timer
+ * showPermissionToast calls dismissPermissionToast(true) at the top so a
+ * stale fade-out callback can never null a newly-shown toast.
  */
 export function usePermissionToast() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -42,6 +50,22 @@ export function usePermissionToast() {
     };
   }, []);
 
+  function dismissPermissionToast(forReplacement = false) {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    toastOpacity.stopAnimation();
+    Animated.timing(toastOpacity, { toValue: 0, duration: 220, useNativeDriver: true }).start(
+      ({ finished }) => {
+        if (finished && !forReplacement) {
+          setToastMsg(null);
+          setActionIcon(null);
+        }
+      }
+    );
+  }
+
   function showPermissionToast(
     message = "Photo access blocked — tap to open Settings",
     icon?: keyof typeof Ionicons.glyphMap,
@@ -52,16 +76,13 @@ export function usePermissionToast() {
 
     lastShownAtRef.current.set(message, now);
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+    dismissPermissionToast(true);
     setToastMsg(message);
     setActionIcon(icon ?? null);
-    toastOpacity.stopAnimation();
     toastOpacity.setValue(0);
     Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     timerRef.current = setTimeout(() => {
-      Animated.timing(toastOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(({ finished }) => {
-        if (finished) setToastMsg(null);
-      });
+      dismissPermissionToast(false);
     }, 4500);
   }
 
@@ -69,8 +90,7 @@ export function usePermissionToast() {
     <Animated.View style={[styles.wrap, { opacity: toastOpacity }]}>
       <TouchableOpacity
         onPress={() => {
-          if (timerRef.current) clearTimeout(timerRef.current);
-          setToastMsg(null);
+          dismissPermissionToast(false);
           void Linking.openSettings();
         }}
         activeOpacity={0.8}
