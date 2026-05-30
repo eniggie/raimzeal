@@ -715,6 +715,18 @@ function HorizontalDraggablePresetChip({
   );
 }
 
+function formatRecentDate(dateStr: string): string {
+  const now = new Date();
+  const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (dateStr === localDateStr) return "Today";
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const logMidnight = new Date(dateStr + "T00:00:00");
+  const diffDays = Math.floor((todayMidnight.getTime() - logMidnight.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1) return `${diffDays} days ago`;
+  return dateStr;
+}
+
 function formatCustomRangeLabel(start: string, end: string): string {
   const s = new Date(start + "T12:00:00");
   const e = new Date(end + "T12:00:00");
@@ -1013,12 +1025,12 @@ export default function NutritionScreen() {
   const recentFoods = React.useMemo(() => {
     const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
     const seen = new Set<string>();
-    const result: Omit<MealLog, "id" | "date">[] = [];
+    const result: (Omit<MealLog, "id" | "date"> & { lastEaten: string })[] = [];
     const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const log of sortedLogs) {
       if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name))) {
         seen.add(log.name);
-        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
+        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
       if (result.length >= 5) break;
     }
@@ -5210,9 +5222,14 @@ export default function NutritionScreen() {
                           />
                         </View>
                         <View style={styles.foodInfo}>
-                          <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
-                            {food.name}
-                          </Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={[styles.foodName, { color: colors.foreground, flexShrink: 1 }]} numberOfLines={1}>
+                              {food.name}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 0 }}>
+                              {formatRecentDate(food.lastEaten)}
+                            </Text>
+                          </View>
                           <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                             P {displayRecentProtein}g · C {displayRecentCarbs}g · F {displayRecentFat}g
                           </Text>
