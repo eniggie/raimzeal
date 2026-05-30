@@ -31,7 +31,7 @@ export function getApiBase(): string {
  * Returns the current session's access token so community mutation calls
  * can present a Bearer token to requireAuth on the API server.
  */
-async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token ?? null;

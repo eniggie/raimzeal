@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Linking,
@@ -21,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
+import { getApiBase, getAccessToken } from "@/lib/db";
 
 const STORAGE_PREFIX = "@raimzeal_wellness_v1_";
 const DISCLAIMER_KEY = "@raimzeal_wellness_disclaimer_seen";
@@ -328,6 +330,8 @@ export default function WellnessCheckinScreen() {
   const [todayEntry, setTodayEntry] = useState<WellnessEntry | null>(null);
   const [history, setHistory] = useState<Record<string, WellnessEntry>>({});
   const [saved, setSaved] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const scoreAnim = useRef(new Animated.Value(0)).current;
 
@@ -403,6 +407,50 @@ export default function WellnessCheckinScreen() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
   }, [mood, energy, stress, recovery, notes]);
+
+  const fetchBalanceInsight = useCallback(async () => {
+    if (aiLoading) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setAiLoading(true);
+    setAiInsight(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { setAiInsight("Sign in to unlock AI life balance coaching. 🔐"); return; }
+      const histEntries = Object.values(history);
+      const histCount = histEntries.length;
+      const avgMood7d = histCount > 0 ? histEntries.reduce((s, e) => s + e.mood, 0) / histCount : null;
+      const avgEnergy7d = histCount > 0 ? histEntries.reduce((s, e) => s + e.energy, 0) / histCount : null;
+      const avgStress7d = histCount > 0 ? histEntries.reduce((s, e) => s + e.stress, 0) / histCount : null;
+      const res = await fetch(`${getApiBase()}/api/ai/insights`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          type: "balance",
+          data: {
+            todayMood: mood,
+            todayEnergy: energy,
+            todayStress: stress,
+            todayRecovery: recovery,
+            readinessScore: readiness,
+            readinessLabel: readInfo.label,
+            historyCount: histCount,
+            avgMood7d,
+            avgEnergy7d,
+            avgStress7d,
+            notes: notes.trim(),
+          },
+        }),
+      });
+      if (res.status === 429) { setAiInsight("Daily AI limit reached — come back tomorrow! ⏰"); return; }
+      if (!res.ok) throw new Error("API error");
+      const json = await res.json() as { insight: string };
+      setAiInsight(json.insight);
+    } catch {
+      setAiInsight("Couldn't load insight right now — try again shortly. 🔄");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiLoading, mood, energy, stress, recovery, readiness, readInfo.label, history, notes]);
 
   const scoreWidth = scoreAnim.interpolate({
     inputRange: [0, 100],
@@ -565,6 +613,40 @@ export default function WellnessCheckinScreen() {
             {saved ? "Saved!" : todayEntry ? "Update Today's Check-In" : "Save Check-In"}
           </Text>
         </AnimatedPressable>
+
+        {/* AI Life Balance Coach */}
+        <GlassCard style={[styles.aiCard, { borderColor: "#10b98140" }]}>
+          <View style={styles.aiCardHeader}>
+            <View style={[styles.aiIconWrap, { backgroundColor: "#10b98120" }]}>
+              <Ionicons name="sparkles" size={18} color="#10b981" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.aiCardTitle, { color: colors.foreground }]}>AI Life Balance Coach</Text>
+              <Text style={[styles.aiCardSub, { color: colors.mutedForeground }]}>Powered by Ovia AI</Text>
+            </View>
+          </View>
+          {aiInsight ? (
+            <Text style={[styles.aiInsightText, { color: colors.foreground }]}>{aiInsight}</Text>
+          ) : (
+            <Text style={[styles.aiInsightPlaceholder, { color: colors.mutedForeground }]}>
+              Get a personalised life balance insight based on your mood, energy, stress, and recovery scores today.
+            </Text>
+          )}
+          <AnimatedPressable
+            onPress={fetchBalanceInsight}
+            scale={0.97}
+            style={[styles.aiBtn, { backgroundColor: aiLoading ? colors.muted : "#10b981" }]}
+          >
+            {aiLoading ? (
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            ) : (
+              <Ionicons name="sparkles" size={15} color="#fff" />
+            )}
+            <Text style={[styles.aiBtnText, { color: aiLoading ? colors.mutedForeground : "#fff" }]}>
+              {aiLoading ? "Reading your balance…" : aiInsight ? "Refresh Insight" : "Get Life Balance Insight"}
+            </Text>
+          </AnimatedPressable>
+        </GlassCard>
 
         {/* 7-Day History */}
         <GlassCard style={styles.historyCard}>
@@ -741,4 +823,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   crisisText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  aiCard: { gap: 12, borderWidth: 1.5 },
+  aiCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  aiIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  aiCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  aiCardSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  aiInsightText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  aiInsightPlaceholder: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20, fontStyle: "italic" },
+  aiBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 13, borderRadius: 12 },
+  aiBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

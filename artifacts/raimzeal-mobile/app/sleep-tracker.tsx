@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { getApiBase, getAccessToken } from "@/lib/db";
 
 const STORAGE_PREFIX = "@raimzeal_sleep_v1_";
 const GOAL_HOURS = 8;
@@ -147,6 +149,8 @@ export default function SleepTrackerScreen() {
   const [quality, setQuality] = useState<1 | 2 | 3 | 4 | 5>(4);
   const [weekData, setWeekData] = useState<Record<string, SleepEntry | null>>({});
   const [saved, setSaved] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const days = last7Days();
   const todayEntry = weekData[todayKey()];
@@ -191,6 +195,48 @@ export default function SleepTrackerScreen() {
       setSaved(true);
     } catch {}
   }, [bedHour, bedMin, wakeHour, wakeMin, quality]);
+
+  const fetchSleepInsight = useCallback(async () => {
+    if (aiLoading) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setAiLoading(true);
+    setAiInsight(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { setAiInsight("Sign in to unlock AI sleep analysis. 🔐"); return; }
+      const weekEntries = days.map((d) => {
+        const entry = weekData[d.key];
+        return { label: d.label, hours: entry ? durationHours(entry) : 0, quality: entry ? entry.quality : 0 };
+      });
+      const validEntries = weekEntries.filter((e) => e.hours > 0);
+      const avgHrs = validEntries.length > 0
+        ? validEntries.reduce((s, e) => s + e.hours, 0) / validEntries.length
+        : 0;
+      const todayEnt = weekData[todayKey()];
+      const res = await fetch(`${getApiBase()}/api/ai/insights`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          type: "sleep",
+          data: {
+            weekEntries,
+            avgHours: avgHrs,
+            goalHours: GOAL_HOURS,
+            todayHours: todayEnt ? durationHours(todayEnt) : null,
+            todayQuality: todayEnt ? todayEnt.quality : null,
+          },
+        }),
+      });
+      if (res.status === 429) { setAiInsight("Daily AI limit reached — come back tomorrow! ⏰"); return; }
+      if (!res.ok) throw new Error("API error");
+      const json = await res.json() as { insight: string };
+      setAiInsight(json.insight);
+    } catch {
+      setAiInsight("Couldn't load insight right now — try again shortly. 🔄");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiLoading, weekData, days]);
 
   const avgSleep =
     Object.values(weekData).filter(Boolean).length > 0
@@ -349,6 +395,41 @@ export default function SleepTrackerScreen() {
           </Pressable>
         </View>
 
+        {/* AI Sleep Quality Analysis */}
+        <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: "#8b5cf620" }]}>
+          <View style={styles.aiCardHeader}>
+            <View style={[styles.aiIconWrap, { backgroundColor: "#8b5cf620" }]}>
+              <Ionicons name="sparkles" size={18} color="#8b5cf6" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.aiCardTitle, { color: colors.foreground }]}>AI Sleep Analysis</Text>
+              <Text style={[styles.aiCardSub, { color: colors.mutedForeground }]}>Powered by Ovia AI</Text>
+            </View>
+          </View>
+          {aiInsight ? (
+            <Text style={[styles.aiInsightText, { color: colors.foreground }]}>{aiInsight}</Text>
+          ) : (
+            <Text style={[styles.aiInsightPlaceholder, { color: colors.mutedForeground }]}>
+              Analyse your 7-day sleep pattern and get personalised recommendations to improve your quality and consistency.
+            </Text>
+          )}
+          <TouchableOpacity
+            onPress={fetchSleepInsight}
+            disabled={aiLoading}
+            style={[styles.aiBtn, { backgroundColor: aiLoading ? colors.muted : "#8b5cf6" }]}
+            activeOpacity={0.8}
+          >
+            {aiLoading ? (
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            ) : (
+              <Ionicons name="sparkles" size={15} color="#fff" />
+            )}
+            <Text style={[styles.aiBtnText, { color: aiLoading ? colors.mutedForeground : "#fff" }]}>
+              {aiLoading ? "Analysing your sleep…" : aiInsight ? "Refresh Analysis" : "Analyse My Sleep"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Past entries */}
         {Object.values(weekData).some(Boolean) && (
           <View>
@@ -464,4 +545,13 @@ const styles = StyleSheet.create({
   pastDate: { width: 44, fontSize: 12, fontFamily: "Inter_500Medium" },
   pastTime: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
   pastHrs: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  aiCard: { borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 12 },
+  aiCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  aiIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  aiCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  aiCardSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  aiInsightText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  aiInsightPlaceholder: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20, fontStyle: "italic" },
+  aiBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12 },
+  aiBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

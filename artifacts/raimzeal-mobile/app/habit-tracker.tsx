@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { getApiBase, getAccessToken } from "@/lib/db";
 
 const STORAGE_KEY_CONFIG = "@raimzeal_habits_config_v1";
 const STORAGE_KEY_LOG_PREFIX = "@raimzeal_habits_log_";
@@ -68,6 +69,8 @@ export default function HabitTrackerScreen() {
   const [showManage, setShowManage] = useState(false);
   const [newHabitName, setNewHabitName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const activeHabits = habits.filter((h) => h.enabled);
   const completedCount = completedToday.size;
@@ -173,6 +176,56 @@ export default function HabitTrackerScreen() {
     });
     setNewHabitName("");
   }
+
+  const fetchHabitInsight = useCallback(async () => {
+    if (aiLoading) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setAiLoading(true);
+    setAiInsight(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) { setAiInsight("Sign in to unlock AI coaching insights. 🔐"); return; }
+      const weekDays = weekDayLabels();
+      const habitData = activeHabits.map((h) => {
+        let weekCompleted = 0;
+        for (const d of weekDays) {
+          if (weekData[d.key]?.has(h.id)) weekCompleted++;
+        }
+        let streak = 0;
+        const reversed = [...weekDays].reverse();
+        for (const d of reversed) {
+          if (weekData[d.key]?.has(h.id)) streak++;
+          else if (d.key !== todayKey()) break;
+        }
+        return { name: h.name, streak, completedThisWeek: weekCompleted, totalDays: 7 };
+      });
+      const totalCompleted = weekDays.reduce((sum, d) => {
+        return sum + (weekData[d.key] ? activeHabits.filter((h) => weekData[d.key]!.has(h.id)).length : 0);
+      }, 0);
+      const maxPossible = activeHabits.length * 7;
+      const res = await fetch(`${getApiBase()}/api/ai/insights`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({
+          type: "habit",
+          data: {
+            habits: habitData,
+            completedToday: completedCount,
+            totalToday: totalCount,
+            weekCompletionRate: maxPossible > 0 ? totalCompleted / maxPossible : 0,
+          },
+        }),
+      });
+      if (res.status === 429) { setAiInsight("Daily AI limit reached — come back tomorrow! ⏰"); return; }
+      if (!res.ok) throw new Error("API error");
+      const json = await res.json() as { insight: string };
+      setAiInsight(json.insight);
+    } catch {
+      setAiInsight("Couldn't load insight right now — try again shortly. 🔄");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiLoading, activeHabits, weekData, completedCount, totalCount]);
 
   function deleteHabit(id: string) {
     Alert.alert("Delete Habit", "Remove this habit permanently?", [
@@ -289,6 +342,41 @@ export default function HabitTrackerScreen() {
                   ]}
                 />
               </View>
+            </View>
+
+            {/* AI Habit Formation Coach */}
+            <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
+              <View style={styles.aiCardHeader}>
+                <View style={[styles.aiIconWrap, { backgroundColor: colors.primary + "20" }]}>
+                  <Ionicons name="sparkles" size={18} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.aiCardTitle, { color: colors.foreground }]}>AI Habit Coach</Text>
+                  <Text style={[styles.aiCardSub, { color: colors.mutedForeground }]}>Powered by Ovia AI</Text>
+                </View>
+              </View>
+              {aiInsight ? (
+                <Text style={[styles.aiInsightText, { color: colors.foreground }]}>{aiInsight}</Text>
+              ) : (
+                <Text style={[styles.aiInsightPlaceholder, { color: colors.mutedForeground }]}>
+                  Get a personalised habit formation tip based on your streak data and patterns.
+                </Text>
+              )}
+              <TouchableOpacity
+                onPress={fetchHabitInsight}
+                disabled={aiLoading}
+                style={[styles.aiBtn, { backgroundColor: aiLoading ? colors.muted : colors.primary }]}
+                activeOpacity={0.8}
+              >
+                {aiLoading ? (
+                  <ActivityIndicator size="small" color={colors.mutedForeground} />
+                ) : (
+                  <Ionicons name="sparkles" size={15} color={colors.primaryForeground} />
+                )}
+                <Text style={[styles.aiBtnText, { color: aiLoading ? colors.mutedForeground : colors.primaryForeground }]}>
+                  {aiLoading ? "Analysing your habits…" : aiInsight ? "Refresh Insight" : "Get AI Coaching Tip"}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Week grid */}
@@ -642,4 +730,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   togglePillText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  aiCard: { borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 12 },
+  aiCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  aiIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  aiCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  aiCardSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  aiInsightText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  aiInsightPlaceholder: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20, fontStyle: "italic" },
+  aiBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 12 },
+  aiBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

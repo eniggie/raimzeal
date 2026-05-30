@@ -26,6 +26,7 @@ import scheduledWorkoutsRouter from "./scheduledWorkouts";
 import userProfileRouter from "./userProfile";
 import enrolledProgramRouter from "./enrolledProgram";
 import legacyRouter from "./legacy";
+import aiInsightsRouter from "./aiInsights";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(scheduledWorkoutsRouter);
 router.use(userProfileRouter);
 router.use(enrolledProgramRouter);
 router.use(legacyRouter);
+router.use(aiInsightsRouter);
 
 export default router;
