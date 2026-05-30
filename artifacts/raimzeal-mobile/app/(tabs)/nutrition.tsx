@@ -6732,7 +6732,9 @@ export default function NutritionScreen() {
               const canToggleServing = !!(selectedFoodServingLabel && selectedFoodNutrients100g);
               const isGramsMode = (selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g;
               const displayBase = modalShowPer100g && selectedFoodNutrients100g ? selectedFoodNutrients100g : selectedFood;
-              const factor = isGramsMode ? (parseFloat(grams) || 0) / 100 : servings;
+              const parsedGramsLive = parseFloat(grams);
+              const validGramsLive = Number.isFinite(parsedGramsLive) && parsedGramsLive > 0;
+              const factor = isGramsMode ? (validGramsLive ? parsedGramsLive : 0) / 100 : servings;
               return (
                 <>
                   {canToggleServing ? (
@@ -6900,22 +6902,22 @@ export default function NutritionScreen() {
                   <View style={styles.modalNutrients}>
                     <NutrientChip
                       label="Calories"
-                      value={`${Math.round(displayBase.calories * factor)}`}
+                      value={isGramsMode && !validGramsLive ? "—" : `${Math.round(displayBase.calories * factor)}`}
                       color={colors.primary}
                     />
                     <NutrientChip
                       label="Protein"
-                      value={`${Math.round(displayBase.protein * factor * 10) / 10}g`}
+                      value={isGramsMode && !validGramsLive ? "—" : `${Math.round(displayBase.protein * factor * 10) / 10}g`}
                       color={colors.secondary}
                     />
                     <NutrientChip
                       label="Carbs"
-                      value={`${Math.round(displayBase.carbs * factor * 10) / 10}g`}
+                      value={isGramsMode && !validGramsLive ? "—" : `${Math.round(displayBase.carbs * factor * 10) / 10}g`}
                       color={colors.warning}
                     />
                     <NutrientChip
                       label="Fat"
-                      value={`${Math.round(displayBase.fat * factor * 10) / 10}g`}
+                      value={isGramsMode && !validGramsLive ? "—" : `${Math.round(displayBase.fat * factor * 10) / 10}g`}
                       color={colors.accent}
                     />
                   </View>
