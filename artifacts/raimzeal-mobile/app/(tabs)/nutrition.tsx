@@ -1440,6 +1440,7 @@ export default function NutritionScreen() {
   const filterHintShownRef = useRef(false);
   const filterHintDismissedRef = useRef(false);
   const filterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tipReplayTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [reorderHintVisible, setReorderHintVisible] = useState(false);
   const reorderHintFadeAnim = useRef(new Animated.Value(0)).current;
@@ -1758,6 +1759,40 @@ export default function NutritionScreen() {
         duration: 300,
         useNativeDriver: true,
       }).start();
+
+      if (activeFilters.size > 0) {
+        if (tipReplayTransitionTimerRef.current) {
+          clearTimeout(tipReplayTransitionTimerRef.current);
+        }
+        tipReplayTransitionTimerRef.current = setTimeout(() => {
+          tipReplayTransitionTimerRef.current = null;
+          Animated.timing(presetNudgeFadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setPresetNudgeVisible(false);
+            filterHintFadeAnim.setValue(0);
+            setFilterHintVisible(true);
+            Animated.timing(filterHintFadeAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }).start();
+            if (filterHintTimerRef.current) {
+              clearTimeout(filterHintTimerRef.current);
+            }
+            filterHintTimerRef.current = setTimeout(() => {
+              filterHintTimerRef.current = null;
+              Animated.timing(filterHintFadeAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }).start(() => setFilterHintVisible(false));
+            }, 3000);
+          });
+        }, 3000);
+      }
     } else {
       presetLongPressHintFadeAnim.setValue(0);
       setPresetLongPressHintVisible(true);
@@ -1860,6 +1895,7 @@ export default function NutritionScreen() {
   useEffect(() => {
     return () => {
       if (filterHintTimerRef.current) clearTimeout(filterHintTimerRef.current);
+      if (tipReplayTransitionTimerRef.current) clearTimeout(tipReplayTransitionTimerRef.current);
     };
   }, []);
 
