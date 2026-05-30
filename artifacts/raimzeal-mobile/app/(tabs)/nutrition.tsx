@@ -3794,6 +3794,9 @@ export default function NutritionScreen() {
     const gramMatch = food.servingLabel?.match(/^(\d+(?:\.\d+)?)g$/i) ?? null;
     if (gramMatch) {
       const gramValue = parseFloat(gramMatch[1]);
+      const rememberedGrams = lastUsedGramsMapRef.current[food.name];
+      const parsedRemembered = rememberedGrams ? parseFloat(rememberedGrams) : NaN;
+      const defaultGrams = Number.isFinite(parsedRemembered) && parsedRemembered > 0 ? parsedRemembered : gramValue;
       const scale = gramValue > 0 ? 100 / gramValue : 1;
       const per100gFood = {
         ...food,
@@ -3808,8 +3811,8 @@ export default function NutritionScreen() {
       setSelectedFoodNutrients100g(undefined);
       setSelectedFoodUnit("g");
       setModalShowPer100g(false);
-      setGrams(String(gramValue));
-      setGramsPreFillHint(String(gramValue));
+      setGrams(String(defaultGrams));
+      setGramsPreFillHint(String(defaultGrams));
     } else if (food.nutrients100g && food.servingLabel) {
       setSelectedFood(food);
       setSelectedFoodServingLabel(food.servingLabel);
