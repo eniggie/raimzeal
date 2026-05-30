@@ -1527,6 +1527,7 @@ export default function NutritionScreen() {
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
   const pendingScrollFavoriteRef = useRef<string | null>(null);
+  const selectedFoodSourceRef = useRef<"quick" | "fav" | null>(null);
   const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
@@ -3609,8 +3610,9 @@ export default function NutritionScreen() {
     breakdownHighlightTimer.current = setTimeout(() => setBreakdownHighlightMacro(null), 1500);
   }
 
-  async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean }) {
+  async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean; source?: "quick" | "fav" }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    selectedFoodSourceRef.current = opts?.source ?? null;
 
     const gramMatch = food.servingLabel?.match(/^(\d+(?:\.\d+)?)g$/i) ?? null;
     if (gramMatch) {
@@ -3821,6 +3823,12 @@ export default function NutritionScreen() {
           return AsyncStorage.setItem(LAST_USED_GRAMS_KEY, JSON.stringify(map));
         })
         .catch(() => {});
+
+      if (selectedFoodSourceRef.current === "quick") {
+        dismissQuickGramsHint();
+      } else if (selectedFoodSourceRef.current === "fav") {
+        dismissFavGramsHint();
+      }
     }
 
     lastUsedMealMapRef.current[name] = selectedMeal;
@@ -3852,6 +3860,7 @@ export default function NutritionScreen() {
         .catch(() => {});
     }
 
+    selectedFoodSourceRef.current = null;
     setShowModal(false);
     setGramsPreFillHint(null);
     setModalShowPer100g(false);
@@ -4781,7 +4790,7 @@ export default function NutritionScreen() {
                           >
                             <TouchableOpacity
                               activeOpacity={0.8}
-                              onPress={() => handleAddFood(food)}
+                              onPress={() => handleAddFood(food, { source: "fav" })}
                               onLongPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 setPreviewSheetFood({
@@ -5855,7 +5864,7 @@ export default function NutritionScreen() {
           return (
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => handleAddFood(item)}
+              onPress={() => handleAddFood(item, { source: "quick" })}
               style={[
                 styles.foodCard,
                 { backgroundColor: colors.card, borderColor: colors.border },
@@ -6254,7 +6263,7 @@ export default function NutritionScreen() {
         visible={showModal}
         transparent
         animationType="slide"
-        onRequestClose={() => { setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
+        onRequestClose={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -6498,7 +6507,7 @@ export default function NutritionScreen() {
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => { setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
+                onPress={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); }}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
