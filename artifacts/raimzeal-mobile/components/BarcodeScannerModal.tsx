@@ -178,7 +178,12 @@ async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
     try {
       res = await fetch(
         `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-        { signal: controller.signal }
+        {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "RAIMZEAL/1.0 (raimzeal.app; contact@raimzeal.app)",
+          },
+        }
       );
     } finally {
       clearTimeout(timeout);
@@ -315,6 +320,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   // State-based guards (scanning/loading) had a race window where the closure
   // captured old values, allowing multiple concurrent network calls.
   const scanLock = useRef(false);
+  // Ref-based tab tracker — immune to stale closures inside handleBarcodeScanned.
+  // We always pass a function to CameraView so the native ML Kit scanner is never
+  // torn down and re-created when the user switches between Scan / Recent tabs.
+  // (expo-camera 17.x on Android can silently fail to re-enable scanning when
+  // onBarcodeScanned transitions from undefined → function.)
+  const activeTabRef = useRef<ActiveTab>("scan");
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -322,6 +333,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("scan");
+  // Keep the ref in sync so handleBarcodeScanned always sees the current tab
+  // without needing activeTab in its dependency array (which would create a
+  // new function reference on every tab change and risk re-triggering the
+  // native scanner setup).
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
@@ -373,6 +389,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
   const handleBarcodeScanned = useCallback(
     async ({ data }: { data: string }) => {
+      // Guard: only process while on the Scan tab. Use the ref (not the state
+      // closure) so this check is always current even when the callback was
+      // memoised before the tab switched.
+      if (activeTabRef.current !== "scan") return;
       // Use a ref-based lock so this guard is never stale, even when React
       // Compiler memoises the callback or the component re-renders rapidly.
       if (scanLock.current) return;
@@ -624,7 +644,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                   "datamatrix",
                 ],
               }}
-              onBarcodeScanned={activeTab === "scan" ? handleBarcodeScanned : undefined}
+              onBarcodeScanned={handleBarcodeScanned}
             />
 
             {/* Overlay */}
