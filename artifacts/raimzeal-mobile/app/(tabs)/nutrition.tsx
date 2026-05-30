@@ -2971,6 +2971,7 @@ export default function NutritionScreen() {
     queuedThresholdUpdatesRef.current = {};
     if (Object.keys(queued).length > 0) {
       setFilterThresholds((prev) => ({ ...prev, ...queued }));
+      showFilterSyncToast();
     }
     setThresholdEditKey(null);
   }
