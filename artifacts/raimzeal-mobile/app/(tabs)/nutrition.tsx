@@ -6364,9 +6364,9 @@ export default function NutritionScreen() {
                           }}
                           onBlur={() => {
                             const n = parseFloat(servingsText);
-                            const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
-                            setServings(valid);
-                            setServingsText(String(valid));
+                            const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
+                            setServings(snapped);
+                            setServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
                           }}
                           keyboardType="decimal-pad"
                           selectTextOnFocus
@@ -7930,9 +7930,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                   }}
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
-                    const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
-                    setEditServings(valid);
-                    setEditServingsText(String(valid));
+                    const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
+                    setEditServings(snapped);
+                    setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
                   }}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
@@ -8563,9 +8563,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                   }}
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
-                    const valid = !isNaN(n) && n > 0 ? Math.max(0.5, n) : 1;
-                    setEditServings(valid);
-                    setEditServingsText(String(valid));
+                    const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
+                    setEditServings(snapped);
+                    setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
                   }}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
