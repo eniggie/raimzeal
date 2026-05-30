@@ -15,3 +15,5 @@ export const FAV_FOOD_GRAMS_HINT_KEY =
   "@nutrition_fav_food_grams_hint_dismissed";
 export const PRESET_REORDER_HINT_KEY =
   "@nutrition_preset_reorder_hint_dismissed";
+export const INFO_BUTTON_TOOLTIP_KEY =
+  "@nutrition_info_button_tooltip_seen";

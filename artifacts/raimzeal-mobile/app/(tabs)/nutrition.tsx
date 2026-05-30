@@ -45,6 +45,7 @@ import {
   QUICK_FOOD_GRAMS_HINT_KEY,
   FAV_FOOD_GRAMS_HINT_KEY,
   PRESET_REORDER_HINT_KEY,
+  INFO_BUTTON_TOOLTIP_KEY,
 } from "@/lib/hints";
 
 import { Swipeable } from "react-native-gesture-handler";
@@ -1502,6 +1503,11 @@ export default function NutritionScreen() {
   const presetReorderHintFadeAnim = useRef(new Animated.Value(0)).current;
   const presetReorderHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevDismissedHintsLenRef = useRef<number | null>(null);
+
+  const [infoTooltipVisible, setInfoTooltipVisible] = useState(false);
+  const infoTooltipFadeAnim = useRef(new Animated.Value(0)).current;
+  const infoTooltipShownRef = useRef(false);
+  const infoTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
@@ -3069,6 +3075,37 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (activeTab !== "today" || !isSearching) return;
+    if (infoTooltipShownRef.current) return;
+    infoTooltipShownRef.current = true;
+    if (isHintDismissed(INFO_BUTTON_TOOLTIP_KEY)) return;
+    dismissHint(INFO_BUTTON_TOOLTIP_KEY);
+    infoTooltipFadeAnim.setValue(0);
+    setInfoTooltipVisible(true);
+    Animated.timing(infoTooltipFadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    infoTooltipTimerRef.current = setTimeout(() => {
+      infoTooltipTimerRef.current = null;
+      Animated.timing(infoTooltipFadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setInfoTooltipVisible(false);
+      });
+    }, 2000);
+    return () => {
+      if (infoTooltipTimerRef.current) {
+        clearTimeout(infoTooltipTimerRef.current);
+        infoTooltipTimerRef.current = null;
+      }
+    };
+  }, [activeTab, isSearching]);
+
+  useEffect(() => {
+    if (activeTab !== "today" || !isSearching) return;
     if (customPresets.length > 0) return;
     if (presetNudgeShownRef.current) return;
     presetNudgeShownRef.current = true;
@@ -4201,13 +4238,32 @@ export default function NutritionScreen() {
 
                   <View style={styles.filterActions}>
                     {activeTab === "today" && isSearching && (
-                      <TouchableOpacity
-                        onPress={showTipAgain}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={{ opacity: 0.55 }}
-                      >
-                        <Ionicons name="information-circle-outline" size={17} color={colors.mutedForeground} />
-                      </TouchableOpacity>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        {infoTooltipVisible && (
+                          <Animated.View
+                            style={{
+                              opacity: infoTooltipFadeAnim,
+                              backgroundColor: colors.card,
+                              borderWidth: 1,
+                              borderColor: colors.border + "80",
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                              Tap to replay the tip
+                            </Text>
+                          </Animated.View>
+                        )}
+                        <TouchableOpacity
+                          onPress={showTipAgain}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={{ opacity: 0.55 }}
+                        >
+                          <Ionicons name="information-circle-outline" size={17} color={colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </View>
                     )}
                     {activeFilters.size >= 1 && (
                       <TouchableOpacity
