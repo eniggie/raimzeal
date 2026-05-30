@@ -227,6 +227,7 @@ interface OFFProduct {
   product_name?: string;
   serving_size?: string;
   serving_quantity?: number;
+  serving_quantity_unit?: string;
   nutriments?: {
     "energy-kcal_100g"?: number;
     "energy-kcal_serving"?: number;
@@ -260,7 +261,13 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
     n.fat_serving !== undefined;
   const useServingNutrients = !!(servingSize && hasAnyServingNutrient);
   const useServingQuantity = !!(servingSize && p.serving_quantity && !hasAnyServingNutrient);
-  const servingLabel = useServingNutrients || useServingQuantity ? servingSize : undefined;
+  const isGramBased = p.serving_quantity
+    ? p.serving_quantity_unit
+      ? p.serving_quantity_unit.toLowerCase() === "g"
+      : /(?:^|\s|\()\d+(?:\.\d+)?\s*g(?:\)|$|\s|,)/i.test(p.serving_size ?? "")
+    : false;
+  const gramLabel = isGramBased ? `${p.serving_quantity}g` : undefined;
+  const servingLabel = useServingNutrients || useServingQuantity ? (gramLabel ?? servingSize) : undefined;
   const sqFactor = p.serving_quantity ? p.serving_quantity / 100 : 1;
 
   const calories = useServingNutrients
