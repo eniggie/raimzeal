@@ -3682,7 +3682,31 @@ export default function NutritionScreen() {
       }
       setModalShowPer100g(restoredPer100g);
     } else {
-      setSelectedFood(food);
+      let foodWithMacros = food;
+      try {
+        const raw = await AsyncStorage.getItem(MANUAL_MACROS_KEY);
+        if (raw) {
+          const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+            JSON.parse(raw);
+          const saved = map[food.name];
+          if (saved) {
+            const cal = parseFloat(saved.calories);
+            const pro = parseFloat(saved.protein);
+            const crb = parseFloat(saved.carbs);
+            const fat = parseFloat(saved.fat);
+            foodWithMacros = {
+              ...food,
+              calories: Number.isFinite(cal) ? cal : food.calories,
+              protein: Number.isFinite(pro) ? pro : food.protein,
+              carbs: Number.isFinite(crb) ? crb : food.carbs,
+              fat: Number.isFinite(fat) ? fat : food.fat,
+            };
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setSelectedFood(foodWithMacros);
       setSelectedFoodServingLabel(undefined);
       setSelectedFoodIsApiResult(false);
       setSelectedFoodNutrients100g(undefined);
