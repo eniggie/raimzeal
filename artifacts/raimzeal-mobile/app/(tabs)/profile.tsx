@@ -56,6 +56,7 @@ function resolveDefaultCardBgUri(): string | null {
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const DIGEST_SUBSCRIBED_KEY = "@digest_subscribed";
+const LAST_EXPORT_KEY = "@profile_last_export_timestamp";
 
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
@@ -625,14 +626,38 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleClearAppData() {
+  async function handleClearAppData() {
     const isSignedIn = Boolean(authUser?.id) && isSupabaseConfigured;
     const cloudLine = isSignedIn
       ? " Your cloud-synced data — workouts, meals, measurements, AI history, personal records, favourite foods, and progress photos — will also be permanently deleted from the server."
       : "";
+
+    let exportLine = "";
+    try {
+      const raw = await AsyncStorage.getItem(LAST_EXPORT_KEY);
+      if (raw) {
+        const exportTs = parseInt(raw, 10);
+        const exportDate = new Date(exportTs);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (exportDate.toDateString() === today.toDateString()) {
+          exportLine = " You exported your data earlier today.";
+        } else if (exportDate.toDateString() === yesterday.toDateString()) {
+          exportLine = " You exported your data yesterday.";
+        } else {
+          const month = exportDate.toLocaleString("default", { month: "long" });
+          const day = exportDate.getDate();
+          exportLine = ` You last exported your data on ${month} ${day}.`;
+        }
+      }
+    } catch {
+      // ignore — export line just stays empty
+    }
+
     Alert.alert(
       "Clear All App Data",
-      `This will permanently delete your filters, goals, history, and all other stored data.${cloudLine} This cannot be undone.`,
+      `This will permanently delete your filters, goals, history, and all other stored data.${cloudLine} This cannot be undone.${exportLine}`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -894,6 +919,7 @@ export default function ProfileScreen() {
         oviaMessages,
       };
       await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals, dateRange);
+      await AsyncStorage.setItem(LAST_EXPORT_KEY, String(Date.now())).catch(() => {});
     } catch {
       Alert.alert("Export Failed", "Something went wrong while generating the PDF. Please try again.");
     } finally {
