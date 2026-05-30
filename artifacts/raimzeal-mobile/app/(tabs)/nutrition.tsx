@@ -7692,8 +7692,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     setEditForm(f => ({ ...f, [field]: text }));
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
+      const baseValue = editServings > 0 ? n / editServings : n;
       setEditBase(prev => {
-        const newBase = { ...prev, [field]: n };
+        const newBase = { ...prev, [field]: baseValue };
         if (editGrams !== undefined && editGrams > 0) {
           perGramRef.current = {
             calories: newBase.calories / editGrams,
@@ -7966,12 +7967,17 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                   onPress={() => {
                     if (editServings > 0.5) {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setEditServings((s) => {
-                        const steps = Math.round(s * 200) / 100;
-                        const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
-                        setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
-                        return next;
-                      });
+                      const steps = Math.round(editServings * 200) / 100;
+                      const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
+                      setEditServings(next);
+                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                      setEditForm(f => ({
+                        ...f,
+                        calories: String(Math.round(editBase.calories * next)),
+                        protein: String(Math.round(editBase.protein * next * 10) / 10),
+                        carbs: String(Math.round(editBase.carbs * next * 10) / 10),
+                        fat: String(Math.round(editBase.fat * next * 10) / 10),
+                      }));
                     }
                   }}
                   style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
@@ -7990,13 +7996,29 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                       : stripped;
                     setEditServingsText(normalized);
                     const n = parseFloat(normalized);
-                    if (!isNaN(n) && n > 0) setEditServings(n);
+                    if (!isNaN(n) && n > 0) {
+                      setEditServings(n);
+                      setEditForm(f => ({
+                        ...f,
+                        calories: String(Math.round(editBase.calories * n)),
+                        protein: String(Math.round(editBase.protein * n * 10) / 10),
+                        carbs: String(Math.round(editBase.carbs * n * 10) / 10),
+                        fat: String(Math.round(editBase.fat * n * 10) / 10),
+                      }));
+                    }
                   }}
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
                     setEditServings(snapped);
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories * snapped)),
+                      protein: String(Math.round(editBase.protein * snapped * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * snapped * 10) / 10),
+                      fat: String(Math.round(editBase.fat * snapped * 10) / 10),
+                    }));
                   }}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
@@ -8006,12 +8028,17 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
                 <TouchableOpacity
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setEditServings((s) => {
-                      const steps = Math.round(s * 200) / 100;
-                      const next = Math.floor(steps + 1) * 0.5;
-                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
-                      return next;
-                    });
+                    const steps = Math.round(editServings * 200) / 100;
+                    const next = Math.floor(steps + 1) * 0.5;
+                    setEditServings(next);
+                    setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories * next)),
+                      protein: String(Math.round(editBase.protein * next * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * next * 10) / 10),
+                      fat: String(Math.round(editBase.fat * next * 10) / 10),
+                    }));
                   }}
                   style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -8022,7 +8049,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}
+              {editServings === 1
+                ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
+                : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
             </Text>
 
             <View style={styles.modalNutrients}>
@@ -8331,8 +8360,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     setEditForm(f => ({ ...f, [field]: text }));
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
+      const baseValue = editServings > 0 ? n / editServings : n;
       setEditBase(prev => {
-        const newBase = { ...prev, [field]: n };
+        const newBase = { ...prev, [field]: baseValue };
         if (editGrams !== undefined && editGrams > 0) {
           perGramRef.current = {
             calories: newBase.calories / editGrams,
@@ -8599,12 +8629,17 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                   onPress={() => {
                     if (editServings > 0.5) {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setEditServings((s) => {
-                        const steps = Math.round(s * 200) / 100;
-                        const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
-                        setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
-                        return next;
-                      });
+                      const steps = Math.round(editServings * 200) / 100;
+                      const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
+                      setEditServings(next);
+                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                      setEditForm(f => ({
+                        ...f,
+                        calories: String(Math.round(editBase.calories * next)),
+                        protein: String(Math.round(editBase.protein * next * 10) / 10),
+                        carbs: String(Math.round(editBase.carbs * next * 10) / 10),
+                        fat: String(Math.round(editBase.fat * next * 10) / 10),
+                      }));
                     }
                   }}
                   style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
@@ -8623,13 +8658,29 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                       : stripped;
                     setEditServingsText(normalized);
                     const n = parseFloat(normalized);
-                    if (!isNaN(n) && n > 0) setEditServings(n);
+                    if (!isNaN(n) && n > 0) {
+                      setEditServings(n);
+                      setEditForm(f => ({
+                        ...f,
+                        calories: String(Math.round(editBase.calories * n)),
+                        protein: String(Math.round(editBase.protein * n * 10) / 10),
+                        carbs: String(Math.round(editBase.carbs * n * 10) / 10),
+                        fat: String(Math.round(editBase.fat * n * 10) / 10),
+                      }));
+                    }
                   }}
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
                     setEditServings(snapped);
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories * snapped)),
+                      protein: String(Math.round(editBase.protein * snapped * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * snapped * 10) / 10),
+                      fat: String(Math.round(editBase.fat * snapped * 10) / 10),
+                    }));
                   }}
                   keyboardType="decimal-pad"
                   selectTextOnFocus
@@ -8639,12 +8690,17 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
                 <TouchableOpacity
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setEditServings((s) => {
-                      const steps = Math.round(s * 200) / 100;
-                      const next = Math.floor(steps + 1) * 0.5;
-                      setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
-                      return next;
-                    });
+                    const steps = Math.round(editServings * 200) / 100;
+                    const next = Math.floor(steps + 1) * 0.5;
+                    setEditServings(next);
+                    setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories * next)),
+                      protein: String(Math.round(editBase.protein * next * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * next * 10) / 10),
+                      fat: String(Math.round(editBase.fat * next * 10) / 10),
+                    }));
                   }}
                   style={[styles.servingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -8655,7 +8711,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
             </View>
 
             <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              Per serving{log.servingLabel ? ` (${log.servingLabel})` : ""}
+              {editServings === 1
+                ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
+                : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
             </Text>
 
             <View style={styles.modalNutrients}>
