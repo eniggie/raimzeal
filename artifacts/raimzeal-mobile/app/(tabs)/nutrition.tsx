@@ -4345,6 +4345,36 @@ export default function NutritionScreen() {
                       </Animated.View>
                     )}
 
+                    {customPresets.length > 0 && !isReorderingPresets && (
+                      <View
+                        pointerEvents="none"
+                        onLayout={(e) => {
+                          const w = e.nativeEvent.layout.width;
+                          if (w > 0) avgPresetChipWidthRef.current = w;
+                        }}
+                        style={{
+                          position: "absolute",
+                          opacity: 0,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          maxWidth: 200,
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingLeft: 10, paddingRight: 6, paddingVertical: 7 }}>
+                          <Ionicons name="reorder-two-outline" size={11} color="transparent" />
+                          <Ionicons name="bookmark" size={12} color="transparent" />
+                          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
+                            {customPresets[0].name}
+                          </Text>
+                        </View>
+                        <View style={{ paddingHorizontal: 7, paddingVertical: 7 }}>
+                          <Ionicons name="close" size={13} color="transparent" />
+                        </View>
+                      </View>
+                    )}
+
                     {isReorderingPresets ? (
                       <ScrollView
                         horizontal
@@ -5301,6 +5331,35 @@ export default function NutritionScreen() {
                           <Ionicons name="close" size={14} color={colors.mutedForeground} />
                         </TouchableOpacity>
                       </Animated.View>
+                    )}
+                    {customPresets.length > 0 && !isReorderingPresets && (
+                      <View
+                        pointerEvents="none"
+                        onLayout={(e) => {
+                          const w = e.nativeEvent.layout.width;
+                          if (w > 0) avgPresetChipWidthRef.current = w;
+                        }}
+                        style={{
+                          position: "absolute",
+                          opacity: 0,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          maxWidth: 200,
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingLeft: 10, paddingRight: 6, paddingVertical: 7 }}>
+                          <Ionicons name="reorder-two-outline" size={11} color="transparent" />
+                          <Ionicons name="bookmark" size={12} color="transparent" />
+                          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
+                            {customPresets[0].name}
+                          </Text>
+                        </View>
+                        <View style={{ paddingHorizontal: 7, paddingVertical: 7 }}>
+                          <Ionicons name="close" size={13} color="transparent" />
+                        </View>
+                      </View>
                     )}
                     {isReorderingPresets ? (
                       <ScrollView
