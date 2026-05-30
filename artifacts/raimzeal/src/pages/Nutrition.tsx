@@ -942,7 +942,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                             }}
                             onDragEnd={() => { setDragPresetId(null); setDragOverPresetId(null); }}
                             className={cn(
-                              'flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none',
+                              'relative group flex items-center gap-0.5 rounded-full border text-xs font-medium transition-all cursor-grab active:cursor-grabbing select-none',
                               isActive
                                 ? 'bg-primary/15 text-primary border-primary/40'
                                 : 'bg-muted/30 text-muted-foreground border-border hover:border-primary/30',
@@ -960,7 +960,6 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                             <button
                               onClick={() => applyPreset(preset)}
                               className="px-1.5 py-1 hover:opacity-80 transition-opacity"
-                              title={`Apply: ${preset.filterKeys.join(', ')}`}
                             >
                               {preset.name}
                             </button>
@@ -971,6 +970,32 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                             >
                               <X className="w-3 h-3" />
                             </button>
+                            {/* Hover popover — lists each filter + its saved threshold */}
+                            <div
+                              role="tooltip"
+                              className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 hidden group-hover:block group-focus-within:block"
+                            >
+                              <div className="rounded-lg border bg-popover px-2.5 py-2 shadow-md text-popover-foreground min-w-max">
+                                {preset.filterKeys.length === 0 ? (
+                                  <span className="text-muted-foreground italic">No filters</span>
+                                ) : (
+                                  <ul className="space-y-0.5">
+                                    {preset.filterKeys.map(key => {
+                                      const def = FILTER_DEFS.find(d => d.key === key);
+                                      if (!def) return null;
+                                      const threshold = filterThresholds[key] ?? def.defaultThreshold;
+                                      const symbol = def.direction === 'gte' ? '≥' : '≤';
+                                      return (
+                                        <li key={key} className="flex items-center gap-1.5 text-xs">
+                                          <span className="font-medium">{def.label}</span>
+                                          <span className="text-muted-foreground">{symbol}{threshold}{def.unit}</span>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
