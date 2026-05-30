@@ -1394,6 +1394,10 @@ export default function NutritionScreen() {
   const filterSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filterSyncAnim = useRef(new Animated.Value(0)).current;
 
+  const [goalsSyncToastVisible, setGoalsSyncToastVisible] = useState(false);
+  const goalsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goalsSyncAnim = useRef(new Animated.Value(0)).current;
+
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -2127,6 +2131,27 @@ export default function NutritionScreen() {
     }, 2000);
   }
 
+  function dismissGoalsSyncToast(forReplacement = false) {
+    goalsSyncAnim.stopAnimation();
+    Animated.timing(goalsSyncAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      if (!forReplacement) setGoalsSyncToastVisible(false);
+    });
+    if (goalsSyncTimerRef.current) {
+      clearTimeout(goalsSyncTimerRef.current);
+      goalsSyncTimerRef.current = null;
+    }
+  }
+
+  function showGoalsSyncToast() {
+    dismissGoalsSyncToast(true);
+    setGoalsSyncToastVisible(true);
+    goalsSyncAnim.setValue(0);
+    Animated.spring(goalsSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    goalsSyncTimerRef.current = setTimeout(() => {
+      dismissGoalsSyncToast();
+    }, 2000);
+  }
+
   function showPresetDeletedToast(preset: CustomFilterPreset) {
     dismissPresetUndoToast(true);
     if (presetUndoTimerRef.current) clearTimeout(presetUndoTimerRef.current);
@@ -2753,6 +2778,7 @@ export default function NutritionScreen() {
                   incoming.fat !== cur.fat
                 ) {
                   setMacroGoals(incoming);
+                  showGoalsSyncToast();
                 }
               }
             }
@@ -7247,6 +7273,34 @@ export default function NutritionScreen() {
           <Ionicons name="sync-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
           <Text style={[styles.starToastText, { color: colors.foreground }]}>
             Filters updated from another device
+          </Text>
+        </Animated.View>
+      )}
+
+      {goalsSyncToastVisible && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starToast,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              transform: [
+                {
+                  translateY: goalsSyncAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: goalsSyncAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="sync-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
+          <Text style={[styles.starToastText, { color: colors.foreground }]}>
+            Goals updated from another device
           </Text>
         </Animated.View>
       )}
