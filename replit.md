@@ -147,19 +147,29 @@ Tier logic lives in `artifacts/api-server/src/lib/tier.ts` — use `getUserTier(
 
 Core features (workouts, tracking, basic Ovia) remain free forever — Foundation is still free.
 
-## DEBUGGER Mode
+## OSA MODE
 
-**DEBUGGER** is the standing convention for full production QA and bug-fix passes on RAIMZEAL. Run it any time quality must be validated end-to-end.
+**OSA MODE** is RAIMZEAL's standing convention for advanced full-production QA and surgical bug-fix passes. It must be used in all project docs, commit messages, and future sessions. Never revert to "DEBUGGER mode."
 
-**Rules (non-negotiable):**
-1. No full rewrites — surgical fixes only.
-2. No feature removal.
-3. No schema changes without explicit explanation.
-4. Fix only **confirmed** bugs (code-path analysis required).
-5. Typecheck + screenshot after every fix batch.
-6. Run all four permanent checks (typecheck-api, typecheck-mobile, typecheck-web, healthcheck) before marking a session complete.
+### OSA MODE Rules (non-negotiable)
+1. **One bug at a time** — find, fix, verify, then move on. Never batch unconfirmed fixes.
+2. **Confirm before you move** — run typecheck + screenshot/log-verify after every single fix. If it fails, retry the same bug.
+3. **Never lie, never skip** — if a bug can't be reproduced, say so. Never mark a fix as done without passing verification.
+4. No full rewrites — surgical edits only.
+5. No feature removal.
+6. No schema changes without explicit explanation and impact analysis.
+7. Fix only **confirmed** bugs (code-path analysis or reproduction path required).
+8. Run all four permanent checks before closing the session:
+   - `typecheck-api` · `typecheck-mobile` · `typecheck-web` · `healthcheck`
 
-Reference `.agents/memory/debugger-mode.md` for the full checklist structure.
+### OSA MODE Intelligence
+OSA MODE always uses the most capable available AI:
+- **Claude** (primary reasoning + code generation)
+- **OpenAI GPT-4o / GPT-4.1** (second-opinion, code review, deep analysis)
+- **All Replit agent modes** — explore, code_review, delegation subagents used in parallel for independent subtasks
+
+### Full checklist & flow
+See `.agents/memory/osa-mode.md` — includes the 25-flow audit checklist and full session protocol.
 
 ---
 
