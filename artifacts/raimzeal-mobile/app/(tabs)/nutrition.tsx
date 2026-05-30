@@ -1367,6 +1367,7 @@ export default function NutritionScreen() {
   const [searchDone, setSearchDone] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
+  const [quickPer100gMap, setQuickPer100gMap] = useState<Record<string, boolean>>({});
   const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
   const [recentFoodsExpanded, setRecentFoodsExpanded] = useState(false);
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
@@ -1817,6 +1818,25 @@ export default function NutritionScreen() {
     dismissHint(RECENT_RESET_DEFAULTS_HINT_KEY);
   }
 
+  function reloadQuickPer100gMap() {
+    AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+      try {
+        const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+        const result: Record<string, boolean> = {};
+        for (const food of quickFoods) {
+          if (!food.nutrients100g || !food.servingLabel) continue;
+          const entry = map[food.name];
+          if (entry !== null && typeof entry === "object") {
+            result[food.name] = entry.per100g;
+          } else if (typeof entry === "boolean") {
+            result[food.name] = entry;
+          }
+        }
+        setQuickPer100gMap(result);
+      } catch {}
+    }).catch(() => {});
+  }
+
   function dismissHistoryFilterHint() {
     if (historyFilterHintTimerRef.current) {
       clearTimeout(historyFilterHintTimerRef.current);
@@ -2055,6 +2075,10 @@ export default function NutritionScreen() {
       })
       .catch(() => {});
   }, [recentFoods]);
+
+  useEffect(() => {
+    reloadQuickPer100gMap();
+  }, [quickFoods]);
 
   useEffect(() => {
     if (quickGramsHintShownRef.current) return;
@@ -4127,6 +4151,7 @@ export default function NutritionScreen() {
     }
 
     selectedFoodSourceRef.current = null;
+    reloadQuickPer100gMap();
     setShowModal(false);
     setGramsPreFillHint(null);
     setModalShowPer100g(false);
@@ -6345,22 +6370,57 @@ export default function NutritionScreen() {
                   color={MEAL_COLORS[item.mealType]}
                 />
               </View>
-              <View style={styles.foodInfo}>
-                <Text style={[styles.foodName, { color: colors.foreground }]}>
-                  {item.name}
-                </Text>
-                <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                  P {item.protein}g · C {item.carbs}g · F {item.fat}g
-                </Text>
-                <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
-                  <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                    per serving
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.foodCal, { color: colors.primary }]}>
-                {item.calories}
-              </Text>
+              {(() => {
+                const canToggleQuick = !!(item.nutrients100g && item.servingLabel);
+                const showingQuick100g = canToggleQuick && quickPer100gMap[item.name] === true;
+                const quickDisplayBase = showingQuick100g ? item.nutrients100g! : item;
+                const quickPillLabel = showingQuick100g
+                  ? "per 100g"
+                  : item.servingLabel
+                  ? `per ${item.servingLabel}`
+                  : "per serving";
+                return (
+                  <>
+                    <View style={styles.foodInfo}>
+                      <Text style={[styles.foodName, { color: colors.foreground }]}>
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                        P {quickDisplayBase.protein}g · C {quickDisplayBase.carbs}g · F {quickDisplayBase.fat}g
+                      </Text>
+                      <TouchableOpacity
+                        activeOpacity={canToggleQuick ? 0.7 : 1}
+                        onPress={canToggleQuick ? (e) => {
+                          e.stopPropagation();
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          const newVal = !quickPer100gMap[item.name];
+                          setQuickPer100gMap((prev) => ({ ...prev, [item.name]: newVal }));
+                          AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                            const storageMap: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                            storageMap[item.name] = { per100g: newVal, grams: 0 };
+                            AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(storageMap));
+                          }).catch(() => {});
+                        } : undefined}
+                        style={[
+                          styles.servingPill,
+                          { backgroundColor: colors.primary + "18" },
+                          canToggleQuick && { paddingRight: 6 },
+                        ]}
+                      >
+                        <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                          {quickPillLabel}
+                        </Text>
+                        {canToggleQuick && (
+                          <Ionicons name="swap-horizontal-outline" size={11} color={colors.primary} style={{ marginLeft: 3 }} />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.foodCal, { color: colors.primary }]}>
+                      {quickDisplayBase.calories}
+                    </Text>
+                  </>
+                );
+              })()}
               <TouchableOpacity
                 onPress={() => handleToggleFavorite(favFood)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -6859,7 +6919,7 @@ export default function NutritionScreen() {
         visible={showModal}
         transparent
         animationType="slide"
-        onRequestClose={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
+        onRequestClose={() => { selectedFoodSourceRef.current = null; reloadQuickPer100gMap(); setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -7136,7 +7196,7 @@ export default function NutritionScreen() {
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => { selectedFoodSourceRef.current = null; setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
+                onPress={() => { selectedFoodSourceRef.current = null; reloadQuickPer100gMap(); setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
