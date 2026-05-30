@@ -576,6 +576,7 @@ interface HorizontalDraggablePresetChipProps {
   onDragStart: (index: number) => void;
   onHover: (index: number) => void;
   onDrop: (from: number, to: number) => void;
+  onDelete: (id: string) => void;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }
 
@@ -590,6 +591,7 @@ function HorizontalDraggablePresetChip({
   onDragStart,
   onHover,
   onDrop,
+  onDelete,
   colors,
 }: HorizontalDraggablePresetChipProps) {
   const dragX = useSharedValue(0);
@@ -657,7 +659,7 @@ function HorizontalDraggablePresetChip({
           alignItems: "center",
           borderRadius: 20,
           borderWidth: 1,
-          maxWidth: 180,
+          maxWidth: 200,
           marginRight: 6,
           backgroundColor: isActive
             ? colors.secondary + "35"
@@ -676,18 +678,27 @@ function HorizontalDraggablePresetChip({
           shadowRadius: isActive ? 6 : 0,
           shadowOffset: { width: 0, height: 3 },
           opacity: isActive ? 0.92 : 1,
+          overflow: "hidden",
         },
         animatedStyle,
       ]}
-      {...panResponder.panHandlers}
     >
-      <View style={styles.presetChipInner}>
+      {/* Draggable region — panHandlers here so the × button is outside the gesture zone */}
+      <View style={styles.presetChipInner} {...panResponder.panHandlers}>
         <Ionicons name="reorder-two-outline" size={11} color={colors.secondary + "88"} />
         <Ionicons name="bookmark" size={12} color={colors.secondary} />
         <Text style={[styles.presetChipText, { color: colors.secondary }]} numberOfLines={1}>
           {preset.name}
         </Text>
       </View>
+      {/* Delete button — outside panHandlers so tapping it never starts a drag */}
+      <TouchableOpacity
+        onPress={() => onDelete(preset.id)}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+        style={styles.presetDeleteBtn}
+      >
+        <Ionicons name="close" size={13} color={colors.secondary + "cc"} />
+      </TouchableOpacity>
     </Reanimated.View>
   );
 }
@@ -3898,6 +3909,7 @@ export default function NutritionScreen() {
                             onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
                             onHover={setHoverReorderPresetIdx}
                             onDrop={handlePresetReorderDrop}
+                            onDelete={deleteCustomPreset}
                             colors={colors}
                           />
                         ))}
@@ -4724,6 +4736,7 @@ export default function NutritionScreen() {
                             onDragStart={(i) => { setActiveReorderPresetIdx(i); setHoverReorderPresetIdx(i); }}
                             onHover={setHoverReorderPresetIdx}
                             onDrop={handlePresetReorderDrop}
+                            onDelete={deleteCustomPreset}
                             colors={colors}
                           />
                         ))}
