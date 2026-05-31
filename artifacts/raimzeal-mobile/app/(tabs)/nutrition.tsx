@@ -3995,7 +3995,7 @@ export default function NutritionScreen() {
     setShowModal(true);
   }
 
-  async function handleScannedFood(food: ScannedFood, forceGrams?: string) {
+  async function handleScannedFood(food: ScannedFood, forceGrams?: string, per100gHint?: boolean) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const lastMeal: MealLog["mealType"] =
       (lastUsedMealMapRef.current[food.name] as MealLog["mealType"] | undefined) ?? "snack";
@@ -4033,19 +4033,23 @@ export default function NutritionScreen() {
 
     let restoredPer100g = false;
     if (food.servingLabel && food.nutrients100g) {
-      try {
-        const raw = await AsyncStorage.getItem(EDIT_PER100G_PREF_KEY);
-        if (raw) {
-          const map: Record<string, { per100g: boolean; grams: number } | boolean> = JSON.parse(raw);
-          const entry = map[food.name];
-          if (entry !== null && typeof entry === "object") {
-            restoredPer100g = entry.per100g;
-          } else if (typeof entry === "boolean") {
-            restoredPer100g = entry;
+      if (per100gHint !== undefined) {
+        restoredPer100g = per100gHint;
+      } else {
+        try {
+          const raw = await AsyncStorage.getItem(EDIT_PER100G_PREF_KEY);
+          if (raw) {
+            const map: Record<string, { per100g: boolean; grams: number } | boolean> = JSON.parse(raw);
+            const entry = map[food.name];
+            if (entry !== null && typeof entry === "object") {
+              restoredPer100g = entry.per100g;
+            } else if (typeof entry === "boolean") {
+              restoredPer100g = entry;
+            }
           }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
       }
     }
     setModalShowPer100g(restoredPer100g);
@@ -6466,7 +6470,7 @@ export default function NutritionScreen() {
           setShowRecentScans(false);
           refreshRecentScanCount();
         }}
-        onFoodFound={handleScannedFood}
+        onFoodFound={(food, per100g) => handleScannedFood(food, undefined, per100g)}
       />
 
       {/* Manual Entry Modal */}

@@ -57,7 +57,7 @@ async function removeViewPreference(barcode: string): Promise<void> {
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onFoodFound: (food: ScannedFood) => void;
+  onFoodFound: (food: ScannedFood, per100g?: boolean) => void;
 }
 
 function formatScannedDate(ts: number): string {
@@ -419,18 +419,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   function handleSelect(scan: RecentScan, showing100g: boolean) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (showing100g && scan.food.nutrients100g) {
-      onFoodFound({
-        ...scan.food,
-        calories: scan.food.nutrients100g.calories,
-        protein: scan.food.nutrients100g.protein,
-        carbs: scan.food.nutrients100g.carbs,
-        fat: scan.food.nutrients100g.fat,
-        servingLabel: undefined,
-      });
-    } else {
-      onFoodFound(scan.food);
-    }
+    onFoodFound(scan.food, showing100g);
     handleClose();
   }
 
