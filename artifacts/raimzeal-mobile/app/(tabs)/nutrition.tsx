@@ -1022,6 +1022,17 @@ export default function NutritionScreen() {
 
   const [recentlyStarredNames, setRecentlyStarredNames] = useState<Set<string>>(new Set());
   const recentlyStarredTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [recentlyUnstarredNames, setRecentlyUnstarredNames] = useState<Set<string>>(new Set());
+  const recentlyUnstarredTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  React.useEffect(() => {
+    const starredTimers = recentlyStarredTimersRef;
+    const unstarredTimers = recentlyUnstarredTimersRef;
+    return () => {
+      Object.values(starredTimers.current).forEach(clearTimeout);
+      Object.values(unstarredTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   const recentFoods = React.useMemo(() => {
     const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
@@ -1029,14 +1040,14 @@ export default function NutritionScreen() {
     const result: (Omit<MealLog, "id" | "date"> & { lastEaten: string })[] = [];
     const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const log of sortedLogs) {
-      if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name))) {
+      if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name)) && !recentlyUnstarredNames.has(log.name)) {
         seen.add(log.name);
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
       if (result.length >= 20) break;
     }
     return result;
-  }, [mealLogs, favoriteFoods, recentlyStarredNames]);
+  }, [mealLogs, favoriteFoods, recentlyStarredNames, recentlyUnstarredNames]);
 
   const historyDays = React.useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -5456,6 +5467,32 @@ export default function NutritionScreen() {
                                   return next;
                                 });
                               }, 800);
+                            } else {
+                              if (recentlyStarredTimersRef.current[food.name]) {
+                                clearTimeout(recentlyStarredTimersRef.current[food.name]);
+                                delete recentlyStarredTimersRef.current[food.name];
+                              }
+                              setRecentlyStarredNames((prev) => {
+                                const next = new Set(prev);
+                                next.delete(food.name);
+                                return next;
+                              });
+                              setRecentlyUnstarredNames((prev) => {
+                                const next = new Set(prev);
+                                next.add(food.name);
+                                return next;
+                              });
+                              if (recentlyUnstarredTimersRef.current[food.name]) {
+                                clearTimeout(recentlyUnstarredTimersRef.current[food.name]);
+                              }
+                              recentlyUnstarredTimersRef.current[food.name] = setTimeout(() => {
+                                delete recentlyUnstarredTimersRef.current[food.name];
+                                setRecentlyUnstarredNames((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(food.name);
+                                  return next;
+                                });
+                              }, 1500);
                             }
                             handleToggleFavorite(food);
                           }}
