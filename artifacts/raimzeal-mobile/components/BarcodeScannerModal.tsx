@@ -17,6 +17,12 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScanEditSheet } from "@/components/ScanEditSheet";
+import { usePer100gDefault } from "@/hooks/usePer100gDefault";
+import {
+  saveViewPreference,
+  removeViewPreference,
+  loadViewPreferenceMap,
+} from "@/utils/viewPreference";
 
 const CACHE_PREFIX = "barcode_cache_v1:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -316,6 +322,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
+  const [defaultPer100g] = usePer100gDefault();
   // useRef lock — immune to stale closures and React Compiler optimisations.
   // State-based guards (scanning/loading) had a race window where the closure
   // captured old values, allowing multiple concurrent network calls.
@@ -340,6 +347,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [notFoundBanner, setNotFoundBanner] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,11 +355,23 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
   const loadRecentScans = useCallback(async (markViewed = false) => {
     setRecentLoading(true);
-    const [data, lastViewed] = await Promise.all([
+    const [data, lastViewed, viewMap] = await Promise.all([
       getRecentScans(),
       getRecentLastViewed(),
+      loadViewPreferenceMap(),
     ]);
     setRecentScans(data);
+
+    const restoredPer100g = new Set<string>();
+    for (const scan of data) {
+      const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+      if (!canToggle) continue;
+      const saved = viewMap[scan.barcode];
+      const showPer100g = saved !== undefined ? saved : defaultPer100g;
+      if (showPer100g) restoredPer100g.add(scan.barcode);
+    }
+    setPer100gScans(restoredPer100g);
+
     if (markViewed) {
       await setRecentLastViewed();
       setHasNewScans(false);
@@ -360,7 +380,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setHasNewScans(newest > lastViewed);
     }
     setRecentLoading(false);
-  }, []);
+  }, [defaultPer100g]);
 
   // Reset scanner state every time the modal opens so it's always ready
   useEffect(() => {
@@ -376,6 +396,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setNotFoundBanner(false);
       setSearchQuery("");
       setHasNewScans(false);
+      setPer100gScans(new Set());
       loadRecentScans();
     }
   }, [visible, loadRecentScans]);
@@ -478,16 +499,46 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     onManualEntry();
   }
 
-  function handleSelectRecent(food: ScannedFood) {
+  function handleSelectRecent(scan: RecentScan) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onFoodFound(food);
+    const showing100g = per100gScans.has(scan.barcode);
+    const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+    if (canToggle && showing100g && scan.food.nutrients100g) {
+      onFoodFound({
+        ...scan.food,
+        calories: scan.food.nutrients100g.calories,
+        protein: scan.food.nutrients100g.protein,
+        carbs: scan.food.nutrients100g.carbs,
+        fat: scan.food.nutrients100g.fat,
+      });
+    } else {
+      onFoodFound(scan.food);
+    }
     handleClose();
   }
 
   async function handleRemoveRecent(barcode: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await removeRecentScan(barcode);
+    await removeViewPreference(barcode);
     setRecentScans((prev) => prev.filter((s) => s.barcode !== barcode));
+    setPer100gScans((prev) => {
+      const next = new Set(prev);
+      next.delete(barcode);
+      return next;
+    });
+  }
+
+  function handleTogglePer100g(barcode: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const nowPer100g = !per100gScans.has(barcode);
+    setPer100gScans((prev) => {
+      const next = new Set(prev);
+      if (nowPer100g) next.add(barcode);
+      else next.delete(barcode);
+      return next;
+    });
+    saveViewPreference(barcode, nowPer100g);
   }
 
   function handleLongPressRecent(scan: RecentScan) {
@@ -880,71 +931,91 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       <Text style={styles.recentHint}>
                         Tap to add · Pencil to edit
                       </Text>
-                      {filteredScans.map((scan) => (
-                        <TouchableOpacity
-                          key={scan.barcode}
-                          onPress={() => handleSelectRecent(scan.food)}
-                          onLongPress={() => handleLongPressRecent(scan)}
-                          delayLongPress={400}
-                          activeOpacity={0.75}
-                          style={styles.recentItem}
-                        >
-                          <View style={styles.recentIconBox}>
-                            <Ionicons name="barcode-outline" size={20} color="#fff" />
-                          </View>
-                          <View style={styles.recentItemInfo}>
-                            <Text style={styles.recentItemName} numberOfLines={1}>
-                              {scan.food.name}
-                            </Text>
-                            <View style={styles.recentItemMeta}>
-                              <Text style={styles.recentItemCal}>
-                                {scan.food.calories} kcal
-                              </Text>
-                              <Text style={styles.recentItemDot}>·</Text>
-                              <Text style={styles.recentItemMacros}>
-                                P {scan.food.protein}g · C {scan.food.carbs}g · F {scan.food.fat}g
-                              </Text>
+                      {filteredScans.map((scan) => {
+                        const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+                        const showing100g = canToggle && per100gScans.has(scan.barcode);
+                        const displayCalories = showing100g ? scan.food.nutrients100g!.calories : scan.food.calories;
+                        const displayProtein = showing100g ? scan.food.nutrients100g!.protein : scan.food.protein;
+                        const displayCarbs = showing100g ? scan.food.nutrients100g!.carbs : scan.food.carbs;
+                        const displayFat = showing100g ? scan.food.nutrients100g!.fat : scan.food.fat;
+                        const pillLabel = showing100g
+                          ? "per 100g"
+                          : scan.food.servingLabel
+                          ? `per ${scan.food.servingLabel}`
+                          : "per 100g";
+                        return (
+                          <TouchableOpacity
+                            key={scan.barcode}
+                            onPress={() => handleSelectRecent(scan)}
+                            onLongPress={() => handleLongPressRecent(scan)}
+                            delayLongPress={400}
+                            activeOpacity={0.75}
+                            style={styles.recentItem}
+                          >
+                            <View style={styles.recentIconBox}>
+                              <Ionicons name="barcode-outline" size={20} color="#fff" />
                             </View>
-                            <View style={styles.recentItemBottom}>
-                              <View style={styles.recentItemServingPill}>
-                                <Text style={styles.recentItemServingPillText}>
-                                  {scan.food.servingLabel ? `per ${scan.food.servingLabel}` : "per 100g"}
+                            <View style={styles.recentItemInfo}>
+                              <Text style={styles.recentItemName} numberOfLines={1}>
+                                {scan.food.name}
+                              </Text>
+                              <View style={styles.recentItemMeta}>
+                                <Text style={styles.recentItemCal}>
+                                  {displayCalories} kcal
+                                </Text>
+                                <Text style={styles.recentItemDot}>·</Text>
+                                <Text style={styles.recentItemMacros}>
+                                  P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
                                 </Text>
                               </View>
-                              <Text style={styles.recentItemDate}>
-                                {formatScannedDate(scan.scannedAt)}
-                              </Text>
+                              <View style={styles.recentItemBottom}>
+                                <TouchableOpacity
+                                  activeOpacity={canToggle ? 0.7 : 1}
+                                  onPress={canToggle ? (e) => { e.stopPropagation(); handleTogglePer100g(scan.barcode); } : undefined}
+                                  style={[styles.recentItemServingPill, canToggle && styles.recentItemServingPillToggleable]}
+                                >
+                                  <Text style={styles.recentItemServingPillText}>
+                                    {pillLabel}
+                                  </Text>
+                                  {canToggle && (
+                                    <Ionicons name="swap-horizontal-outline" size={10} color="rgba(255,255,255,0.55)" style={{ marginLeft: 3 }} />
+                                  )}
+                                </TouchableOpacity>
+                                <Text style={styles.recentItemDate}>
+                                  {formatScannedDate(scan.scannedAt)}
+                                </Text>
+                              </View>
                             </View>
-                          </View>
-                          <View style={styles.recentItemActions}>
-                            <TouchableOpacity
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleLongPressRecent(scan);
-                              }}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              style={styles.recentActionBtn}
-                            >
-                              <Ionicons
-                                name="pencil-outline"
-                                size={17}
-                                color="rgba(255,255,255,0.4)"
-                              />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={() => handleRemoveRecent(scan.barcode)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              style={styles.recentActionBtn}
-                            >
-                              <Ionicons
-                                name="trash-outline"
-                                size={17}
-                                color="rgba(255,255,255,0.4)"
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
+                            <View style={styles.recentItemActions}>
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleLongPressRecent(scan);
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                style={styles.recentActionBtn}
+                              >
+                                <Ionicons
+                                  name="pencil-outline"
+                                  size={17}
+                                  color="rgba(255,255,255,0.4)"
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => handleRemoveRecent(scan.barcode)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                style={styles.recentActionBtn}
+                              >
+                                <Ionicons
+                                  name="trash-outline"
+                                  size={17}
+                                  color="rgba(255,255,255,0.4)"
+                                />
+                              </TouchableOpacity>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </ScrollView>
                   )}
                 </View>
@@ -1470,10 +1541,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   recentItemServingPill: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 5,
     paddingHorizontal: 6,
     paddingVertical: 1,
+  },
+  recentItemServingPillToggleable: {
+    paddingRight: 4,
   },
   recentItemServingPillText: {
     color: "rgba(255,255,255,0.55)",

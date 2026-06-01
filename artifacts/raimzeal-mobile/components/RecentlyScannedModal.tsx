@@ -26,33 +26,14 @@ import {
 } from "@/components/BarcodeScannerModal";
 import { ScanEditSheet } from "@/components/ScanEditSheet";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
+import {
+  LAST_USED_VIEW_KEY,
+  saveViewPreference,
+  removeViewPreference,
+  loadViewPreferenceMap,
+} from "@/utils/viewPreference";
 
-const LAST_USED_VIEW_KEY = "@nutrition_last_used_view_v2";
 const SWIPE_HINT_KEY = "@scan_swipe_hint_v1";
-
-async function saveViewPreference(barcode: string, per100g: boolean): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
-    let viewMap: Record<string, boolean> = {};
-    try { viewMap = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
-    viewMap[barcode] = per100g;
-    await AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(viewMap));
-  } catch {
-    // Non-fatal
-  }
-}
-
-async function removeViewPreference(barcode: string): Promise<void> {
-  try {
-    const raw = await AsyncStorage.getItem(LAST_USED_VIEW_KEY);
-    let viewMap: Record<string, boolean> = {};
-    try { viewMap = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
-    delete viewMap[barcode];
-    await AsyncStorage.setItem(LAST_USED_VIEW_KEY, JSON.stringify(viewMap));
-  } catch {
-    // Non-fatal
-  }
-}
 
 interface Props {
   visible: boolean;
@@ -327,15 +308,13 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const loadScans = useCallback(async () => {
     setLoading(true);
     setRunSwipeHint(false);
-    const [data, viewRaw, hintRaw] = await Promise.all([
+    const [data, viewMap, hintRaw] = await Promise.all([
       getRecentScans(),
-      AsyncStorage.getItem(LAST_USED_VIEW_KEY).catch(() => null),
+      loadViewPreferenceMap(),
       AsyncStorage.getItem(SWIPE_HINT_KEY).catch(() => null),
     ]);
     setScans(data);
 
-    let viewMap: Record<string, boolean> = {};
-    try { viewMap = viewRaw ? JSON.parse(viewRaw) : {}; } catch { /* ignore */ }
     const restoredPer100g = new Set<string>();
     for (const scan of data) {
       const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
