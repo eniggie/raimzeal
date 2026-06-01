@@ -55,6 +55,7 @@ export interface RecentScan {
   barcode: string;
   food: ScannedFood;
   scannedAt: number;
+  scanCount: number;
 }
 
 interface CacheEntry {
@@ -108,8 +109,14 @@ export async function updateRecentScan(barcode: string, food: ScannedFood): Prom
 async function addToRecentScans(barcode: string, food: ScannedFood): Promise<void> {
   try {
     const scans = await getRecentScans();
+    const existing = scans.find((s) => s.barcode === barcode);
     const filtered = scans.filter((s) => s.barcode !== barcode);
-    const entry: RecentScan = { barcode, food, scannedAt: Date.now() };
+    const entry: RecentScan = {
+      barcode,
+      food,
+      scannedAt: Date.now(),
+      scanCount: (existing?.scanCount ?? 0) + 1,
+    };
     const next = [entry, ...filtered].slice(0, MAX_RECENT_SCANS);
     await AsyncStorage.setItem(RECENT_SCANS_KEY, JSON.stringify(next));
   } catch {
@@ -318,6 +325,7 @@ interface Props {
 }
 
 type ActiveTab = "scan" | "recent";
+type SortOrder = "recent" | "most-used";
 type MacroFilter = "under200cal" | "highProtein" | "lowFat" | "lowCarb";
 
 const MACRO_FILTERS: { id: MacroFilter; label: string; test: (food: ScannedFood) => boolean }[] = [
@@ -363,6 +371,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewScans, setHasNewScans] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
 
   const showNotFoundBanner = useCallback(() => {
     notFoundOpacity.stopAnimation();
@@ -627,6 +636,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     if (filterDef && !filterDef.test(s.food)) return false;
     return true;
   });
+  const sortedScans =
+    sortOrder === "most-used"
+      ? [...filteredScans].sort((a, b) => (b.scanCount ?? 0) - (a.scanCount ?? 0))
+      : filteredScans;
 
   if (Platform.OS === "web") {
     return (
@@ -834,7 +847,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                           <TouchableOpacity
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setEditTarget({ barcode: cachedResult.barcode, food: cachedResult.food, scannedAt: cachedResult.cachedAt });
+                              setEditTarget({ barcode: cachedResult.barcode, food: cachedResult.food, scannedAt: cachedResult.cachedAt, scanCount: 0 });
                             }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             style={styles.resultEditBtn}
@@ -942,6 +955,43 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         contentContainerStyle={styles.filterChipScrollContent}
                         keyboardShouldPersistTaps="handled"
                       >
+                        <TouchableOpacity
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSortOrder("recent");
+                          }}
+                          style={[styles.sortChip, sortOrder === "recent" && styles.sortChipActive]}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons
+                            name="time-outline"
+                            size={12}
+                            color={sortOrder === "recent" ? "#09090b" : "rgba(255,255,255,0.75)"}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[styles.sortChipText, sortOrder === "recent" && styles.sortChipTextActive]}>
+                            Recent
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSortOrder("most-used");
+                          }}
+                          style={[styles.sortChip, sortOrder === "most-used" && styles.sortChipActive]}
+                          activeOpacity={0.75}
+                        >
+                          <Ionicons
+                            name="flame-outline"
+                            size={12}
+                            color={sortOrder === "most-used" ? "#09090b" : "rgba(255,255,255,0.75)"}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[styles.sortChipText, sortOrder === "most-used" && styles.sortChipTextActive]}>
+                            Most Used
+                          </Text>
+                        </TouchableOpacity>
+                        <View style={styles.filterChipDivider} />
                         {MACRO_FILTERS.map((f) => {
                           const isActive = activeFilter === f.id;
                           return (
@@ -985,7 +1035,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <Text style={styles.recentScanNowText}>Scan a Product</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : filteredScans.length === 0 ? (
+                  ) : sortedScans.length === 0 ? (
                     <View style={styles.recentCenter}>
                       <Ionicons name="search-outline" size={40} color="rgba(255,255,255,0.35)" />
                       <Text style={styles.recentEmptyTitle}>No results</Text>
@@ -1015,7 +1065,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       <Text style={styles.recentHint}>
                         Tap to add · Pencil to edit
                       </Text>
-                      {filteredScans.map((scan) => {
+                      {sortedScans.map((scan) => {
                         const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
                         const showing100g = canToggle && per100gScans.has(scan.barcode);
                         const displayCalories = showing100g ? scan.food.nutrients100g!.calories : scan.food.calories;
@@ -1678,6 +1728,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  sortChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  sortChipActive: {
+    backgroundColor: "#fff",
+    borderColor: "#fff",
+  },
+  sortChipText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  sortChipTextActive: {
+    color: "#09090b",
+  },
+  filterChipDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignSelf: "center",
+    marginHorizontal: 2,
   },
   filterChip: {
     flexDirection: "row",
