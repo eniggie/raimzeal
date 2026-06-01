@@ -135,17 +135,28 @@ Four permanent checks are registered in the Checks panel (run them any time to c
 
 ## Subscription model
 
-RAIMZEAL has 4 tiers (prices locked — do not change):
-- **Foundation** — $0, free forever. Ovia: 15 msgs/day (gpt-4o-mini). Community: read + like only.
-- **Rise** — $9.99/mo or $99/yr. Unlimited Ovia (gpt-4o). Full community. Full library.
-- **Reign** — $19.99/mo or $199/yr. Everything in Rise + priority Ovia + AI meal plans + custom workouts + weekly digest.
-- **Legacy** — $49.99/mo or $499/yr. Everything in Reign + adaptive programs + wearable (Coming Soon) + founder's circle.
+RAIMZEAL has 4 tiers (prices locked — do not change without explicit approval):
 
-Stripe price IDs are stored in env vars: `STRIPE_PRICE_RISE_MONTHLY`, `STRIPE_PRICE_RISE_YEARLY`, `STRIPE_PRICE_REIGN_MONTHLY`, `STRIPE_PRICE_REIGN_YEARLY`, `STRIPE_PRICE_LEGACY_MONTHLY`, `STRIPE_PRICE_LEGACY_YEARLY`. Set these in Replit Secrets before enabling checkout.
+| Plan | Monthly | Yearly | Notes |
+|------|---------|--------|-------|
+| **Foundation** | Free forever | Free forever | All core features always free |
+| **Rise** | $4.99/mo | $39.99/yr (~$3.33/mo) | Improved scans, macros, meal planning, habit reminders |
+| **Reign** | $9.99/mo | $79.99/yr (~$6.67/mo) | **Best Value** · Full AI coach, cycle sync, adaptive programs |
+| **Legacy** | $19.99/mo | $149.99/yr (~$12.50/mo) | Fertility/pregnancy tracking, wearables, predictive alerts |
+
+**Founding Member Offer:** Reign at $4.99/month for the first 1,000 members.
+
+### Payment platform rules (App Store / Play Store compliant)
+- **Web** → Stripe Checkout (existing — keep as is)
+- **iOS** → Apple In-App Purchase (native IAP — setup in progress, placeholder UI in app)
+- **Android** → Google Play Billing (native billing — setup in progress, placeholder UI in app)
+- **Never** use Stripe Checkout links inside the iOS or Android app for digital subscriptions
+
+Stripe price IDs stored in env vars: `STRIPE_PRICE_RISE_MONTHLY`, `STRIPE_PRICE_RISE_YEARLY`, `STRIPE_PRICE_REIGN_MONTHLY`, `STRIPE_PRICE_REIGN_YEARLY`, `STRIPE_PRICE_LEGACY_MONTHLY`, `STRIPE_PRICE_LEGACY_YEARLY`. Update these in Replit Secrets when Stripe prices change.
 
 Tier logic lives in `artifacts/api-server/src/lib/tier.ts` — use `getUserTier(userId)` and `canAccess(userTier, requiredTier)` everywhere. Never scatter tier checks.
 
-Core features (workouts, tracking, basic Ovia) remain free forever — Foundation is still free.
+Core features remain free forever — Foundation is always free.
 
 ## OSA MODE
 

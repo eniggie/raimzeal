@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2, CheckCircle2, Flame } from 'lucide-react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
@@ -8,53 +8,52 @@ import { supabase } from '@/lib/supabase';
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
 const FOUNDATION_FEATURES = [
-  'Full workout library & custom workouts',
-  'Ovia AI coaching — 10 messages/day',
-  'Full community: post, comment, like',
-  'Nutrition & meal logging with macros',
-  'Body measurements & weight tracking',
-  'Progress charts & personal records',
-  'Sleep tracking & streak tracking',
-  'Workout calendar scheduling',
-  'Data export (PDF report)',
-  'Public profile with shareable link',
-  'Macro target calculator',
+  'Basic workout logging',
+  'Basic food logging',
+  'Water tracking',
+  'Body measurements',
+  'Progress photos',
+  'Basic community challenges',
+  'Limited AI wellness coach',
+  'Limited barcode & food scan results',
+  'Basic weekly summary',
 ];
 
 const RISE_FEATURES = [
   'Everything in Foundation',
-  'Ovia AI coaching — 200 messages/day',
-  'Voice notes in Ovia AI (speak your check-in)',
-  'Priority community badge',
-  'Advanced nutrition analytics',
-  'Extended workout history (unlimited)',
-  'Weekly Ovia AI coaching digest email',
-  'PCOS Symptom Tracker (daily log & pattern analysis)',
-  'Menopause Symptom Tracker (14 symptoms, stage tracking)',
-  "Women's Health Reminders (screenings & self-checks)",
+  'Improved food scan results',
+  'Macro breakdown — calories, protein, carbs, fat, fiber',
+  'Basic meal planning',
+  'Basic adaptive workouts',
+  'Habit reminders',
+  'Weekly wellness report',
+  'More AI coach messages',
 ];
 
 const REIGN_FEATURES = [
   'Everything in Rise',
-  'Ovia AI coaching — 500 messages/day',
-  'AI-powered meal plan suggestions',
-  'Advanced body composition analytics',
-  'Custom macro goal recommendations',
-  'Reign supporter badge',
-  'Early access to all new features',
+  'Full AI wellness coach',
+  'Full food scan analysis',
+  'Cycle syncing',
+  'Adaptive strength programs',
+  'Stress & sleep readiness',
+  'Nutrition planning & recipes',
+  'Hydration recommendations',
+  'Progress insights',
+  'Wearable integration (where available)',
+  'Priority AI recommendations',
 ];
 
 const LEGACY_FEATURES = [
   'Everything in Reign',
-  'Ovia AI coaching — unlimited messages',
-  'Private Inner Circle Community (Legacy-only feed)',
-  'Legacy Leaderboard — see your rank among founders',
-  'Monthly AI Health Report (personalised by Ovia)',
-  'Personalised 4-week Coaching Plan from Ovia AI',
-  'Accountability Partner Matching with another Legacy member',
-  'Founding Member Certificate — Legacy Founder #',
-  'Legacy founder badge + lifetime community recognition',
-  'Dedicated priority support',
+  'Fertility & pregnancy wellness tracking',
+  'Advanced wearable insights',
+  'Predictive wellness alerts',
+  'Advanced weekly reports',
+  'Premium community challenges',
+  'Priority support',
+  'Early access to new features',
+  'Legacy supporter badge',
 ];
 
 const PAID_PLANS = [
@@ -66,10 +65,12 @@ const PAID_PLANS = [
     border: 'border-blue-400/30',
     bg: 'bg-blue-400/5',
     badge: 'bg-blue-400/20 text-blue-400',
-    monthly: 9.99,
-    yearly: 99.00,
-    yearlyEquiv: 8.25,
+    monthly: 4.99,
+    yearly: 39.99,
+    yearlyEquiv: 3.33,
     popular: false,
+    badgeLabel: null as string | null,
+    foundingOffer: null as string | null,
     hasPrice: true,
     features: RISE_FEATURES,
   },
@@ -81,10 +82,12 @@ const PAID_PLANS = [
     border: 'border-purple-400/30',
     bg: 'bg-purple-400/5',
     badge: 'bg-purple-400/20 text-purple-400',
-    monthly: 19.99,
-    yearly: 199.00,
-    yearlyEquiv: 16.58,
+    monthly: 9.99,
+    yearly: 79.99,
+    yearlyEquiv: 6.67,
     popular: true,
+    badgeLabel: 'Best Value',
+    foundingOffer: 'Reign Founding Member Price: $4.99/month for the first 1,000 members.',
     hasPrice: true,
     features: REIGN_FEATURES,
   },
@@ -96,10 +99,12 @@ const PAID_PLANS = [
     border: 'border-yellow-400/30',
     bg: 'bg-yellow-400/5',
     badge: 'bg-yellow-400/20 text-yellow-400',
-    monthly: 49.99,
-    yearly: 499.00,
-    yearlyEquiv: 41.58,
+    monthly: 19.99,
+    yearly: 149.99,
+    yearlyEquiv: 12.50,
     popular: false,
+    badgeLabel: null as string | null,
+    foundingOffer: null as string | null,
     hasPrice: true,
     features: LEGACY_FEATURES,
   },
@@ -120,8 +125,6 @@ export function Membership() {
     if (params.get('checkout') === 'success') {
       setShowSuccess(true);
       window.history.replaceState({}, '', '/membership');
-      // Sync the subscription from Stripe immediately so the profile reflects the new tier,
-      // in case the webhook hasn't fired yet or experienced a delay.
       (async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -137,15 +140,12 @@ export function Membership() {
   }, [search]);
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
-    // Guard: user must be signed in before we open a Stripe tab.
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
       navigate('/login');
       return;
     }
 
-    // Open a blank tab immediately — must be synchronous inside the click handler
-    // so popup blockers don't intervene. We navigate it to Stripe after the fetch.
     let stripeTab: Window | null = null;
     try { stripeTab = window.open('', '_blank'); } catch { /* sandbox blocks open */ }
 
@@ -173,10 +173,8 @@ export function Membership() {
       }
 
       if (stripeTab && !stripeTab.closed) {
-        // Navigate the pre-opened tab to Stripe checkout.
         stripeTab.location.href = data.url;
       } else {
-        // Tab was blocked — surface a clickable link as fallback.
         setCheckoutUrl((prev) => ({ ...prev, [tier]: data.url! }));
       }
     } catch {
@@ -280,7 +278,7 @@ export function Membership() {
             >
               Yearly
               <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${billing === 'yearly' ? 'bg-white/20 text-primary-foreground' : 'bg-primary/20 text-primary'}`}>
-                Save 17%
+                Save up to 37%
               </span>
             </button>
           </div>
@@ -304,10 +302,11 @@ export function Membership() {
                 transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.06 + i * 0.04 }}
                 className={`relative rounded-2xl glass p-5 border ${plan.border} ${!plan.hasPrice ? 'opacity-80' : ''}`}
               >
-                {plan.popular && (
+                {plan.popular && plan.badgeLabel && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500 text-white shadow-lg">
-                      Most Popular
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500 text-white shadow-lg flex items-center gap-1">
+                      <Flame className="h-3 w-3" />
+                      {plan.badgeLabel}
                     </span>
                   </div>
                 )}
@@ -321,12 +320,21 @@ export function Membership() {
                   )}
                 </div>
                 <div className="mb-3">
-                  <span className={`text-2xl font-extrabold ${plan.color}`}>${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}</span>
+                  <span className={`text-2xl font-extrabold ${plan.color}`}>${price.toFixed(2)}</span>
                   <span className="text-sm text-foreground/50 ml-1">{period}</span>
                   {billing === 'yearly' && (
                     <span className="ml-2 text-xs text-foreground/40">(${plan.yearlyEquiv.toFixed(2)}/mo equivalent)</span>
                   )}
                 </div>
+
+                {/* Founding member offer for Reign */}
+                {plan.foundingOffer && (
+                  <div className="mb-3 flex items-start gap-2 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-400/20">
+                    <Flame className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-purple-300 font-semibold leading-relaxed">{plan.foundingOffer}</p>
+                  </div>
+                )}
+
                 <ul className="space-y-1.5 mb-4">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-foreground/70">
@@ -355,7 +363,7 @@ export function Membership() {
                           Opening Stripe checkout…
                         </>
                       ) : (
-                        `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price % 1 === 0 ? price.toFixed(0) : price.toFixed(2)}${period}`
+                        `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price.toFixed(2)}${period}`
                       )}
                     </button>
                     {error && (
@@ -455,7 +463,7 @@ export function Membership() {
 
       </div>
 
-      {/* Notify Me modal — only for plans without a price (Legacy) */}
+      {/* Notify Me modal */}
       <AnimatePresence>
         {notifyPlan && (() => {
           const plan = PAID_PLANS.find(p => p.key === notifyPlan);

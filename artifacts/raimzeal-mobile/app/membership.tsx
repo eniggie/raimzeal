@@ -1,70 +1,67 @@
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Linking,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { STRIPE_DONATION_URL } from "@/lib/constants";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "@/lib/supabase";
-import { getApiBase } from "@/lib/db";
+import { Linking } from "react-native";
 
 const FOUNDATION_FEATURES = [
-  "Full workout library & custom workouts",
-  "Ovia AI coaching — 10 messages/day",
-  "Full community: post, comment, like",
-  "Nutrition & meal logging with macros",
-  "Body measurements & weight tracking",
-  "Progress charts & personal records",
-  "Sleep tracking & streak tracking",
-  "Workout calendar scheduling",
-  "Data export (PDF report)",
-  "Public profile with shareable link",
-  "Macro target calculator",
+  "Basic workout logging",
+  "Basic food logging",
+  "Water tracking",
+  "Body measurements",
+  "Progress photos",
+  "Basic community challenges",
+  "Limited AI wellness coach",
+  "Limited barcode & food scan results",
+  "Basic weekly summary",
 ];
 
 const RISE_FEATURES = [
   "Everything in Foundation",
-  "Ovia AI coaching — 200 messages/day",
-  "Voice notes in Ovia AI (speak your check-in)",
-  "Priority community badge",
-  "Advanced nutrition analytics",
-  "Extended workout history (unlimited)",
-  "Weekly Ovia AI coaching digest email",
-  "PCOS Symptom Tracker (daily log & pattern analysis)",
-  "Menopause Symptom Tracker (14 symptoms, stage tracking)",
-  "Women's Health Reminders (screenings & self-checks)",
+  "Improved food scan results",
+  "Macro breakdown — calories, protein, carbs, fat, fiber",
+  "Basic meal planning",
+  "Basic adaptive workouts",
+  "Habit reminders",
+  "Weekly wellness report",
+  "More AI coach messages",
 ];
 
 const REIGN_FEATURES = [
   "Everything in Rise",
-  "Ovia AI coaching — 500 messages/day",
-  "AI-powered meal plan suggestions",
-  "Advanced body composition analytics",
-  "Custom macro goal recommendations",
-  "Reign supporter badge",
-  "Early access to all new features",
+  "Full AI wellness coach",
+  "Full food scan analysis",
+  "Cycle syncing",
+  "Adaptive strength programs",
+  "Stress & sleep readiness",
+  "Nutrition planning & recipes",
+  "Hydration recommendations",
+  "Progress insights",
+  "Wearable integration (where available)",
+  "Priority AI recommendations",
 ];
 
 const LEGACY_FEATURES = [
   "Everything in Reign",
-  "Ovia AI coaching — unlimited messages",
-  "Private Inner Circle Community (Legacy-only feed)",
-  "Legacy Leaderboard — see your rank among founders",
-  "Monthly AI Health Report (personalised by Ovia)",
-  "Personalised 4-week Coaching Plan from Ovia AI",
-  "Accountability Partner Matching with another Legacy member",
-  "Founding Member Certificate — Legacy Founder #",
-  "Legacy founder badge + lifetime community recognition",
-  "Dedicated priority support",
+  "Fertility & pregnancy wellness tracking",
+  "Advanced wearable insights",
+  "Predictive wellness alerts",
+  "Advanced weekly reports",
+  "Premium community challenges",
+  "Priority support",
+  "Early access to new features",
+  "Legacy supporter badge",
 ];
 
 type PaidPlan = {
@@ -79,6 +76,8 @@ type PaidPlan = {
   yearly: number;
   yearlyEquiv: number;
   popular: boolean;
+  badgeLabel: string | null;
+  foundingOffer: string | null;
   features: string[];
 };
 
@@ -91,10 +90,12 @@ const PAID_PLANS: PaidPlan[] = [
     borderColor: "#3b82f6",
     bgStart: "#1e3a5f",
     bgEnd: "#0f172a",
-    monthly: 9.99,
-    yearly: 99,
-    yearlyEquiv: 8.25,
+    monthly: 4.99,
+    yearly: 39.99,
+    yearlyEquiv: 3.33,
     popular: false,
+    badgeLabel: null,
+    foundingOffer: null,
     features: RISE_FEATURES,
   },
   {
@@ -105,10 +106,12 @@ const PAID_PLANS: PaidPlan[] = [
     borderColor: "#a855f7",
     bgStart: "#3b1f5e",
     bgEnd: "#0f172a",
-    monthly: 19.99,
-    yearly: 199,
-    yearlyEquiv: 16.58,
+    monthly: 9.99,
+    yearly: 79.99,
+    yearlyEquiv: 6.67,
     popular: true,
+    badgeLabel: "Best Value",
+    foundingOffer: "Founding Member Price: $4.99/mo for the first 1,000 members.",
     features: REIGN_FEATURES,
   },
   {
@@ -119,94 +122,67 @@ const PAID_PLANS: PaidPlan[] = [
     borderColor: "#f59e0b",
     bgStart: "#3d2a0a",
     bgEnd: "#0f172a",
-    monthly: 49.99,
-    yearly: 499,
-    yearlyEquiv: 41.58,
+    monthly: 19.99,
+    yearly: 149.99,
+    yearlyEquiv: 12.50,
     popular: false,
+    badgeLabel: null,
+    foundingOffer: null,
     features: LEGACY_FEATURES,
   },
 ];
+
+function getPlatformPaymentLabel(): string {
+  if (Platform.OS === "ios") return "Apple In-App Purchase";
+  if (Platform.OS === "android") return "Google Play Billing";
+  return "Stripe";
+}
+
+function getPlatformPaymentNote(): string {
+  if (Platform.OS === "ios") {
+    return "iOS subscriptions are processed via Apple In-App Purchase. Native payment setup is in progress — check back soon!";
+  }
+  if (Platform.OS === "android") {
+    return "Android subscriptions are processed via Google Play Billing. Native payment setup is in progress — check back soon!";
+  }
+  return "";
+}
 
 export default function MembershipScreen() {
   const colors = useColors();
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
-  // intentionally no checkoutError state — each case now uses specific Alert dialogs
 
-  async function handleCheckout(tier: string, interval: "monthly" | "yearly") {
-    setCheckoutLoading((prev) => ({ ...prev, [tier]: true }));
+  const isMobilePlatform = Platform.OS === "ios" || Platform.OS === "android";
+  const paymentLabel = getPlatformPaymentLabel();
+  const paymentNote = getPlatformPaymentNote();
 
-    // 1 — Verify auth session (guarded separately so a Supabase hiccup
-    //     doesn't land in the generic outer catch).
-    let accessToken: string | null = null;
-    try {
-      const { data } = await supabase.auth.getSession();
-      accessToken = data.session?.access_token ?? null;
-    } catch {
-      Alert.alert("Sign In Required", "Please sign in to your RAIMZEAL account to subscribe.");
-      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
-      return;
-    }
+  function handleSubscribeTap(plan: PaidPlan, interval: "monthly" | "yearly") {
+    const price = interval === "monthly" ? plan.monthly : plan.yearly;
+    const period = interval === "monthly" ? "/mo" : "/yr";
 
-    if (!accessToken) {
-      Alert.alert("Sign In Required", "Please sign in to your RAIMZEAL account to subscribe.");
-      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
-      return;
-    }
-
-    // 2 — Call the checkout-session endpoint.
-    let res: Response;
-    try {
-      res = await fetch(`${getApiBase()}/stripe/checkout-session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ tier, interval }),
-      });
-    } catch {
-      Alert.alert("Connection Error", "Server temporarily unavailable. Please wait a moment and try again.");
-      setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
-      return;
-    }
-
-    // 3 — Parse the response body (guard against non-JSON gateway pages).
-    let data: { url?: string; error?: string; code?: string } = {};
-    try {
-      data = await res.json() as typeof data;
-    } catch {
-      // non-JSON response (proxy/gateway error page) — treat as unavailable
-    }
-
-    setCheckoutLoading((prev) => ({ ...prev, [tier]: false }));
-
-    // 4 — Handle each outcome.
-    if (res.status === 503 || data.code === "STRIPE_NOT_CONFIGURED") {
+    if (Platform.OS === "ios") {
       Alert.alert(
-        "Temporarily Unavailable",
-        "Checkout is temporarily unavailable. Please try again in a moment.",
-        [{ text: "OK" }]
+        `${plan.name} — Apple In-App Purchase`,
+        `$${price.toFixed(2)}${period}\n\nApple In-App Purchase setup is in progress. Thank you for your interest in the ${plan.name} plan! We'll notify you as soon as native iOS payments are available.\n\nIn the meantime, you can subscribe via our website at raimzeal.com.`,
+        [
+          { text: "Visit raimzeal.com", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
+          { text: "OK", style: "cancel" },
+        ]
       );
       return;
     }
 
-    if (res.status === 401) {
-      Alert.alert("Session Expired", "Please sign out, sign back in, and try again.");
+    if (Platform.OS === "android") {
+      Alert.alert(
+        `${plan.name} — Google Play Billing`,
+        `$${price.toFixed(2)}${period}\n\nGoogle Play Billing setup is in progress. Thank you for your interest in the ${plan.name} plan! We'll notify you as soon as native Android payments are available.\n\nIn the meantime, you can subscribe via our website at raimzeal.com.`,
+        [
+          { text: "Visit raimzeal.com", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
+          { text: "OK", style: "cancel" },
+        ]
+      );
       return;
-    }
-
-    if (!res.ok || !data.url) {
-      const msg = data.error ?? `Could not start checkout (${res.status}). Please try again.`;
-      Alert.alert("Checkout Error", msg);
-      return;
-    }
-
-    try {
-      await Linking.openURL(data.url);
-    } catch {
-      Alert.alert("Error", "Could not open the checkout page. Please try again.");
     }
   }
 
@@ -228,6 +204,20 @@ export default function MembershipScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {/* Platform payment notice */}
+        {isMobilePlatform && (
+          <View style={[styles.platformNotice, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
+            <Ionicons
+              name={Platform.OS === "ios" ? "logo-apple" : "logo-google-playstore"}
+              size={16}
+              color="#2E8B57"
+            />
+            <Text style={[styles.platformNoticeText, { color: colors.mutedForeground }]}>
+              {paymentNote}
+            </Text>
+          </View>
+        )}
+
         {/* Foundation — Free Forever */}
         <LinearGradient
           colors={["#2E8B571a", "#2E8B5708"]}
@@ -275,7 +265,7 @@ export default function MembershipScreen() {
               Yearly
             </Text>
             <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>Save 17%</Text>
+              <Text style={styles.saveBadgeText}>Save up to 37%</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -284,14 +274,14 @@ export default function MembershipScreen() {
         {PAID_PLANS.map((plan) => {
           const price = billing === "monthly" ? plan.monthly : plan.yearly;
           const period = billing === "monthly" ? "/mo" : "/yr";
-          const isLoading = checkoutLoading[plan.key] ?? false;
 
           return (
             <View key={plan.key}>
-              {plan.popular && (
+              {plan.popular && plan.badgeLabel && (
                 <View style={styles.popularBadgeWrap}>
-                  <View style={styles.popularBadge}>
-                    <Text style={styles.popularBadgeText}>Most Popular</Text>
+                  <View style={[styles.popularBadge, { backgroundColor: plan.key === "reign" ? "#a855f7" : "#2E8B57" }]}>
+                    <Ionicons name="flame" size={11} color="#fff" />
+                    <Text style={styles.popularBadgeText}>{plan.badgeLabel}</Text>
                   </View>
                 </View>
               )}
@@ -313,11 +303,19 @@ export default function MembershipScreen() {
                   </View>
                   <View style={styles.priceBlock}>
                     <Text style={[styles.price, { color: plan.color }]}>
-                      ${Number.isInteger(price) ? price : price.toFixed(2)}
+                      ${price.toFixed(2)}
                     </Text>
                     <Text style={[styles.priceSub, { color: colors.mutedForeground }]}>{period}</Text>
                   </View>
                 </View>
+
+                {/* Founding member offer */}
+                {plan.foundingOffer && (
+                  <View style={[styles.foundingBanner, { borderColor: plan.color + "40", backgroundColor: plan.color + "12" }]}>
+                    <Ionicons name="flame" size={13} color={plan.color} />
+                    <Text style={[styles.foundingText, { color: plan.color }]}>{plan.foundingOffer}</Text>
+                  </View>
+                )}
 
                 <View style={styles.featureList}>
                   {plan.features.map((f) => (
@@ -335,24 +333,20 @@ export default function MembershipScreen() {
                       backgroundColor: plan.color + "25",
                       borderColor: plan.color + "60",
                       borderWidth: 1,
-                      opacity: isLoading ? 0.7 : 1,
                     },
                   ]}
                   activeOpacity={0.8}
-                  disabled={isLoading}
-                  onPress={() => handleCheckout(plan.key, billing)}
+                  onPress={() => handleSubscribeTap(plan, billing)}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={plan.color} />
-                  ) : (
-                    <Text style={[styles.ctaText, { color: plan.color }]}>
-                      {`Subscribe ${billing === "monthly" ? "Monthly" : "Yearly"} — $${Number.isInteger(price) ? price : price.toFixed(2)}${period}`}
-                    </Text>
-                  )}
+                  <Text style={[styles.ctaText, { color: plan.color }]}>
+                    {`Subscribe via ${paymentLabel} — $${price.toFixed(2)}${period}`}
+                  </Text>
                 </TouchableOpacity>
 
                 <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
-                  Secure checkout via Stripe · Cancel anytime
+                  {isMobilePlatform
+                    ? `Paid via ${paymentLabel} · Cancel anytime`
+                    : "Secure checkout via Stripe · Cancel anytime"}
                 </Text>
               </LinearGradient>
             </View>
@@ -430,6 +424,16 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, marginTop: 2 },
   scroll:   { paddingHorizontal: 16, paddingBottom: 48, gap: 12 },
 
+  platformNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  platformNoticeText: { fontSize: 12, flex: 1, lineHeight: 18 },
+
   toggleRow: {
     flexDirection: "row",
     backgroundColor: "#ffffff0a",
@@ -460,11 +464,12 @@ const styles = StyleSheet.create({
 
   popularBadgeWrap: { alignItems: "center", marginBottom: -10, zIndex: 1 },
   popularBadge: {
-    backgroundColor: "#a855f7",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 5,
-    shadowColor: "#a855f7",
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 4,
@@ -484,20 +489,22 @@ const styles = StyleSheet.create({
   priceBlock:  { alignItems: "flex-end" },
   price:       { fontSize: 22, fontWeight: "900" },
   priceSub:    { fontSize: 11, marginTop: -2 },
+
+  foundingBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  foundingText: { fontSize: 12, fontWeight: "700", flex: 1, lineHeight: 17 },
+
   featureList: { gap: 8 },
   featureRow:  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   checkIcon:   { marginTop: 1 },
   featureText: { fontSize: 13, flex: 1, lineHeight: 18 },
-  comingSoonBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  comingSoonText: { fontSize: 12, fontWeight: "600", flex: 1, lineHeight: 17 },
-  errorText:   { fontSize: 12, textAlign: "center" },
   ctaBtn: {
     borderRadius: 14,
     paddingVertical: 13,
@@ -505,7 +512,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 46,
   },
-  ctaText:    { fontSize: 14, fontWeight: "700" },
+  ctaText:    { fontSize: 14, fontWeight: "700", textAlign: "center" },
   secureNote: { fontSize: 11, textAlign: "center", marginTop: -4 },
 
   donationCard: {
