@@ -5,9 +5,9 @@
  * Safe to run multiple times — checks for existing products before creating.
  *
  * Canonical prices (locked — do not change without explicit approval):
- *   Rise:   $4.99/mo  · $39.99/yr
- *   Reign:  $9.99/mo  · $79.99/yr  (Best Value)
- *   Legacy: $19.99/mo · $149.99/yr
+ *   Rise:   $9.99/mo  · $99/yr
+ *   Reign:  $19.99/mo · $199/yr  (Best Value)
+ *   Legacy: $49.99/mo · $499/yr
  *
  * Usage:
  *   pnpm --filter @workspace/scripts exec tsx src/seed-products.ts
@@ -19,22 +19,22 @@ const PRODUCTS = [
     name: "RAIMZEAL Rise",
     description: "Improved food scans, macro breakdown, basic meal planning, adaptive workouts, habit reminders, weekly wellness report, and more AI coach messages.",
     tier: "rise",
-    monthly: 499,    // $4.99
-    yearly:  3999,   // $39.99 (save ~33%)
+    monthly: 999,    // $9.99
+    yearly:  9900,   // $99.00 (save ~17%)
   },
   {
     name: "RAIMZEAL Reign",
     description: "Everything in Rise plus full AI wellness coach, full food scan analysis, cycle syncing, adaptive strength programs, stress & sleep readiness, nutrition planning, and wearable integration.",
     tier: "reign",
-    monthly: 999,    // $9.99
-    yearly:  7999,   // $79.99 (save ~33%) — Best Value
+    monthly: 1999,   // $19.99
+    yearly:  19900,  // $199.00 (save ~17%) — Best Value
   },
   {
     name: "RAIMZEAL Legacy",
     description: "Everything in Reign plus fertility & pregnancy wellness tracking, advanced wearable insights, predictive wellness alerts, advanced weekly reports, premium community challenges, priority support, and early access to new features.",
     tier: "legacy",
-    monthly: 1999,   // $19.99
-    yearly:  14999,  // $149.99 (save ~37%)
+    monthly: 4999,   // $49.99
+    yearly:  49900,  // $499.00 (save ~17%)
   },
 ] as const;
 
