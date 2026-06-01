@@ -204,6 +204,7 @@ interface FitnessContextType extends AppState {
   toggleFavoriteFood: (food: FavoriteFood) => void;
   reorderFavoriteFoods: (foods: FavoriteFood[]) => void;
   dismissHint: (key: string, timestamp?: number) => void;
+  undismissHint: (key: string) => void;
   isHintDismissed: (key: string) => boolean;
   getHintDismissedAt: (key: string) => number | null;
   resetHints: () => void;
@@ -828,6 +829,37 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     [persist]
   );
 
+  const undismissHint = useCallback(
+    (key: string) => {
+      setState((prev) => {
+        const filtered = prev.dismissedHints.filter(
+          (h) => h !== key && !h.startsWith(`${key}:`)
+        );
+        const next = { ...prev, dismissedHints: filtered };
+        persist(next);
+        return next;
+      });
+      if (!isSupabaseConfigured) return;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: {
+                ...(existing?.appSettings ?? {}),
+                dismissedHints: (existing?.appSettings?.dismissedHints ?? []).filter(
+                  (h) => h !== key && !h.startsWith(`${key}:`)
+                ),
+              },
+            })
+          )
+          .catch(() => {});
+      });
+    },
+    [persist]
+  );
+
   const isHintDismissed = useCallback(
     (key: string): boolean =>
       state.dismissedHints.some((h) => h === key || h.startsWith(`${key}:`)),
@@ -1038,6 +1070,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         reorderFavoriteFoods,
         updateQuickFoods,
         dismissHint,
+        undismissHint,
         isHintDismissed,
         getHintDismissedAt,
         resetHints,

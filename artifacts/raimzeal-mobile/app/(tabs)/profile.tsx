@@ -29,7 +29,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
-import { REORDER_HINT_STORAGE_KEY } from "@/lib/hints";
+import {
+  FILTER_HINT_STORAGE_KEY,
+  REORDER_HINT_STORAGE_KEY,
+  HISTORY_FILTER_HINT_STORAGE_KEY,
+  PRESET_NUDGE_STORAGE_KEY,
+  SWIPE_DELETE_HINT_STORAGE_KEY,
+  HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
+  PRESET_LONG_PRESS_HINT_KEY,
+  QUICK_FOOD_GRAMS_HINT_KEY,
+  FAV_FOOD_GRAMS_HINT_KEY,
+  RECENT_FOOD_GRAMS_HINT_KEY,
+  PRESET_REORDER_HINT_KEY,
+  INFO_BUTTON_TOOLTIP_KEY,
+  FAV_RESET_DEFAULTS_HINT_KEY,
+  RECENT_RESET_DEFAULTS_HINT_KEY,
+  SCAN_SWIPE_HINT_KEY,
+} from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useTier } from "@/hooks/useTier";
@@ -96,6 +112,7 @@ export default function ProfileScreen() {
     updateSettings,
     resetState,
     resetHints,
+    undismissHint,
     clearAllData,
   } = useFitness();
   const { signOut, user: authUser } = useAuth();
@@ -143,6 +160,8 @@ export default function ProfileScreen() {
 
   const [digestSubscribed, setDigestSubscribed] = useState(false);
   const [digestLoading, setDigestLoading] = useState(false);
+
+  const [hintsExpanded, setHintsExpanded] = useState(false);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const flashAnimRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -558,8 +577,32 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleResetHints() {
+  async function handleResetHints() {
     resetHints();
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      await AsyncStorage.multiRemove([
+        FILTER_HINT_STORAGE_KEY,
+        REORDER_HINT_STORAGE_KEY,
+        HISTORY_FILTER_HINT_STORAGE_KEY,
+        PRESET_NUDGE_STORAGE_KEY,
+        SWIPE_DELETE_HINT_STORAGE_KEY,
+        HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
+        PRESET_LONG_PRESS_HINT_KEY,
+        QUICK_FOOD_GRAMS_HINT_KEY,
+        FAV_FOOD_GRAMS_HINT_KEY,
+        RECENT_FOOD_GRAMS_HINT_KEY,
+        PRESET_REORDER_HINT_KEY,
+        INFO_BUTTON_TOOLTIP_KEY,
+        FAV_RESET_DEFAULTS_HINT_KEY,
+        RECENT_RESET_DEFAULTS_HINT_KEY,
+        SCAN_SWIPE_HINT_KEY,
+      ]);
+    } catch {
+      // ignore storage errors
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
       "Hints Reset",
@@ -567,24 +610,30 @@ export default function ProfileScreen() {
     );
   }
 
-  function handleResetReorderHint() {
+  async function resetHintStorage(key: string) {
+    undismissHint(key);
+    try {
+      const { default: AsyncStorage } = await import(
+        "@react-native-async-storage/async-storage"
+      );
+      await AsyncStorage.removeItem(key);
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  function handleResetSingleHint(key: string, label: string, description: string) {
     Alert.alert(
-      "Reset Reorder Hint",
-      "The favorites reorder reminder will reappear the next time you visit your favorites.",
+      `Reset "${label}"`,
+      `${description} Tap Reset to show it again.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Reset",
           onPress: async () => {
-            const { default: AsyncStorage } = await import(
-              "@react-native-async-storage/async-storage"
-            );
-            await AsyncStorage.removeItem(REORDER_HINT_STORAGE_KEY);
+            await resetHintStorage(key);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert(
-              "Reorder Hint Reset",
-              "The favorites reorder reminder will reappear on your next visit."
-            );
+            Alert.alert("Hint Reset", `"${label}" will reappear the next time it's triggered.`);
           },
         },
       ]
@@ -1736,17 +1785,93 @@ export default function ProfileScreen() {
             <ActionRow
               icon="bulb-outline"
               label="Reset all hints"
-              sublabel="Re-show one-time tips for filters, reordering, and preset long-press"
+              sublabel="Re-show every one-time tip across the app"
               color={colors.accent}
               onPress={handleResetHints}
             />
-            <ActionRow
-              icon="swap-vertical-outline"
-              label="Reset reorder hint"
-              sublabel="Re-show the favorites drag-to-reorder reminder"
-              color={colors.accent}
-              onPress={handleResetReorderHint}
-            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setHintsExpanded((v) => !v)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 13,
+                paddingHorizontal: 16,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: colors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  backgroundColor: colors.accent + "22",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
+                }}
+              >
+                <Ionicons name="list-outline" size={17} color={colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>
+                  Reset individual hints
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                  {hintsExpanded ? "Tap a hint below to reset it" : "Expand to reset a specific hint"}
+                </Text>
+              </View>
+              <Ionicons
+                name={hintsExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
+            {hintsExpanded && (
+              <>
+                {(
+                  [
+                    { key: FILTER_HINT_STORAGE_KEY, label: "Filter tip", desc: "This tip appears the first time you open the meal filter." },
+                    { key: REORDER_HINT_STORAGE_KEY, label: "Favorites reorder reminder", desc: "This reminder nudges you to drag-and-drop your favourite foods." },
+                    { key: HISTORY_FILTER_HINT_STORAGE_KEY, label: "History filter tip", desc: "This tip appears the first time you open the history filter." },
+                    { key: PRESET_NUDGE_STORAGE_KEY, label: "Preset nudge", desc: "This nudge suggests creating a meal preset after repeated logging." },
+                    { key: SWIPE_DELETE_HINT_STORAGE_KEY, label: "Swipe-to-delete tip", desc: "This tip demonstrates swiping to delete a food entry." },
+                    { key: HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, label: "History swipe-to-delete tip", desc: "This tip demonstrates swiping to delete a history entry." },
+                    { key: PRESET_LONG_PRESS_HINT_KEY, label: "Preset long-press hint", desc: "This hint shows that long-pressing a preset lets you edit it." },
+                    { key: QUICK_FOOD_GRAMS_HINT_KEY, label: "Quick food grams hint", desc: "This hint explains the grams field for quick-add foods." },
+                    { key: FAV_FOOD_GRAMS_HINT_KEY, label: "Favourite food grams hint", desc: "This hint explains the grams field for favourite foods." },
+                    { key: RECENT_FOOD_GRAMS_HINT_KEY, label: "Recent food grams hint", desc: "This hint explains the grams field for recent foods." },
+                    { key: PRESET_REORDER_HINT_KEY, label: "Preset reorder hint", desc: "This hint appears when you enter preset reorder mode." },
+                    { key: INFO_BUTTON_TOOLTIP_KEY, label: "Info button tooltip", desc: "This tooltip explains what the info button shows." },
+                    { key: FAV_RESET_DEFAULTS_HINT_KEY, label: "Favourite reset-defaults hint", desc: "This hint explains the reset-to-defaults option for favourite foods." },
+                    { key: RECENT_RESET_DEFAULTS_HINT_KEY, label: "Recent reset-defaults hint", desc: "This hint explains the reset-to-defaults option for recent foods." },
+                    { key: SCAN_SWIPE_HINT_KEY, label: "Barcode scan swipe hint", desc: "This hint shows that you can swipe between results on the scanner." },
+                  ] as { key: string; label: string; desc: string }[]
+                ).map(({ key, label, desc }) => (
+                  <TouchableOpacity
+                    key={key}
+                    activeOpacity={0.7}
+                    onPress={() => handleResetSingleHint(key, label, desc)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      paddingVertical: 11,
+                      paddingHorizontal: 16,
+                      paddingLeft: 60,
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: colors.border,
+                      backgroundColor: colors.card + "88",
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, color: colors.foreground }}>{label}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Reset</Text>
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
             <ActionRow
               icon="refresh-circle-outline"
               label="Clear remembered meal defaults"
