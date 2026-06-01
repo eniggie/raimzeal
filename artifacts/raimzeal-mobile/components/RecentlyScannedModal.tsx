@@ -16,6 +16,8 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
+import { useSwipeHint } from "@/hooks/useSwipeHint";
+import { SCAN_SWIPE_HINT_KEY } from "@/lib/hints";
 import {
   getRecentScans,
   removeRecentScan,
@@ -32,8 +34,6 @@ import {
   removeViewPreference,
   loadViewPreferenceMap,
 } from "@/utils/viewPreference";
-
-const SWIPE_HINT_KEY = "@scan_swipe_hint_v1";
 
 interface Props {
   visible: boolean;
@@ -290,7 +290,6 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
   const [defaultPer100g] = usePer100gDefault();
-  const [runSwipeHint, setRunSwipeHint] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const pendingDeleteRef = useRef<PendingDelete | null>(null);
 
@@ -307,11 +306,9 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   const loadScans = useCallback(async () => {
     setLoading(true);
-    setRunSwipeHint(false);
-    const [data, viewMap, hintRaw] = await Promise.all([
+    const [data, viewMap] = await Promise.all([
       getRecentScans(),
       loadViewPreferenceMap(),
-      AsyncStorage.getItem(SWIPE_HINT_KEY).catch(() => null),
     ]);
     setScans(data);
 
@@ -327,11 +324,6 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     }
     setPer100gScans(restoredPer100g);
 
-    if (!hintRaw && data.length > 0) {
-      setRunSwipeHint(true);
-      AsyncStorage.setItem(SWIPE_HINT_KEY, "1").catch(() => {});
-    }
-
     setLoading(false);
   }, [defaultPer100g]);
 
@@ -342,6 +334,8 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
       setPer100gScans(new Set());
     }
   }, [visible, loadScans]);
+
+  const runSwipeHint = useSwipeHint(SCAN_SWIPE_HINT_KEY, scans.length > 0);
 
   function commitDelete(barcode: string) {
     removeRecentScan(barcode).catch(() => {});
@@ -450,7 +444,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             await Promise.all([
               clearAllRecentScans(),
               AsyncStorage.removeItem(LAST_USED_VIEW_KEY),
-              AsyncStorage.removeItem(SWIPE_HINT_KEY),
+              AsyncStorage.removeItem(SCAN_SWIPE_HINT_KEY),
             ]);
             setScans([]);
             setPer100gScans(new Set());

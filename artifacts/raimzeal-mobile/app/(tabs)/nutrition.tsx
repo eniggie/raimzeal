@@ -57,6 +57,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
+import { useSwipeHint } from "@/hooks/useSwipeHint";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -8310,13 +8311,12 @@ function MacroBar({
 
 function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
-  const { updateMealLog, dismissHint, isHintDismissed } = useFitness();
+  const { updateMealLog } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
+  const runHintAnimation = useSwipeHint(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, isFirst ?? false);
 
   useEffect(() => {
-    if (!isFirst) return;
-    if (isHintDismissed(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY)) return;
-    dismissHint(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY);
+    if (!runHintAnimation) return;
     let cancelled = false;
     const peekTimer = setTimeout(() => {
       if (cancelled) return;
@@ -8329,7 +8329,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       cancelled = true;
       clearTimeout(peekTimer);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [runHintAnimation]);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({
@@ -8988,14 +8988,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
 function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
-  const { updateMealLog, favoriteFoods, dismissHint, isHintDismissed } = useFitness();
+  const { updateMealLog, favoriteFoods } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
+  const runHintAnimation = useSwipeHint(SWIPE_DELETE_HINT_STORAGE_KEY, isFirst ?? false);
 
   useEffect(() => {
-    if (!isFirst) return;
-    if (isHintDismissed(SWIPE_DELETE_HINT_STORAGE_KEY)) return;
-    dismissHint(SWIPE_DELETE_HINT_STORAGE_KEY);
+    if (!runHintAnimation) return;
     let cancelled = false;
     const peekTimer = setTimeout(() => {
       if (cancelled) return;
@@ -9008,7 +9007,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       cancelled = true;
       clearTimeout(peekTimer);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [runHintAnimation]);
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [editForm, setEditForm] = useState<ManualForm>({

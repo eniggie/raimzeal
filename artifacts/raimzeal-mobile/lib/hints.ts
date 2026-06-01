@@ -23,3 +23,4 @@ export const FAV_RESET_DEFAULTS_HINT_KEY =
   "@nutrition_fav_reset_defaults_hint_dismissed";
 export const RECENT_RESET_DEFAULTS_HINT_KEY =
   "@nutrition_recent_reset_defaults_hint_dismissed";
+export const SCAN_SWIPE_HINT_KEY = "@scan_swipe_hint_v1";
