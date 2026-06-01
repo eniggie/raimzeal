@@ -1340,6 +1340,12 @@ export default function NutritionScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [showRecentScans, setShowRecentScans] = useState(false);
   const [recentScanCount, setRecentScanCount] = useState(0);
+  const prevScanCountRef = useRef(0);
+  const hasHydratedScanCountRef = useRef(false);
+  const badgeScaleAnim = useSharedValue(1);
+  const badgeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: badgeScaleAnim.value }],
+  }));
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualMacrosPrefilledFor, setManualMacrosPrefilledFor] = useState<string | null>(null);
   const [showMacroDefaultsSheet, setShowMacroDefaultsSheet] = useState(false);
@@ -1597,6 +1603,10 @@ export default function NutritionScreen() {
   const refreshRecentScanCount = useCallback(async () => {
     try {
       const scans = await getRecentScans();
+      if (!hasHydratedScanCountRef.current) {
+        hasHydratedScanCountRef.current = true;
+        prevScanCountRef.current = scans.length;
+      }
       setRecentScanCount(scans.length);
     } catch {
       // Non-fatal
@@ -1606,6 +1616,16 @@ export default function NutritionScreen() {
   useEffect(() => {
     refreshRecentScanCount();
   }, [refreshRecentScanCount]);
+
+  useEffect(() => {
+    if (recentScanCount > prevScanCountRef.current) {
+      badgeScaleAnim.value = withSequence(
+        withSpring(1.4, { damping: 4, stiffness: 300 }),
+        withSpring(1, { damping: 10, stiffness: 200 })
+      );
+    }
+    prevScanCountRef.current = recentScanCount;
+  }, [recentScanCount]);
 
   useEffect(() => {
     Animated.timing(searchLoadingDimAnim, {
@@ -4342,11 +4362,11 @@ export default function NutritionScreen() {
                         <Ionicons name="time-outline" size={17} color={colors.mutedForeground} />
                       </TouchableOpacity>
                       {recentScanCount > 0 && (
-                        <View style={[styles.recentBtnBadge, { backgroundColor: colors.primary }]}>
+                        <Reanimated.View style={[styles.recentBtnBadge, { backgroundColor: colors.primary }, badgeAnimatedStyle]}>
                           <Text style={styles.recentBtnBadgeText}>
                             {recentScanCount > 99 ? "99+" : recentScanCount}
                           </Text>
-                        </View>
+                        </Reanimated.View>
                       )}
                     </View>
                     <TouchableOpacity
