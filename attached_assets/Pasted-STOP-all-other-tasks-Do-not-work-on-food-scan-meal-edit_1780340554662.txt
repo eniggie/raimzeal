@@ -1,0 +1,118 @@
+STOP all other tasks. Do not work on food scan, meal edit toast, Expo, mobile build, port conflicts, or any other feature until this pricing bug is fixed.
+
+The RAIMZEAL app is still showing the old prices in the live preview:
+
+Rise is still showing $9.99/month.
+Reign is still showing $19.99/month.
+Legacy is still showing $49.99/month.
+
+This is wrong.
+
+You previously said the pricing was fixed, but the app preview still shows the old pricing. Do not mark this task complete until the live preview visibly shows the correct prices.
+
+Correct RAIMZEAL pricing:
+
+Foundation:
+Free forever
+
+Rise:
+$4.99/month
+$39.99/year
+
+Reign:
+$9.99/month
+$79.99/year
+
+Legacy:
+$19.99/month
+$149.99/year
+
+Important rules:
+$9.99 is only allowed for Reign monthly.
+$19.99 is only allowed for Legacy monthly.
+$49.99 must not appear anywhere as an active RAIMZEAL subscription price.
+
+Find the real source of the old pricing. Search the entire project for all old price values and related pricing references, including frontend files, backend files, database seed files, constants, config, mock data, subscription objects, membership files, pricing cards, mobile pricing screens, upgrade modals, account screens, paywall screens, Stripe products, local storage defaults, demo data, cached pricing, and any generated bundle references.
+
+Search for:
+9.99
+19.99
+49.99
+$9.99
+$19.99
+$49.99
+Rise
+Reign
+Legacy
+Foundation
+membership
+subscription
+pricing
+plans
+paywall
+checkout
+Stripe
+price
+
+Do not just update one visible component. Create one single source of truth for RAIMZEAL plan prices and make every pricing screen, subscription card, button label, paywall, and upgrade modal read from that one source.
+
+Fix every wrong pricing display:
+
+Rise must show:
+$4.99/month
+$39.99/year
+Button: Subscribe Monthly — $4.99/mo
+
+Reign must show:
+$9.99/month
+$79.99/year
+Button: Subscribe Monthly — $9.99/mo
+Badge: Best Value
+
+Legacy must show:
+$19.99/month
+$149.99/year
+Button: Subscribe Monthly — $19.99/mo
+
+Foundation must show:
+Free forever
+
+Remove “Most Popular” from Reign if it conflicts with the new label. Use “Best Value” instead.
+
+Also add this launch offer where appropriate:
+Reign Founding Member Price: $4.99/month for the first 1,000 members.
+
+Very important:
+The current preview is still showing old prices, so you must verify visually after fixing. Do not say fixed until the live running preview shows:
+
+Rise: $4.99/mo
+Reign: $9.99/mo
+Legacy: $19.99/mo
+Foundation: Free forever
+
+After editing, rebuild and restart the app preview. If there is a cached state, stale build, service worker, local storage, database seed data, or stale bundle causing the old prices to remain, clear or update it.
+
+Check every visible user-facing place:
+Homepage pricing section
+Pricing page
+Membership page
+Upgrade screen
+Dashboard upgrade card
+Profile subscription section
+Settings subscription section
+Paywall modal
+Mobile pricing layout
+Subscribe button text
+Stripe checkout labels if web pricing exists
+Any hardcoded monthly price text
+
+If there are merge conflicts, port conflicts, failed workflows, or Expo processes blocking the app from rebuilding, stop those processes and fix the pricing task first.
+
+Do not create a new pricing page. Fix the existing app.
+
+Do not mark this task complete until:
+1. The live preview visually shows the correct prices.
+2. The old $49.99 price no longer appears anywhere as an active subscription price.
+3. Reign is labeled Best Value.
+4. The subscription button text shows the correct monthly price.
+5. You tell me exactly where the old prices were found and what file or data source was causing the preview to keep showing them.
