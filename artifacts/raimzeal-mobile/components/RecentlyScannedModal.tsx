@@ -23,6 +23,7 @@ import {
   removeRecentScan,
   updateRecentScan,
   clearAllRecentScans,
+  setRecentLastViewed,
   RecentScan,
   ScannedFood,
 } from "@/components/BarcodeScannerModal";
@@ -342,6 +343,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   React.useEffect(() => {
     if (visible) {
+      setRecentLastViewed();
       loadScans();
     } else {
       setPer100gScans(new Set());

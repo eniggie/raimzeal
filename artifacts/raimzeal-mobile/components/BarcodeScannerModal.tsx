@@ -32,7 +32,7 @@ const RECENT_SCANS_KEY = "barcode_recent_scans_v1";
 const RECENT_LAST_VIEWED_KEY = "barcode_recent_last_viewed_v1";
 const MAX_RECENT_SCANS = 20;
 
-async function getRecentLastViewed(): Promise<number> {
+export async function getRecentLastViewed(): Promise<number> {
   try {
     const raw = await AsyncStorage.getItem(RECENT_LAST_VIEWED_KEY);
     if (!raw) return 0;
@@ -43,7 +43,7 @@ async function getRecentLastViewed(): Promise<number> {
   }
 }
 
-async function setRecentLastViewed(): Promise<void> {
+export async function setRecentLastViewed(): Promise<void> {
   try {
     await AsyncStorage.setItem(RECENT_LAST_VIEWED_KEY, String(Date.now()));
   } catch {

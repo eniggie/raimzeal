@@ -65,7 +65,7 @@ import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
-import { BarcodeScannerModal, ScannedFood, getRecentScans } from "@/components/BarcodeScannerModal";
+import { BarcodeScannerModal, ScannedFood, getRecentScans, getRecentLastViewed } from "@/components/BarcodeScannerModal";
 import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 import { MacroRing } from "@/components/MacroRing";
@@ -1602,12 +1602,16 @@ export default function NutritionScreen() {
 
   const refreshRecentScanCount = useCallback(async () => {
     try {
-      const scans = await getRecentScans();
+      const [scans, lastViewed] = await Promise.all([
+        getRecentScans(),
+        getRecentLastViewed(),
+      ]);
+      const newCount = scans.filter((s) => s.scannedAt > lastViewed).length;
       if (!hasHydratedScanCountRef.current) {
         hasHydratedScanCountRef.current = true;
-        prevScanCountRef.current = scans.length;
+        prevScanCountRef.current = newCount;
       }
-      setRecentScanCount(scans.length);
+      setRecentScanCount(newCount);
     } catch {
       // Non-fatal
     }
@@ -4354,6 +4358,7 @@ export default function NutritionScreen() {
                       <TouchableOpacity
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setRecentScanCount(0);
                           setShowRecentScans(true);
                         }}
                         style={[styles.recentBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
