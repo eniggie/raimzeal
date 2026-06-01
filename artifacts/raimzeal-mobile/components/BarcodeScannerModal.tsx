@@ -318,6 +318,14 @@ interface Props {
 }
 
 type ActiveTab = "scan" | "recent";
+type MacroFilter = "under200cal" | "highProtein" | "lowFat" | "lowCarb";
+
+const MACRO_FILTERS: { id: MacroFilter; label: string; test: (food: ScannedFood) => boolean }[] = [
+  { id: "under200cal", label: "Under 200 kcal", test: (f) => f.calories < 200 },
+  { id: "highProtein",  label: "High Protein",   test: (f) => f.protein >= 15 },
+  { id: "lowFat",       label: "Low Fat",         test: (f) => f.fat <= 5 },
+  { id: "lowCarb",      label: "Low Carb",        test: (f) => f.carbs <= 10 },
+];
 
 export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEntry }: Props) {
   const colors = useColors();
@@ -354,6 +362,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const notFoundOpacity = useRef(new Animated.Value(0)).current;
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewScans, setHasNewScans] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
 
   const showNotFoundBanner = useCallback(() => {
     notFoundOpacity.stopAnimation();
@@ -419,6 +428,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       notFoundOpacity.setValue(0);
       setNotFoundBannerVisible(false);
       setSearchQuery("");
+      setActiveFilter(null);
       setHasNewScans(false);
       setPer100gScans(new Set());
       loadRecentScans();
@@ -607,14 +617,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setCachedResult(null);
       hideNotFoundBanner();
       setSearchQuery("");
+      setActiveFilter(null);
     }
   }
 
-  const filteredScans = searchQuery.trim()
-    ? recentScans.filter((s) =>
-        s.food.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : recentScans;
+  const filterDef = activeFilter ? MACRO_FILTERS.find((f) => f.id === activeFilter) : null;
+  const filteredScans = recentScans.filter((s) => {
+    if (searchQuery.trim() && !s.food.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterDef && !filterDef.test(s.food)) return false;
+    return true;
+  });
 
   if (Platform.OS === "web") {
     return (
@@ -903,25 +915,56 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     </Animated.View>
                   )}
                   {!recentLoading && recentScans.length > 0 && (
-                    <View style={styles.searchBarRow}>
-                      <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.searchIcon} />
-                      <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search recent scans…"
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        returnKeyType="search"
-                        clearButtonMode="while-editing"
-                        autoCorrect={false}
-                        autoCapitalize="none"
-                      />
-                      {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                          <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <>
+                      <View style={styles.searchBarRow}>
+                        <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.5)" style={styles.searchIcon} />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Search recent scans…"
+                          placeholderTextColor="rgba(255,255,255,0.4)"
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                          returnKeyType="search"
+                          clearButtonMode="while-editing"
+                          autoCorrect={false}
+                          autoCapitalize="none"
+                        />
+                        {searchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.5)" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.filterChipScroll}
+                        contentContainerStyle={styles.filterChipScrollContent}
+                        keyboardShouldPersistTaps="handled"
+                      >
+                        {MACRO_FILTERS.map((f) => {
+                          const isActive = activeFilter === f.id;
+                          return (
+                            <TouchableOpacity
+                              key={f.id}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setActiveFilter(isActive ? null : f.id);
+                              }}
+                              style={[styles.filterChip, isActive && styles.filterChipActive]}
+                              activeOpacity={0.75}
+                            >
+                              {isActive && (
+                                <Ionicons name="checkmark" size={12} color="#09090b" style={{ marginRight: 2 }} />
+                              )}
+                              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                                {f.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </>
                   )}
                   {recentLoading ? (
                     <View style={styles.recentCenter}>
@@ -947,8 +990,20 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       <Ionicons name="search-outline" size={40} color="rgba(255,255,255,0.35)" />
                       <Text style={styles.recentEmptyTitle}>No results</Text>
                       <Text style={styles.recentEmptySub}>
-                        No scans match "{searchQuery}". Try a different name.
+                        {activeFilter && searchQuery.trim()
+                          ? `No scans match "${searchQuery}" with the active filter.`
+                          : activeFilter
+                          ? "No scans match that filter. Try a different one."
+                          : `No scans match "${searchQuery}". Try a different name.`}
                       </Text>
+                      {(activeFilter || searchQuery.trim()) && (
+                        <TouchableOpacity
+                          onPress={() => { setSearchQuery(""); setActiveFilter(null); }}
+                          style={styles.filterClearBtn}
+                        >
+                          <Text style={styles.filterClearBtnText}>Clear filters</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   ) : (
                     <ScrollView
@@ -1612,5 +1667,52 @@ const styles = StyleSheet.create({
     backgroundColor: "#a3e635",
     marginLeft: 2,
     alignSelf: "center",
+  },
+  filterChipScroll: {
+    flexShrink: 0,
+  },
+  filterChipScrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  filterChipActive: {
+    backgroundColor: "#a3e635",
+    borderColor: "#a3e635",
+  },
+  filterChipText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  filterChipTextActive: {
+    color: "#09090b",
+  },
+  filterClearBtn: {
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  filterClearBtnText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 });
