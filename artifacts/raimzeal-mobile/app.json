@@ -3,7 +3,7 @@
     "name": "RAIMZEAL",
     "slug": "raimzeal",
     "owner": "econteur",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "raimzeal",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.econteur.raimzeal",
-      "buildNumber": "1",
+      "buildNumber": "4",
       "associatedDomains": [
         "applinks:raimzeal.com"
       ],
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 19,
+      "versionCode": 21,
       "minSdkVersion": 26,
       "intentFilters": [
         {

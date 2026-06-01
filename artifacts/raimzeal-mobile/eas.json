@@ -38,7 +38,7 @@
         "track": "internal"
       },
       "ios": {
-        "appleTeamId": "$(APPLE_TEAM_ID)",
+        "appleTeamId": "W842SR649M",
         "ascAppId": "$(ASC_APP_ID)"
       }
     }
