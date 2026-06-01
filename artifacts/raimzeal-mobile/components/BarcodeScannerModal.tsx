@@ -809,6 +809,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <Text style={styles.resultMacros}>
                           {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
                         </Text>
+                        {cachedResult.food.servingLabel ? (
+                          <Text style={styles.resultServingNote} numberOfLines={1}>
+                            1 serving = {cachedResult.food.servingLabel}
+                          </Text>
+                        ) : null}
                         <View style={styles.resultServingRow}>
                           <View style={styles.resultServingPill}>
                             <Text style={styles.resultServingPillText}>
@@ -1256,6 +1261,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginLeft: 26,
+  },
+  resultServingNote: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginLeft: 26,
+    marginTop: 1,
   },
   resultServingRow: {
     marginLeft: 26,
