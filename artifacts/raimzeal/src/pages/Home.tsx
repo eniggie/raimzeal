@@ -264,7 +264,7 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground">Rise · Reign · Legacy 👑</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">Optional support plans from $4.99/mo — Foundation is always free</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">Optional support plans from $9.99/mo — Foundation is always free</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-yellow-400 transition-colors shrink-0" />
             </div>
