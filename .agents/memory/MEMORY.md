@@ -2,3 +2,4 @@
 - [OSA MODE](osa-mode.md) — standing convention for full production QA passes: one bug at a time, confirm fix before next, never skip, never lie.
 - [Pricing — locked tiers](pricing-tiers.md) — Rise $4.99/$39.99, Reign $9.99/$79.99, Legacy $19.99/$149.99; Reign=Best Value+founding offer; do not change without explicit approval.
 - [Mobile payment compliance](mobile-payment-compliance.md) — iOS/Android must NOT use Stripe for digital subscriptions; use Platform.OS detection + IAP/Play placeholder alerts pointing to raimzeal.com.
+- [Dual React instance fix](dual-react-fix.md) — "resolveDispatcher null" crash = pnpm catalog vs hoisted node_modules version mismatch; fix with overrides + optimizeDeps.dedupe
