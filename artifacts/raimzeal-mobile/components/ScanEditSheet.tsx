@@ -332,6 +332,17 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
                 Save Changes
               </Text>
             </TouchableOpacity>
+            {onSaveAndAdd && (
+              <TouchableOpacity
+                style={styles.doneBtn}
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.doneBtnText, { color: colors.mutedForeground }]}>
+                  Done
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -419,6 +430,16 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  doneBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 44,
+    marginTop: 4,
+  },
+  doneBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
   },
   loggedToast: {
     position: "absolute",
