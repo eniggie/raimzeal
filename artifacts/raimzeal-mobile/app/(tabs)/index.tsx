@@ -637,7 +637,7 @@ export default function HomeScreen() {
             Rise · Reign · Legacy 👑
           </Text>
           <Text style={[styles.membershipBannerSub, { color: colors.mutedForeground }]}>
-            Optional support plans from $9.99/mo — tap to explore
+            Optional support plans from $4.99/mo — tap to explore
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
@@ -827,7 +827,7 @@ export default function HomeScreen() {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>Rise · Reign · Legacy 👑</Text>
-          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>Optional support plans from $9.99/mo — tap to explore</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>Optional support plans from $4.99/mo — tap to explore</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
       </AnimatedPressable>

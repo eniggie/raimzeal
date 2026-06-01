@@ -1,6 +1,6 @@
 # RAIMZEAL
 
-Free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. Foundation tier is free forever. Optional paid tiers (Rise $9.99/mo, Reign $19.99/mo, Legacy $49.99/mo) unlock expanded Ovia AI access and full community participation.
+Free, non-profit fitness, food therapy, and healthcare awareness platform operated by ECONTEUR LLC. Foundation tier is free forever. Optional paid tiers — Rise ($4.99/mo), Reign ($9.99/mo · Best Value), Legacy ($19.99/mo) — unlock expanded AI coaching, food scan analysis, adaptive programs, and enhanced features.
 
 ---
 

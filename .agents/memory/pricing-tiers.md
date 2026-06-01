@@ -20,4 +20,8 @@ description: Canonical prices for all RAIMZEAL subscription tiers; never change 
 
 **Why:** Approved by Dr. Ephraim Oviawe. Reflects RAIMZEAL's non-profit mission — prices kept low to maximize access. Any change requires explicit re-approval.
 
-**How to apply:** These values are hardcoded into `Membership.tsx` (web) and `membership.tsx` (mobile). Stripe price IDs are stored in env vars (`STRIPE_PRICE_*`) and must be updated in Replit Secrets whenever Stripe prices change.
+**Single source of truth:** `artifacts/raimzeal/src/lib/plans.ts` (web) and `artifacts/raimzeal-mobile/lib/plans.ts` (mobile). All pricing UI must import from these files — never hardcode prices in individual components.
+
+**Known stale locations found in audit (now fixed):** replit.md intro, scripts/seed-products.ts (used Athlete/Elite names at $9.99/$19.99), mobile profile.tsx ActionRow labels, mobile index.tsx banner (×2), web Home.tsx banner.
+
+**How to apply:** To change a price, update `plans.ts` only — all components that import from it will reflect the change automatically. Stripe price IDs are stored in env vars (`STRIPE_PRICE_*`) and must also be updated in Replit Secrets + Stripe dashboard.

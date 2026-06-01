@@ -2033,22 +2033,22 @@ export default function ProfileScreen() {
             />
             <ActionRow
               icon="flash-outline"
-              label="Rise — $9.99/mo"
-              sublabel="200 AI messages/day · Priority badge · Advanced analytics"
+              label="Rise — $4.99/mo · $39.99/yr"
+              sublabel="Improved scans · Macros · Meal planning · Habit reminders"
               color="#60a5fa"
               onPress={() => router.push("/membership")}
             />
             <ActionRow
               icon="star-outline"
-              label="Reign — $19.99/mo"
-              sublabel="500 AI messages/day · Meal plans · Body composition"
+              label="Reign — $9.99/mo · $79.99/yr ⭐ Best Value"
+              sublabel="Full AI coach · Cycle sync · Adaptive programs · Nutrition plans"
               color="#c084fc"
               onPress={() => router.push("/membership")}
             />
             <ActionRow
               icon="trophy-outline"
-              label="Legacy — $49.99/mo"
-              sublabel="Unlimited AI · 1-on-1 coaching · Founder badge"
+              label="Legacy — $19.99/mo · $149.99/yr"
+              sublabel="Fertility tracking · Wearables · Predictive alerts · Priority support"
               color="#fbbf24"
               onPress={() => router.push("/membership")}
               isLast

@@ -4,6 +4,11 @@
  * Creates the three RAIMZEAL membership products and prices in Stripe.
  * Safe to run multiple times — checks for existing products before creating.
  *
+ * Canonical prices (locked — do not change without explicit approval):
+ *   Rise:   $4.99/mo  · $39.99/yr
+ *   Reign:  $9.99/mo  · $79.99/yr  (Best Value)
+ *   Legacy: $19.99/mo · $149.99/yr
+ *
  * Usage:
  *   pnpm --filter @workspace/scripts exec tsx src/seed-products.ts
  */
@@ -11,18 +16,25 @@ import { getUncachableStripeClient } from "./stripeClient";
 
 const PRODUCTS = [
   {
-    name: "RAIMZEAL Athlete",
-    description: "Full workout library, unlimited Ovia AI, nutrition tracking, community posting, and more.",
-    tier: "athlete",
-    monthly: 999,   // $9.99
-    yearly: 9599,   // $95.99 (save 20%)
+    name: "RAIMZEAL Rise",
+    description: "Improved food scans, macro breakdown, basic meal planning, adaptive workouts, habit reminders, weekly wellness report, and more AI coach messages.",
+    tier: "rise",
+    monthly: 499,    // $4.99
+    yearly:  3999,   // $39.99 (save ~33%)
   },
   {
-    name: "RAIMZEAL Elite",
-    description: "Everything in Athlete plus priority Ovia AI, AI meal plans, coaching reports, and early access.",
-    tier: "elite",
-    monthly: 1999,  // $19.99
-    yearly: 19199,  // $191.99 (save 20%)
+    name: "RAIMZEAL Reign",
+    description: "Everything in Rise plus full AI wellness coach, full food scan analysis, cycle syncing, adaptive strength programs, stress & sleep readiness, nutrition planning, and wearable integration.",
+    tier: "reign",
+    monthly: 999,    // $9.99
+    yearly:  7999,   // $79.99 (save ~33%) — Best Value
+  },
+  {
+    name: "RAIMZEAL Legacy",
+    description: "Everything in Reign plus fertility & pregnancy wellness tracking, advanced wearable insights, predictive wellness alerts, advanced weekly reports, premium community challenges, priority support, and early access to new features.",
+    tier: "legacy",
+    monthly: 1999,   // $19.99
+    yearly:  14999,  // $149.99 (save ~37%)
   },
 ] as const;
 
@@ -52,8 +64,8 @@ async function seed() {
     }
 
     // Monthly price
-    const existingMonthly = await stripe.prices.list({ product: productId, active: true });
-    const hasMonthly = existingMonthly.data.some(
+    const existingPrices = await stripe.prices.list({ product: productId, active: true });
+    const hasMonthly = existingPrices.data.some(
       (p) => p.recurring?.interval === "month" && p.unit_amount === plan.monthly
     );
 
@@ -65,13 +77,13 @@ async function seed() {
         recurring: { interval: "month" },
         metadata: { tier: plan.tier, interval: "month" },
       });
-      console.log(`  ✚ Monthly price: $${plan.monthly / 100}/mo (${monthly.id})`);
+      console.log(`  ✚ Monthly price: $${(plan.monthly / 100).toFixed(2)}/mo (${monthly.id})`);
     } else {
       console.log(`  ✓ Monthly price already exists`);
     }
 
     // Yearly price
-    const hasYearly = existingMonthly.data.some(
+    const hasYearly = existingPrices.data.some(
       (p) => p.recurring?.interval === "year" && p.unit_amount === plan.yearly
     );
 
@@ -83,7 +95,7 @@ async function seed() {
         recurring: { interval: "year" },
         metadata: { tier: plan.tier, interval: "year" },
       });
-      console.log(`  ✚ Yearly price: $${plan.yearly / 100}/yr (${yearly.id})`);
+      console.log(`  ✚ Yearly price: $${(plan.yearly / 100).toFixed(2)}/yr (${yearly.id})`);
     } else {
       console.log(`  ✓ Yearly price already exists`);
     }
@@ -91,8 +103,11 @@ async function seed() {
     console.log();
   }
 
-  console.log("✅ Done! Stripe webhooks will sync products to your database automatically.");
-  console.log("   Restart the API server to pick up the new price IDs.");
+  console.log("✅ Done! Set the returned price IDs in Replit Secrets:");
+  console.log("   STRIPE_PRICE_RISE_MONTHLY, STRIPE_PRICE_RISE_YEARLY");
+  console.log("   STRIPE_PRICE_REIGN_MONTHLY, STRIPE_PRICE_REIGN_YEARLY");
+  console.log("   STRIPE_PRICE_LEGACY_MONTHLY, STRIPE_PRICE_LEGACY_YEARLY");
+  console.log("   Then restart the API server to pick up the new price IDs.");
 }
 
 seed().catch((err) => {
