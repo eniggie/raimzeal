@@ -1,0 +1,117 @@
+Update RAIMZEAL pricing and payment logic to reduce the plan prices and make the app compliant with Apple App Store and Google Play rules.
+
+First, inspect the current RAIMZEAL app before changing anything. Check if pricing plans, Stripe, subscriptions, Apple In-App Purchase, Google Play Billing, or payment logic already exist. Do not remove working features. Do not duplicate payment systems. If something already exists, update it carefully.
+
+Final RAIMZEAL plans and reduced prices:
+
+Foundation:
+Free forever
+
+Rise:
+$4.99/month
+$39.99/year
+
+Reign:
+$9.99/month
+$79.99/year
+
+Legacy:
+$19.99/month
+$149.99/year
+
+Remove the old pricing:
+Rise $9.99
+Reign $19.99
+Legacy $49.99
+
+Make Reign the recommended plan and label it “Best Value”.
+
+Add a founding member launch offer:
+“Reign Founding Member Price: $4.99/month for the first 1,000 members.”
+
+Plan structure:
+
+Foundation includes:
+Basic workout logging
+Basic food logging
+Water tracking
+Body measurements
+Progress photos
+Basic community challenges
+Limited AI wellness coach
+Limited barcode or food scan results
+Basic weekly summary
+
+Rise includes:
+Everything in Foundation
+Improved food scan results
+Macro breakdown with calories, protein, carbs, fat, fiber
+Basic meal planning
+Basic adaptive workouts
+Habit reminders
+Weekly wellness report
+More AI coach messages
+
+Reign includes:
+Everything in Rise
+Full AI wellness coach
+Full food scan analysis
+Cycle syncing
+Adaptive strength programs
+Stress and sleep readiness
+Nutrition planning and recipes
+Hydration recommendations
+Progress insights
+Wearable integration where available
+Priority AI recommendations
+
+Legacy includes:
+Everything in Reign
+Fertility and pregnancy wellness tracking
+Advanced wearable insights
+Predictive wellness alerts
+Advanced weekly reports
+Premium community challenges
+Priority support
+Early access to new features
+Legacy supporter badge
+
+Payment compliance rules:
+
+iOS app:
+Do not use Stripe checkout inside the iOS app for digital subscriptions or premium app features.
+Use Apple In-App Purchase for Rise, Reign, and Legacy subscriptions.
+Do not tell iOS users to leave the app to pay through Stripe.
+Do not show external payment links inside the iOS app for premium digital features.
+
+Android app:
+Use Google Play Billing for Rise, Reign, and Legacy subscriptions.
+
+Web app:
+Use Stripe Checkout for Rise, Reign, and Legacy subscriptions.
+
+Backend subscription logic:
+Store subscription status in the database so users can access the correct plan after login across web, iOS, and Android.
+The app should recognize the user’s active plan and unlock features accordingly.
+
+Platform detection:
+If platform is iOS, show Apple In-App Purchase.
+If platform is Android, show Google Play Billing.
+If platform is web, show Stripe Checkout.
+
+If Apple In-App Purchase or Google Play Billing is not fully configured yet:
+Create the pricing UI.
+Create the plan access structure.
+Mark mobile payments as pending setup.
+Do not break the app.
+Do not block Foundation users.
+
+Important:
+Keep Foundation free forever.
+Keep the app mobile-first.
+Keep the pricing page clean, modern, and app-store-ready.
+Update all pricing references across the app.
+Do not leave old pricing anywhere.
+If Stripe already exists, keep it only for the web version.
+If subscription logic already exists, update the prices and plan names only.
+After changes, run the app, test pricing pages, test plan display, test upgrade buttons, and summarize what was changed.
