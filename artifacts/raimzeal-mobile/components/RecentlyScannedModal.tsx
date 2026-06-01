@@ -280,6 +280,12 @@ interface PendingDelete {
   timer: ReturnType<typeof setTimeout>;
 }
 
+interface PendingClearAll {
+  scans: RecentScan[];
+  per100gScans: Set<string>;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 const UNDO_DURATION_MS = 3000;
 
 export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
@@ -292,14 +298,21 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [defaultPer100g] = usePer100gDefault();
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const pendingDeleteRef = useRef<PendingDelete | null>(null);
+  const [pendingClearAll, setPendingClearAll] = useState<PendingClearAll | null>(null);
+  const pendingClearAllRef = useRef<PendingClearAll | null>(null);
 
-  // Commit any pending delete when the component unmounts
+  // Commit any pending delete/clear when the component unmounts
   useEffect(() => {
     return () => {
       if (pendingDeleteRef.current) {
         clearTimeout(pendingDeleteRef.current.timer);
         commitDelete(pendingDeleteRef.current.scan.barcode);
         pendingDeleteRef.current = null;
+      }
+      if (pendingClearAllRef.current) {
+        clearTimeout(pendingClearAllRef.current.timer);
+        commitClearAll();
+        pendingClearAllRef.current = null;
       }
     };
   }, []);
@@ -340,6 +353,14 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   function commitDelete(barcode: string) {
     removeRecentScan(barcode).catch(() => {});
     removeViewPreference(barcode).catch(() => {});
+  }
+
+  function commitClearAll() {
+    Promise.all([
+      clearAllRecentScans(),
+      AsyncStorage.removeItem(LAST_USED_VIEW_KEY),
+      AsyncStorage.removeItem(SCAN_SWIPE_HINT_KEY),
+    ]).catch(() => {});
   }
 
   function handleRemove(barcode: string) {
@@ -425,7 +446,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
 
   function handleClearAll() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Commit any pending delete before clearing all
+    // Commit any pending single delete before clearing all
     if (pendingDeleteRef.current) {
       clearTimeout(pendingDeleteRef.current.timer);
       commitDelete(pendingDeleteRef.current.scan.barcode);
@@ -434,24 +455,46 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     }
     Alert.alert(
       "Clear all scans?",
-      "This will remove all recently scanned products. This cannot be undone.",
+      "This will remove all recently scanned products.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Clear all",
           style: "destructive",
-          onPress: async () => {
-            await Promise.all([
-              clearAllRecentScans(),
-              AsyncStorage.removeItem(LAST_USED_VIEW_KEY),
-              AsyncStorage.removeItem(SCAN_SWIPE_HINT_KEY),
-            ]);
+          onPress: () => {
+            // Snapshot current state so we can restore it on undo
+            const savedScans = scans;
+            const savedPer100g = per100gScans;
+
+            // Optimistically clear the UI
             setScans([]);
             setPer100gScans(new Set());
+
+            // Commit to storage only after the undo window expires
+            const timer = setTimeout(() => {
+              commitClearAll();
+              pendingClearAllRef.current = null;
+              setPendingClearAll(null);
+            }, UNDO_DURATION_MS);
+
+            const pca: PendingClearAll = { scans: savedScans, per100gScans: savedPer100g, timer };
+            pendingClearAllRef.current = pca;
+            setPendingClearAll(pca);
           },
         },
       ]
     );
+  }
+
+  function handleUndoClearAll() {
+    if (!pendingClearAllRef.current) return;
+    const { scans: savedScans, per100gScans: savedPer100g, timer } = pendingClearAllRef.current;
+    clearTimeout(timer);
+    pendingClearAllRef.current = null;
+    setPendingClearAll(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setScans(savedScans);
+    setPer100gScans(savedPer100g);
   }
 
   function handleClose() {
@@ -461,6 +504,13 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
       commitDelete(pendingDeleteRef.current.scan.barcode);
       pendingDeleteRef.current = null;
       setPendingDelete(null);
+    }
+    // Commit any pending clear-all when closing the sheet
+    if (pendingClearAllRef.current) {
+      clearTimeout(pendingClearAllRef.current.timer);
+      commitClearAll();
+      pendingClearAllRef.current = null;
+      setPendingClearAll(null);
     }
     onClose();
   }
@@ -614,7 +664,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
           )}
 
           {/* Undo toast */}
-          {pendingDelete !== null && (
+          {(pendingDelete !== null || pendingClearAll !== null) && (
             <View
               style={[
                 styles.undoToast,
@@ -628,10 +678,12 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                 ]}
                 numberOfLines={1}
               >
-                Scan removed
+                {pendingClearAll !== null
+                  ? `Cleared ${pendingClearAll.scans.length} scan${pendingClearAll.scans.length === 1 ? "" : "s"}`
+                  : "Scan removed"}
               </Text>
               <TouchableOpacity
-                onPress={handleUndo}
+                onPress={pendingClearAll !== null ? handleUndoClearAll : handleUndo}
                 hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
                 style={styles.undoBtn}
               >
