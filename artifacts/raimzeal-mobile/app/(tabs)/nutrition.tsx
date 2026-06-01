@@ -7440,6 +7440,42 @@ export default function NutritionScreen() {
                         {starred ? "Starred" : "Star"}
                       </Text>
                     </TouchableOpacity>
+                    {starred && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          Alert.alert(
+                            "More Options",
+                            item.name,
+                            [
+                              {
+                                text: "Reorder Favorites",
+                                onPress: () => {
+                                  setPreviewSheetFood(null);
+                                  enterReorderMode();
+                                },
+                              },
+                              {
+                                text: "Reset Defaults",
+                                style: "destructive",
+                                onPress: () => {
+                                  setPreviewSheetFood(null);
+                                  handleResetFoodDefaults(item.name);
+                                },
+                              },
+                              { text: "Cancel", style: "cancel" },
+                            ]
+                          );
+                        }}
+                        activeOpacity={0.8}
+                        style={[
+                          styles.previewSheetMoreBtn,
+                          { backgroundColor: colors.muted, borderColor: colors.border },
+                        ]}
+                      >
+                        <Ionicons name="ellipsis-horizontal" size={20} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       onPress={() => {
                         setPreviewSheetFood(null);
@@ -11428,6 +11464,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  previewSheetMoreBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 13,
     paddingVertical: 13,
     borderRadius: 14,
     borderWidth: 1,
