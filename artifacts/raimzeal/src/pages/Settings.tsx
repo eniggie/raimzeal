@@ -6,7 +6,7 @@ import {
   ChevronRight, Moon, Type, Bell,
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
   Target, Trophy, Globe, Trash2, Camera,
-  Wind, Calculator, ChefHat, ListChecks, Pill
+  Wind, Calculator, ChefHat, ListChecks, Pill, Settings2, Loader2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,44 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }:
 
   const { subscriptionTier } = useAuth();
   const canExport = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
+  const isPaidSubscriber = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState('');
+
+  async function handlePortal() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    let portalTab: Window | null = null;
+    try { portalTab = window.open('', '_blank'); } catch { /* sandbox blocks open */ }
+
+    setPortalLoading(true);
+    setPortalError('');
+    try {
+      const res = await fetch('/api/stripe/portal-session', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json() as { url?: string; error?: string };
+
+      if (!res.ok || !data.url) {
+        portalTab?.close();
+        setPortalError(data.error ?? 'Could not open billing portal. Please try again.');
+        return;
+      }
+
+      if (portalTab && !portalTab.closed) {
+        portalTab.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
+    } catch {
+      portalTab?.close();
+      setPortalError('Network error. Please check your connection and try again.');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   async function handleExportData() {
     if (exportLoading) return;
@@ -577,30 +615,58 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
         {/* Membership */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
           <h3 className="text-sm font-medium text-muted-foreground mb-2 px-1">Membership</h3>
-          <Link href="/membership">
-            <Card className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium">
-                    RAIMZEAL ·{' '}
-                    {subscriptionTier === 'rise' ? 'Rise Plan'
-                      : subscriptionTier === 'reign' ? 'Reign Plan'
-                      : subscriptionTier === 'legacy' ? 'Legacy Plan'
-                      : 'Foundation Plan'}
+          <div className="space-y-2">
+            <Link href="/membership">
+              <Card className="p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <Heart className="w-5 h-5 text-primary" />
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {subscriptionTier && subscriptionTier !== 'foundation'
-                      ? 'Thank you for supporting RAIMZEAL'
-                      : 'All features included, no subscription'}
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      RAIMZEAL ·{' '}
+                      {subscriptionTier === 'rise' ? 'Rise Plan'
+                        : subscriptionTier === 'reign' ? 'Reign Plan'
+                        : subscriptionTier === 'legacy' ? 'Legacy Plan'
+                        : 'Foundation Plan'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {isPaidSubscriber
+                        ? 'Thank you for supporting RAIMZEAL'
+                        : 'All features included, no subscription'}
+                    </div>
                   </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Card>
+            </Link>
+            {isPaidSubscriber && (
+              <div>
+                <button
+                  onClick={handlePortal}
+                  disabled={portalLoading}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors disabled:opacity-60"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Settings2 className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="font-medium text-sm">
+                      {portalLoading ? 'Opening billing portal…' : 'Manage Subscription'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Cancel, upgrade, or update billing</div>
+                  </div>
+                  {portalLoading
+                    ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />
+                    : <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+                  }
+                </button>
+                {portalError && (
+                  <p className="text-xs text-destructive mt-1 px-1 leading-relaxed">{portalError}</p>
+                )}
               </div>
-            </Card>
-          </Link>
+            )}
+          </div>
         </motion.div>
 
         {/* Health Tools */}

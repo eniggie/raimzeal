@@ -193,6 +193,65 @@ stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/stripe/portal-session — open Stripe Billing Portal for active subscribers
+stripeRouter.post("/stripe/portal-session", requireAuth, async (req, res) => {
+  const userId = (req as any).userId as string;
+
+  const origin =
+    req.headers.origin ??
+    (process.env["REPLIT_DOMAINS"]
+      ? `https://${process.env["REPLIT_DOMAINS"].split(",")[0]}`
+      : `${req.protocol}://${req.get("host")}`);
+
+  try {
+    const stripe = await getUncachableStripeClient();
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_customer_id, email")
+      .eq("id", userId)
+      .maybeSingle();
+
+    let customerId = (profile as any)?.stripe_customer_id as string | null | undefined;
+
+    if (!customerId) {
+      const email = (profile as any)?.email as string | undefined;
+      if (email) {
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        customerId = customers.data[0]?.id;
+      }
+    }
+
+    if (!customerId) {
+      res.status(400).json({ error: "No billing account found. Please subscribe first." });
+      return;
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/membership?portal=return`,
+    });
+
+    logger.info({ userId, customerId }, "Stripe billing portal session created");
+    res.json({ url: portalSession.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const isNotConfigured =
+      message.includes("not found") ||
+      message.includes("Connect Stripe") ||
+      message.includes("integration") ||
+      message.includes("Missing Replit");
+
+    if (isNotConfigured) {
+      logger.warn({ userId }, "Stripe not connected — portal unavailable");
+      res.status(503).json({ error: "Billing portal is not yet available.", code: "STRIPE_NOT_CONFIGURED" });
+    } else {
+      logger.error({ err, userId }, "Stripe billing portal session creation failed");
+      res.status(500).json({ error: "Could not open billing portal. Please try again." });
+    }
+  }
+});
+
 // POST /api/stripe/checkout — canonical path (task spec / new clients)
 stripeRouter.post("/stripe/checkout", requireAuth, handleCheckoutSession);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2, CheckCircle2, Flame } from 'lucide-react';
+import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell, X, Loader2, CheckCircle2, Flame, Settings2 } from 'lucide-react';
 import { Link, useLocation, useSearch } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
@@ -115,16 +115,25 @@ const PAID_PLANS = [
 export function Membership() {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const { refreshTier } = useAuth();
+  const { refreshTier, subscriptionTier } = useAuth();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
   const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
   const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState('');
+
+  const isPaidSubscriber = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
 
   useEffect(() => {
     const params = new URLSearchParams(search);
+    if (params.get('portal') === 'return') {
+      window.history.replaceState({}, '', '/membership');
+      refreshTier().catch(() => {});
+      return;
+    }
     if (params.get('checkout') !== 'success') return;
 
     setShowSuccess(true);
@@ -158,6 +167,44 @@ export function Membership() {
 
     return () => { if (poll) clearInterval(poll); };
   }, [search, refreshTier]);
+
+  async function handlePortal() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      navigate('/login');
+      return;
+    }
+
+    let portalTab: Window | null = null;
+    try { portalTab = window.open('', '_blank'); } catch { /* sandbox blocks open */ }
+
+    setPortalLoading(true);
+    setPortalError('');
+    try {
+      const res = await fetch('/api/stripe/portal-session', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json() as { url?: string; error?: string };
+
+      if (!res.ok || !data.url) {
+        portalTab?.close();
+        setPortalError(data.error ?? 'Could not open billing portal. Please try again.');
+        return;
+      }
+
+      if (portalTab && !portalTab.closed) {
+        portalTab.location.href = data.url;
+      } else {
+        window.location.href = data.url;
+      }
+    } catch {
+      portalTab?.close();
+      setPortalError('Network error. Please check your connection and try again.');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
     const { data: { session } } = await supabase.auth.getSession();
@@ -250,6 +297,49 @@ export function Membership() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Manage Subscription — shown for active paid subscribers */}
+        {isPaidSubscriber && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
+            className="mb-4 rounded-2xl glass p-5 border border-primary/20"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Settings2 className="h-5 w-5 text-primary" />
+              <p className="font-bold text-foreground">
+                Your Subscription ·{' '}
+                {subscriptionTier === 'rise' ? 'Rise Plan'
+                  : subscriptionTier === 'reign' ? 'Reign Plan'
+                  : 'Legacy Plan'}
+              </p>
+            </div>
+            <p className="text-xs text-foreground/60 mb-3 leading-relaxed">
+              Manage your billing, update your payment method, or cancel your subscription from the Stripe portal. Any changes take effect immediately.
+            </p>
+            <button
+              onClick={handlePortal}
+              disabled={portalLoading}
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {portalLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Opening billing portal…
+                </>
+              ) : (
+                <>
+                  <Settings2 className="w-4 h-4" />
+                  Manage Subscription
+                </>
+              )}
+            </button>
+            {portalError && (
+              <p className="text-xs text-destructive text-center mt-2 leading-relaxed">{portalError}</p>
+            )}
+          </motion.div>
+        )}
 
         {/* Foundation — Free Forever */}
         <motion.div
