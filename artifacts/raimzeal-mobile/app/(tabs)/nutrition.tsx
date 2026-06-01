@@ -1432,6 +1432,10 @@ export default function NutritionScreen() {
   const per100gToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const per100gToastAnim = useRef(new Animated.Value(0)).current;
 
+  const [savedMealToastMessage, setSavedMealToastMessage] = useState<string | null>(null);
+  const savedMealToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedMealToastAnim = useRef(new Animated.Value(0)).current;
+
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -2013,6 +2017,12 @@ export default function NutritionScreen() {
   useEffect(() => {
     return () => {
       if (reorderHintTimerRef.current) clearTimeout(reorderHintTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
     };
   }, []);
 
@@ -2618,6 +2628,19 @@ export default function NutritionScreen() {
     addMealLog(undoMeal);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showRestoredToast(dateStr);
+  }
+
+  function handleMealSaved(label: string) {
+    if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
+    setSavedMealToastMessage(label);
+    savedMealToastAnim.setValue(0);
+    Animated.spring(savedMealToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    savedMealToastTimerRef.current = setTimeout(() => {
+      Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        setSavedMealToastMessage(null);
+      });
+      savedMealToastTimerRef.current = null;
+    }, 2000);
   }
 
   function handleMealDelete(meal: MealLog) {
@@ -5030,6 +5053,7 @@ export default function NutritionScreen() {
                           log={log}
                           isFirst={log.id === firstTodayLogId}
                           onDelete={handleMealDelete}
+                          onSaved={handleMealSaved}
                           onToggleStar={() =>
                             handleToggleFavorite({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, servingLabel: log.amountGrams ? `${log.amountGrams}g` : undefined })
                           }
@@ -6213,6 +6237,7 @@ export default function NutritionScreen() {
                                   onAddFood={() => handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType })}
                                   onDelete={handleMealDelete}
                                   onLogToday={handleLogToday}
+                                  onSaved={handleMealSaved}
                                 />
                               ))}
                             </View>
@@ -7932,6 +7957,34 @@ export default function NutritionScreen() {
         </AnimatedPressable>
       )}
 
+      {savedMealToastMessage !== null && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.starToast,
+            {
+              backgroundColor: "#22c55e",
+              borderColor: "#16a34a",
+              transform: [
+                {
+                  translateY: savedMealToastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [100, 0],
+                  }),
+                },
+              ],
+              opacity: savedMealToastAnim,
+              bottom: insets.bottom + 16,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={[styles.starToastText, { color: "#fff" }]} numberOfLines={1}>
+            {savedMealToastMessage}
+          </Text>
+        </Animated.View>
+      )}
+
       {presetSavedMessage !== null && (
         <Animated.View
           pointerEvents="none"
@@ -8255,7 +8308,7 @@ function MacroBar({
   );
 }
 
-function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean }) {
+function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog, dismissHint, isHintDismissed } = useFitness();
   const swipeableRef = useRef<Swipeable>(null);
@@ -8449,9 +8502,10 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
     const savedServings = editServings;
     const savedMealType = editMealType;
     const savedGrams = editGrams;
+    const savedCalories = Math.round(savedBase.calories * savedServings);
     updateMealLog(log.id, {
       name,
-      calories: Math.round(savedBase.calories * savedServings),
+      calories: savedCalories,
       protein: Math.round(savedBase.protein * savedServings * 10) / 10,
       carbs: Math.round(savedBase.carbs * savedServings * 10) / 10,
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
@@ -8459,6 +8513,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     });
     setShowEditSheet(false);
+    onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
 
   function handleDelete() {
@@ -8931,7 +8986,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst }: { log
   );
 }
 
-function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean }) {
+function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog, favoriteFoods, dismissHint, isHintDismissed } = useFitness();
   const starred = favoriteFoods.some((f) => f.name === log.name);
@@ -9129,9 +9184,10 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
     const savedServings = editServings;
     const savedMealType = editMealType;
     const savedGrams = editGrams;
+    const savedCalories = Math.round(savedBase.calories * savedServings);
     updateMealLog(log.id, {
       name,
-      calories: Math.round(savedBase.calories * savedServings),
+      calories: savedCalories,
       protein: Math.round(savedBase.protein * savedServings * 10) / 10,
       carbs: Math.round(savedBase.carbs * savedServings * 10) / 10,
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
@@ -9139,6 +9195,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst }: { log: MealLog; 
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     });
     setShowEditSheet(false);
+    onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
 
   function handleDelete() {
