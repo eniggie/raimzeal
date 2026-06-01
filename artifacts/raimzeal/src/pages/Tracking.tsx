@@ -23,6 +23,7 @@ interface TrackingProps {
 }
 
 export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: TrackingProps) {
+  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -307,7 +308,7 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
                               {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </div>
                             <button
-                              onClick={() => onDeleteWorkoutLog(log.id)}
+                              onClick={() => setDeletingWorkoutId(log.id)}
                               className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
                               aria-label={`Delete ${log.workoutName}`}
                               data-testid={`delete-workout-log-${i}`}
@@ -439,6 +440,30 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
 
       <BottomNav />
       <ProgressShareCard open={shareOpen} onClose={() => setShareOpen(false)} state={state} />
+
+      <Dialog open={deletingWorkoutId !== null} onOpenChange={open => { if (!open) setDeletingWorkoutId(null); }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Delete this workout?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This entry will be permanently removed and cannot be undone.</p>
+          <div className="flex gap-3 mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDeletingWorkoutId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => {
+                if (deletingWorkoutId) onDeleteWorkoutLog(deletingWorkoutId);
+                setDeletingWorkoutId(null);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

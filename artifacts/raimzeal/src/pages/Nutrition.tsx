@@ -97,6 +97,7 @@ interface NutritionProps {
 }
 
 export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: NutritionProps) {
+  const [deletingMealId, setDeletingMealId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -1378,7 +1379,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="font-medium">{meal.calories}</span>
                           <button
-                            onClick={() => onDeleteMeal(meal.id)}
+                            onClick={() => setDeletingMealId(meal.id)}
                             className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
                             aria-label={`Delete ${meal.name}`}
                             data-testid={`delete-meal-${mealType}-${i}`}
@@ -1403,6 +1404,30 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
         </motion.div>
       </div>
       <BottomNav />
+
+      <Dialog open={deletingMealId !== null} onOpenChange={open => { if (!open) setDeletingMealId(null); }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Delete this meal?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This entry will be permanently removed and cannot be undone.</p>
+          <div className="flex gap-3 mt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setDeletingMealId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={() => {
+                if (deletingMealId) onDeleteMeal(deletingMealId);
+                setDeletingMealId(null);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
