@@ -450,6 +450,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             await Promise.all([
               clearAllRecentScans(),
               AsyncStorage.removeItem(LAST_USED_VIEW_KEY),
+              AsyncStorage.removeItem(SWIPE_HINT_KEY),
             ]);
             setScans([]);
             setPer100gScans(new Set());
