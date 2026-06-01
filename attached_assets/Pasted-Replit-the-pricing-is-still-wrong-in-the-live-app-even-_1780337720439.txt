@@ -1,0 +1,104 @@
+Replit, the pricing is still wrong in the live app even though you said it was corrected. Do not mark this task complete until the old prices are completely gone from every visible page, pricing card, upgrade modal, account page, paywall, mobile view, subscription screen, seed data, demo data, and database-driven display.
+
+First, inspect the entire RAIMZEAL app and find every place pricing is coming from. Check frontend components, pricing pages, settings pages, dashboard upgrade cards, subscription modals, onboarding screens, mobile navigation, feature-gating messages, backend routes, constants, seed data, database records, Stripe references, mock data, local storage defaults, and environment-driven pricing.
+
+The correct RAIMZEAL pricing must be:
+
+Foundation:
+Free forever
+
+Rise:
+$4.99/month
+$39.99/year
+
+Reign:
+$9.99/month
+$79.99/year
+
+Legacy:
+$19.99/month
+$149.99/year
+
+Old pricing that must no longer show as the active plan pricing:
+Rise $9.99/month
+Reign $19.99/month
+Legacy $49.99/month
+
+Important: $9.99 is allowed only for Reign monthly. $19.99 is allowed only for Legacy monthly. $49.99 must not appear anywhere as an active RAIMZEAL subscription price.
+
+Fix the pricing properly by creating one single source of truth for all RAIMZEAL plan prices and making every pricing UI read from it. Do not leave separate hard-coded plan prices in different components.
+
+Search for every reference to:
+$9.99
+9.99
+$19.99
+19.99
+$49.99
+49.99
+Rise
+Reign
+Legacy
+Foundation
+pricing
+subscription
+upgrade
+plans
+Stripe
+checkout
+paywall
+
+After searching, map every result to the correct plan. Update every wrong placement.
+
+Make Reign the recommended plan and label it:
+Best Value
+
+Add the founding member launch offer:
+Reign Founding Member Price: $4.99/month for the first 1,000 members.
+
+Payment compliance must remain:
+
+iOS app:
+Use Apple In-App Purchase for Rise, Reign, and Legacy.
+Do not show Stripe checkout inside the iOS app for digital subscriptions.
+Do not tell iOS users to leave the app to pay externally.
+
+Android app:
+Use Google Play Billing for Rise, Reign, and Legacy.
+
+Web app:
+Use Stripe Checkout for Rise, Reign, and Legacy.
+
+If mobile payments are not configured yet, keep the pricing UI correct and mark mobile payment setup as pending. Do not break Foundation users.
+
+Now verify the app visually, not just by editing files. Open the running app and check every place users can see pricing:
+Pricing page
+Homepage pricing section
+Upgrade page
+Dashboard upgrade card
+Account subscription page
+Settings subscription section
+Paywall screens
+Mobile pricing layout
+Any modals or popups
+Any onboarding pricing section
+
+Also check if old prices are coming from cached browser state, local storage, mock data, seed data, database table, or stale deployment. If needed, clear or update demo subscription data and seed pricing records so the app no longer reloads old pricing.
+
+Do not say “fixed” until you can confirm:
+
+Rise shows $4.99/month and $39.99/year
+Reign shows $9.99/month and $79.99/year
+Legacy shows $19.99/month and $149.99/year
+Foundation shows Free forever
+Legacy no longer shows $49.99 anywhere as an active subscription price
+Reign is labeled Best Value
+Stripe is only used for web
+Apple In-App Purchase is reserved for iOS
+Google Play Billing is reserved for Android
+
+After fixing, run the app, test the pricing flow, and give me a clear summary:
+1. Where the old prices were found
+2. What was corrected
+3. What pricing source now controls all plans
+4. Which pages were visually checked
+5. Whether any payment provider setup is still pending
