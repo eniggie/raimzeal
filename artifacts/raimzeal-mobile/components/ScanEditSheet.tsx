@@ -94,6 +94,13 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
     const updated = buildUpdated();
     onSaveAndAdd(updated);
     showLoggedToast(`${updated.name} added · ${updated.calories} kcal`);
+    if (food) {
+      setName(food.name);
+      setCalories(String(food.calories));
+      setProtein(String(food.protein));
+      setCarbs(String(food.carbs));
+      setFat(String(food.fat));
+    }
   }
 
   const canSave = name.trim().length > 0;
