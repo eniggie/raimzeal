@@ -7440,42 +7440,40 @@ export default function NutritionScreen() {
                         {starred ? "Starred" : "Star"}
                       </Text>
                     </TouchableOpacity>
-                    {starred && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          Alert.alert(
-                            "More Options",
-                            item.name,
-                            [
-                              {
-                                text: "Reorder Favorites",
-                                onPress: () => {
-                                  setPreviewSheetFood(null);
-                                  enterReorderMode();
-                                },
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        Alert.alert(
+                          "More Options",
+                          item.name,
+                          [
+                            ...(starred ? [{
+                              text: "Reorder Favorites",
+                              onPress: () => {
+                                setPreviewSheetFood(null);
+                                enterReorderMode();
                               },
-                              {
-                                text: "Reset Defaults",
-                                style: "destructive",
-                                onPress: () => {
-                                  setPreviewSheetFood(null);
-                                  handleResetFoodDefaults(item.name);
-                                },
+                            }] : []),
+                            {
+                              text: "Reset Defaults",
+                              style: "destructive" as const,
+                              onPress: () => {
+                                setPreviewSheetFood(null);
+                                handleResetFoodDefaults(item.name);
                               },
-                              { text: "Cancel", style: "cancel" },
-                            ]
-                          );
-                        }}
-                        activeOpacity={0.8}
-                        style={[
-                          styles.previewSheetMoreBtn,
-                          { backgroundColor: colors.muted, borderColor: colors.border },
-                        ]}
-                      >
-                        <Ionicons name="ellipsis-horizontal" size={20} color={colors.mutedForeground} />
-                      </TouchableOpacity>
-                    )}
+                            },
+                            { text: "Cancel", style: "cancel" as const },
+                          ]
+                        );
+                      }}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.previewSheetMoreBtn,
+                        { backgroundColor: colors.muted, borderColor: colors.border },
+                      ]}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={20} color={colors.mutedForeground} />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
                         setPreviewSheetFood(null);
