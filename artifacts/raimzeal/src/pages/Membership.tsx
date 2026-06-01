@@ -4,6 +4,7 @@ import { Check, ChevronLeft, Heart, ExternalLink, Shield, Zap, Star, Crown, Bell
 import { Link, useLocation, useSearch } from 'wouter';
 import { BottomNav } from '@/components/BottomNav';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 import { PLANS, ENTRY_PRICE_MONTHLY } from '@/lib/plans';
@@ -114,6 +115,7 @@ const PAID_PLANS = [
 export function Membership() {
   const [, navigate] = useLocation();
   const search = useSearch();
+  const { refreshTier } = useAuth();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
@@ -123,22 +125,39 @@ export function Membership() {
 
   useEffect(() => {
     const params = new URLSearchParams(search);
-    if (params.get('checkout') === 'success') {
-      setShowSuccess(true);
-      window.history.replaceState({}, '', '/membership');
-      (async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) return;
-          await fetch('/api/stripe/sync-subscription', {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          });
-        } catch {
-          // non-fatal — webhook will eventually fire
-        }
-      })();
-    }
-  }, [search]);
+    if (params.get('checkout') !== 'success') return;
+
+    setShowSuccess(true);
+    window.history.replaceState({}, '', '/membership');
+
+    let poll: ReturnType<typeof setInterval> | undefined;
+
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Ask the server to sync the Stripe subscription into the profile row
+        await fetch('/api/stripe/sync-subscription', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        // Refresh immediately, then poll up to ~15 s so webhook-delayed writes
+        // also get picked up without a full page reload
+        await refreshTier();
+        let attempts = 0;
+        poll = setInterval(async () => {
+          attempts++;
+          await refreshTier();
+          if (attempts >= 5) clearInterval(poll);
+        }, 3000);
+      } catch {
+        // non-fatal — webhook will eventually fire
+      }
+    })();
+
+    return () => { if (poll) clearInterval(poll); };
+  }, [search, refreshTier]);
 
   async function handleCheckout(tier: string, interval: 'monthly' | 'yearly') {
     const { data: { session } } = await supabase.auth.getSession();

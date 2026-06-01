@@ -52,7 +52,7 @@ function formatTime(dateStr: string): string {
 }
 
 export function Community() {
-  const { user } = useAuth();
+  const { user, subscriptionTier: userTier } = useAuth();
   const [posts, setPosts] = useState<LivePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -67,21 +67,6 @@ export function Community() {
 
   // Inner Circle tab
   const [communityTab, setCommunityTab] = useState<'feed' | 'inner-circle'>('feed');
-  const [userTier, setUserTier] = useState<'foundation' | 'rise' | 'reign' | 'legacy'>('foundation');
-
-  useEffect(() => {
-    if (!supabaseConfigured || !user?.id) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).single();
-        if (cancelled) return;
-        const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
-        setUserTier((t === 'rise' || t === 'reign' || t === 'legacy') ? t : 'foundation');
-      } catch { /* stay on foundation */ }
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id]);
 
   // Report state
   const [reportedPosts, setReportedPosts] = useState<Set<string>>(new Set());

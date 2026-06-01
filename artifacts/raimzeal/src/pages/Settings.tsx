@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight, Moon, Type, Bell,
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
@@ -31,24 +32,9 @@ interface SettingsProps {
 export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
   const user = state.user;
   const [exportLoading, setExportLoading] = useState(false);
-  const [canExport, setCanExport] = useState(false);
 
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', session.user.id).single();
-        const t = (data as Record<string, unknown> | null)?.['subscription_tier'] as string | null;
-        setSubscriptionTier(t ?? 'foundation');
-        setCanExport(t === 'rise' || t === 'reign' || t === 'legacy');
-      } catch {
-        // non-fatal — canExport stays false
-      }
-    })();
-  }, []);
+  const { subscriptionTier } = useAuth();
+  const canExport = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
 
   async function handleExportData() {
     if (exportLoading) return;
