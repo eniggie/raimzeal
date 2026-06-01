@@ -377,6 +377,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [newScanTrigger, setNewScanTrigger] = useState(0);
   const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
+  const [addedSuccess, setAddedSuccess] = useState(false);
+  const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (newScanTrigger === 0) return;
@@ -539,10 +541,46 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     };
   }
 
+  // Clear the auto-close timer on unmount to prevent state updates after removal
+  useEffect(() => {
+    return () => {
+      if (autoCloseTimer.current) {
+        clearTimeout(autoCloseTimer.current);
+        autoCloseTimer.current = null;
+      }
+    };
+  }, []);
+
+  // Reset success banner whenever a new scan result appears
+  useEffect(() => {
+    setAddedSuccess(false);
+    if (autoCloseTimer.current) {
+      clearTimeout(autoCloseTimer.current);
+      autoCloseTimer.current = null;
+    }
+  }, [cachedResult]);
+
   function handleUseCached() {
     if (!cachedResult) return;
     onFoodFound(scaledFood(cachedResult.food, servingMultiplier));
-    onClose();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAddedSuccess(true);
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    autoCloseTimer.current = setTimeout(() => {
+      autoCloseTimer.current = null;
+      handleClose();
+    }, 1500);
+  }
+
+  function handleAddAgain() {
+    if (!cachedResult) return;
+    onFoodFound(scaledFood(cachedResult.food, servingMultiplier));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    autoCloseTimer.current = setTimeout(() => {
+      autoCloseTimer.current = null;
+      handleClose();
+    }, 1500);
   }
 
   function handleStepMultiplier(delta: number) {
@@ -556,6 +594,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleRetry() {
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    setAddedSuccess(false);
     scanLock.current = false;
     setError(null);
     setCachedResult(null);
@@ -565,6 +605,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleClose() {
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    setAddedSuccess(false);
     scanLock.current = false;
     setScanning(true);
     setLoading(false);
@@ -576,6 +618,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleManualEntry() {
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    setAddedSuccess(false);
     scanLock.current = false;
     setScanning(true);
     setLoading(false);
@@ -951,27 +995,45 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                           </View>
                         )}
                         <View style={styles.resultActions}>
-                          <TouchableOpacity
-                            onPress={handleUseCached}
-                            style={styles.useBtn}
-                            disabled={refreshing}
-                          >
-                            <Text style={styles.useBtnText}>Add Food</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={handleRefresh}
-                            style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
-                            disabled={refreshing}
-                          >
-                            {refreshing ? (
-                              <ActivityIndicator color="#fff" size="small" style={{ width: 14, height: 14 }} />
-                            ) : (
-                              <Ionicons name="refresh" size={14} color="#fff" />
-                            )}
-                            <Text style={styles.refreshBtnText}>
-                              {refreshing ? "Updating…" : "Refresh"}
-                            </Text>
-                          </TouchableOpacity>
+                          {addedSuccess ? (
+                            <>
+                              <View style={styles.addedConfirm}>
+                                <Ionicons name="checkmark-circle" size={17} color="#a3e635" />
+                                <Text style={styles.addedConfirmText}>Added!</Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={handleAddAgain}
+                                style={styles.addAgainBtn}
+                              >
+                                <Ionicons name="add" size={14} color="#09090b" />
+                                <Text style={styles.addAgainBtnText}>Add again</Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <>
+                              <TouchableOpacity
+                                onPress={handleUseCached}
+                                style={styles.useBtn}
+                                disabled={refreshing}
+                              >
+                                <Text style={styles.useBtnText}>Add Food</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={handleRefresh}
+                                style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
+                                disabled={refreshing}
+                              >
+                                {refreshing ? (
+                                  <ActivityIndicator color="#fff" size="small" style={{ width: 14, height: 14 }} />
+                                ) : (
+                                  <Ionicons name="refresh" size={14} color="#fff" />
+                                )}
+                                <Text style={styles.refreshBtnText}>
+                                  {refreshing ? "Updating…" : "Refresh"}
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
                         </View>
                         <TouchableOpacity onPress={handleRetry} style={styles.scanAgainLink}>
                           <Text style={styles.scanAgainText}>Scan a different product</Text>
@@ -1516,6 +1578,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   useBtnText: {
+    color: "#09090b",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  addedConfirm: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "rgba(163,230,53,0.12)",
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(163,230,53,0.35)",
+  },
+  addedConfirmText: {
+    color: "#a3e635",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  addAgainBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  addAgainBtnText: {
     color: "#09090b",
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
