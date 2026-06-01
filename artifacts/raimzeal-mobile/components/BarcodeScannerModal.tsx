@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
+  Animated,
   ActivityIndicator,
   Modal,
   Platform,
@@ -349,9 +350,31 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [recentLoading, setRecentLoading] = useState(false);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
-  const [notFoundBanner, setNotFoundBanner] = useState(false);
+  const [notFoundBannerVisible, setNotFoundBannerVisible] = useState(false);
+  const notFoundOpacity = useRef(new Animated.Value(0)).current;
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewScans, setHasNewScans] = useState(false);
+
+  const showNotFoundBanner = useCallback(() => {
+    notFoundOpacity.stopAnimation();
+    setNotFoundBannerVisible(true);
+    Animated.timing(notFoundOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [notFoundOpacity]);
+
+  const hideNotFoundBanner = useCallback(() => {
+    notFoundOpacity.stopAnimation();
+    Animated.timing(notFoundOpacity, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setNotFoundBannerVisible(false);
+    });
+  }, [notFoundOpacity]);
 
   const loadRecentScans = useCallback(async (markViewed = false) => {
     setRecentLoading(true);
@@ -393,7 +416,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setRefreshing(false);
       setRefreshFailed(false);
       setActiveTab("scan");
-      setNotFoundBanner(false);
+      notFoundOpacity.setValue(0);
+      setNotFoundBannerVisible(false);
       setSearchQuery("");
       setHasNewScans(false);
       setPer100gScans(new Set());
@@ -422,7 +446,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setScanning(false);
       setLoading(true);
       setError(null);
-      setNotFoundBanner(false);
+      hideNotFoundBanner();
 
       const result = await fetchFoodByBarcode(data);
       setLoading(false);
@@ -436,14 +460,14 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
           onClose();
         }
       } else {
-        setNotFoundBanner(true);
+        showNotFoundBanner();
         setActiveTab("recent");
         loadRecentScans();
       }
       // Lock is intentionally NOT released here — the user must tap
       // "Scan Again" / switch tabs to re-arm the scanner.
     },
-    [scanLock, onFoodFound, onClose, loadRecentScans]
+    [scanLock, onFoodFound, onClose, loadRecentScans, showNotFoundBanner, hideNotFoundBanner]
   );
 
   async function handleRefresh() {
@@ -581,7 +605,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setScanning(true);
       setError(null);
       setCachedResult(null);
-      setNotFoundBanner(false);
+      hideNotFoundBanner();
       setSearchQuery("");
     }
   }
@@ -870,13 +894,13 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
               {/* Recent tab content */}
               {activeTab === "recent" && (
                 <View style={[styles.recentPanel, { paddingBottom: insets.bottom + 16 }]}>
-                  {notFoundBanner && (
-                    <View style={styles.notFoundBanner}>
+                  {notFoundBannerVisible && (
+                    <Animated.View style={[styles.notFoundBanner, { opacity: notFoundOpacity }]}>
                       <Ionicons name="search-outline" size={16} color="#fbbf24" />
                       <Text style={styles.notFoundBannerText}>
                         Not found — try a recent product instead
                       </Text>
-                    </View>
+                    </Animated.View>
                   )}
                   {!recentLoading && recentScans.length > 0 && (
                     <View style={styles.searchBarRow}>
