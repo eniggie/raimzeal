@@ -354,6 +354,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number } | null>(null);
+  const [servingMultiplier, setServingMultiplier] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("scan");
@@ -523,10 +524,35 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     }
   }
 
+  // Reset multiplier whenever a new scan result arrives
+  useEffect(() => {
+    setServingMultiplier(1);
+  }, [cachedResult]);
+
+  function scaledFood(food: ScannedFood, multiplier: number): ScannedFood {
+    return {
+      ...food,
+      calories: Math.round(food.calories * multiplier),
+      protein: Math.round(food.protein * multiplier * 10) / 10,
+      carbs: Math.round(food.carbs * multiplier * 10) / 10,
+      fat: Math.round(food.fat * multiplier * 10) / 10,
+    };
+  }
+
   function handleUseCached() {
     if (!cachedResult) return;
-    onFoodFound(cachedResult.food);
+    onFoodFound(scaledFood(cachedResult.food, servingMultiplier));
     onClose();
+  }
+
+  function handleStepMultiplier(delta: number) {
+    setServingMultiplier((prev) => {
+      const next = Math.round((prev + delta) * 10) / 10;
+      if (next < 0.5) return prev;
+      if (next > 10) return prev;
+      return next;
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
   function handleRetry() {
@@ -876,19 +902,38 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                             <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.6)" />
                           </TouchableOpacity>
                         </View>
+                        {(() => { const s = scaledFood(cachedResult.food, servingMultiplier); return (
                         <Text style={styles.resultMacros}>
-                          {cachedResult.food.calories} cal · {cachedResult.food.protein}g P · {cachedResult.food.carbs}g C · {cachedResult.food.fat}g F
+                          {s.calories} cal · {s.protein}g P · {s.carbs}g C · {s.fat}g F
                         </Text>
+                        ); })()}
                         {cachedResult.food.servingLabel ? (
                           <Text style={styles.resultServingNote} numberOfLines={1}>
                             1 serving = {cachedResult.food.servingLabel}
                           </Text>
                         ) : null}
-                        <View style={styles.resultServingRow}>
-                          <View style={styles.resultServingPill}>
-                            <Text style={styles.resultServingPillText}>
-                              {cachedResult.food.servingLabel ? `per ${cachedResult.food.servingLabel}` : "per 100g"}
+                        <View style={styles.servingStepperRow}>
+                          <Text style={styles.servingStepperLabel}>Servings</Text>
+                          <View style={styles.servingStepper}>
+                            <TouchableOpacity
+                              onPress={() => handleStepMultiplier(-0.5)}
+                              style={[styles.stepperBtn, servingMultiplier <= 0.5 && styles.stepperBtnDisabled]}
+                              disabled={servingMultiplier <= 0.5}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Ionicons name="remove" size={16} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.stepperValue}>
+                              {servingMultiplier}×
                             </Text>
+                            <TouchableOpacity
+                              onPress={() => handleStepMultiplier(0.5)}
+                              style={[styles.stepperBtn, servingMultiplier >= 10 && styles.stepperBtnDisabled]}
+                              disabled={servingMultiplier >= 10}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Ionicons name="add" size={16} color="#fff" />
+                            </TouchableOpacity>
                           </View>
                         </View>
                         <View style={styles.cacheAgeRow}>
@@ -1419,21 +1464,43 @@ const styles = StyleSheet.create({
     marginLeft: 26,
     marginTop: 1,
   },
-  resultServingRow: {
+  servingStepperRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginLeft: 26,
-    marginTop: 4,
+    marginTop: 6,
   },
-  resultServingPill: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  resultServingPillText: {
-    color: "rgba(255,255,255,0.65)",
-    fontSize: 11,
+  servingStepperLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  servingStepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    overflow: "hidden",
+  },
+  stepperBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepperBtnDisabled: {
+    opacity: 0.3,
+  },
+  stepperValue: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 36,
+    textAlign: "center",
+    paddingVertical: 6,
   },
   resultActions: {
     flexDirection: "row",
