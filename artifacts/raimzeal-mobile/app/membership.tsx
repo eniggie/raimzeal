@@ -1,20 +1,31 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
+  Linking,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+
 import { STRIPE_DONATION_URL } from "@/lib/constants";
 import { PLANS, ENTRY_PRICE_MONTHLY } from "@/lib/plans";
-import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { LinearGradient } from "expo-linear-gradient";
-import { Linking } from "react-native";
+import {
+  getOffering,
+  purchasePackage,
+  restorePurchases,
+  getCustomerInfo,
+  hasPremium,
+  type PurchasesPackage,
+  type CustomerInfo,
+} from "@/lib/revenuecat";
 
 const FOUNDATION_FEATURES = [
   "Basic workout logging",
@@ -65,7 +76,7 @@ const LEGACY_FEATURES = [
   "Legacy supporter badge",
 ];
 
-type PaidPlan = {
+type PaidPlanDef = {
   key: string;
   name: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -80,9 +91,11 @@ type PaidPlan = {
   badgeLabel: string | null;
   foundingOffer: string | null;
   features: string[];
+  rcMonthlyId: string;
+  rcYearlyId: string;
 };
 
-const PAID_PLANS: PaidPlan[] = [
+const PAID_PLANS: PaidPlanDef[] = [
   {
     key: "rise",
     name: PLANS.rise.name,
@@ -98,6 +111,8 @@ const PAID_PLANS: PaidPlan[] = [
     badgeLabel: PLANS.rise.badgeLabel,
     foundingOffer: PLANS.rise.foundingOffer,
     features: RISE_FEATURES,
+    rcMonthlyId: "raimzeal_rise_monthly",
+    rcYearlyId: "raimzeal_rise_yearly",
   },
   {
     key: "reign",
@@ -114,6 +129,8 @@ const PAID_PLANS: PaidPlan[] = [
     badgeLabel: PLANS.reign.badgeLabel,
     foundingOffer: PLANS.reign.foundingOffer,
     features: REIGN_FEATURES,
+    rcMonthlyId: "raimzeal_reign_monthly",
+    rcYearlyId: "raimzeal_reign_yearly",
   },
   {
     key: "legacy",
@@ -130,6 +147,8 @@ const PAID_PLANS: PaidPlan[] = [
     badgeLabel: PLANS.legacy.badgeLabel,
     foundingOffer: PLANS.legacy.foundingOffer,
     features: LEGACY_FEATURES,
+    rcMonthlyId: "raimzeal_legacy_monthly",
+    rcYearlyId: "raimzeal_legacy_yearly",
   },
 ];
 
@@ -139,53 +158,115 @@ function getPlatformPaymentLabel(): string {
   return "Stripe";
 }
 
-function getPlatformPaymentNote(): string {
-  if (Platform.OS === "ios") {
-    return "iOS subscriptions are processed via Apple In-App Purchase. Native payment setup is in progress — check back soon!";
-  }
-  if (Platform.OS === "android") {
-    return "Android subscriptions are processed via Google Play Billing. Native payment setup is in progress — check back soon!";
-  }
-  return "";
-}
-
 export default function MembershipScreen() {
   const colors = useColors();
   const router = useRouter();
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
 
+  const [packages, setPackages] = useState<Record<string, PurchasesPackage>>({});
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [loadingPkgs, setLoadingPkgs] = useState(Platform.OS !== "web");
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
   const isMobilePlatform = Platform.OS === "ios" || Platform.OS === "android";
   const paymentLabel = getPlatformPaymentLabel();
-  const paymentNote = getPlatformPaymentNote();
+  const isPremium = customerInfo ? hasPremium(customerInfo) : false;
 
-  function handleSubscribeTap(plan: PaidPlan, interval: "monthly" | "yearly") {
-    const price = interval === "monthly" ? plan.monthly : plan.yearly;
-    const period = interval === "monthly" ? "/mo" : "/yr";
+  useEffect(() => {
+    if (!isMobilePlatform) return;
+    let cancelled = false;
 
-    if (Platform.OS === "ios") {
-      Alert.alert(
-        `${plan.name} — Apple In-App Purchase`,
-        `$${price.toFixed(2)}${period}\n\nApple In-App Purchase setup is in progress. Thank you for your interest in the ${plan.name} plan! We'll notify you as soon as native iOS payments are available.\n\nIn the meantime, you can subscribe via our website at raimzeal.com.`,
-        [
-          { text: "Visit raimzeal.com", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
-          { text: "OK", style: "cancel" },
-        ]
-      );
-      return;
+    async function load() {
+      try {
+        const [offering, info] = await Promise.all([
+          getOffering(),
+          getCustomerInfo(),
+        ]);
+        if (cancelled) return;
+        if (info) setCustomerInfo(info);
+        if (offering?.availablePackages) {
+          const map: Record<string, PurchasesPackage> = {};
+          for (const pkg of offering.availablePackages) {
+            map[pkg.identifier] = pkg;
+          }
+          setPackages(map);
+        }
+      } catch (e) {
+        console.warn("[membership] load error:", e);
+      } finally {
+        if (!cancelled) setLoadingPkgs(false);
+      }
     }
 
-    if (Platform.OS === "android") {
-      Alert.alert(
-        `${plan.name} — Google Play Billing`,
-        `$${price.toFixed(2)}${period}\n\nGoogle Play Billing setup is in progress. Thank you for your interest in the ${plan.name} plan! We'll notify you as soon as native Android payments are available.\n\nIn the meantime, you can subscribe via our website at raimzeal.com.`,
-        [
-          { text: "Visit raimzeal.com", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
-          { text: "OK", style: "cancel" },
-        ]
-      );
-      return;
+    load();
+    return () => { cancelled = true; };
+  }, [isMobilePlatform]);
+
+  const handleSubscribeTap = useCallback(
+    async (plan: PaidPlanDef, interval: "monthly" | "yearly") => {
+      if (isPremium) {
+        Alert.alert("Already Subscribed", "You already have an active premium subscription. Thank you for your support!");
+        return;
+      }
+
+      const pkgId = interval === "monthly" ? plan.rcMonthlyId : plan.rcYearlyId;
+      const pkg = packages[pkgId];
+
+      if (!isMobilePlatform) {
+        Linking.openURL("https://raimzeal.com/membership");
+        return;
+      }
+
+      if (!pkg) {
+        Alert.alert(
+          "Not Available",
+          "This plan is not yet available for purchase in your region. Please try again later or visit raimzeal.com.",
+          [
+            { text: "Visit Website", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+        return;
+      }
+
+      setPurchasing(pkgId);
+      try {
+        const info = await purchasePackage(pkg);
+        if (info) {
+          setCustomerInfo(info);
+          if (hasPremium(info)) {
+            Alert.alert("Welcome to " + plan.name + "!", "Your subscription is now active. Enjoy your premium access.");
+          }
+        }
+      } catch (e: unknown) {
+        const err = e as { message?: string };
+        Alert.alert("Purchase Failed", err?.message ?? "Something went wrong. Please try again.");
+      } finally {
+        setPurchasing(null);
+      }
+    },
+    [packages, isPremium, isMobilePlatform]
+  );
+
+  const handleRestore = useCallback(async () => {
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      if (info) {
+        setCustomerInfo(info);
+        if (hasPremium(info)) {
+          Alert.alert("Purchases Restored", "Your premium subscription has been restored.");
+        } else {
+          Alert.alert("No Purchases Found", "No active subscriptions were found for your account.");
+        }
+      }
+    } catch {
+      Alert.alert("Restore Failed", "Could not restore purchases. Please try again.");
+    } finally {
+      setRestoring(false);
     }
-  }
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -193,7 +274,7 @@ export default function MembershipScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>Membership</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             Foundation is free forever. Rise, Reign &amp; Legacy unlock more.
@@ -205,16 +286,22 @@ export default function MembershipScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Platform payment notice */}
-        {isMobilePlatform && (
-          <View style={[styles.platformNotice, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
-            <Ionicons
-              name={Platform.OS === "ios" ? "logo-apple" : "logo-google-playstore"}
-              size={16}
-              color="#2E8B57"
-            />
-            <Text style={[styles.platformNoticeText, { color: colors.mutedForeground }]}>
-              {paymentNote}
+        {/* Active subscription banner */}
+        {isPremium && (
+          <View style={[styles.activeBanner, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5718" }]}>
+            <Ionicons name="checkmark-circle" size={18} color="#2E8B57" />
+            <Text style={[styles.activeBannerText, { color: "#2E8B57" }]}>
+              You have an active premium subscription — thank you!
+            </Text>
+          </View>
+        )}
+
+        {/* Loading skeleton while packages load */}
+        {loadingPkgs && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#2E8B57" />
+            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+              Loading plans…
             </Text>
           </View>
         )}
@@ -237,7 +324,6 @@ export default function MembershipScreen() {
               <Text style={[styles.priceSub, { color: colors.mutedForeground }]}>forever</Text>
             </View>
           </View>
-
           <View style={styles.featureList}>
             {FOUNDATION_FEATURES.map((f) => (
               <View key={f} style={styles.featureRow}>
@@ -275,6 +361,10 @@ export default function MembershipScreen() {
         {PAID_PLANS.map((plan) => {
           const price = billing === "monthly" ? plan.monthly : plan.yearly;
           const period = billing === "monthly" ? "/mo" : "/yr";
+          const pkgId = billing === "monthly" ? plan.rcMonthlyId : plan.rcYearlyId;
+          const pkg = packages[pkgId];
+          const rcPrice = pkg?.product?.priceString;
+          const isLoading = purchasing === pkgId;
 
           return (
             <View key={plan.key}>
@@ -304,13 +394,12 @@ export default function MembershipScreen() {
                   </View>
                   <View style={styles.priceBlock}>
                     <Text style={[styles.price, { color: plan.color }]}>
-                      ${price.toFixed(2)}
+                      {rcPrice ?? `$${price.toFixed(2)}`}
                     </Text>
                     <Text style={[styles.priceSub, { color: colors.mutedForeground }]}>{period}</Text>
                   </View>
                 </View>
 
-                {/* Founding member offer */}
                 {plan.foundingOffer && (
                   <View style={[styles.foundingBanner, { borderColor: plan.color + "40", backgroundColor: plan.color + "12" }]}>
                     <Ionicons name="flame" size={13} color={plan.color} />
@@ -331,17 +420,27 @@ export default function MembershipScreen() {
                   style={[
                     styles.ctaBtn,
                     {
-                      backgroundColor: plan.color + "25",
+                      backgroundColor: isPremium ? plan.color + "10" : plan.color + "25",
                       borderColor: plan.color + "60",
                       borderWidth: 1,
+                      opacity: isLoading || restoring ? 0.7 : 1,
                     },
                   ]}
                   activeOpacity={0.8}
+                  disabled={isLoading || restoring}
                   onPress={() => handleSubscribeTap(plan, billing)}
                 >
-                  <Text style={[styles.ctaText, { color: plan.color }]}>
-                    {`Subscribe via ${paymentLabel} — $${price.toFixed(2)}${period}`}
-                  </Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={plan.color} />
+                  ) : (
+                    <Text style={[styles.ctaText, { color: plan.color }]}>
+                      {isPremium
+                        ? `${plan.name} — Active`
+                        : isMobilePlatform
+                        ? `Subscribe via ${paymentLabel} — ${rcPrice ?? `$${price.toFixed(2)}${period}`}`
+                        : `Subscribe — $${price.toFixed(2)}${period}`}
+                    </Text>
+                  )}
                 </TouchableOpacity>
 
                 <Text style={[styles.secureNote, { color: colors.mutedForeground }]}>
@@ -353,6 +452,23 @@ export default function MembershipScreen() {
             </View>
           );
         })}
+
+        {/* Restore purchases */}
+        {isMobilePlatform && (
+          <TouchableOpacity
+            style={styles.restoreRow}
+            onPress={handleRestore}
+            disabled={restoring}
+          >
+            {restoring ? (
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
+            ) : (
+              <Text style={[styles.restoreText, { color: colors.mutedForeground }]}>
+                Restore Purchases
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Donation card */}
         <View style={[styles.donationCard, { borderColor: "#2E8B5740", backgroundColor: "#2E8B5710" }]}>
@@ -425,15 +541,24 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, marginTop: 2 },
   scroll:   { paddingHorizontal: 16, paddingBottom: 48, gap: 12 },
 
-  platformNotice: {
+  activeBanner: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 8,
     borderRadius: 12,
     borderWidth: 1,
     padding: 12,
   },
-  platformNoticeText: { fontSize: 12, flex: 1, lineHeight: 18 },
+  activeBannerText: { fontSize: 13, fontWeight: "600", flex: 1 },
+
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 8,
+  },
+  loadingText: { fontSize: 13 },
 
   toggleRow: {
     flexDirection: "row",
@@ -506,6 +631,7 @@ const styles = StyleSheet.create({
   featureRow:  { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   checkIcon:   { marginTop: 1 },
   featureText: { fontSize: 13, flex: 1, lineHeight: 18 },
+
   ctaBtn: {
     borderRadius: 14,
     paddingVertical: 13,
@@ -515,6 +641,12 @@ const styles = StyleSheet.create({
   },
   ctaText:    { fontSize: 14, fontWeight: "700", textAlign: "center" },
   secureNote: { fontSize: 11, textAlign: "center", marginTop: -4 },
+
+  restoreRow: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  restoreText: { fontSize: 13, textDecorationLine: "underline" },
 
   donationCard: {
     borderRadius: 18,

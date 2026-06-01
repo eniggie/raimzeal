@@ -36,8 +36,11 @@ import {
   requestNotificationPermissions,
   scheduleReminders,
 } from "@/lib/notifications";
+import { configureRevenueCat } from "@/lib/revenuecat";
 
 SplashScreen.preventAutoHideAsync();
+
+if (Platform.OS !== "web") configureRevenueCat();
 
 const queryClient = new QueryClient();
 
