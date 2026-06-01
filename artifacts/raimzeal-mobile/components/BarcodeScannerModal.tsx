@@ -473,6 +473,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       if (result) {
         if (result.fromCache) {
           setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now() });
+          setHasNewScans(true);
           loadRecentScans();
         } else {
           onFoodFound(result.food);
