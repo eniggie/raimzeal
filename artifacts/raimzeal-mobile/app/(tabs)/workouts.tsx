@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -232,6 +233,20 @@ const secStyles = StyleSheet.create({
   metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   indentedLog: { marginLeft: 12 },
+  deleteAction: {
+    backgroundColor: "#ef4444",
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    marginLeft: 8,
+    gap: 4,
+  },
+  deleteActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
 });
 
 const DEFAULT_PROGRAMS: ProgramItem[] = [
@@ -394,7 +409,7 @@ export default function WorkoutsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { workoutLogs } = useFitness();
+  const { workoutLogs, removeWorkoutLog } = useFitness();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("library");
   const [programs, setPrograms] = useState<ProgramItem[]>([]);
@@ -1285,7 +1300,37 @@ export default function WorkoutsScreen() {
             // type === "log"
             return (
               <View style={item.indented ? secStyles.indentedLog : undefined}>
-                <WorkoutCard workout={item.log} />
+                <Swipeable
+                  renderRightActions={() => (
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        Alert.alert(
+                          "Delete Workout",
+                          `Delete "${item.log.workoutName}"? This cannot be undone.`,
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () => {
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                removeWorkoutLog(item.log.id);
+                              },
+                            },
+                          ]
+                        );
+                      }}
+                      style={secStyles.deleteAction}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#fff" />
+                      <Text style={secStyles.deleteActionText}>Delete</Text>
+                    </TouchableOpacity>
+                  )}
+                  overshootRight={false}
+                >
+                  <WorkoutCard workout={item.log} />
+                </Swipeable>
               </View>
             );
           }}

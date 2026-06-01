@@ -223,6 +223,20 @@ export async function upsertMealLog(userId: string, meal: MealLog) {
   } catch { /* non-fatal */ }
 }
 
+export async function deleteMealLog(id: string) {
+  if (!isSupabaseConfigured) return;
+  try {
+    await supabase.from("meal_logs").delete().eq("id", id);
+  } catch { /* non-fatal */ }
+}
+
+export async function deleteWorkoutLog(id: string) {
+  if (!isSupabaseConfigured) return;
+  try {
+    await supabase.from("workout_logs").delete().eq("id", id);
+  } catch { /* non-fatal */ }
+}
+
 // ─── Body Measurements ─────────────────────────────────────────────────────
 
 export async function insertBodyMeasurement(userId: string, m: BodyMeasurement) {

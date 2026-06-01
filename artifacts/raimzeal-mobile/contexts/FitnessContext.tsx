@@ -37,6 +37,8 @@ import {
   fetchUserPreferences,
   upsertUserPreferences,
   upsertMealLog,
+  deleteMealLog,
+  deleteWorkoutLog,
   getApiBase,
   advanceEnrolledProgram,
   type UserPreferences,
@@ -195,6 +197,7 @@ interface FitnessContextType extends AppState {
   addWorkoutLog: (log: WorkoutLog) => void;
   addMealLog: (meal: MealLog) => void;
   removeMealLog: (id: string) => void;
+  removeWorkoutLog: (id: string) => void;
   updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id" | "date">>) => void;
   addBodyMeasurement: (m: BodyMeasurement) => void;
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
@@ -567,6 +570,23 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setState((prev) => {
         const next = { ...prev, mealLogs: prev.mealLogs.filter((m) => m.id !== id) };
         persist(next);
+        if (isSupabaseConfigured) {
+          deleteMealLog(id).catch(() => {});
+        }
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  const removeWorkoutLog = useCallback(
+    (id: string) => {
+      setState((prev) => {
+        const next = { ...prev, workoutLogs: prev.workoutLogs.filter((w) => w.id !== id) };
+        persist(next);
+        if (isSupabaseConfigured) {
+          deleteWorkoutLog(id).catch(() => {});
+        }
         return next;
       });
     },
@@ -1060,6 +1080,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         addWorkoutLog,
         addMealLog,
         removeMealLog,
+        removeWorkoutLog,
         updateMealLog,
         addBodyMeasurement,
         addOviaMessage,
