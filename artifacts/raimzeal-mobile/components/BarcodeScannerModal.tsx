@@ -370,8 +370,24 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const notFoundOpacity = useRef(new Animated.Value(0)).current;
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewScans, setHasNewScans] = useState(false);
+  const recentTabPulse = useRef(new Animated.Value(1)).current;
+  // Increments on every successful cached scan so the animation fires for
+  // each scan — not just the first — even when hasNewScans is already true.
+  const [newScanTrigger, setNewScanTrigger] = useState(0);
   const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
+
+  useEffect(() => {
+    if (newScanTrigger === 0) return;
+    recentTabPulse.stopAnimation();
+    recentTabPulse.setValue(1);
+    Animated.sequence([
+      Animated.timing(recentTabPulse, { toValue: 1.18, duration: 160, useNativeDriver: true }),
+      Animated.timing(recentTabPulse, { toValue: 0.94, duration: 110, useNativeDriver: true }),
+      Animated.timing(recentTabPulse, { toValue: 1.08, duration: 90,  useNativeDriver: true }),
+      Animated.timing(recentTabPulse, { toValue: 1,    duration: 100, useNativeDriver: true }),
+    ]).start();
+  }, [newScanTrigger, recentTabPulse]);
 
   const showNotFoundBanner = useCallback(() => {
     notFoundOpacity.stopAnimation();
@@ -439,6 +455,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setSearchQuery("");
       setActiveFilter(null);
       setHasNewScans(false);
+      setNewScanTrigger(0);
       setPer100gScans(new Set());
       loadRecentScans();
     }
@@ -474,6 +491,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         if (result.fromCache) {
           setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now() });
           setHasNewScans(true);
+          setNewScanTrigger((c) => c + 1);
           loadRecentScans();
         } else {
           onFoodFound(result.food);
@@ -776,22 +794,24 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                     Scan
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleSwitchTab("recent")}
-                  style={[styles.tab, activeTab === "recent" && styles.tabActive]}
-                >
-                  <Ionicons
-                    name="time-outline"
-                    size={15}
-                    color={activeTab === "recent" ? "#09090b" : "rgba(255,255,255,0.7)"}
-                  />
-                  <Text style={[styles.tabText, activeTab === "recent" && styles.tabTextActive]}>
-                    {recentScans.length > 0 ? `Recent · ${recentScans.length}` : "Recent"}
-                  </Text>
-                  {hasNewScans && activeTab !== "recent" && (
-                    <View style={styles.newScanDot} />
-                  )}
-                </TouchableOpacity>
+                <Animated.View style={{ transform: [{ scale: recentTabPulse }] }}>
+                  <TouchableOpacity
+                    onPress={() => handleSwitchTab("recent")}
+                    style={[styles.tab, activeTab === "recent" && styles.tabActive]}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={15}
+                      color={activeTab === "recent" ? "#09090b" : "rgba(255,255,255,0.7)"}
+                    />
+                    <Text style={[styles.tabText, activeTab === "recent" && styles.tabTextActive]}>
+                      {recentScans.length > 0 ? `Recent · ${recentScans.length}` : "Recent"}
+                    </Text>
+                    {hasNewScans && activeTab !== "recent" && (
+                      <View style={styles.newScanDot} />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
 
               {/* Scan tab content */}
