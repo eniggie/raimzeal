@@ -100,8 +100,14 @@ function AppContent() {
     completeOnboarding,
     addWorkoutLog,
     removeWorkoutLog,
+    removeWorkoutLogOptimistic,
+    restoreWorkoutLog,
+    confirmWorkoutRemoval,
     addMealLog,
     removeMealLog,
+    removeMealLogOptimistic,
+    restoreMealLog,
+    confirmMealRemoval,
     updateWaterIntake,
     scheduleWorkout,
     addBodyMeasurement,
@@ -239,13 +245,26 @@ function AppContent() {
         <ExerciseDetail />
       </Route>
       <Route path="/tracking">
-        <Tracking state={state} onAddMeasurement={addBodyMeasurement} onDeleteWorkoutLog={removeWorkoutLog} />
+        <Tracking
+          state={state}
+          onAddMeasurement={addBodyMeasurement}
+          onRemoveWorkoutLogOptimistic={removeWorkoutLogOptimistic}
+          onRestoreWorkoutLog={restoreWorkoutLog}
+          onConfirmWorkoutRemoval={confirmWorkoutRemoval}
+        />
       </Route>
       <Route path="/calendar">
         <Calendar state={state} onScheduleWorkout={scheduleWorkout} />
       </Route>
       <Route path="/nutrition">
-        <Nutrition state={state} onAddMeal={addMealLog} onDeleteMeal={removeMealLog} onUpdateWater={updateWaterIntake} />
+        <Nutrition
+          state={state}
+          onAddMeal={addMealLog}
+          onUpdateWater={updateWaterIntake}
+          onRemoveMealLogOptimistic={removeMealLogOptimistic}
+          onRestoreMealLog={restoreMealLog}
+          onConfirmMealRemoval={confirmMealRemoval}
+        />
       </Route>
       <Route path="/programs">
         <Programs />

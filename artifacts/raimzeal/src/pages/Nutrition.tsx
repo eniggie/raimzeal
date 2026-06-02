@@ -92,12 +92,20 @@ async function pushFilterPrefs(userId: string, prefs: {
 interface NutritionProps {
   state: AppState;
   onAddMeal: (meal: MealLog) => void;
-  onDeleteMeal: (id: string) => void;
   onUpdateWater: (glasses: number) => void;
+  onRemoveMealLogOptimistic: (id: string) => void;
+  onRestoreMealLog: (meal: MealLog) => void;
+  onConfirmMealRemoval: (id: string) => void;
 }
 
-export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: NutritionProps) {
-  const [deletingMealId, setDeletingMealId] = useState<string | null>(null);
+interface PendingMealDelete {
+  meal: MealLog;
+  timerId: ReturnType<typeof setTimeout>;
+}
+
+export function Nutrition({ state, onAddMeal, onUpdateWater, onRemoveMealLogOptimistic, onRestoreMealLog, onConfirmMealRemoval }: NutritionProps) {
+  const [pendingMealDelete, setPendingMealDelete] = useState<PendingMealDelete | null>(null);
+  const pendingMealDeleteRef = useRef<PendingMealDelete | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
@@ -524,6 +532,51 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
   function applyPreset(preset: CustomFilterPreset) {
     const validKeys = new Set(FILTER_DEFS.map(d => d.key));
     setActiveFilters(new Set(preset.filterKeys.filter(k => validKeys.has(k))));
+  }
+
+  // Keep ref in sync so unmount cleanup can access latest pending state
+  useEffect(() => {
+    pendingMealDeleteRef.current = pendingMealDelete;
+  }, [pendingMealDelete]);
+
+  // Cancel any pending delete timer on unmount (commit the deletion)
+  useEffect(() => {
+    return () => {
+      const pending = pendingMealDeleteRef.current;
+      if (pending) {
+        clearTimeout(pending.timerId);
+        onConfirmMealRemoval(pending.meal.id);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Undo-delete (meal) ──────────────────────────────────────────────────────
+  function handleDeleteMeal(id: string) {
+    const meal = state.mealLogs.find(m => m.id === id);
+    if (!meal) return;
+
+    // If there's already a pending delete, commit it immediately before starting the new one
+    if (pendingMealDeleteRef.current) {
+      clearTimeout(pendingMealDeleteRef.current.timerId);
+      onConfirmMealRemoval(pendingMealDeleteRef.current.meal.id);
+    }
+
+    onRemoveMealLogOptimistic(id);
+
+    const timerId = setTimeout(() => {
+      onConfirmMealRemoval(id);
+      setPendingMealDelete(null);
+    }, 5000);
+
+    setPendingMealDelete({ meal, timerId });
+  }
+
+  function handleUndoMealDelete() {
+    if (!pendingMealDeleteRef.current) return;
+    clearTimeout(pendingMealDeleteRef.current.timerId);
+    onRestoreMealLog(pendingMealDeleteRef.current.meal);
+    setPendingMealDelete(null);
   }
 
   // ─── Photo scan ─────────────────────────────────────────────────────────────
@@ -1379,7 +1432,7 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="font-medium">{meal.calories}</span>
                           <button
-                            onClick={() => setDeletingMealId(meal.id)}
+                            onClick={() => handleDeleteMeal(meal.id)}
                             className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
                             aria-label={`Delete ${meal.name}`}
                             data-testid={`delete-meal-${mealType}-${i}`}
@@ -1405,29 +1458,28 @@ export function Nutrition({ state, onAddMeal, onDeleteMeal, onUpdateWater }: Nut
       </div>
       <BottomNav />
 
-      <Dialog open={deletingMealId !== null} onOpenChange={open => { if (!open) setDeletingMealId(null); }}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Delete this meal?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">This entry will be permanently removed and cannot be undone.</p>
-          <div className="flex gap-3 mt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setDeletingMealId(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={() => {
-                if (deletingMealId) onDeleteMeal(deletingMealId);
-                setDeletingMealId(null);
-              }}
-            >
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Undo toast */}
+      {pendingMealDelete && (
+        <motion.div
+          key={pendingMealDelete.meal.id}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-foreground text-background shadow-lg px-4 py-3 max-w-xs w-[calc(100%-2rem)]"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-sm flex-1 truncate">
+            <span className="font-medium">Meal removed</span>
+          </span>
+          <button
+            onClick={handleUndoMealDelete}
+            className="text-sm font-semibold shrink-0 text-primary-foreground underline underline-offset-2 hover:opacity-80 transition-opacity"
+          >
+            Undo
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }

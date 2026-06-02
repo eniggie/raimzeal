@@ -457,6 +457,29 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }
   };
 
+  /** Removes the workout from local state immediately without touching the server. */
+  const removeWorkoutLogOptimistic = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.filter(l => l.id !== id),
+    }));
+  };
+
+  /** Re-inserts a workout that was optimistically removed (undo path). */
+  const restoreWorkoutLog = (log: WorkoutLog) => {
+    setState(prev => ({
+      ...prev,
+      workoutLogs: [log, ...prev.workoutLogs],
+    }));
+  };
+
+  /** Fires the server-side delete for a workout that was already removed from local state. */
+  const confirmWorkoutRemoval = (id: string) => {
+    if (supabaseConfigured) {
+      triggerWriteSync(workoutLogsApi.remove(id));
+    }
+  };
+
   const addMealLog = (meal: MealLog) => {
     setState(prev => ({
       ...prev,
@@ -483,6 +506,29 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
       mealLogs: prev.mealLogs.filter(m => m.id !== id),
     }));
 
+    if (supabaseConfigured) {
+      triggerWriteSync(mealLogsApi.remove(id));
+    }
+  };
+
+  /** Removes the meal from local state immediately without touching the server. */
+  const removeMealLogOptimistic = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      mealLogs: prev.mealLogs.filter(m => m.id !== id),
+    }));
+  };
+
+  /** Re-inserts a meal that was optimistically removed (undo path). */
+  const restoreMealLog = (meal: MealLog) => {
+    setState(prev => ({
+      ...prev,
+      mealLogs: [meal, ...prev.mealLogs],
+    }));
+  };
+
+  /** Fires the server-side delete for a meal that was already removed from local state. */
+  const confirmMealRemoval = (id: string) => {
     if (supabaseConfigured) {
       triggerWriteSync(mealLogsApi.remove(id));
     }
@@ -781,8 +827,14 @@ ${mealLogs.length > 0 ? `<table>
     completeOnboarding,
     addWorkoutLog,
     removeWorkoutLog,
+    removeWorkoutLogOptimistic,
+    restoreWorkoutLog,
+    confirmWorkoutRemoval,
     addMealLog,
     removeMealLog,
+    removeMealLogOptimistic,
+    restoreMealLog,
+    confirmMealRemoval,
     updateWaterIntake,
     scheduleWorkout,
     addBodyMeasurement,

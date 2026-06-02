@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
@@ -13,17 +13,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BottomNav } from '@/components/BottomNav';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import type { AppState, BodyMeasurement } from '@/lib/store';
+import type { AppState, BodyMeasurement, WorkoutLog } from '@/lib/store';
 import { ProgressShareCard } from '@/components/ProgressShareCard';
+
+interface PendingWorkoutDelete {
+  log: WorkoutLog;
+  timerId: ReturnType<typeof setTimeout>;
+}
 
 interface TrackingProps {
   state: AppState;
   onAddMeasurement: (measurement: BodyMeasurement) => void;
-  onDeleteWorkoutLog: (id: string) => void;
+  onRemoveWorkoutLogOptimistic: (id: string) => void;
+  onRestoreWorkoutLog: (log: WorkoutLog) => void;
+  onConfirmWorkoutRemoval: (id: string) => void;
 }
 
-export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: TrackingProps) {
-  const [deletingWorkoutId, setDeletingWorkoutId] = useState<string | null>(null);
+export function Tracking({ state, onAddMeasurement, onRemoveWorkoutLogOptimistic, onRestoreWorkoutLog, onConfirmWorkoutRemoval }: TrackingProps) {
+  const [pendingWorkoutDelete, setPendingWorkoutDelete] = useState<PendingWorkoutDelete | null>(null);
+  const pendingWorkoutDeleteRef = useRef<PendingWorkoutDelete | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -32,6 +40,49 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
   const [measFields, setMeasFields] = useState({
     weight: '', chest: '', waist: '', hips: '', arms: '', thighs: '',
   });
+
+  // Keep ref in sync so unmount cleanup can access latest pending state
+  useEffect(() => {
+    pendingWorkoutDeleteRef.current = pendingWorkoutDelete;
+  }, [pendingWorkoutDelete]);
+
+  // Commit any pending delete on unmount
+  useEffect(() => {
+    return () => {
+      const pending = pendingWorkoutDeleteRef.current;
+      if (pending) {
+        clearTimeout(pending.timerId);
+        onConfirmWorkoutRemoval(pending.log.id);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleDeleteWorkout(id: string) {
+    const log = state.workoutLogs.find(l => l.id === id);
+    if (!log) return;
+
+    if (pendingWorkoutDeleteRef.current) {
+      clearTimeout(pendingWorkoutDeleteRef.current.timerId);
+      onConfirmWorkoutRemoval(pendingWorkoutDeleteRef.current.log.id);
+    }
+
+    onRemoveWorkoutLogOptimistic(id);
+
+    const timerId = setTimeout(() => {
+      onConfirmWorkoutRemoval(id);
+      setPendingWorkoutDelete(null);
+    }, 5000);
+
+    setPendingWorkoutDelete({ log, timerId });
+  }
+
+  function handleUndoWorkoutDelete() {
+    if (!pendingWorkoutDeleteRef.current) return;
+    clearTimeout(pendingWorkoutDeleteRef.current.timerId);
+    onRestoreWorkoutLog(pendingWorkoutDeleteRef.current.log);
+    setPendingWorkoutDelete(null);
+  }
 
   const handleSaveBodyMeasurements = () => {
     const weight = parseFloat(measFields.weight);
@@ -308,7 +359,7 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
                               {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </div>
                             <button
-                              onClick={() => setDeletingWorkoutId(log.id)}
+                              onClick={() => handleDeleteWorkout(log.id)}
                               className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
                               aria-label={`Delete ${log.workoutName}`}
                               data-testid={`delete-workout-log-${i}`}
@@ -441,29 +492,28 @@ export function Tracking({ state, onAddMeasurement, onDeleteWorkoutLog }: Tracki
       <BottomNav />
       <ProgressShareCard open={shareOpen} onClose={() => setShareOpen(false)} state={state} />
 
-      <Dialog open={deletingWorkoutId !== null} onOpenChange={open => { if (!open) setDeletingWorkoutId(null); }}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Delete this workout?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">This entry will be permanently removed and cannot be undone.</p>
-          <div className="flex gap-3 mt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setDeletingWorkoutId(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={() => {
-                if (deletingWorkoutId) onDeleteWorkoutLog(deletingWorkoutId);
-                setDeletingWorkoutId(null);
-              }}
-            >
-              Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Undo toast */}
+      {pendingWorkoutDelete && (
+        <motion.div
+          key={pendingWorkoutDelete.log.id}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl bg-foreground text-background shadow-lg px-4 py-3 max-w-xs w-[calc(100%-2rem)]"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-sm flex-1 truncate">
+            <span className="font-medium">Workout removed</span>
+          </span>
+          <button
+            onClick={handleUndoWorkoutDelete}
+            className="text-sm font-semibold shrink-0 text-primary-foreground underline underline-offset-2 hover:opacity-80 transition-opacity"
+          >
+            Undo
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
