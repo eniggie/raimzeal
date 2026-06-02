@@ -70,6 +70,8 @@ import { RecentlyScannedModal } from "@/components/RecentlyScannedModal";
 import { CalorieTrendChart } from "@/components/CalorieTrendChart";
 import { MacroRing } from "@/components/MacroRing";
 import { QuickFoodsEditorSheet } from "@/components/QuickFoodsEditorSheet";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 
 const DEBOUNCE_MS = 500;
 const PAGE_SIZE = 20;
@@ -984,6 +986,7 @@ export default function NutritionScreen() {
   const insets = useSafeAreaInsets();
   const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user, dismissedHints } = useFitness();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
+  const { syncStatus, startSync, finishSync } = useSyncIndicator();
   const CALORIE_GOAL = macroGoals.calories;
   const PROTEIN_GOAL = macroGoals.protein;
   const CARBS_GOAL = macroGoals.carbs;
@@ -2680,7 +2683,8 @@ export default function NutritionScreen() {
     if (!undoMeal) return;
     const dateStr = undoMeal.date;
     dismissUndoToast();
-    addMealLog(undoMeal);
+    startSync();
+    addMealLog(undoMeal, finishSync);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showRestoredToast(dateStr);
   }
@@ -2700,13 +2704,15 @@ export default function NutritionScreen() {
 
   function handleMealDelete(meal: MealLog) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    removeMealLog(meal.id);
+    startSync();
+    removeMealLog(meal.id, finishSync);
     showUndoToast(meal);
   }
 
   function handleLogToday(log: MealLog) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const today = new Date().toISOString().split("T")[0];
+    startSync();
     addMealLog({
       id: Date.now().toString(),
       date: today,
@@ -2718,7 +2724,7 @@ export default function NutritionScreen() {
       mealType: log.mealType,
       amountGrams: log.amountGrams,
       nutrients100g: log.nutrients100g,
-    });
+    }, finishSync);
     showLogTodayToast(log.name);
   }
 
@@ -4167,7 +4173,8 @@ export default function NutritionScreen() {
         servingLabel: selectedFoodServingLabel,
       } : {}),
     };
-    addMealLog(meal);
+    startSync();
+    addMealLog(meal, finishSync);
 
     if (pendingLoggedToastRef.current) {
       pendingLoggedToastRef.current = false;
@@ -4255,7 +4262,8 @@ export default function NutritionScreen() {
       fat: parseFloat(manualForm.fat) || 0,
       mealType: manualMeal,
     };
-    addMealLog(meal);
+    startSync();
+    addMealLog(meal, finishSync);
 
     lastUsedMealMapRef.current[name] = manualMeal;
     AsyncStorage.getItem(LAST_USED_MEAL_KEY)
@@ -8274,6 +8282,7 @@ export default function NutritionScreen() {
         initialEnd={customDateRange?.end}
         colors={colors}
       />
+      <SyncIndicator status={syncStatus} />
     </View>
   );
 }
@@ -8427,6 +8436,7 @@ function MacroBar({
 function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog } = useFitness();
+  const { syncStatus: histSyncStatus, startSync: histStartSync, finishSync: histFinishSync } = useSyncIndicator();
   const swipeableRef = useRef<Swipeable>(null);
   const runHintAnimation = useSwipeHint(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, isFirst ?? false);
 
@@ -8618,6 +8628,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     const savedMealType = editMealType;
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
+    histStartSync();
     updateMealLog(log.id, {
       name,
       calories: savedCalories,
@@ -8626,7 +8637,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
-    });
+    }, histFinishSync);
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
@@ -9097,6 +9108,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
           </GlassCard>
         </View>
       </Modal>
+      <SyncIndicator status={histSyncStatus} />
     </>
   );
 }
@@ -9104,6 +9116,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog, favoriteFoods } = useFitness();
+  const { syncStatus: rowSyncStatus, startSync: rowStartSync, finishSync: rowFinishSync } = useSyncIndicator();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
   const runHintAnimation = useSwipeHint(SWIPE_DELETE_HINT_STORAGE_KEY, isFirst ?? false);
@@ -9299,6 +9312,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     const savedMealType = editMealType;
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
+    rowStartSync();
     updateMealLog(log.id, {
       name,
       calories: savedCalories,
@@ -9307,7 +9321,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
-    });
+    }, rowFinishSync);
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
@@ -9772,6 +9786,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
           </GlassCard>
         </View>
       </Modal>
+      <SyncIndicator status={rowSyncStatus} />
     </>
   );
 }

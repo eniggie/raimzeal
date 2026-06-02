@@ -32,6 +32,8 @@ import {
   type EnrolledProgram,
 } from "@/lib/db";
 import { loadCustomWorkouts, deleteCustomWorkout } from "@/lib/customWorkouts";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 
 type ActiveTab = "library" | "programs" | "history";
 type HistoryViewMode = "week" | "month";
@@ -410,6 +412,7 @@ export default function WorkoutsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { workoutLogs, removeWorkoutLog } = useFitness();
+  const { syncStatus, startSync, finishSync } = useSyncIndicator();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("library");
   const [programs, setPrograms] = useState<ProgramItem[]>([]);
@@ -1315,7 +1318,8 @@ export default function WorkoutsScreen() {
                               style: "destructive",
                               onPress: () => {
                                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                removeWorkoutLog(item.log.id);
+                                startSync();
+                                removeWorkoutLog(item.log.id, finishSync);
                               },
                             },
                           ]
@@ -1336,6 +1340,7 @@ export default function WorkoutsScreen() {
           }}
         />
       )}
+      <SyncIndicator status={syncStatus} />
     </View>
   );
 }

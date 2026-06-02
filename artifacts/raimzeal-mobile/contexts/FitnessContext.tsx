@@ -194,11 +194,11 @@ export interface AppState {
 }
 
 interface FitnessContextType extends AppState {
-  addWorkoutLog: (log: WorkoutLog) => void;
-  addMealLog: (meal: MealLog) => void;
-  removeMealLog: (id: string) => void;
-  removeWorkoutLog: (id: string) => void;
-  updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id" | "date">>) => void;
+  addWorkoutLog: (log: WorkoutLog, onSyncResult?: (ok: boolean) => void) => void;
+  addMealLog: (meal: MealLog, onSyncResult?: (ok: boolean) => void) => void;
+  removeMealLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
+  removeWorkoutLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
+  updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id" | "date">>, onSyncResult?: (ok: boolean) => void) => void;
   addBodyMeasurement: (m: BodyMeasurement) => void;
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
@@ -516,7 +516,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addWorkoutLog = useCallback(
-    (log: WorkoutLog) => {
+    (log: WorkoutLog, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const today = todayStr();
         const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
@@ -536,11 +536,19 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         // Background push to Supabase
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) insertWorkoutLog(session.user.id, log).catch(() => {});
-          });
+            if (session?.user) {
+              insertWorkoutLog(session.user.id, log)
+                .then(() => onSyncResult?.(true))
+                .catch(() => onSyncResult?.(false));
+            } else {
+              onSyncResult?.(false);
+            }
+          }).catch(() => onSyncResult?.(false));
           // Advance enrolled program: server validates date idempotency AND
           // that the workout exercises match the current phase's expected muscle groups.
           advanceEnrolledProgram(log.date, log.workoutName, log.exercises).catch(() => {});
+        } else {
+          onSyncResult?.(false);
         }
         return next;
       });
@@ -549,15 +557,23 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addMealLog = useCallback(
-    (meal: MealLog) => {
+    (meal: MealLog, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const next = { ...prev, mealLogs: [meal, ...prev.mealLogs] };
         persist(next);
         // Background push to Supabase
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) insertMealLog(session.user.id, meal).catch(() => {});
-          });
+            if (session?.user) {
+              insertMealLog(session.user.id, meal)
+                .then(() => onSyncResult?.(true))
+                .catch(() => onSyncResult?.(false));
+            } else {
+              onSyncResult?.(false);
+            }
+          }).catch(() => onSyncResult?.(false));
+        } else {
+          onSyncResult?.(false);
         }
         return next;
       });
@@ -566,12 +582,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const removeMealLog = useCallback(
-    (id: string) => {
+    (id: string, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const next = { ...prev, mealLogs: prev.mealLogs.filter((m) => m.id !== id) };
         persist(next);
         if (isSupabaseConfigured) {
-          deleteMealLog(id).catch(() => {});
+          deleteMealLog(id)
+            .then(() => onSyncResult?.(true))
+            .catch(() => onSyncResult?.(false));
+        } else {
+          onSyncResult?.(false);
         }
         return next;
       });
@@ -580,12 +600,16 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const removeWorkoutLog = useCallback(
-    (id: string) => {
+    (id: string, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const next = { ...prev, workoutLogs: prev.workoutLogs.filter((w) => w.id !== id) };
         persist(next);
         if (isSupabaseConfigured) {
-          deleteWorkoutLog(id).catch(() => {});
+          deleteWorkoutLog(id)
+            .then(() => onSyncResult?.(true))
+            .catch(() => onSyncResult?.(false));
+        } else {
+          onSyncResult?.(false);
         }
         return next;
       });
@@ -594,7 +618,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateMealLog = useCallback(
-    (id: string, updates: Partial<Omit<MealLog, "id" | "date">>) => {
+    (id: string, updates: Partial<Omit<MealLog, "id" | "date">>, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const updatedMeal = prev.mealLogs.find((m) => m.id === id);
         const next = {
@@ -606,9 +630,15 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           const merged = { ...updatedMeal, ...updates };
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-              upsertMealLog(session.user.id, merged).catch(() => {});
+              upsertMealLog(session.user.id, merged)
+                .then(() => onSyncResult?.(true))
+                .catch(() => onSyncResult?.(false));
+            } else {
+              onSyncResult?.(false);
             }
-          });
+          }).catch(() => onSyncResult?.(false));
+        } else {
+          onSyncResult?.(false);
         }
         return next;
       });

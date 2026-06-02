@@ -22,6 +22,8 @@ import { useFitness, WorkoutLog } from "@/contexts/FitnessContext";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
 import type { WorkoutTemplate } from "@/constants/workoutTemplates";
 import { loadCustomWorkouts } from "@/lib/customWorkouts";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 
 const REST_SECONDS_DEFAULT = 60;
 const REST_SECONDS_MIN = 15;
@@ -41,6 +43,7 @@ export default function WorkoutPlayerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { addWorkoutLog, personalRecords } = useFitness();
+  const { syncStatus, startSync, finishSync } = useSyncIndicator();
   const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
 
   const builtInTemplate = WORKOUT_TEMPLATES.find((t) => t.workoutId === workoutId);
@@ -139,7 +142,8 @@ export default function WorkoutPlayerScreen() {
       caloriesBurned: template.calories,
       exercises: template.exercises,
     };
-    addWorkoutLog(log);
+    startSync();
+    addWorkoutLog(log, finishSync);
     // Detect potential new PRs from template exercises that have weights
     const prMap = new Map(personalRecords.map((pr) => [pr.exercise.toLowerCase(), pr.weight]));
     const newPRs = template.exercises
@@ -150,7 +154,7 @@ export default function WorkoutPlayerScreen() {
       })
       .map((ex) => ex.name);
     setNewPRExercises(newPRs);
-  }, [template, logged, elapsedSecs, triggerHaptic, addWorkoutLog, personalRecords]);
+  }, [template, logged, elapsedSecs, triggerHaptic, addWorkoutLog, personalRecords, startSync, finishSync]);
 
   function advanceFromRest() {
     const nextSet = setIdx + 1;
@@ -596,6 +600,7 @@ export default function WorkoutPlayerScreen() {
           </>
         )}
       </View>
+      <SyncIndicator status={syncStatus} />
     </View>
   );
 }
