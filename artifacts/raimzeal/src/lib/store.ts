@@ -303,11 +303,13 @@ function apiToLocalAppState(data: ApiAppData, email: string): Partial<AppState> 
 
 export function useAppState(userId?: string | null, userEmail?: string | null) {
   const storageKey = userId ? `${STORAGE_KEY_BASE}_${userId}` : null;
+  const syncTimestampKey = userId ? `${STORAGE_KEY_BASE}_${userId}_lastSyncedAt` : null;
 
   const [state, setState] = useState<AppState>(defaultState);
   const [cloudSynced, setCloudSynced] = useState(false);
   const [syncError, setSyncError] = useState(false);
   const [writeSyncStatus, setWriteSyncStatus] = useState<'idle' | 'syncing' | 'saved' | 'offline'>('idle');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const cloudSyncedRef = useRef(false);
   const userIdRef = useRef<string | null | undefined>(undefined);
@@ -319,6 +321,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     promise.then(() => {
       setWriteSyncStatus('saved');
+      setLastSyncedAt(new Date());
       syncTimerRef.current = setTimeout(() => setWriteSyncStatus('idle'), 2500);
     }).catch(() => {
       setWriteSyncStatus('offline');
@@ -331,6 +334,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     if (!storageKey) {
       setState(defaultState);
       setCloudSynced(false);
+      setLastSyncedAt(null);
       cloudSyncedRef.current = false;
       return;
     }
@@ -358,9 +362,17 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     } else {
       setState(defaultState);
     }
+    // Hydrate last-synced timestamp from dedicated per-user key
+    const storedTs = syncTimestampKey ? localStorage.getItem(syncTimestampKey) : null;
+    if (storedTs) {
+      const parsed = new Date(storedTs);
+      setLastSyncedAt(Number.isFinite(parsed.getTime()) ? parsed : null);
+    } else {
+      setLastSyncedAt(null);
+    }
     setCloudSynced(false);
     cloudSyncedRef.current = false;
-  }, [storageKey]);
+  }, [storageKey, syncTimestampKey]);
 
   // Load data from the cloud when the user logs in
   useEffect(() => {
@@ -382,6 +394,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
       }));
       setCloudSynced(true);
       setSyncError(false);
+      setLastSyncedAt(new Date());
     }).catch(() => {
       // Mark cloud sync as settled but flag the error so the UI can surface it
       setCloudSynced(true);
@@ -395,6 +408,16 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
       localStorage.setItem(storageKey, JSON.stringify(state));
     }
   }, [state, storageKey]);
+
+  // Persist last-synced timestamp to its own key so it survives page reloads
+  useEffect(() => {
+    if (!syncTimestampKey) return;
+    if (lastSyncedAt) {
+      localStorage.setItem(syncTimestampKey, lastSyncedAt.toISOString());
+    } else {
+      localStorage.removeItem(syncTimestampKey);
+    }
+  }, [lastSyncedAt, syncTimestampKey]);
 
   const updateState = (updates: Partial<AppState>) => {
     setState(prev => ({ ...prev, ...updates }));
@@ -843,6 +866,7 @@ ${mealLogs.length > 0 ? `<table>
     cloudSynced,
     syncError,
     writeSyncStatus,
+    lastSyncedAt,
     updateState,
     completeOnboarding,
     addWorkoutLog,

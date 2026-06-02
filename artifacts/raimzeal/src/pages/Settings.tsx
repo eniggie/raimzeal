@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,16 +22,41 @@ import type { AppState, UserProfile } from '@/lib/store';
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE, RAIMZY_LINKTREE } from '@/lib/constants';
 
+function formatRelativeTime(date: Date | null): string {
+  if (!date) return 'Never';
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return diffMin === 1 ? '1 min ago' : `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return diffHr === 1 ? '1 hour ago' : `${diffHr} hours ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return diffDay === 1 ? 'Yesterday' : `${diffDay} days ago`;
+}
+
 interface SettingsProps {
   state: AppState;
   onUpdateSettings: (settings: Partial<AppState['settings']>) => void;
   onUpdateProfile: (updates: Partial<UserProfile>) => void;
   onLogout: () => void;
+  lastSyncedAt?: Date | null;
 }
 
-export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout }: SettingsProps) {
+export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, lastSyncedAt }: SettingsProps) {
   const user = state.user;
   const [exportLoading, setExportLoading] = useState(false);
+  const [relativeTime, setRelativeTime] = useState(() => formatRelativeTime(lastSyncedAt ?? null));
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setRelativeTime(formatRelativeTime(lastSyncedAt ?? null));
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setRelativeTime(formatRelativeTime(lastSyncedAt ?? null));
+    }, 30_000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [lastSyncedAt]);
 
   const { subscriptionTier } = useAuth();
   const canExport = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
@@ -920,6 +945,19 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
               ) : (
                 <p className="shrink-0 text-xs text-muted-foreground italic text-right">Donation link<br />coming soon.</p>
               )}
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Last Synced */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.285 }}>
+          <Card className="px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Settings2 className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Last synced</p>
+              <p className="text-xs text-muted-foreground">{relativeTime}</p>
             </div>
           </Card>
         </motion.div>

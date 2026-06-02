@@ -97,6 +97,7 @@ function AppContent() {
     cloudSynced,
     syncError,
     writeSyncStatus,
+    lastSyncedAt,
     completeOnboarding,
     addWorkoutLog,
     removeWorkoutLog,
@@ -286,6 +287,7 @@ function AppContent() {
           onUpdateSettings={updateSettings}
           onUpdateProfile={updateProfile}
           onLogout={signOut}
+          lastSyncedAt={lastSyncedAt}
         />
       </Route>
       <Route path="/membership">
