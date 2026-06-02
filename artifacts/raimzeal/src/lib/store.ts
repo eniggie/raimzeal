@@ -500,6 +500,26 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }
   };
 
+  const updateMealLog = (id: string, updates: Partial<Omit<MealLog, 'id' | 'date'>>) => {
+    setState(prev => ({
+      ...prev,
+      mealLogs: prev.mealLogs.map(m => m.id === id ? { ...m, ...updates } : m),
+    }));
+
+    if (supabaseConfigured) {
+      const apiUpdates: Partial<{
+        name: string; calories: number; protein: number; carbs: number; fat: number; meal_type: MealLog['mealType'];
+      }> = {};
+      if (updates.name !== undefined) apiUpdates.name = updates.name;
+      if (updates.calories !== undefined) apiUpdates.calories = updates.calories;
+      if (updates.protein !== undefined) apiUpdates.protein = updates.protein;
+      if (updates.carbs !== undefined) apiUpdates.carbs = updates.carbs;
+      if (updates.fat !== undefined) apiUpdates.fat = updates.fat;
+      if (updates.mealType !== undefined) apiUpdates.meal_type = updates.mealType;
+      triggerWriteSync(mealLogsApi.update(id, apiUpdates));
+    }
+  };
+
   const removeMealLog = (id: string) => {
     setState(prev => ({
       ...prev,
@@ -831,6 +851,7 @@ ${mealLogs.length > 0 ? `<table>
     restoreWorkoutLog,
     confirmWorkoutRemoval,
     addMealLog,
+    updateMealLog,
     removeMealLog,
     removeMealLogOptimistic,
     restoreMealLog,

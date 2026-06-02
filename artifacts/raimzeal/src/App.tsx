@@ -104,6 +104,7 @@ function AppContent() {
     restoreWorkoutLog,
     confirmWorkoutRemoval,
     addMealLog,
+    updateMealLog,
     removeMealLog,
     removeMealLogOptimistic,
     restoreMealLog,
@@ -260,6 +261,7 @@ function AppContent() {
         <Nutrition
           state={state}
           onAddMeal={addMealLog}
+          onUpdateMeal={updateMealLog}
           onUpdateWater={updateWaterIntake}
           onRemoveMealLogOptimistic={removeMealLogOptimistic}
           onRestoreMealLog={restoreMealLog}

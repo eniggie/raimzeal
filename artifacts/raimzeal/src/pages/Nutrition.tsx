@@ -92,6 +92,7 @@ async function pushFilterPrefs(userId: string, prefs: {
 interface NutritionProps {
   state: AppState;
   onAddMeal: (meal: MealLog) => void;
+  onUpdateMeal: (id: string, updates: Partial<Omit<MealLog, 'id' | 'date'>>) => void;
   onUpdateWater: (glasses: number) => void;
   onRemoveMealLogOptimistic: (id: string) => void;
   onRestoreMealLog: (meal: MealLog) => void;
@@ -103,10 +104,43 @@ interface PendingMealDelete {
   timerId: ReturnType<typeof setTimeout>;
 }
 
-export function Nutrition({ state, onAddMeal, onUpdateWater, onRemoveMealLogOptimistic, onRestoreMealLog, onConfirmMealRemoval }: NutritionProps) {
+export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRemoveMealLogOptimistic, onRestoreMealLog, onConfirmMealRemoval }: NutritionProps) {
   const [pendingMealDelete, setPendingMealDelete] = useState<PendingMealDelete | null>(null);
   const pendingMealDeleteRef = useRef<PendingMealDelete | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // ─── Meal edit state ────────────────────────────────────────────────────────
+  const [editingMeal, setEditingMeal] = useState<MealLog | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+  const [editMealType, setEditMealType] = useState<MealLog['mealType']>('breakfast');
+
+  function openEditMeal(meal: MealLog) {
+    setEditingMeal(meal);
+    setEditForm({
+      name: meal.name,
+      calories: String(meal.calories),
+      protein: String(meal.protein),
+      carbs: String(meal.carbs),
+      fat: String(meal.fat),
+    });
+    setEditMealType(meal.mealType);
+  }
+
+  function handleSaveEdit() {
+    if (!editingMeal) return;
+    const cal = parseFloat(editForm.calories);
+    const name = editForm.name.trim();
+    if (!name || !cal) return;
+    onUpdateMeal(editingMeal.id, {
+      name,
+      calories: cal,
+      protein: parseFloat(editForm.protein) || 0,
+      carbs: parseFloat(editForm.carbs) || 0,
+      fat: parseFloat(editForm.fat) || 0,
+      mealType: editMealType,
+    });
+    setEditingMeal(null);
+  }
   const [search, setSearch] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1432,6 +1466,14 @@ export function Nutrition({ state, onAddMeal, onUpdateWater, onRemoveMealLogOpti
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="font-medium">{meal.calories}</span>
                           <button
+                            onClick={() => openEditMeal(meal)}
+                            className="text-muted-foreground hover:text-primary transition-colors p-1 rounded"
+                            aria-label={`Edit ${meal.name}`}
+                            data-testid={`edit-meal-${mealType}-${i}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDeleteMeal(meal.id)}
                             className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
                             aria-label={`Delete ${meal.name}`}
@@ -1457,6 +1499,102 @@ export function Nutrition({ state, onAddMeal, onUpdateWater, onRemoveMealLogOpti
         </motion.div>
       </div>
       <BottomNav />
+
+      {/* Edit meal dialog */}
+      <Dialog open={!!editingMeal} onOpenChange={open => { if (!open) setEditingMeal(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit meal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+              <Input
+                value={editForm.name}
+                onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Meal name"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Calories</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editForm.calories}
+                  onChange={e => setEditForm(prev => ({ ...prev, calories: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Protein (g)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editForm.protein}
+                  onChange={e => setEditForm(prev => ({ ...prev, protein: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Carbs (g)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editForm.carbs}
+                  onChange={e => setEditForm(prev => ({ ...prev, carbs: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Fat (g)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editForm.fat}
+                  onChange={e => setEditForm(prev => ({ ...prev, fat: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Meal type</label>
+              <div className="flex gap-2 flex-wrap">
+                {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setEditMealType(type)}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize',
+                      editMealType === type
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/40 text-muted-foreground border-border hover:border-primary/40'
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setEditingMeal(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveEdit}
+                disabled={!editForm.name.trim() || !editForm.calories}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Undo toast */}
       {pendingMealDelete && (
