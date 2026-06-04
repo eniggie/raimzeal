@@ -277,6 +277,45 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
               </View>
             </View>
 
+            {(() => {
+              const proteinNum = parseNum(protein);
+              const carbsNum = parseNum(carbs);
+              const fatNum = parseNum(fat);
+              const caloriesNum = parseNum(calories, false);
+              const macroKcal = Math.round(proteinNum * 4 + carbsNum * 4 + fatNum * 9);
+              const statedKcal = Math.round(caloriesNum);
+              const hasAnyMacro = proteinNum > 0 || carbsNum > 0 || fatNum > 0;
+              const mismatch =
+                hasAnyMacro &&
+                statedKcal > 0 &&
+                Math.abs(macroKcal - statedKcal) / statedKcal > 0.2;
+              if (!hasAnyMacro) return null;
+              return (
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_400Regular",
+                      color: mismatch ? "#f59e0b" : colors.mutedForeground,
+                    }}
+                  >
+                    ~{macroKcal} kcal from macros
+                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                  </Text>
+                  {mismatch && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setCalories(String(macroKcal));
+                      }}
+                      style={{ backgroundColor: "#f59e0b22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b66" }}
+                    >
+                      <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })()}
+
             {onSaveAndAdd && (
               <TouchableOpacity
                 style={[
