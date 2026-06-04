@@ -8481,6 +8481,29 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   const histSaveShakeX = useSharedValue(0);
   const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
 
+  useEffect(() => {
+    if (showEditSheet) return;
+    setEditForm({
+      name: log.name,
+      calories: String(log.calories),
+      protein: String(log.protein),
+      carbs: String(log.carbs),
+      fat: String(log.fat),
+    });
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    setEditMealType(log.mealType);
+    setEditServings(1);
+    setEditServingsText("1");
+    const g = log.amountGrams;
+    setEditGrams(g);
+    editGramsRef.current = g;
+    setEditGramsText(
+      g !== undefined
+        ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
+        : ""
+    );
+  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, showEditSheet]);
+
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setEditForm({
@@ -9193,6 +9216,29 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
+
+  useEffect(() => {
+    if (showEditSheet) return;
+    setEditForm({
+      name: log.name,
+      calories: String(log.calories),
+      protein: String(log.protein),
+      carbs: String(log.carbs),
+      fat: String(log.fat),
+    });
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    setEditMealType(log.mealType);
+    setEditServings(1);
+    setEditServingsText("1");
+    const g = log.amountGrams;
+    setEditGrams(g);
+    editGramsRef.current = g;
+    setEditGramsText(
+      g !== undefined
+        ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
+        : ""
+    );
+  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, showEditSheet]);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
