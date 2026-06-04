@@ -72,6 +72,12 @@ export interface MealLog {
   nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
   /** Human-readable serving label saved at log time (e.g. "150g", "1 cup") */
   servingLabel?: string;
+  /**
+   * ID of the meal log entry this was copied from via "Log Today".
+   * Used to propagate name edits back to the original and any sibling copies.
+   * Stored locally only (not in Supabase schema).
+   */
+  sourceMealLogId?: string;
 }
 
 /** Matches web app store.ts BodyMeasurement exactly */
@@ -199,6 +205,12 @@ interface FitnessContextType extends AppState {
   removeMealLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
   removeWorkoutLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
   updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id" | "date">>, onSyncResult?: (ok: boolean) => void) => void;
+  /**
+   * Propagate a name change to all meal log entries that are linked to `editedId`
+   * via `sourceMealLogId` (i.e. the original entry and any siblings created by "Log Today").
+   * Only updates entries that share an explicit ID linkage — never matches by name.
+   */
+  syncMealName: (editedId: string, newName: string) => void;
   addBodyMeasurement: (m: BodyMeasurement) => void;
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
@@ -640,6 +652,57 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         } else {
           onSyncResult?.(false);
         }
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  const syncMealName = useCallback(
+    (editedId: string, newName: string) => {
+      setState((prev) => {
+        const edited = prev.mealLogs.find((m) => m.id === editedId);
+        if (!edited) return prev;
+
+        const sourceId = edited.sourceMealLogId;
+
+        // Collect IDs of all linked entries (excluding the already-updated editedId).
+        // An entry is linked when it:
+        //   (a) is the original that editedId was copied from, OR
+        //   (b) is another copy that shares the same sourceMealLogId (sibling), OR
+        //   (c) was itself copied from editedId.
+        const linkedIds = new Set<string>();
+        for (const m of prev.mealLogs) {
+          if (m.id === editedId) continue;
+          if (
+            (sourceId && m.id === sourceId) ||
+            (sourceId && m.sourceMealLogId === sourceId) ||
+            m.sourceMealLogId === editedId
+          ) {
+            linkedIds.add(m.id);
+          }
+        }
+
+        if (linkedIds.size === 0) return prev;
+
+        const affected = prev.mealLogs.filter((m) => linkedIds.has(m.id));
+        const updatedLogs = prev.mealLogs.map((m) =>
+          linkedIds.has(m.id) ? { ...m, name: newName } : m
+        );
+        const next = { ...prev, mealLogs: updatedLogs };
+        persist(next);
+
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+              const userId = session.user.id;
+              affected.forEach((m) => {
+                upsertMealLog(userId, { ...m, name: newName }).catch(() => {});
+              });
+            }
+          }).catch(() => {});
+        }
+
         return next;
       });
     },
@@ -1112,6 +1175,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         removeMealLog,
         removeWorkoutLog,
         updateMealLog,
+        syncMealName,
         addBodyMeasurement,
         addOviaMessage,
         updateWaterIntake,

@@ -2724,6 +2724,7 @@ export default function NutritionScreen() {
       mealType: log.mealType,
       amountGrams: log.amountGrams,
       nutrients100g: log.nutrients100g,
+      sourceMealLogId: log.sourceMealLogId ?? log.id,
     }, finishSync);
     showLogTodayToast(log.name);
   }
@@ -8435,7 +8436,7 @@ function MacroBar({
 
 function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
-  const { updateMealLog } = useFitness();
+  const { updateMealLog, syncMealName } = useFitness();
   const { syncStatus: histSyncStatus, startSync: histStartSync, finishSync: histFinishSync } = useSyncIndicator();
   const swipeableRef = useRef<Swipeable>(null);
   const runHintAnimation = useSwipeHint(HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY, isFirst ?? false);
@@ -8622,6 +8623,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   function handleSaveEdit() {
     const name = editForm.name.trim();
     if (!name) return;
+    const oldName = log.name;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const savedBase = editBase;
     const savedServings = editServings;
@@ -8638,6 +8640,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     }, histFinishSync);
+    if (name !== oldName) {
+      syncMealName(log.id, name);
+    }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
@@ -9115,7 +9120,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
 function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
-  const { updateMealLog, favoriteFoods } = useFitness();
+  const { updateMealLog, syncMealName, favoriteFoods } = useFitness();
   const { syncStatus: rowSyncStatus, startSync: rowStartSync, finishSync: rowFinishSync } = useSyncIndicator();
   const starred = favoriteFoods.some((f) => f.name === log.name);
   const swipeableRef = useRef<Swipeable>(null);
@@ -9306,6 +9311,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   function handleSaveEdit() {
     const name = editForm.name.trim();
     if (!name) return;
+    const oldName = log.name;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const savedBase = editBase;
     const savedServings = editServings;
@@ -9322,6 +9328,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
     }, rowFinishSync);
+    if (name !== oldName) {
+      syncMealName(log.id, name);
+    }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
