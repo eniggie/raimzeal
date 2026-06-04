@@ -8477,6 +8477,8 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   );
   const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const histSaveShakeX = useSharedValue(0);
+  const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -8622,7 +8624,17 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
   function handleSaveEdit() {
     const name = editForm.name.trim();
-    if (!name) return;
+    if (!name) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      histSaveShakeX.value = withSequence(
+        withTiming(-6, { duration: 50 }),
+        withTiming(6, { duration: 50 }),
+        withTiming(-6, { duration: 50 }),
+        withTiming(6, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
+      return;
+    }
     const oldName = log.name;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const savedBase = editBase;
@@ -8755,9 +8767,14 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
               maxLength={120}
               style={[
                 styles.editFoodNameLabel,
-                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: editForm.name.trim() ? colors.border : "#ef4444" },
               ]}
             />
+            {!editForm.name.trim() && (
+              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4, marginBottom: 2, fontFamily: "Inter_400Regular" }}>
+                Name can't be blank
+              </Text>
+            )}
 
             {log.nutrients100g !== undefined && (
               <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
@@ -9101,14 +9118,16 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                   Cancel
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveEdit}
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
-                  Save Changes
-                </Text>
-              </TouchableOpacity>
+              <Reanimated.View style={[histSaveShakeStyle, { flex: 2 }]}>
+                <TouchableOpacity
+                  onPress={handleSaveEdit}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: editForm.name.trim() ? 1 : 0.45 }]}
+                >
+                  <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
+                    Save Changes
+                  </Text>
+                </TouchableOpacity>
+              </Reanimated.View>
             </View>
           </GlassCard>
         </View>
@@ -9162,6 +9181,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   );
   const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const rowSaveShakeX = useSharedValue(0);
+  const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -9310,7 +9331,17 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
 
   function handleSaveEdit() {
     const name = editForm.name.trim();
-    if (!name) return;
+    if (!name) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      rowSaveShakeX.value = withSequence(
+        withTiming(-6, { duration: 50 }),
+        withTiming(6, { duration: 50 }),
+        withTiming(-6, { duration: 50 }),
+        withTiming(6, { duration: 50 }),
+        withTiming(0, { duration: 50 })
+      );
+      return;
+    }
     const oldName = log.name;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const savedBase = editBase;
@@ -9435,9 +9466,14 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
               maxLength={120}
               style={[
                 styles.editFoodNameLabel,
-                { color: colors.foreground, backgroundColor: colors.muted, borderColor: colors.border },
+                { color: colors.foreground, backgroundColor: colors.muted, borderColor: editForm.name.trim() ? colors.border : "#ef4444" },
               ]}
             />
+            {!editForm.name.trim() && (
+              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4, marginBottom: 2, fontFamily: "Inter_400Regular" }}>
+                Name can't be blank
+              </Text>
+            )}
 
             {log.nutrients100g !== undefined && (
               <View style={[styles.servingToggleRow, { marginBottom: 12, borderColor: colors.border }]}>
@@ -9783,14 +9819,16 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                   Cancel
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveEdit}
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
-                  Save Changes
-                </Text>
-              </TouchableOpacity>
+              <Reanimated.View style={[rowSaveShakeStyle, { flex: 2 }]}>
+                <TouchableOpacity
+                  onPress={handleSaveEdit}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: editForm.name.trim() ? 1 : 0.45 }]}
+                >
+                  <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
+                    Save Changes
+                  </Text>
+                </TouchableOpacity>
+              </Reanimated.View>
             </View>
           </GlassCard>
         </View>
