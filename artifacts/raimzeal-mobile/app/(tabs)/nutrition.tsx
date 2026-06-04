@@ -8470,6 +8470,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   const [editServingsText, setEditServingsText] = useState("1");
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
+  const editGramsRef = useRef<number | undefined>(log.amountGrams);
   const [editGramsText, setEditGramsText] = useState(
     log.amountGrams !== undefined
       ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
@@ -8495,6 +8496,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     const g = log.amountGrams;
     setEditGrams(g);
+    editGramsRef.current = g;
     setEditGramsText(
       g !== undefined
         ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
@@ -8529,6 +8531,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
             setEditShowPer100g(true);
             setEditGramsText("100");
             setEditGrams(100);
+            editGramsRef.current = 100;
             setEditBase({
               calories: perGramRef.current.calories * 100,
               protein: perGramRef.current.protein * 100,
@@ -8558,6 +8561,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     const n = parseFloat(normalized);
     if (!isNaN(n) && n > 0) {
       setEditGrams(n);
+      editGramsRef.current = n;
       if (perGramRef.current) {
         const newBase = {
           calories: perGramRef.current.calories * n,
@@ -8578,6 +8582,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       }
     } else if (normalized === "" || normalized === "0") {
       setEditGrams(undefined);
+      editGramsRef.current = undefined;
       perGramRef.current = null;
     }
   }
@@ -8607,14 +8612,15 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
       const baseValue = editServings > 0 ? n / editServings : n;
+      const grams = editGramsRef.current;
       setEditBase(prev => {
         const newBase = { ...prev, [field]: baseValue };
-        if (editGrams !== undefined && editGrams > 0) {
+        if (grams !== undefined && grams > 0) {
           perGramRef.current = {
-            calories: newBase.calories / editGrams,
-            protein: newBase.protein / editGrams,
-            carbs: newBase.carbs / editGrams,
-            fat: newBase.fat / editGrams,
+            calories: newBase.calories / grams,
+            protein: newBase.protein / grams,
+            carbs: newBase.carbs / grams,
+            fat: newBase.fat / grams,
           };
         }
         return newBase;
@@ -8794,6 +8800,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                         const gText = Number.isInteger(g) ? String(g) : g.toFixed(1);
                         setEditGramsText(gText);
                         setEditGrams(g);
+                        editGramsRef.current = g;
                         setEditBase({
                           calories: perGramRef.current.calories * g,
                           protein: perGramRef.current.protein * g,
@@ -8803,6 +8810,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                       } else {
                         setEditGramsText("");
                         setEditGrams(undefined);
+                        editGramsRef.current = undefined;
                         setEditBase({
                           calories: log.calories,
                           protein: log.protein,
@@ -8839,6 +8847,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                       });
                       setEditGramsText("100");
                       setEditGrams(100);
+                      editGramsRef.current = 100;
                       setEditBase({
                         calories: perGramRef.current.calories * 100,
                         protein: perGramRef.current.protein * 100,
@@ -9174,6 +9183,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   const [editServingsText, setEditServingsText] = useState("1");
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
+  const editGramsRef = useRef<number | undefined>(log.amountGrams);
   const [editGramsText, setEditGramsText] = useState(
     log.amountGrams !== undefined
       ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
@@ -9199,6 +9209,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     const g = log.amountGrams;
     setEditGrams(g);
+    editGramsRef.current = g;
     setEditGramsText(
       g !== undefined
         ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
@@ -9234,6 +9245,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
             setEditShowPer100g(true);
             setEditGramsText("100");
             setEditGrams(100);
+            editGramsRef.current = 100;
             setEditBase({
               calories: perGramRef.current.calories * 100,
               protein: perGramRef.current.protein * 100,
@@ -9263,6 +9275,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     const n = parseFloat(normalized);
     if (!isNaN(n) && n > 0) {
       setEditGrams(n);
+      editGramsRef.current = n;
       if (perGramRef.current) {
         const newBase = {
           calories: perGramRef.current.calories * n,
@@ -9285,6 +9298,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       // to finalize the gram value before locking the per-gram ratio.
     } else if (normalized === "" || normalized === "0") {
       setEditGrams(undefined);
+      editGramsRef.current = undefined;
       perGramRef.current = null;
     }
   }
@@ -9314,14 +9328,15 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
       const baseValue = editServings > 0 ? n / editServings : n;
+      const grams = editGramsRef.current;
       setEditBase(prev => {
         const newBase = { ...prev, [field]: baseValue };
-        if (editGrams !== undefined && editGrams > 0) {
+        if (grams !== undefined && grams > 0) {
           perGramRef.current = {
-            calories: newBase.calories / editGrams,
-            protein: newBase.protein / editGrams,
-            carbs: newBase.carbs / editGrams,
-            fat: newBase.fat / editGrams,
+            calories: newBase.calories / grams,
+            protein: newBase.protein / grams,
+            carbs: newBase.carbs / grams,
+            fat: newBase.fat / grams,
           };
         }
         return newBase;
@@ -9494,6 +9509,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                         const gText = Number.isInteger(g) ? String(g) : g.toFixed(1);
                         setEditGramsText(gText);
                         setEditGrams(g);
+                        editGramsRef.current = g;
                         setEditBase({
                           calories: perGramRef.current.calories * g,
                           protein: perGramRef.current.protein * g,
@@ -9504,6 +9520,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                         // Food was logged in serving mode (no grams): restore original macros
                         setEditGramsText("");
                         setEditGrams(undefined);
+                        editGramsRef.current = undefined;
                         setEditBase({
                           calories: log.calories,
                           protein: log.protein,
@@ -9540,6 +9557,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                       });
                       setEditGramsText("100");
                       setEditGrams(100);
+                      editGramsRef.current = 100;
                       setEditBase({
                         calories: perGramRef.current.calories * 100,
                         protein: perGramRef.current.protein * 100,
