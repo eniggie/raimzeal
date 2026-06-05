@@ -1565,6 +1565,8 @@ export default function NutritionScreen() {
   const historyResetSlideAnim = useRef(new Animated.Value(16)).current;
   const todayResetFadeAnim = useRef(new Animated.Value(0)).current;
   const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
+  const todayClearFadeAnim = useRef(new Animated.Value(0)).current;
+  const todayClearSlideAnim = useRef(new Animated.Value(16)).current;
   const searchLoadingDimAnim = useRef(new Animated.Value(1)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyDividerSlideAnim = useRef(new Animated.Value(-8)).current;
@@ -3734,6 +3736,21 @@ export default function NutritionScreen() {
     }
   }, [hasCustomThresholds]);
 
+  useEffect(() => {
+    if (activeFilters.size > 0) {
+      todayClearSlideAnim.setValue(16);
+      Animated.parallel([
+        Animated.timing(todayClearFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(todayClearSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(todayClearFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(todayClearSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [activeFilters.size]);
+
   function resetAllThresholds() {
     Alert.alert(
       "Reset All Thresholds to Default?",
@@ -4913,23 +4930,27 @@ export default function NutritionScreen() {
                         </Text>
                       </TouchableOpacity>
                     </Animated.View>
-                    {activeFilters.size > 0 && (
-                      <Animated.View style={{ opacity: searchLoadingDimAnim }}>
-                        <TouchableOpacity
-                          onPress={clearFilters}
-                          style={[
-                            styles.filterClearBtn,
-                            { borderColor: colors.border },
-                          ]}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        >
-                          <Ionicons name="close" size={13} color={colors.mutedForeground} />
-                          <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
-                            Clear
-                          </Text>
-                        </TouchableOpacity>
-                      </Animated.View>
-                    )}
+                    <Animated.View
+                      style={{
+                        opacity: Animated.multiply(todayClearFadeAnim, searchLoadingDimAnim),
+                        transform: [{ translateX: todayClearSlideAnim }],
+                      }}
+                      pointerEvents={activeFilters.size > 0 ? "auto" : "none"}
+                    >
+                      <TouchableOpacity
+                        onPress={clearFilters}
+                        style={[
+                          styles.filterClearBtn,
+                          { borderColor: colors.border },
+                        ]}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="close" size={13} color={colors.mutedForeground} />
+                        <Text style={[styles.filterClearText, { color: colors.mutedForeground }]}>
+                          Clear
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
                   </View>
                 </View>
               </View>
