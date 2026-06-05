@@ -209,9 +209,19 @@ export function MacroRing({
       <View style={styles.legend}>
         {legend.map((item) => (
           <View key={item.label} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-            <Text style={[styles.legendLabel, { color: item.color }]}>
-              {item.label} {item.grams}g
+            <View
+              style={[
+                styles.legendDot,
+                { backgroundColor: hasData ? item.color : "rgba(128,128,128,0.35)" },
+              ]}
+            />
+            <Text
+              style={[
+                styles.legendLabel,
+                { color: hasData ? item.color : "rgba(128,128,128,0.45)" },
+              ]}
+            >
+              {item.label} {hasData ? `${item.grams}g` : "—"}
             </Text>
           </View>
         ))}
