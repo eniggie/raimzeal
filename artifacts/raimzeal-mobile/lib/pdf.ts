@@ -3,41 +3,64 @@ import * as Sharing from "expo-sharing";
 import type { AppState } from "@/contexts/FitnessContext";
 import type { MacroGoals } from "@/contexts/MacroGoalsContext";
 
-export type DateRangeOption = "7d" | "30d" | "90d" | "all";
+export type DateRangeOption = "7d" | "30d" | "90d" | "all" | "custom";
 
-function getDateRangeLabel(option: DateRangeOption): string {
+export type CustomDateRange = { start: string; end: string };
+
+function formatCustomLabel(start: string, end: string): string {
+  const s = new Date(start + "T12:00:00");
+  const e = new Date(end + "T12:00:00");
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  if (start === end) return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()})`;
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+    return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()}\u2013${e.getDate()})`;
+  }
+  return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()} \u2013 ${MONTHS[e.getMonth()]} ${e.getDate()})`;
+}
+
+function getDateRangeLabel(option: DateRangeOption, customRange?: CustomDateRange): string {
   switch (option) {
     case "7d": return "Last 7 Days";
     case "30d": return "Last 30 Days";
     case "90d": return "Last 90 Days";
     case "all": return "All Time";
+    case "custom":
+      if (customRange) return formatCustomLabel(customRange.start, customRange.end);
+      return "Custom Range";
   }
 }
 
-function getCutoffDate(option: DateRangeOption): Date | null {
-  if (option === "all") return null;
+function filterByDateRange<T extends { date: string }>(
+  items: T[],
+  option: DateRangeOption,
+  customRange?: CustomDateRange,
+): T[] {
+  if (option === "all") return items;
+  if (option === "custom") {
+    if (!customRange) return items;
+    return items.filter((item) => item.date >= customRange.start && item.date <= customRange.end);
+  }
   const days = option === "7d" ? 7 : option === "30d" ? 30 : 90;
   const cutoff = new Date();
   cutoff.setHours(0, 0, 0, 0);
   cutoff.setDate(cutoff.getDate() - days + 1);
-  return cutoff;
+  return items.filter((item) => new Date(item.date) >= cutoff);
 }
 
-export async function exportToPdf(state: AppState, macroGoals?: MacroGoals, dateRange: DateRangeOption = "all"): Promise<void> {
+export async function exportToPdf(
+  state: AppState,
+  macroGoals?: MacroGoals,
+  dateRange: DateRangeOption = "all",
+  customRange?: CustomDateRange,
+): Promise<void> {
   const { user, streak, personalRecords, settings } = state;
 
-  const cutoff = getCutoffDate(dateRange);
-  const filterByDate = <T extends { date: string }>(items: T[]): T[] => {
-    if (!cutoff) return items;
-    return items.filter((item) => new Date(item.date) >= cutoff);
-  };
-
-  const workoutLogs = filterByDate(state.workoutLogs);
-  const mealLogs = filterByDate(state.mealLogs);
-  const bodyMeasurements = filterByDate(state.bodyMeasurements);
+  const workoutLogs = filterByDateRange(state.workoutLogs, dateRange, customRange);
+  const mealLogs = filterByDateRange(state.mealLogs, dateRange, customRange);
+  const bodyMeasurements = filterByDateRange(state.bodyMeasurements, dateRange, customRange);
 
   const generatedAt = new Date().toLocaleString();
-  const dateRangeLabel = getDateRangeLabel(dateRange);
+  const dateRangeLabel = getDateRangeLabel(dateRange, customRange);
   const totalCalBurned = workoutLogs.reduce((s, l) => s + l.caloriesBurned, 0);
   const totalMinutes = workoutLogs.reduce((s, l) => s + l.duration, 0);
   const uniqueDays = [...new Set(mealLogs.map((m) => m.date))].length;

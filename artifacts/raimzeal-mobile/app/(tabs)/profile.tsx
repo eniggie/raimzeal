@@ -28,7 +28,7 @@ import { useFitness } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
-import { exportToPdf, type DateRangeOption } from "@/lib/pdf";
+import { exportToPdf, type DateRangeOption, type CustomDateRange } from "@/lib/pdf";
 import {
   FILTER_HINT_STORAGE_KEY,
   REORDER_HINT_STORAGE_KEY,
@@ -82,6 +82,17 @@ type MealDefaultEntry = {
   serving?: number;
 };
 const LAST_EXPORT_KEY = "@profile_last_export_timestamp";
+
+function formatExportCustomLabel(start: string, end: string): string {
+  const s = new Date(start + "T12:00:00");
+  const e = new Date(end + "T12:00:00");
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  if (start === end) return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()})`;
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+    return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()}\u2013${e.getDate()})`;
+  }
+  return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()} \u2013 ${MONTHS[e.getMonth()]} ${e.getDate()})`;
+}
 
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
@@ -150,6 +161,7 @@ export default function ProfileScreen() {
   const [undoWindowInput, setUndoWindowInput] = useState("");
 
   const [savedHistoryDateRange, setSavedHistoryDateRange] = useState<string | null>(null);
+  const [savedCustomDateRange, setSavedCustomDateRange] = useState<CustomDateRange | null>(null);
   const [showExportRangeModal, setShowExportRangeModal] = useState(false);
   const [exportRangeSelection, setExportRangeSelection] = useState<DateRangeOption>("all");
   const [pendingClearAfterExport, setPendingClearAfterExport] = useState(false);
@@ -1021,17 +1033,34 @@ export default function ProfileScreen() {
   function handleExportPdf() {
     if (pdfLoading) return;
     import("@react-native-async-storage/async-storage").then(({ default: AsyncStorage }) => {
-      AsyncStorage.getItem("@nutrition_history_date_range").then((cv) => {
+      Promise.all([
+        AsyncStorage.getItem("@nutrition_history_date_range"),
+        AsyncStorage.getItem("@nutrition_custom_date_range"),
+      ]).then(([cv, customRaw]) => {
         setSavedHistoryDateRange(cv);
+        let customRange: CustomDateRange | null = null;
+        if (customRaw) {
+          try {
+            const parsed = JSON.parse(customRaw) as unknown;
+            if (parsed && typeof parsed === "object" && "start" in parsed && "end" in parsed) {
+              customRange = parsed as CustomDateRange;
+            }
+          } catch {}
+        }
+        setSavedCustomDateRange(customRange);
         const preselect: DateRangeOption =
-          cv === "7d" || cv === "30d" ? cv : "all";
+          cv === "7d" || cv === "30d"
+            ? cv
+            : cv === "custom" && customRange
+            ? "custom"
+            : "all";
         setExportRangeSelection(preselect);
         setShowExportRangeModal(true);
       });
     });
   }
 
-  async function runPdfExport(dateRange: DateRangeOption) {
+  async function runPdfExport(dateRange: DateRangeOption, customRange?: CustomDateRange) {
     setPdfLoading(true);
     try {
       const fitnessState = {
@@ -1046,7 +1075,7 @@ export default function ProfileScreen() {
         favoriteFoods,
         oviaMessages,
       };
-      await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals, dateRange);
+      await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals, dateRange, customRange);
       await AsyncStorage.setItem(LAST_EXPORT_KEY, String(Date.now())).catch(() => {});
     } catch {
       Alert.alert("Export Failed", "Something went wrong while generating the PDF. Please try again.");
@@ -1438,12 +1467,16 @@ export default function ProfileScreen() {
                 { value: "30d", label: "Last 30 Days" },
                 { value: "90d", label: "Last 90 Days" },
                 { value: "all", label: "All Time" },
+                ...(savedCustomDateRange
+                  ? [{ value: "custom" as DateRangeOption, label: formatExportCustomLabel(savedCustomDateRange.start, savedCustomDateRange.end) }]
+                  : []),
               ] as { value: DateRangeOption; label: string }[]
             ).map((opt) => {
               const isSelected = exportRangeSelection === opt.value;
               const isCurrentView =
                 (opt.value === "7d" && savedHistoryDateRange === "7d") ||
-                (opt.value === "30d" && savedHistoryDateRange === "30d");
+                (opt.value === "30d" && savedHistoryDateRange === "30d") ||
+                (opt.value === "custom" && savedHistoryDateRange === "custom");
               return (
                 <TouchableOpacity
                   key={opt.value}
@@ -1495,7 +1528,11 @@ export default function ProfileScreen() {
                   setShowExportRangeModal(false);
                   const wasPending = pendingClearAfterExport;
                   if (wasPending) setPendingClearAfterExport(false);
-                  runPdfExport(exportRangeSelection).then(() => {
+                  const customRange =
+                    exportRangeSelection === "custom" && savedCustomDateRange
+                      ? savedCustomDateRange
+                      : undefined;
+                  runPdfExport(exportRangeSelection, customRange).then(() => {
                     if (wasPending) handleClearAppData();
                   });
                 }}

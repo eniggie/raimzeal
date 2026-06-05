@@ -176,6 +176,7 @@ const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 const LAST_USED_SERVING_KEY = "@nutrition_last_used_serving";
 const HISTORY_DATE_RANGE_KEY = "@nutrition_history_date_range";
+const CUSTOM_DATE_RANGE_KEY = "@nutrition_custom_date_range";
 const HISTORY_MEAL_FILTER_KEY = "@nutrition_history_meal_filter";
 const TREND_METRIC_STORAGE_KEY = "@nutrition_trend_metric";
 const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
@@ -2816,12 +2817,21 @@ export default function NutritionScreen() {
   const queuedThresholdUpdatesRef = useRef<FilterThresholds>({});
 
   useEffect(() => {
-    const VALID_DATE_RANGES = new Set(["all", "7d", "30d"]);
+    const VALID_DATE_RANGES = new Set(["all", "7d", "30d", "custom"]);
     const VALID_MEAL_FILTERS = new Set<string>(["all", ...MEALS]);
     Promise.all([
       AsyncStorage.getItem(HISTORY_DATE_RANGE_KEY),
       AsyncStorage.getItem(HISTORY_MEAL_FILTER_KEY),
-    ]).then(([dateRaw, mealRaw]) => {
+      AsyncStorage.getItem(CUSTOM_DATE_RANGE_KEY),
+    ]).then(([dateRaw, mealRaw, customRaw]) => {
+      if (customRaw) {
+        try {
+          const parsed = JSON.parse(customRaw) as unknown;
+          if (parsed && typeof parsed === "object" && "start" in parsed && "end" in parsed) {
+            setCustomDateRange(parsed as { start: string; end: string });
+          }
+        } catch {}
+      }
       if (dateRaw && VALID_DATE_RANGES.has(dateRaw)) {
         setHistoryDateRange(dateRaw as HistoryDateRange);
       }
@@ -2835,12 +2845,21 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (!historyFiltersHydratedRef.current) return;
-    if (historyDateRange === "all" || historyDateRange === "custom") {
+    if (historyDateRange === "all") {
       AsyncStorage.removeItem(HISTORY_DATE_RANGE_KEY).catch(() => {});
     } else {
       AsyncStorage.setItem(HISTORY_DATE_RANGE_KEY, historyDateRange).catch(() => {});
     }
   }, [historyDateRange]);
+
+  useEffect(() => {
+    if (!historyFiltersHydratedRef.current) return;
+    if (customDateRange) {
+      AsyncStorage.setItem(CUSTOM_DATE_RANGE_KEY, JSON.stringify(customDateRange)).catch(() => {});
+    } else {
+      AsyncStorage.removeItem(CUSTOM_DATE_RANGE_KEY).catch(() => {});
+    }
+  }, [customDateRange]);
 
   useEffect(() => {
     if (!historyFiltersHydratedRef.current) return;
