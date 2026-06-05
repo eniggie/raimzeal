@@ -10,6 +10,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -22,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
-import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel, BREAKDOWN_GLOSSARY, GlossaryEntry } from "@/lib/tdee";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel, BREAKDOWN_GLOSSARY, GlossaryEntry, formatBreakdownText } from "@/lib/tdee";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertUserPreferences } from "@/lib/db";
 
@@ -139,6 +140,19 @@ export default function MacroGoalsScreen() {
     setProtein(suggested.protein.toString());
     setCarbs(suggested.carbs.toString());
     setFat(suggested.fat.toString());
+  }
+
+  async function handleShareBreakdown() {
+    if (!breakdown || !suggested) return;
+    Haptics.selectionAsync();
+    const text = formatBreakdownText(breakdown, suggested, goalLabel);
+    try {
+      await Share.share({ message: text });
+      // Share.share resolves with { action } on success or rejects if the
+      // sheet cannot be displayed — either way no further action is needed.
+    } catch {
+      // share sheet could not be displayed (e.g. simulator restriction)
+    }
   }
 
   const fields: GoalField[] = [
@@ -368,6 +382,17 @@ export default function MacroGoalsScreen() {
                     >
                       <Text style={[styles.applyBtnText, { color: colors.primaryForeground }]}>
                         Apply these goals
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.82}
+                      onPress={handleShareBreakdown}
+                      style={[styles.shareBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12" }]}
+                    >
+                      <Ionicons name="share-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                      <Text style={[styles.shareBtnText, { color: colors.primary }]}>
+                        Share breakdown
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -699,6 +724,19 @@ const styles = StyleSheet.create({
   applyBtnText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  shareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 38,
+    marginTop: 4,
+  },
+  shareBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   applyInlineBtn: {
     flexDirection: "row",

@@ -163,6 +163,34 @@ export const BREAKDOWN_GLOSSARY: Record<string, GlossaryEntry> = {
   },
 };
 
+/**
+ * Returns a plain-text summary of the macro breakdown suitable for sharing
+ * via the native share sheet (e.g. screenshot caption, message to a coach).
+ */
+export function formatBreakdownText(
+  breakdown: TdeeBreakdown,
+  goals: MacroGoals,
+  goalLabel: string
+): string {
+  const lines: string[] = [
+    "📊 My Macro Breakdown",
+    "",
+    `BMR: ${breakdown.bmr} kcal`,
+    `TDEE (${breakdown.activityLabel}): ${breakdown.tdee} kcal`,
+  ];
+  const sign = breakdown.goalAdjustment > 0 ? "+" : "";
+  lines.push(`Goal adjustment (${goalLabel}): ${sign}${breakdown.goalAdjustment} kcal`);
+  lines.push(`Target calories: ${breakdown.targetCalories} kcal`);
+  lines.push("");
+  lines.push("Macro targets:");
+  lines.push(`• Protein: ${goals.protein}g (${Math.round(breakdown.proteinRatio * 100)}% of calories)`);
+  lines.push(`• Carbs: ${goals.carbs}g (${Math.round(breakdown.carbRatio * 100)}% of calories)`);
+  lines.push(`• Fat: ${goals.fat}g (${Math.round(breakdown.fatRatio * 100)}% of calories)`);
+  lines.push("");
+  lines.push("Generated with RAIMZEAL");
+  return lines.join("\n");
+}
+
 /** Human-readable label for the first goal in the goals array */
 export function primaryGoalLabel(goals: string[]): string {
   const map: Record<string, string> = {
