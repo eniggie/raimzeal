@@ -1567,6 +1567,7 @@ export default function NutritionScreen() {
   const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
   const searchLoadingDimAnim = useRef(new Animated.Value(1)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyDividerSlideAnim = useRef(new Animated.Value(-8)).current;
   const historyChipDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
@@ -2296,8 +2297,10 @@ export default function NutritionScreen() {
     const isNonDefault = historyDateRange !== "all" || historyMealFilter !== "all";
     if (isNonDefault) {
       historyResetSlideAnim.setValue(16);
+      historyDividerSlideAnim.setValue(-8);
       Animated.parallel([
         Animated.timing(historyDividerFadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        Animated.spring(historyDividerSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
         Animated.sequence([
           Animated.delay(50),
           Animated.parallel([
@@ -2309,6 +2312,7 @@ export default function NutritionScreen() {
     } else {
       Animated.parallel([
         Animated.timing(historyDividerFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(historyDividerSlideAnim, { toValue: -8, duration: 180, useNativeDriver: true }),
         Animated.timing(historyResetFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
         Animated.timing(historyResetSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
       ]).start();
@@ -5946,7 +5950,7 @@ export default function NutritionScreen() {
                     })}
 
                     <Animated.View
-                      style={{ opacity: historyDividerFadeAnim }}
+                      style={{ opacity: historyDividerFadeAnim, transform: [{ translateX: historyDividerSlideAnim }] }}
                       pointerEvents="none"
                     >
                       <View style={styles.historyFilterDivider} />
