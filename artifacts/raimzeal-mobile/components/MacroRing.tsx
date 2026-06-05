@@ -127,21 +127,38 @@ export function MacroRing({
       setShowSegments(true);
     }
 
-    const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
-    proteinOffset.value = withTiming(targetProteinOffset, config);
-    carbsOffset.value = withTiming(targetCarbsOffset, config);
-    fatOffset.value = withTiming(targetFatOffset, config);
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+      if (cancelled) return;
 
-    // When transitioning to zero, keep segments mounted for the full animation
-    // duration so the arcs visibly sweep to empty before being removed.
-    if (!hasData) {
-      unmountTimerRef.current = setTimeout(
-        () => setShowSegments(false),
-        UPDATE_ANIMATION_DURATION,
-      );
-    }
+      if (reduceMotion) {
+        proteinOffset.value = targetProteinOffset;
+        carbsOffset.value = targetCarbsOffset;
+        fatOffset.value = targetFatOffset;
+
+        // No animation — hide segments immediately when transitioning to zero.
+        if (!hasData) {
+          setShowSegments(false);
+        }
+      } else {
+        const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
+        proteinOffset.value = withTiming(targetProteinOffset, config);
+        carbsOffset.value = withTiming(targetCarbsOffset, config);
+        fatOffset.value = withTiming(targetFatOffset, config);
+
+        // When transitioning to zero, keep segments mounted for the full animation
+        // duration so the arcs visibly sweep to empty before being removed.
+        if (!hasData) {
+          unmountTimerRef.current = setTimeout(
+            () => setShowSegments(false),
+            UPDATE_ANIMATION_DURATION,
+          );
+        }
+      }
+    });
 
     return () => {
+      cancelled = true;
       if (unmountTimerRef.current) {
         clearTimeout(unmountTimerRef.current);
         unmountTimerRef.current = null;
