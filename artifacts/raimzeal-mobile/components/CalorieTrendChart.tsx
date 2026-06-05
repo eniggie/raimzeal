@@ -33,6 +33,7 @@ interface CalorieTrendChartProps {
   onClearHighlight?: () => void;
   onEditGoals?: () => void;
   mealBreakdown?: MealBreakdownEntry[];
+  mealFilter?: string;
   colors: {
     primary: string;
     secondary: string;
@@ -71,6 +72,7 @@ export function CalorieTrendChart({
   onClearHighlight,
   onEditGoals,
   mealBreakdown,
+  mealFilter,
   colors,
 }: CalorieTrendChartProps) {
   const screenWidth = Dimensions.get("window").width;
@@ -548,6 +550,45 @@ export function CalorieTrendChart({
           </View>
         )}
       </Animated.View>
+
+      {/* Meal filter badge */}
+      {mealFilter && mealFilter !== "all" && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            alignSelf: "flex-start",
+            gap: 5,
+            marginTop: 4,
+            marginBottom: 2,
+            paddingHorizontal: 9,
+            paddingVertical: 3,
+            borderRadius: 12,
+            backgroundColor: (MEAL_DOT_COLORS[mealFilter] ?? colors.primary) + "1F",
+            borderWidth: 1,
+            borderColor: (MEAL_DOT_COLORS[mealFilter] ?? colors.primary) + "55",
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: MEAL_DOT_COLORS[mealFilter] ?? colors.primary,
+            }}
+          />
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: "600",
+              color: MEAL_DOT_COLORS[mealFilter] ?? colors.primary,
+              letterSpacing: 0.1,
+            }}
+          >
+            {mealFilter.charAt(0).toUpperCase() + mealFilter.slice(1)} only
+          </Text>
+        </View>
+      )}
 
       {/* Legend row */}
       <View

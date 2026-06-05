@@ -6135,6 +6135,7 @@ export default function NutritionScreen() {
                       onPillPress={handleChartPillPress}
                       onClearHighlight={handleClearHighlight}
                       mealBreakdown={highlightedDateMealBreakdown}
+                      mealFilter={historyMealFilter}
                       onEditGoals={() =>
                         router.push(
                           trendMetric === "calories"
