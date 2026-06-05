@@ -20,6 +20,11 @@ import { useFitness } from "@/contexts/FitnessContext";
 const BLOOD_TYPES = ["A", "B", "AB", "O"] as const;
 const RH_FACTORS = ["+", "-"] as const;
 const GENOTYPES = ["AA", "AS", "AC", "SS", "SC"] as const;
+const BIOLOGICAL_SEX_OPTIONS = [
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
+  { id: "prefer_not_to_say", label: "Prefer not to say" },
+] as const;
 const FITNESS_LEVELS = [
   { key: "beginner", label: "Beginner", desc: "Just starting out" },
   { key: "intermediate", label: "Intermediate", desc: "Consistent for 6+ months" },
@@ -51,6 +56,9 @@ export default function HealthOnboardingScreen() {
   const [bloodType, setBloodType] = useState<"A" | "B" | "AB" | "O" | undefined>(user?.bloodType);
   const [rhFactor, setRhFactor] = useState<"+" | "-" | undefined>(user?.rhFactor);
   const [genotype, setGenotype] = useState<"AA" | "AS" | "AC" | "SS" | "SC" | undefined>(user?.genotype);
+  const [biologicalSex, setBiologicalSex] = useState<"male" | "female" | "prefer_not_to_say" | undefined>(
+    user?.biologicalSex
+  );
 
   const STEPS = ["body", "fitness", "health"];
   const STEP_LABELS = ["Body Stats", "Fitness Profile", "Health Profile"];
@@ -98,6 +106,7 @@ export default function HealthOnboardingScreen() {
       bloodType,
       rhFactor,
       genotype,
+      biologicalSex,
     });
     markOnboarded();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -185,6 +194,41 @@ export default function HealthOnboardingScreen() {
                   />
                 </View>
               </View>
+            </View>
+            <Text style={[styles.sectionLabel, { color: colors.foreground, marginTop: 4 }]}>Biological Sex</Text>
+            <Text style={[styles.label, { color: colors.mutedForeground, marginTop: -4 }]}>
+              Improves calorie suggestion accuracy by ~80–160 kcal/day.
+            </Text>
+            <View style={styles.chipRow}>
+              {BIOLOGICAL_SEX_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setBiologicalSex(biologicalSex === opt.id ? undefined : opt.id);
+                  }}
+                  style={[
+                    styles.sexChip,
+                    {
+                      backgroundColor: biologicalSex === opt.id ? colors.primary : colors.muted,
+                      borderColor: biologicalSex === opt.id ? colors.primary : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.sexChipText,
+                      {
+                        color: biologicalSex === opt.id ? colors.primaryForeground : colors.mutedForeground,
+                        fontFamily: biologicalSex === opt.id ? "Inter_600SemiBold" : "Inter_400Regular",
+                      },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
             <View style={[styles.infoBox, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
               <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
@@ -412,6 +456,8 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
   chip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 9 },
   chipText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  sexChip: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 10 },
+  sexChipText: { fontSize: 14 },
   rhLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   warningBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
   warningText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
