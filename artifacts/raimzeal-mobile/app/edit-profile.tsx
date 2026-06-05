@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
+import { computeSuggestedGoalsWithBreakdown, type SuggestedGoalsResult } from "@/lib/tdee";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
@@ -120,6 +121,28 @@ export default function EditProfileScreen() {
   const [rhFactor, setRhFactor] = useState<"+" | "-" | undefined>(user?.rhFactor);
   const [genotype, setGenotype] = useState<"AA" | "AS" | "AC" | "SS" | "SC" | undefined>(user?.genotype);
   const [biologicalSex, setBiologicalSex] = useState<"male" | "female" | "prefer_not_to_say" | undefined>(user?.biologicalSex);
+  const [previewExpanded, setPreviewExpanded] = useState(true);
+
+  // Live macro preview — recomputed on every relevant field change without saving
+  const livePreview = useMemo(() => {
+    if (!user) return null;
+    const ageNum = parseInt(age, 10);
+    const heightNum = parseFloat(height);
+    const weightNum = parseFloat(weight);
+    if (!ageNum || !heightNum || !weightNum || ageNum <= 0 || heightNum <= 0 || weightNum <= 0) {
+      return null;
+    }
+    return computeSuggestedGoalsWithBreakdown({
+      ...user,
+      age: ageNum,
+      height: heightNum,
+      weight: weightNum,
+      fitnessLevel,
+      goals,
+      units,
+      biologicalSex,
+    });
+  }, [age, height, weight, fitnessLevel, goals, units, biologicalSex, user]);
 
   // Null guard: profile not yet loaded (context still hydrating)
   if (!user) {
@@ -490,6 +513,16 @@ export default function EditProfileScreen() {
           })}
         </View>
 
+        {/* Live macro suggestion preview */}
+        {livePreview && (
+          <MacroPreviewBanner
+            preview={livePreview}
+            expanded={previewExpanded}
+            onToggle={() => setPreviewExpanded((v) => !v)}
+            colors={colors}
+          />
+        )}
+
         {/* Save */}
         <TouchableOpacity
           activeOpacity={0.85}
@@ -503,6 +536,74 @@ export default function EditProfileScreen() {
       </ScrollView>
       {permissionToastElement}
     </KeyboardAvoidingView>
+  );
+}
+
+function MacroPreviewBanner({
+  preview,
+  expanded,
+  onToggle,
+  colors,
+}: {
+  preview: SuggestedGoalsResult;
+  expanded: boolean;
+  onToggle: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const { goals, breakdown } = preview;
+  return (
+    <View
+      style={[
+        styles.previewBanner,
+        { backgroundColor: colors.primary + "12", borderColor: colors.primary + "40" },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={onToggle}
+        activeOpacity={0.7}
+        style={styles.previewHeader}
+      >
+        <View style={styles.previewHeaderLeft}>
+          <Ionicons name="flash" size={14} color={colors.primary} />
+          <Text style={[styles.previewTitle, { color: colors.primary }]}>
+            Suggested targets preview
+          </Text>
+        </View>
+        <Ionicons
+          name={expanded ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={colors.primary}
+        />
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.previewBody}>
+          <Text style={[styles.previewCalories, { color: colors.foreground }]}>
+            {goals.calories} kcal / day
+          </Text>
+          <View style={styles.previewMacroRow}>
+            <MacroPill label="Protein" value={goals.protein} color="#3b82f6" />
+            <MacroPill label="Carbs" value={goals.carbs} color="#f59e0b" />
+            <MacroPill label="Fat" value={goals.fat} color="#f97316" />
+          </View>
+          <Text style={[styles.previewNote, { color: colors.mutedForeground }]}>
+            Based on BMR {breakdown.bmr} kcal · {breakdown.activityLabel}
+            {breakdown.goalAdjustment !== 0
+              ? ` · goal adjustment ${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`
+              : ""}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <View style={[styles.macroPill, { backgroundColor: color + "18", borderColor: color + "40" }]}>
+      <Text style={[styles.macroPillValue, { color }]}>{value}g</Text>
+      <Text style={[styles.macroPillLabel, { color }]}>{label}</Text>
+    </View>
   );
 }
 
@@ -622,4 +723,61 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   saveBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  previewBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  previewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  previewHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  previewTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  previewBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  previewCalories: {
+    fontSize: 22,
+    fontFamily: "SpaceGrotesk_700Bold",
+    lineHeight: 26,
+  },
+  previewMacroRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  previewNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+  },
+  macroPill: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    gap: 2,
+  },
+  macroPillValue: {
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+  },
+  macroPillLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+  },
 });
