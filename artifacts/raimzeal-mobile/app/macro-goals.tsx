@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -60,6 +61,7 @@ export default function MacroGoalsScreen() {
   const fieldOffsets = useRef<Record<string, number>>({});
   const focusApplied = useRef(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   const initialised = useRef(false);
   useEffect(() => {
@@ -87,6 +89,15 @@ export default function MacroGoalsScreen() {
       setTimeout(() => {
         inputRefs.current[focus]?.focus();
       }, 350);
+
+      pulseAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0.15, duration: 200, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 700, useNativeDriver: false }),
+      ]).start();
+
       setTimeout(() => setFocusedField(null), 2000);
     };
 
@@ -353,6 +364,18 @@ export default function MacroGoalsScreen() {
         {/* Goal inputs */}
         {fields.map((field) => {
           const isHighlighted = focusedField === field.key;
+          const animatedBorderColor = isHighlighted
+            ? pulseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [colors.border, field.color],
+              })
+            : colors.border;
+          const animatedShadowOpacity = isHighlighted
+            ? pulseAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.45],
+              })
+            : 0;
           return (
             <View
               key={field.key}
@@ -367,11 +390,18 @@ export default function MacroGoalsScreen() {
                   {field.label}
                 </Text>
               </View>
-              <View
+              <Animated.View
                 style={[
                   styles.inputBox,
-                  { backgroundColor: colors.muted, borderColor: isHighlighted ? field.color : colors.border },
-                  isHighlighted && { shadowColor: field.color, shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 4 },
+                  {
+                    backgroundColor: colors.muted,
+                    borderColor: animatedBorderColor,
+                    shadowColor: field.color,
+                    shadowOpacity: animatedShadowOpacity,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 0 },
+                    elevation: isHighlighted ? 4 : 0,
+                  },
                 ]}
               >
                 <TextInput
@@ -385,7 +415,7 @@ export default function MacroGoalsScreen() {
                   returnKeyType="done"
                 />
                 <Text style={[styles.unit, { color: colors.mutedForeground }]}>{field.unit}</Text>
-              </View>
+              </Animated.View>
             </View>
           );
         })}
