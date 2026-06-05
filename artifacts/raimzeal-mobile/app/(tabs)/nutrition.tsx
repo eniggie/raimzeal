@@ -1287,16 +1287,17 @@ export default function NutritionScreen() {
     ]).start();
   }, [trendMetric]);
 
+  const TREND_CHART_MAX_DAYS = 14;
+
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const MAX_DAYS = 14;
-    // When "all" is selected restore the default 14-day window.
-    // For any other range, mirror the history filter so chart and list stay in sync.
+    // Always cap at TREND_CHART_MAX_DAYS most-recent days so bars stay readable
+    // on narrow phones regardless of which date range is selected.
     const source =
       historyDateRange === "all"
-        ? historyDays.slice(0, MAX_DAYS).reverse()
-        : [...filteredHistoryDays].reverse();
+        ? historyDays.slice(0, TREND_CHART_MAX_DAYS).reverse()
+        : filteredHistoryDays.slice(0, TREND_CHART_MAX_DAYS).reverse();
     const useShortDate = source.length <= 7;
     return source.map(({ date, totals }) => {
       const d = new Date(date + "T12:00:00");
@@ -1313,6 +1314,11 @@ export default function NutritionScreen() {
       };
     });
   }, [historyDays, filteredHistoryDays, historyDateRange]);
+
+  const trendChartTotalDays = React.useMemo(
+    () => (historyDateRange === "all" ? historyDays.length : filteredHistoryDays.length),
+    [historyDateRange, historyDays.length, filteredHistoryDays.length]
+  );
 
   useEffect(() => {
     if (!highlightedDate) return;
@@ -6066,7 +6072,9 @@ export default function NutritionScreen() {
                           : "Fat Trend"}
                       </Text>
                       <Text style={[styles.trendChartSubtitle, { color: colors.mutedForeground }]}>
-                        Last {trendChartDays.length} day{trendChartDays.length !== 1 ? "s" : ""}
+                        {trendChartTotalDays > trendChartDays.length
+                          ? `Most recent ${trendChartDays.length} of ${trendChartTotalDays} days`
+                          : `Last ${trendChartDays.length} day${trendChartDays.length !== 1 ? "s" : ""}`}
                         {highlightedDate ? " · tap pill → to jump to day" : " · tap a bar to highlight"}
                       </Text>
                     </View>
