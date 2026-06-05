@@ -110,6 +110,11 @@ export default function CommunityScreen() {
   const [newPostImageUri, setNewPostImageUri] = useState<string | null>(null);
   const [newPostImageUploading, setNewPostImageUploading] = useState(false);
 
+  const [challengeTitle, setChallengeTitle] = useState("");
+  const [challengeDuration, setChallengeDuration] = useState<7 | 14 | 21 | 30>(7);
+  const [challengeCategory, setChallengeCategory] = useState<"fitness" | "nutrition" | "sleep" | "mindfulness" | "mental">("fitness");
+  const [challengeDailyGoal, setChallengeDailyGoal] = useState("");
+
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   useEffect(() => {
@@ -317,14 +322,26 @@ export default function CommunityScreen() {
   }
 
   async function handleCreatePost() {
-    if (!newPostContent.trim()) return;
+    const isChallenge = newPostType === "challenge";
+    if (isChallenge) {
+      if (!challengeTitle.trim()) { Alert.alert("Challenge title required", "Please enter a title for your challenge."); return; }
+      if (!challengeDailyGoal.trim()) { Alert.alert("Daily goal required", "Describe what participants should do each day."); return; }
+    } else {
+      if (!newPostContent.trim()) return;
+    }
     if (!userId && isSupabaseConfigured) {
       Alert.alert("Sign in required", "Please sign in to post.");
       return;
     }
     setSubmitting(true);
     const userName = user?.name ?? "Anonymous";
-    const content = newPostContent.trim();
+
+    const CATEGORY_EMOJI: Record<string, string> = {
+      fitness: "💪", nutrition: "🥗", sleep: "😴", mindfulness: "🧘", mental: "🧠",
+    };
+    const content = isChallenge
+      ? `🏆 ${challengeTitle.trim()}\n⏱ ${challengeDuration} days · ${CATEGORY_EMOJI[challengeCategory] ?? "🎯"} ${challengeCategory.charAt(0).toUpperCase() + challengeCategory.slice(1)}\n📋 Daily goal: ${challengeDailyGoal.trim()}${newPostContent.trim() ? `\n\n${newPostContent.trim()}` : ""}`
+      : newPostContent.trim();
 
     // Upload image if selected before closing the modal
     let uploadedImageUrl: string | null = null;
@@ -713,6 +730,10 @@ export default function CommunityScreen() {
               setNewPostContent("");
               setNewPostType("post");
               setNewPostImageUri(null);
+              setChallengeTitle("");
+              setChallengeDuration(7);
+              setChallengeCategory("fitness");
+              setChallengeDailyGoal("");
               setShowNewPost(true);
             }}
             style={[styles.newPostBtn, { backgroundColor: colors.primary }]}
@@ -887,7 +908,14 @@ export default function CommunityScreen() {
               style={[styles.modalHeader, { borderBottomColor: colors.border }]}
             >
               <TouchableOpacity
-                onPress={() => { setShowNewPost(false); setNewPostImageUri(null); }}
+                onPress={() => {
+                  setShowNewPost(false);
+                  setNewPostImageUri(null);
+                  setChallengeTitle("");
+                  setChallengeDuration(7);
+                  setChallengeCategory("fitness");
+                  setChallengeDailyGoal("");
+                }}
                 style={styles.modalCloseBtn}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -899,11 +927,11 @@ export default function CommunityScreen() {
               </Text>
               <TouchableOpacity
                 onPress={handleCreatePost}
-                disabled={!newPostContent.trim() || submitting || newPostImageUploading}
+                disabled={(newPostType === "challenge" ? (!challengeTitle.trim() || !challengeDailyGoal.trim()) : !newPostContent.trim()) || submitting || newPostImageUploading}
                 style={[
                   styles.modalSubmitBtn,
                   {
-                    backgroundColor: newPostContent.trim() && !newPostImageUploading
+                    backgroundColor: ((newPostType === "challenge" ? (challengeTitle.trim() && challengeDailyGoal.trim()) : newPostContent.trim()) && !newPostImageUploading)
                       ? colors.primary
                       : colors.muted,
                   },
@@ -916,13 +944,13 @@ export default function CommunityScreen() {
                     style={[
                       styles.modalSubmitText,
                       {
-                        color: newPostContent.trim()
+                        color: (newPostType === "challenge" ? (challengeTitle.trim() && challengeDailyGoal.trim()) : newPostContent.trim())
                           ? colors.primaryForeground
                           : colors.mutedForeground,
                       },
                     ]}
                   >
-                    Post
+                    {newPostType === "challenge" ? "Launch Challenge" : "Post"}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -987,33 +1015,106 @@ export default function CommunityScreen() {
                 ))}
               </View>
 
-              <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>
-                {newPostType === "win" ? "SHARE YOUR WIN" : newPostType === "tip" ? "YOUR TIP" : newPostType === "challenge" ? "ISSUE THE CHALLENGE" : newPostType === "question" ? "YOUR QUESTION" : "YOUR POST"}
-              </Text>
-              <TextInput
-                value={newPostContent}
-                onChangeText={setNewPostContent}
-                placeholder={
-                  newPostType === "post"
-                    ? "Share a workout win, progress update, tip, or motivation..."
-                    : "Ask the community for advice, recommendations, or experiences..."
-                }
-                placeholderTextColor={colors.mutedForeground}
-                multiline
-                maxLength={500}
-                style={[
-                  styles.contentInput,
-                  {
-                    backgroundColor: colors.muted,
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                  },
-                ]}
-                autoFocus
-              />
-              <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
-                {newPostContent.length}/500
-              </Text>
+              {newPostType === "challenge" ? (
+                <>
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>CHALLENGE TITLE *</Text>
+                  <TextInput
+                    value={challengeTitle}
+                    onChangeText={setChallengeTitle}
+                    placeholder="e.g. 7-Day Morning Walk Challenge"
+                    placeholderTextColor={colors.mutedForeground}
+                    maxLength={80}
+                    autoFocus
+                    style={[styles.challengeInput, { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border }]}
+                  />
+
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginTop: 4 }]}>DURATION</Text>
+                  <View style={styles.durationRow}>
+                    {([7, 14, 21, 30] as const).map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        onPress={() => setChallengeDuration(d)}
+                        style={[styles.durationChip, {
+                          backgroundColor: challengeDuration === d ? colors.primary : colors.muted,
+                          borderColor: challengeDuration === d ? colors.primary : colors.border,
+                        }]}
+                      >
+                        <Text style={[styles.durationChipText, { color: challengeDuration === d ? colors.primaryForeground : colors.mutedForeground }]}>
+                          {d}d
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginTop: 4 }]}>CATEGORY</Text>
+                  <View style={styles.categoryRow}>
+                    {([
+                      { id: "fitness", label: "💪 Fitness" },
+                      { id: "nutrition", label: "🥗 Nutrition" },
+                      { id: "sleep", label: "😴 Sleep" },
+                      { id: "mindfulness", label: "🧘 Mindfulness" },
+                      { id: "mental", label: "🧠 Mental" },
+                    ] as const).map((c) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        onPress={() => setChallengeCategory(c.id)}
+                        style={[styles.categoryChip, {
+                          backgroundColor: challengeCategory === c.id ? "#ef444420" : colors.muted,
+                          borderColor: challengeCategory === c.id ? "#ef4444" : colors.border,
+                        }]}
+                      >
+                        <Text style={[styles.categoryChipText, { color: challengeCategory === c.id ? "#ef4444" : colors.mutedForeground }]}>
+                          {c.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginTop: 4 }]}>DAILY GOAL *</Text>
+                  <TextInput
+                    value={challengeDailyGoal}
+                    onChangeText={setChallengeDailyGoal}
+                    placeholder="e.g. Walk 7,000 steps every morning"
+                    placeholderTextColor={colors.mutedForeground}
+                    maxLength={120}
+                    style={[styles.challengeInput, { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border }]}
+                  />
+
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginTop: 4 }]}>DESCRIPTION (OPTIONAL)</Text>
+                  <TextInput
+                    value={newPostContent}
+                    onChangeText={setNewPostContent}
+                    placeholder="Add context, tips, or motivation for participants..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    maxLength={300}
+                    style={[styles.contentInput, { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border, minHeight: 70 }]}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>
+                    {newPostType === "win" ? "SHARE YOUR WIN" : newPostType === "tip" ? "YOUR TIP" : newPostType === "question" ? "YOUR QUESTION" : "YOUR POST"}
+                  </Text>
+                  <TextInput
+                    value={newPostContent}
+                    onChangeText={setNewPostContent}
+                    placeholder={
+                      newPostType === "post"
+                        ? "Share a workout win, progress update, tip, or motivation..."
+                        : "Ask the community for advice, recommendations, or experiences..."
+                    }
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    maxLength={500}
+                    style={[styles.contentInput, { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border }]}
+                    autoFocus
+                  />
+                  <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
+                    {newPostContent.length}/500
+                  </Text>
+                </>
+              )}
 
               <TouchableOpacity
                 style={[styles.imagePicker, { borderColor: colors.border, backgroundColor: colors.muted }]}
@@ -1302,6 +1403,33 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   charCount: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "right" },
+  challengeInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 2,
+  },
+  durationRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  durationChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    minWidth: 52,
+    alignItems: "center",
+  },
+  durationChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  categoryRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  categoryChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   noMediaNotice: {
     flexDirection: "row",
     alignItems: "flex-start",

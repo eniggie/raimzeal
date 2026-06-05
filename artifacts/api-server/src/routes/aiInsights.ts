@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/auth";
 
 const aiInsightsRouter = Router();
 
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 8;
 const insightDailyCounters = new Map<string, { count: number; resetAt: number }>();
 
 function consumeInsightQuota(userId: string): { allowed: boolean; remaining: number } {
@@ -46,6 +46,23 @@ interface BalanceInsightData {
   avgEnergy7d: number | null;
   avgStress7d: number | null;
   notes: string;
+}
+
+interface WeeklyReportData {
+  workouts: number;
+  avgCalories: number;
+  avgProtein: number;
+  avgSleep: number;
+  sleepDays: number;
+  avgReadiness: number;
+  readinessDays: number;
+  waterDays: number;
+  avgMood: number | null;
+  avgEnergy: number | null;
+  avgStress: number | null;
+  topReadinessDays: number;
+  workoutOnHighReadinessDays: number;
+  workoutOnLowReadinessDays: number;
 }
 
 function buildHabitPrompt(d: HabitInsightData): string {
@@ -117,6 +134,34 @@ Give a SHORT, punchy, personalised life balance coaching insight. Cover:
 Zero markdown. Use emojis freely. Short punchy sentences. Max 130 words. End with high energy. ⚡`;
 }
 
+function buildWeeklyReportPrompt(d: WeeklyReportData): string {
+  const mindBodySection = d.readinessDays >= 2
+    ? `Mind-Body correlation: On high-readiness days (70+), user completed workouts ${d.workoutOnHighReadinessDays} time(s). On low-readiness days (<70), they completed ${d.workoutOnLowReadinessDays} workout(s).`
+    : "Not enough wellness check-in data for mind-body correlation this week.";
+
+  return `You are Ovia AI — the world-class AI wellness coach inside RAIMZEAL, a free non-profit fitness and health platform by Dr. Ephraim Oviawe (ECONTEUR LLC).
+
+USER'S FULL WEEK SUMMARY:
+Workouts completed: ${d.workouts}/7 days
+Avg daily calories: ${d.avgCalories > 0 ? d.avgCalories + " kcal" : "not enough data"}
+Avg daily protein: ${d.avgProtein > 0 ? d.avgProtein + "g" : "not enough data"}
+Hydration (8+ glasses): ${d.waterDays}/7 days
+Avg sleep: ${d.avgSleep > 0 ? d.avgSleep + "h" : "not logged"} across ${d.sleepDays} nights
+Avg wellness readiness: ${d.avgReadiness > 0 ? d.avgReadiness + "/100" : "not logged"} across ${d.readinessDays} check-ins
+${d.avgMood !== null ? `Avg mood this week: ${d.avgMood.toFixed(1)}/5` : ""}
+${d.avgEnergy !== null ? `Avg energy this week: ${d.avgEnergy.toFixed(1)}/5` : ""}
+${d.avgStress !== null ? `Avg stress this week: ${d.avgStress.toFixed(1)}/5` : ""}
+${mindBodySection}
+
+Write a SHORT, warm, highly personalised AI wellness narrative for this week. Structure it as:
+1. A brief acknowledgement of what went well (be specific with their numbers)
+2. The single most important pattern or trend you spotted (good or concerning — be honest)
+3. One focused, actionable goal for next week based on their weakest area
+4. A motivating closing line
+
+Zero markdown. Use emojis. Conversational coach tone — direct but warm. Max 180 words. End with strong energy. 💪`;
+}
+
 aiInsightsRouter.post(
   "/api/ai/insights",
   requireAuth,
@@ -131,8 +176,8 @@ aiInsightsRouter.post(
 
     const { type, data } = req.body as { type: string; data: unknown };
 
-    if (!type || !["habit", "sleep", "balance"].includes(type)) {
-      res.status(400).json({ error: "type must be habit, sleep, or balance" });
+    if (!type || !["habit", "sleep", "balance", "weekly_report"].includes(type)) {
+      res.status(400).json({ error: "type must be habit, sleep, balance, or weekly_report" });
       return;
     }
 
@@ -140,6 +185,7 @@ aiInsightsRouter.post(
     try {
       if (type === "habit") prompt = buildHabitPrompt(data as HabitInsightData);
       else if (type === "sleep") prompt = buildSleepPrompt(data as SleepInsightData);
+      else if (type === "weekly_report") prompt = buildWeeklyReportPrompt(data as WeeklyReportData);
       else prompt = buildBalancePrompt(data as BalanceInsightData);
     } catch {
       res.status(400).json({ error: "Invalid data payload" });
@@ -150,7 +196,7 @@ aiInsightsRouter.post(
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 300,
+        max_tokens: 350,
         temperature: 0.82,
       });
 

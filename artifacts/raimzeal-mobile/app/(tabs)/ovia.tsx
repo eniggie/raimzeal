@@ -285,9 +285,14 @@ export default function OviaScreen() {
       });
       if (response.status === 429) {
         const firstName = user?.name?.split(" ")[0] ?? "Champion";
+        let limitMsg = "daily limit";
+        try {
+          const errBody = (await response.json()) as { error?: string };
+          if (errBody?.error) limitMsg = errBody.error;
+        } catch { /* use fallback */ }
         addOviaMessage({
           role: "assistant",
-          content: `Hey ${firstName}! 😅 You've hit your 15 message daily limit. Your quota resets every 24 hours. Come back tomorrow and let's keep crushing those goals! 🔥`,
+          content: `Hey ${firstName}! 😅 ${limitMsg} Your quota resets every 24 hours. Come back tomorrow and let's keep crushing those goals! 🔥`,
         });
         setQuotaRemaining(0);
         return;

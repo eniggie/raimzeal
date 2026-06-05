@@ -20,6 +20,7 @@ import { getApiBase, getAccessToken } from "@/lib/db";
 
 const STORAGE_KEY_CONFIG = "@raimzeal_habits_config_v1";
 const STORAGE_KEY_LOG_PREFIX = "@raimzeal_habits_log_";
+const STORAGE_KEY_AI_CACHE = "@raimzeal_habit_ai_cache_v1";
 
 interface Habit {
   id: string;
@@ -71,6 +72,7 @@ export default function HabitTrackerScreen() {
   const [loading, setLoading] = useState(true);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiCachedAt, setAiCachedAt] = useState<string | null>(null);
 
   const activeHabits = habits.filter((h) => h.enabled);
   const completedCount = completedToday.size;
@@ -87,8 +89,9 @@ export default function HabitTrackerScreen() {
         await import("@react-native-async-storage/async-storage")
       ).default;
 
-      const [configRaw, ...logRaws] = await Promise.all([
+      const [configRaw, aiCacheRaw, ...logRaws] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEY_CONFIG),
+        AsyncStorage.getItem(STORAGE_KEY_AI_CACHE),
         ...weekDayLabels().map((d) =>
           AsyncStorage.getItem(STORAGE_KEY_LOG_PREFIX + d.key)
         ),
@@ -97,6 +100,16 @@ export default function HabitTrackerScreen() {
       if (configRaw) {
         const parsed = JSON.parse(configRaw) as Habit[];
         setHabits(parsed);
+      }
+
+      if (aiCacheRaw) {
+        try {
+          const cached = JSON.parse(aiCacheRaw) as { date: string; insight: string; cachedAt: string };
+          if (cached.date === todayKey()) {
+            setAiInsight(cached.insight);
+            setAiCachedAt(cached.cachedAt);
+          }
+        } catch {}
       }
 
       const week: Record<string, Set<string>> = {};
@@ -220,6 +233,14 @@ export default function HabitTrackerScreen() {
       if (!res.ok) throw new Error("API error");
       const json = await res.json() as { insight: string };
       setAiInsight(json.insight);
+      const cachedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setAiCachedAt(cachedAt);
+      const AsyncStorage = (await import("@react-native-async-storage/async-storage")).default;
+      await AsyncStorage.setItem(STORAGE_KEY_AI_CACHE, JSON.stringify({
+        date: todayKey(),
+        insight: json.insight,
+        cachedAt,
+      }));
     } catch {
       setAiInsight("Couldn't load insight right now — try again shortly. 🔄");
     } finally {
@@ -257,11 +278,43 @@ export default function HabitTrackerScreen() {
     return streak;
   }
 
+  function getHabitPatternInsight(): { best: Habit | null; needsWork: Habit | null; score: number; suggestion: string } {
+    if (activeHabits.length === 0) return { best: null, needsWork: null, score: 0, suggestion: "Add your first habit to start tracking!" };
+
+    const rates = activeHabits.map((h) => {
+      const completedDays = weekDays.filter((d) => weekData[d.key]?.has(h.id)).length;
+      return { habit: h, rate: completedDays / 7, completedDays };
+    });
+
+    rates.sort((a, b) => b.rate - a.rate);
+    const best = rates[0];
+    const worst = rates[rates.length - 1];
+    const avgRate = rates.reduce((s, r) => s + r.rate, 0) / rates.length;
+    const score = Math.round(avgRate * 100);
+
+    let suggestion = "";
+    if (worst.rate === 0) {
+      suggestion = `"${worst.habit.name}" hasn't been completed yet this week — try habit stacking it after a morning routine!`;
+    } else if (worst.rate < 0.3) {
+      suggestion = `"${worst.habit.name}" needs attention (${worst.completedDays}/7 days). Try setting a specific time for it.`;
+    } else if (best.rate === 1) {
+      suggestion = `Perfect streak on "${best.habit.name}"! Try adding one more habit to build on this momentum.`;
+    } else if (score >= 70) {
+      suggestion = `Strong week overall! Focus on "${worst.habit.name}" to push your score above 80%.`;
+    } else {
+      suggestion = `Tip: complete "${best.habit.name}" first thing — it'll momentum you into the rest.`;
+    }
+
+    return { best: best.habit, needsWork: worst.habit, score, suggestion };
+  }
+
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
       <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
+
+  const patternInsight = !showManage ? getHabitPatternInsight() : null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -344,6 +397,42 @@ export default function HabitTrackerScreen() {
               </View>
             </View>
 
+            {/* Habit Pattern Analysis — local, no API */}
+            {patternInsight && activeHabits.length > 0 && (
+              <View style={[styles.patternCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.patternHeader}>
+                  <View style={[styles.patternIconWrap, { backgroundColor: "#f59e0b20" }]}>
+                    <Ionicons name="analytics-outline" size={18} color="#f59e0b" />
+                  </View>
+                  <Text style={[styles.patternTitle, { color: colors.foreground }]}>Habit Patterns</Text>
+                  <View style={[styles.scoreBadge, {
+                    backgroundColor: patternInsight.score >= 70 ? "#10b98120" : patternInsight.score >= 40 ? "#f59e0b20" : "#ef444420",
+                  }]}>
+                    <Text style={[styles.scoreText, {
+                      color: patternInsight.score >= 70 ? "#10b981" : patternInsight.score >= 40 ? "#f59e0b" : "#ef4444",
+                    }]}>{patternInsight.score}%</Text>
+                  </View>
+                </View>
+                <View style={styles.patternRow}>
+                  {patternInsight.best && (
+                    <View style={styles.patternChip}>
+                      <Ionicons name="trophy-outline" size={13} color="#10b981" />
+                      <Text style={[styles.patternChipLabel, { color: colors.mutedForeground }]}>Best</Text>
+                      <Text style={[styles.patternChipVal, { color: "#10b981" }]} numberOfLines={1}>{patternInsight.best.name}</Text>
+                    </View>
+                  )}
+                  {patternInsight.needsWork && patternInsight.needsWork.id !== patternInsight.best?.id && (
+                    <View style={styles.patternChip}>
+                      <Ionicons name="alert-circle-outline" size={13} color="#f59e0b" />
+                      <Text style={[styles.patternChipLabel, { color: colors.mutedForeground }]}>Focus</Text>
+                      <Text style={[styles.patternChipVal, { color: "#f59e0b" }]} numberOfLines={1}>{patternInsight.needsWork.name}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.patternSuggestion, { color: colors.mutedForeground }]}>{patternInsight.suggestion}</Text>
+              </View>
+            )}
+
             {/* AI Habit Formation Coach */}
             <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
               <View style={styles.aiCardHeader}>
@@ -352,7 +441,9 @@ export default function HabitTrackerScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.aiCardTitle, { color: colors.foreground }]}>AI Habit Coach</Text>
-                  <Text style={[styles.aiCardSub, { color: colors.mutedForeground }]}>Powered by Ovia AI</Text>
+                  <Text style={[styles.aiCardSub, { color: colors.mutedForeground }]}>
+                    {aiCachedAt ? `Last coached at ${aiCachedAt}` : "Powered by Ovia AI"}
+                  </Text>
                 </View>
               </View>
               {aiInsight ? (
@@ -374,7 +465,7 @@ export default function HabitTrackerScreen() {
                   <Ionicons name="sparkles" size={15} color={colors.primaryForeground} />
                 )}
                 <Text style={[styles.aiBtnText, { color: aiLoading ? colors.mutedForeground : colors.primaryForeground }]}>
-                  {aiLoading ? "Analysing your habits…" : aiInsight ? "Refresh Insight" : "Get AI Coaching Tip"}
+                  {aiLoading ? "Analysing your habits…" : aiInsight ? "Refresh Coaching Tip" : "Get AI Coaching Tip"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -646,6 +737,22 @@ const styles = StyleSheet.create({
   progressFraction: { fontSize: 32, fontFamily: "SpaceGrotesk_700Bold" },
   progressTrack: { height: 8, borderRadius: 4, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 4 },
+  patternCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  patternHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  patternIconWrap: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  patternTitle: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  scoreBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  scoreText: { fontSize: 14, fontFamily: "SpaceGrotesk_700Bold" },
+  patternRow: { flexDirection: "row", gap: 10 },
+  patternChip: { flex: 1, flexDirection: "column", gap: 2, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.04)" },
+  patternChipLabel: { fontSize: 10, fontFamily: "Inter_400Regular", textTransform: "uppercase", letterSpacing: 0.4 },
+  patternChipVal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  patternSuggestion: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, fontStyle: "italic" },
   weekCard: {
     borderRadius: 18,
     borderWidth: 1,

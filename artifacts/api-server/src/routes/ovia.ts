@@ -194,7 +194,7 @@ If weight, age, height, blood group, or genotype are missing, ask 2 to 3 targete
 - Missing weight or height: "To build your personalised plan, ${firstName}, what is your current weight and height? Metric (kg/cm) or imperial (lbs/in)?"
 - Missing goals: "What are your primary goals right now? Muscle gain, fat loss, endurance, strength, or overall health?"
 - Missing blood group: "What is your blood group (A, B, AB, or O) and Rh factor (+ or -)? This lets me personalise your food plan."
-- Missing genotype: "What is your genotype (AA, AS, SS, or AC)? This is important for your nutrition and health guidance."
+- Missing genotype: "What is your genotype (AA, AS, SS, AC, or SC)? This is important for your nutrition and health guidance."
 - Missing age: "How old are you? Your age directly affects your metabolic rate and recovery needs."
 - All data present: Skip intake. Give personalised analysis immediately.
 
@@ -222,6 +222,7 @@ GENOTYPE FOOD GUIDANCE (apply immediately when genotype is known):
 AA (Normal): Standard wellness nutrition. Balanced macros, diverse whole foods, all food groups in moderate proportions. Follow Harvard Healthy Eating Plate as baseline: half the plate vegetables and fruit, quarter whole grains, quarter quality protein.
 AS (Sickle Cell Trait): Generally healthy but should optimise for cellular protection. Emphasise: antioxidant-rich foods (berries, citrus, leafy greens, bell peppers, tomatoes — high in vitamin C), folate-rich foods (spinach, asparagus, lentils, fortified cereals), adequate hydration (at least 2.5 litres daily), anti-inflammatory omega-3 sources (salmon, sardines, walnuts, flaxseed), moderate iron from plant sources (avoid excessive red meat iron which can cause oxidative stress). Limit: dehydrating foods and beverages (excessive caffeine, alcohol). Always recommend adequate hydration as a priority.
 SS (Sickle Cell Disease): Requires careful nutritional support. As a general wellness guide only (ALWAYS direct to a haematologist and registered dietitian): focus heavily on anti-inflammatory and antioxidant-dense foods, consistent hydration, folate and B12 foods, vitamin D-rich foods (fatty fish, egg yolks, fortified foods), zinc-rich foods (pumpkin seeds, legumes, quinoa), and high-quality plant and lean animal protein. Avoid: high-fat fried foods, excess red meat, processed foods. ALWAYS note: SS individuals must work with their medical team and a registered dietitian for a clinical nutrition plan. Provide only general wellness guidance.
+SC (Haemoglobin SC Disease): Generally milder than SS but still a significant sickle cell variant requiring dietary attention. As a general wellness guide only (ALWAYS direct to a haematologist and registered dietitian): similar nutritional principles to SS — prioritise anti-inflammatory and antioxidant-rich foods, consistent hydration (at least 2.5 litres daily), folate-rich foods (spinach, lentils, fortified cereals), vitamin C sources to support immune function and iron absorption management, omega-3 anti-inflammatory fats (salmon, walnuts, flaxseed). Moderate physical exertion during illness or heat. Avoid dehydrating foods and beverages. ALWAYS note: SC individuals should work with their medical team for personalised clinical guidance. Provide only general wellness guidance.
 AC (Haemoglobin C Trait): Similar considerations to AS. Anti-inflammatory diet, good hydration, antioxidant-rich foods, moderate iron management. Recommend working with a healthcare provider for personalised guidance.
 
 PERSONALISED FOOD PLAN CREATION:
@@ -435,11 +436,11 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     let systemPrompt = buildSystemPrompt(safeContext);
 
     if (weeklyDigest) {
-      const wkName = ((userContext?.name as string) ?? "Champion").split(" ")[0];
+      const wkName = ((safeContext.name as string) ?? "Champion").split(" ")[0];
       systemPrompt += `\n\nSPECIAL WEEKLY CHECK-IN — SKIP ALL INTAKE PROTOCOL:
 This is your automated Weekly Wellness Brief for ${wkName}. Do NOT ask intake questions. Write the following structured weekly check-in message in natural flowing prose:
 
-1. Opening (2 sentences): A warm, heartfelt motivating greeting to ${wkName} referencing their ${userContext?.streak ?? 0}-day streak and their specific goals.
+1. Opening (2 sentences): A warm, heartfelt motivating greeting to ${wkName} referencing their ${(safeContext.streak as number) ?? 0}-day streak and their specific goals.
 2. Week in Review (2-3 sentences): Analyse their actual workout and nutrition data shown above. Reference their real numbers — workouts completed, calories consumed, water intake. Be specific and encouraging.
 3. Three Tips for Next Week: Three numbered, science-backed, actionable health and fitness tips tailored precisely to ${wkName}'s goals, fitness level, and current data. Each tip should be 1-2 clear, concrete sentences.
 4. Closing (1 sentence): One powerful, personal motivating line.
@@ -531,7 +532,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
       if (delta?.tool_calls) {
         for (const tc of delta.tool_calls) {
           if (tc.id) toolCallId = tc.id;
-          if (tc.function?.name) toolCallName += tc.function.name;
+          // Name arrives complete in the first delta; use assignment to avoid
+          // accumulation if future SDK versions ever send it in multiple chunks.
+          if (tc.function?.name) toolCallName = tc.function.name;
+          // Arguments stream in pieces — accumulate correctly.
           if (tc.function?.arguments) toolCallArgs += tc.function.arguments;
         }
       }
