@@ -2241,9 +2241,10 @@ export default function NutritionScreen() {
     historyChipFadeAnims.forEach((anim) => anim.setValue(0));
     historyChipSlideAnims.forEach((anim) => anim.setValue(18));
     historyChipDividerFadeAnim.setValue(0);
+    // Date-range chips (indices 0–2) stagger in first
     Animated.stagger(
       35,
-      historyChipFadeAnims.map((_, i) =>
+      [0, 1, 2].map((i) =>
         Animated.parallel([
           Animated.timing(historyChipFadeAnims[i], {
             toValue: 1,
@@ -2259,6 +2260,7 @@ export default function NutritionScreen() {
         ])
       )
     ).start();
+    // Divider fades in after the first chips appear
     Animated.sequence([
       Animated.delay(90),
       Animated.timing(historyChipDividerFadeAnim, {
@@ -2266,6 +2268,28 @@ export default function NutritionScreen() {
         duration: 150,
         useNativeDriver: true,
       }),
+    ]).start();
+    // Meal-type chips (indices 3–7) start after the divider is visible
+    Animated.sequence([
+      Animated.delay(130),
+      Animated.stagger(
+        35,
+        [3, 4, 5, 6, 7].map((i) =>
+          Animated.parallel([
+            Animated.timing(historyChipFadeAnims[i], {
+              toValue: 1,
+              duration: 220,
+              useNativeDriver: true,
+            }),
+            Animated.spring(historyChipSlideAnims[i], {
+              toValue: 0,
+              useNativeDriver: true,
+              tension: 160,
+              friction: 14,
+            }),
+          ])
+        )
+      ),
     ]).start();
   }, [historyFilterPanelOpen]);
 
