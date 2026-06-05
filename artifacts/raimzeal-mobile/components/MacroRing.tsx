@@ -50,6 +50,10 @@ export function MacroRing({
   onLegendPress,
 }: MacroRingProps) {
   const [showPercentages, setShowPercentages] = useState(false);
+  // Keep segments mounted during the animate-to-zero transition so withTiming
+  // can play out before the circles are removed from the tree.
+  const [showSegments, setShowSegments] = useState(() => protein + carbs + fat > 0);
+  const unmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const total = protein + carbs + fat;
   const radius = (size - strokeWidth) / 2;
@@ -111,11 +115,38 @@ export function MacroRing({
       isFirstSyncRun.current = false;
       return;
     }
-    if (!hasAnimatedRef.current || !hasData) return;
+    if (!hasAnimatedRef.current) return;
+
+    // If macros are coming back from zero, show segments immediately before
+    // the animation so the arcs are in the tree when withTiming starts.
+    if (hasData) {
+      if (unmountTimerRef.current) {
+        clearTimeout(unmountTimerRef.current);
+        unmountTimerRef.current = null;
+      }
+      setShowSegments(true);
+    }
+
     const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
     proteinOffset.value = withTiming(targetProteinOffset, config);
     carbsOffset.value = withTiming(targetCarbsOffset, config);
     fatOffset.value = withTiming(targetFatOffset, config);
+
+    // When transitioning to zero, keep segments mounted for the full animation
+    // duration so the arcs visibly sweep to empty before being removed.
+    if (!hasData) {
+      unmountTimerRef.current = setTimeout(
+        () => setShowSegments(false),
+        UPDATE_ANIMATION_DURATION,
+      );
+    }
+
+    return () => {
+      if (unmountTimerRef.current) {
+        clearTimeout(unmountTimerRef.current);
+        unmountTimerRef.current = null;
+      }
+    };
   }, [targetProteinOffset, targetCarbsOffset, targetFatOffset, hasData]);
 
   const proteinAnimProps = useAnimatedProps(() => ({
@@ -188,24 +219,22 @@ export function MacroRing({
             strokeWidth={strokeWidth}
             fill="none"
           />
-          {hasData &&
-            segments.map((seg) =>
-              seg.len > 0 ? (
-                <AnimatedCircle
-                  key={seg.color}
-                  cx={center}
-                  cy={center}
-                  r={radius}
-                  stroke={seg.color}
-                  strokeWidth={strokeWidth}
-                  fill="none"
-                  strokeDasharray={circumference}
-                  animatedProps={seg.animProps}
-                  rotation={seg.startAngle}
-                  origin={`${center}, ${center}`}
-                />
-              ) : null
-            )}
+          {showSegments &&
+            segments.map((seg) => (
+              <AnimatedCircle
+                key={seg.color}
+                cx={center}
+                cy={center}
+                r={radius}
+                stroke={seg.color}
+                strokeWidth={strokeWidth}
+                fill="none"
+                strokeDasharray={circumference}
+                animatedProps={seg.animProps}
+                rotation={seg.startAngle}
+                origin={`${center}, ${center}`}
+              />
+            ))}
         </Svg>
       </Pressable>
 
