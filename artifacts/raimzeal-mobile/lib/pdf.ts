@@ -125,7 +125,8 @@ export async function exportToPdf(state: AppState, macroGoals?: MacroGoals, date
     /* Header */
     .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #82cb15; }
     .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-logo { width: 48px; height: 48px; background: #82cb15; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: #0a0a0b; }
+    .brand-logo { width: 52px; height: 52px; border-radius: 13px; display: block; object-fit: cover; }
+    .brand-logo-fallback { width: 52px; height: 52px; background: #82cb15; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; color: #0a0a0b; flex-shrink: 0; }
     .brand-name { font-size: 28px; font-weight: 900; color: #0a0a0b; letter-spacing: -0.5px; }
     .brand-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
     .report-meta { text-align: right; }
@@ -178,7 +179,13 @@ export async function exportToPdf(state: AppState, macroGoals?: MacroGoals, date
   <!-- Header -->
   <div class="header">
     <div class="brand">
-      <div class="brand-logo">R</div>
+      <img
+        class="brand-logo"
+        src="https://raimzeal.com/favicon.png"
+        alt="RAIMZEAL"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+      />
+      <div class="brand-logo-fallback" style="display:none;">R</div>
       <div>
         <div class="brand-name">RAIMZEAL</div>
         <div class="brand-sub">AI-Powered Fitness Platform</div>

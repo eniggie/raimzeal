@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { sendWelcomeEmail } from "./email";
 import {
   authSendCodeRateLimit,
   emailVerifyRateLimit,
@@ -181,6 +182,33 @@ authRouter.post("/auth/verify-sms-code", emailVerifyRateLimit, requireAuth, asyn
   } catch (err) {
     req.log?.error({ err }, "POST /auth/verify-sms-code error");
     res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// ─── POST /api/auth/welcome-email (unauthenticated, rate-limited) ─────────────
+// Sends the branded RAIMZEAL welcome email at signup time.
+// No auth required because the user's session is null when email confirmation
+// is required — the Supabase token is only issued after they click the link.
+// Rate-limited to 5 req/min per IP to prevent abuse.
+
+const WelcomeEmailSchema = z.object({
+  email: z.string().email("Invalid email address."),
+  name: z.string().min(1).max(100, "Name too long."),
+});
+
+authRouter.post("/auth/welcome-email", authSendCodeRateLimit, async (req, res) => {
+  const parsed = parseBody(WelcomeEmailSchema, req.body);
+  if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+  const { email, name } = parsed.data;
+
+  try {
+    await sendWelcomeEmail(email, name);
+    req.log?.info({ email }, "POST /auth/welcome-email — branded welcome sent");
+    res.json({ success: true });
+  } catch (err) {
+    // Log but return 200 so a missing SMTP config never blocks user registration
+    req.log?.warn({ err }, "POST /auth/welcome-email — send failed (non-fatal)");
+    res.json({ success: false, warning: "Email send failed — SMTP may not be configured." });
   }
 });
 

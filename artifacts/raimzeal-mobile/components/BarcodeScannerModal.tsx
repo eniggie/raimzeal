@@ -187,15 +187,16 @@ interface OpenFoodFactsResponse {
 async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
+    const timeout = setTimeout(() => controller.abort(), 12_000);
     let res: Response;
     try {
+      // v2 API: faster response with targeted field selection, better data quality
       res = await fetch(
-        `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+        `https://world.openfoodfacts.org/api/v2/product/${barcode}?fields=product_name,serving_size,serving_quantity,nutriments`,
         {
           signal: controller.signal,
           headers: {
-            "User-Agent": "RAIMZEAL/1.0 (raimzeal.app; contact@raimzeal.app)",
+            "User-Agent": "RAIMZEAL/1.0 (contact@raimzeal.app)",
           },
         }
       );

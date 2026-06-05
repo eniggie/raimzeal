@@ -10,23 +10,30 @@ import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 
-async function triggerWelcomeEmail(email: string, name: string, accessToken: string): Promise<void> {
+async function triggerWelcomeEmail(email: string, name: string, accessToken?: string): Promise<void> {
   try {
     const base = getApiBase();
-    const authHeaders = {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${accessToken}`,
-    };
-    await fetch(`${base}/email/send`, {
+    const jsonHeaders = { "Content-Type": "application/json" };
+    const authHeaders = accessToken
+      ? { ...jsonHeaders, "Authorization": `Bearer ${accessToken}` }
+      : jsonHeaders;
+
+    // Always send the branded welcome email via the unauthenticated endpoint
+    // so it fires even when Supabase email confirmation is required (session is null).
+    await fetch(`${base}/auth/welcome-email`, {
       method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({ to: email, userName: name, type: "welcome" }),
+      headers: jsonHeaders,
+      body: JSON.stringify({ email, name }),
     });
-    await fetch(`${base}/email/digest/subscribe`, {
-      method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({ email, userName: name }),
-    });
+
+    // Subscribe to digest — only possible once we have a session token
+    if (accessToken) {
+      await fetch(`${base}/email/digest/subscribe`, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({ email, userName: name }),
+      });
+    }
   } catch {
     // Non-fatal — welcome email failure should never block signup
   }
@@ -80,13 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: { data: { name } },
     });
-    if (!error && data.session?.access_token) {
-      // Fire welcome email + digest subscription (non-blocking, non-fatal).
-      // Only runs when a session token is immediately available (i.e. email
-      // confirmation is disabled). When confirmation is required, the session
-      // is null here and the welcome email is skipped — it can be triggered
-      // after the user confirms and logs in.
-      triggerWelcomeEmail(email, name, data.session.access_token);
+    if (!error) {
+      // Always fire the branded RAIMZEAL welcome email (non-blocking, non-fatal).
+      // The welcome endpoint is unauthenticated so it works even when email
+      // confirmation is required and data.session is null.
+      triggerWelcomeEmail(email, name, data.session?.access_token ?? undefined);
     }
     return { error: error?.message ?? null };
   }, []);
