@@ -306,7 +306,7 @@ function AppContent() {
         <PersonalRecords />
       </Route>
       <Route path="/settings/macros">
-        <MacroTargets />
+        <MacroTargets user={state.user} />
       </Route>
       <Route path="/settings/delete-account">
         <DeleteAccount />

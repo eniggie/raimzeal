@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Target, RotateCcw, Save, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { BottomNav } from '@/components/BottomNav';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import type { UserProfile } from '@/lib/store';
 
 interface MacroData {
   calories: number;
@@ -26,7 +27,42 @@ const MACRO_COLORS = {
   fat: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
 };
 
-export function MacroTargets() {
+function computeMacrosFromProfile(user: UserProfile): { calories: number; protein: number; carbs: number; fat: number } {
+  let weightKg = user.weight || 70;
+  let heightCm = user.height || 170;
+  const age = user.age || 25;
+
+  if (user.units !== 'metric') {
+    weightKg = weightKg * 0.453592;
+    heightCm = heightCm * 2.54;
+  }
+
+  const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 78;
+
+  const level = user.fitnessLevel ?? 'beginner';
+  const activityMultiplier = level === 'advanced' ? 1.8 : level === 'intermediate' ? 1.6 : 1.4;
+
+  const tdee = bmr * activityMultiplier;
+
+  const goals = user.goals ?? [];
+  const wantsLose = goals.includes('lose_weight');
+  const wantsGain = goals.includes('build_muscle') || goals.includes('gain_weight');
+  const calorieMultiplier = wantsLose ? 0.85 : wantsGain ? 1.15 : 1.0;
+
+  const calories = Math.round(tdee * calorieMultiplier);
+  const protein = Math.round(weightKg * 2.0);
+  const fat = Math.round(weightKg * 0.8);
+  const carbCals = calories - protein * 4 - fat * 9;
+  const carbs = Math.max(0, Math.round(carbCals / 4));
+
+  return { calories, protein, carbs, fat };
+}
+
+interface MacroTargetsProps {
+  user?: UserProfile | null;
+}
+
+export function MacroTargets({ user }: MacroTargetsProps) {
   const { toast } = useToast();
   const [macros, setMacros] = useState<MacroData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,11 +144,23 @@ export function MacroTargets() {
     }
   }
 
-  const macroList = macros ? [
-    { key: 'calories', label: 'Calories', value: macros.calories, unit: 'kcal', color: MACRO_COLORS.calories },
-    { key: 'protein', label: 'Protein', value: macros.protein, unit: 'g', color: MACRO_COLORS.protein },
-    { key: 'carbs', label: 'Carbs', value: macros.carbs, unit: 'g', color: MACRO_COLORS.carbs },
-    { key: 'fat', label: 'Fat', value: macros.fat, unit: 'g', color: MACRO_COLORS.fat },
+  const liveComputed = useMemo(
+    () => (user ? computeMacrosFromProfile(user) : null),
+    [user?.age, user?.weight, user?.height, user?.fitnessLevel, user?.units, user?.goals],
+  );
+
+  const displayMacros = useMemo(() => {
+    if (!macros) return null;
+    if (macros.source === 'manual') return macros;
+    if (liveComputed) return { ...macros, ...liveComputed };
+    return macros;
+  }, [macros, liveComputed]);
+
+  const macroList = displayMacros ? [
+    { key: 'calories', label: 'Calories', value: displayMacros.calories, unit: 'kcal', color: MACRO_COLORS.calories },
+    { key: 'protein', label: 'Protein', value: displayMacros.protein, unit: 'g', color: MACRO_COLORS.protein },
+    { key: 'carbs', label: 'Carbs', value: displayMacros.carbs, unit: 'g', color: MACRO_COLORS.carbs },
+    { key: 'fat', label: 'Fat', value: displayMacros.fat, unit: 'g', color: MACRO_COLORS.fat },
   ] : [];
 
   return (
@@ -147,16 +195,16 @@ export function MacroTargets() {
               ))}
             </div>
 
-            {macros && (
+            {displayMacros && (
               <Card className="p-4 mb-4 border-muted/30 bg-muted/10">
                 <div className="flex items-center gap-2 mb-1">
                   <Target className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold">
-                    {macros.source === 'computed' ? 'Auto-calculated' : 'Manually set'}
+                    {displayMacros.source === 'computed' ? 'Auto-calculated' : 'Manually set'}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {macros.source === 'computed'
+                  {displayMacros.source === 'computed'
                     ? 'These targets are calculated using the Mifflin-St Jeor formula based on your profile height, weight, age, activity level, and goals.'
                     : 'You have manually set these targets. Reset to auto-compute from your profile.'}
                 </p>
