@@ -321,8 +321,7 @@ export default function HomeScreen() {
                     onPress={(e) => {
                       e.stopPropagation();
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      AsyncStorage.setItem("@nutrition_jump_to_macro", macroKey).catch(() => {});
-                      router.navigate("/(tabs)/nutrition");
+                      router.push(`/macro-goals?focus=${macroKey}`);
                     }}
                     scale={0.92}
                     style={{ alignItems: "center" }}
