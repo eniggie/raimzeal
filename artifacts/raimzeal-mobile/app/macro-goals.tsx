@@ -131,6 +131,20 @@ export default function MacroGoalsScreen() {
     fat: setFat,
   };
 
+  const kcalFromMacros = React.useMemo(() => {
+    const pro = parseInt(protein, 10);
+    const car = parseInt(carbs, 10);
+    const fa = parseInt(fat, 10);
+    if (isNaN(pro) || isNaN(car) || isNaN(fa)) return null;
+    return pro * 4 + car * 4 + fa * 9;
+  }, [protein, carbs, fat]);
+
+  const macroMismatch = React.useMemo(() => {
+    const cal = parseInt(calories, 10);
+    if (kcalFromMacros === null || isNaN(cal) || cal <= 0) return false;
+    return Math.abs(kcalFromMacros - cal) / cal > 0.2;
+  }, [kcalFromMacros, calories]);
+
   async function handleSave() {
     const cal = parseInt(calories, 10);
     const pro = parseInt(protein, 10);
@@ -376,6 +390,39 @@ export default function MacroGoalsScreen() {
           );
         })}
 
+        {/* Macro-calorie hint / mismatch warning */}
+        {kcalFromMacros !== null && (
+          <View
+            style={[
+              styles.macroHintBox,
+              macroMismatch
+                ? { backgroundColor: colors.warning + "18", borderColor: colors.warning + "55" }
+                : { backgroundColor: colors.muted, borderColor: colors.border },
+            ]}
+          >
+            {macroMismatch ? (
+              <Ionicons name="warning-outline" size={16} color={colors.warning} style={styles.macroHintIcon} />
+            ) : (
+              <Ionicons name="calculator-outline" size={16} color={colors.mutedForeground} style={styles.macroHintIcon} />
+            )}
+            <View style={styles.macroHintBody}>
+              <Text
+                style={[
+                  styles.macroHintPrimary,
+                  { color: macroMismatch ? colors.warning : colors.mutedForeground },
+                ]}
+              >
+                ~{kcalFromMacros} kcal from macros
+              </Text>
+              {macroMismatch && (
+                <Text style={[styles.macroHintSub, { color: colors.warning }]}>
+                  This differs from your {parseInt(calories, 10) > 0 ? parseInt(calories, 10) : "—"} kcal calorie goal by more than 20%. Adjust your macros or calorie target so they align.
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Save button */}
         <TouchableOpacity
           activeOpacity={0.85}
@@ -589,4 +636,24 @@ const styles = StyleSheet.create({
   saveBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
   resetBtn: { alignItems: "center", paddingVertical: 4 },
   resetText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  macroHintBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  macroHintIcon: { marginTop: 1 },
+  macroHintBody: { flex: 1, gap: 3 },
+  macroHintPrimary: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  macroHintSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
 });
