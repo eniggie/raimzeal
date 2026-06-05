@@ -5117,6 +5117,20 @@ export default function NutritionScreen() {
               <>
                 {/* Macro Summary */}
                 <GlassCard style={styles.macroCard}>
+                  <View style={styles.macroCardHeader}>
+                    <Text style={[styles.macroCardTitle, { color: colors.foreground }]}>Today's Macros</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push("/macro-goals");
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      style={[styles.editGoalsBtn, { backgroundColor: colors.muted }]}
+                    >
+                      <Ionicons name="pencil-outline" size={13} color={colors.mutedForeground} />
+                      <Text style={[styles.editGoalsText, { color: colors.mutedForeground }]}>Edit goals</Text>
+                    </TouchableOpacity>
+                  </View>
                   <View style={styles.macroRow}>
                     <Animated.View
                       style={[
@@ -10326,6 +10340,28 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   macroCard: { padding: 16 },
+  macroCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  macroCardTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  editGoalsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  editGoalsText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
   macroRow: { flexDirection: "row", alignItems: "center", gap: 20 },
   macros: { flex: 1, gap: 10 },
   macroBarContainer: { gap: 4 },
