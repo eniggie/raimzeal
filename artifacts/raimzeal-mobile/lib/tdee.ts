@@ -123,6 +123,46 @@ export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): Su
   };
 }
 
+export interface GlossaryEntry {
+  title: string;
+  body: string;
+}
+
+/**
+ * Plain-language explanations for each term shown in the breakdown card.
+ * Keys are stable identifiers referenced by BreakdownRow's glossaryKey prop.
+ */
+export const BREAKDOWN_GLOSSARY: Record<string, GlossaryEntry> = {
+  bmr: {
+    title: "Basal Metabolic Rate (BMR)",
+    body: "Your BMR is the number of calories your body needs just to keep you alive while at complete rest — breathing, circulation, and cell repair all count. Think of it as the minimum fuel bill your body pays every day, even if you never got out of bed.",
+  },
+  tdee: {
+    title: "Total Daily Energy Expenditure (TDEE)",
+    body: "TDEE is your BMR scaled up by how active you are throughout the day. It estimates the total calories you actually burn across everything — workouts, walking around, even fidgeting. Eating at your TDEE keeps your weight stable.",
+  },
+  goal_adjustment: {
+    title: "Goal Adjustment",
+    body: "This is a deliberate calorie offset added on top of your TDEE to move you toward your goal. A deficit (negative) puts you in fat-loss mode by burning stored energy; a surplus (positive) gives your muscles the extra fuel they need to grow. The amount is chosen to be effective but sustainable.",
+  },
+  target_calories: {
+    title: "Target Calories",
+    body: "Your personalised daily calorie goal — your TDEE plus or minus the goal adjustment, rounded to the nearest 50 kcal for simplicity. Hit this number consistently and your body will trend in the direction of your goal over time.",
+  },
+  macro_protein: {
+    title: "Protein",
+    body: "Protein is made up of amino acids, the building blocks your body uses to repair and build muscle. Each gram provides 4 calories. Higher-protein diets also tend to keep you fuller for longer, making it easier to manage your overall intake.",
+  },
+  macro_carbs: {
+    title: "Carbohydrates",
+    body: "Carbs are your body's preferred quick-release energy source, especially during exercise. Each gram provides 4 calories. They replenish muscle glycogen after workouts and fuel your brain throughout the day.",
+  },
+  macro_fat: {
+    title: "Fat",
+    body: "Dietary fat supports hormone production, vitamin absorption (A, D, E, K), and long-lasting energy between meals. Each gram provides 9 calories — more than twice that of protein or carbs — so a little goes a long way.",
+  },
+};
+
 /** Human-readable label for the first goal in the goals array */
 export function primaryGoalLabel(goals: string[]): string {
   const map: Record<string, string> = {

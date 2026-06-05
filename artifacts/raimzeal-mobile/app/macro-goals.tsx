@@ -6,7 +6,9 @@ import {
   Animated,
   KeyboardAvoidingView,
   LayoutAnimation,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
-import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel, BREAKDOWN_GLOSSARY, GlossaryEntry } from "@/lib/tdee";
 import { useAuth } from "@/contexts/AuthContext";
 import { upsertUserPreferences } from "@/lib/db";
 
@@ -111,6 +113,18 @@ export default function MacroGoalsScreen() {
   const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
 
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+  const [glossaryEntry, setGlossaryEntry] = useState<GlossaryEntry | null>(null);
+
+  function openGlossary(key: string) {
+    const entry = BREAKDOWN_GLOSSARY[key];
+    if (!entry) return;
+    Haptics.selectionAsync();
+    setGlossaryEntry(entry);
+  }
+
+  function closeGlossary() {
+    setGlossaryEntry(null);
+  }
 
   function toggleBreakdown() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -285,12 +299,16 @@ export default function MacroGoalsScreen() {
                       value={`${breakdown.bmr} kcal`}
                       note="Calories your body burns at rest"
                       colors={colors}
+                      glossaryKey="bmr"
+                      onHelpPress={openGlossary}
                     />
                     <BreakdownRow
                       label={`× Activity level (${breakdown.activityLabel})`}
                       value={`${breakdown.tdee} kcal`}
                       note="Total Daily Energy Expenditure"
                       colors={colors}
+                      glossaryKey="tdee"
+                      onHelpPress={openGlossary}
                     />
                     {breakdown.goalAdjustment !== 0 && (
                       <BreakdownRow
@@ -299,6 +317,8 @@ export default function MacroGoalsScreen() {
                         note={breakdown.goalAdjustment < 0 ? "Calorie deficit to support fat loss" : "Calorie surplus to support muscle growth"}
                         colors={colors}
                         valueColor={breakdown.goalAdjustment < 0 ? colors.warning : colors.secondary}
+                        glossaryKey="goal_adjustment"
+                        onHelpPress={openGlossary}
                       />
                     )}
                     <BreakdownRow
@@ -307,6 +327,8 @@ export default function MacroGoalsScreen() {
                       note="Rounded to the nearest 50 kcal"
                       colors={colors}
                       bold
+                      glossaryKey="target_calories"
+                      onHelpPress={openGlossary}
                     />
 
                     <View style={[styles.breakdownDivider, { backgroundColor: colors.primary + "25" }]} />
@@ -319,18 +341,24 @@ export default function MacroGoalsScreen() {
                       value={`${Math.round(breakdown.proteinRatio * 100)}% of calories`}
                       note={`${suggested.protein}g · 4 kcal per gram`}
                       colors={colors}
+                      glossaryKey="macro_protein"
+                      onHelpPress={openGlossary}
                     />
                     <BreakdownRow
                       label="Carbohydrates"
                       value={`${Math.round(breakdown.carbRatio * 100)}% of calories`}
                       note={`${suggested.carbs}g · 4 kcal per gram`}
                       colors={colors}
+                      glossaryKey="macro_carbs"
+                      onHelpPress={openGlossary}
                     />
                     <BreakdownRow
                       label="Fat"
                       value={`${Math.round(breakdown.fatRatio * 100)}% of calories`}
                       note={`${suggested.fat}g · 9 kcal per gram`}
                       colors={colors}
+                      glossaryKey="macro_fat"
+                      onHelpPress={openGlossary}
                     />
 
                     <TouchableOpacity
@@ -475,6 +503,35 @@ export default function MacroGoalsScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+      {/* Glossary bottom-sheet modal */}
+      <Modal
+        visible={glossaryEntry !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={closeGlossary}
+      >
+        <Pressable style={styles.glossaryOverlay} onPress={closeGlossary}>
+          <Pressable
+            style={[styles.glossarySheet, { backgroundColor: colors.card ?? colors.background, borderColor: colors.border }]}
+            onPress={() => {}}
+          >
+            <View style={[styles.glossaryHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.glossaryTitle, { color: colors.foreground }]}>
+              {glossaryEntry?.title}
+            </Text>
+            <Text style={[styles.glossaryBody, { color: colors.mutedForeground }]}>
+              {glossaryEntry?.body}
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={closeGlossary}
+              style={[styles.glossaryCloseBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            >
+              <Text style={[styles.glossaryCloseBtnText, { color: colors.foreground }]}>Got it</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -494,21 +551,34 @@ interface BreakdownRowProps {
   bold?: boolean;
   valueColor?: string;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  glossaryKey?: string;
+  onHelpPress?: (key: string) => void;
 }
 
-function BreakdownRow({ label, value, note, bold, valueColor, colors }: BreakdownRowProps) {
+function BreakdownRow({ label, value, note, bold, valueColor, colors, glossaryKey, onHelpPress }: BreakdownRowProps) {
   return (
     <View style={styles.breakdownRow}>
       <View style={styles.breakdownRowLeft}>
-        <Text
-          style={[
-            styles.breakdownRowLabel,
-            { color: colors.foreground },
-            bold && { fontFamily: "Inter_600SemiBold" },
-          ]}
-        >
-          {label}
-        </Text>
+        <View style={styles.breakdownRowLabelRow}>
+          <Text
+            style={[
+              styles.breakdownRowLabel,
+              { color: colors.foreground },
+              bold && { fontFamily: "Inter_600SemiBold" },
+            ]}
+          >
+            {label}
+          </Text>
+          {glossaryKey && onHelpPress ? (
+            <TouchableOpacity
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={() => onHelpPress(glossaryKey)}
+              style={styles.helpIconBtn}
+            >
+              <Ionicons name="help-circle-outline" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
         {note ? (
           <Text style={[styles.breakdownRowNote, { color: colors.mutedForeground }]}>{note}</Text>
         ) : null}
@@ -685,5 +755,56 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
+  },
+  breakdownRowLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexWrap: "wrap",
+  },
+  helpIconBtn: {
+    marginTop: 1,
+  },
+  glossaryOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  glossarySheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 36,
+    gap: 12,
+  },
+  glossaryHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  glossaryTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 24,
+  },
+  glossaryBody: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+  },
+  glossaryCloseBtn: {
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glossaryCloseBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
 });
