@@ -36,6 +36,8 @@ interface MacroRingProps {
    * (it defaults to true) — the animation will run once immediately on mount.
    */
   shouldAnimate?: boolean;
+  /** Called when the user taps a legend item (P, C, or F). */
+  onLegendPress?: (macro: "protein" | "carbs" | "fat") => void;
 }
 
 export function MacroRing({
@@ -45,6 +47,7 @@ export function MacroRing({
   size = 44,
   strokeWidth = 7,
   shouldAnimate = true,
+  onLegendPress,
 }: MacroRingProps) {
   const [showPercentages, setShowPercentages] = useState(false);
 
@@ -147,9 +150,9 @@ export function MacroRing({
   ];
 
   const legend = [
-    { color: MACRO_RING_COLORS.protein, label: "P", grams: Math.round(protein) },
-    { color: MACRO_RING_COLORS.carbs, label: "C", grams: Math.round(carbs) },
-    { color: MACRO_RING_COLORS.fat, label: "F", grams: Math.round(fat) },
+    { color: MACRO_RING_COLORS.protein, label: "P", grams: Math.round(protein), macro: "protein" as const },
+    { color: MACRO_RING_COLORS.carbs, label: "C", grams: Math.round(carbs), macro: "carbs" as const },
+    { color: MACRO_RING_COLORS.fat, label: "F", grams: Math.round(fat), macro: "fat" as const },
   ];
 
   const proteinCal = protein * 4;
@@ -208,7 +211,28 @@ export function MacroRing({
 
       <View style={styles.legend}>
         {legend.map((item) => (
-          <View key={item.label} style={styles.legendItem}>
+          <Pressable
+            key={item.label}
+            style={({ pressed }) => [
+              styles.legendItem,
+              onLegendPress && pressed && styles.legendItemPressed,
+            ]}
+            onPress={
+              onLegendPress
+                ? (e) => {
+                    e.stopPropagation();
+                    onLegendPress(item.macro);
+                  }
+                : undefined
+            }
+            accessibilityRole={onLegendPress ? "button" : "text"}
+            accessibilityLabel={
+              onLegendPress
+                ? `Edit ${item.macro} goal`
+                : `${item.macro}: ${hasData ? `${item.grams}g` : "no data"}`
+            }
+            hitSlop={onLegendPress ? { top: 8, bottom: 8, left: 4, right: 4 } : undefined}
+          >
             <View
               style={[
                 styles.legendDot,
@@ -223,7 +247,7 @@ export function MacroRing({
             >
               {item.label} {hasData ? `${item.grams}g` : "—"}
             </Text>
-          </View>
+          </Pressable>
         ))}
       </View>
 
@@ -259,6 +283,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
+  },
+  legendItemPressed: {
+    opacity: 0.6,
   },
   legendDot: {
     width: 5,

@@ -276,6 +276,10 @@ export default function HomeScreen() {
                 carbs={carbsToday}
                 fat={fatToday}
                 shouldAnimate={true}
+                onLegendPress={(macro) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push(`/macro-goals?focus=${macro}`);
+                }}
               />
             </View>
           </View>
