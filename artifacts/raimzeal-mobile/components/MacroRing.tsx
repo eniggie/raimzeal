@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
@@ -46,6 +46,8 @@ export function MacroRing({
   strokeWidth = 7,
   shouldAnimate = true,
 }: MacroRingProps) {
+  const [showPercentages, setShowPercentages] = useState(false);
+
   const total = protein + carbs + fat;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -150,9 +152,30 @@ export function MacroRing({
     { color: MACRO_RING_COLORS.fat, label: "F", grams: Math.round(fat) },
   ];
 
+  const proteinCal = protein * 4;
+  const carbsCal = carbs * 4;
+  const fatCal = fat * 9;
+  const totalCal = proteinCal + carbsCal + fatCal;
+  const proteinCalFrac = totalCal > 0 ? proteinCal / totalCal : 0;
+  const carbsCalFrac = totalCal > 0 ? carbsCal / totalCal : 0;
+  const fatCalFrac = totalCal > 0 ? fatCal / totalCal : 0;
+
+  const percentages = [
+    { color: MACRO_RING_COLORS.protein, label: "P", pct: Math.round(proteinCalFrac * 100) },
+    { color: MACRO_RING_COLORS.carbs, label: "C", pct: Math.round(carbsCalFrac * 100) },
+    { color: MACRO_RING_COLORS.fat, label: "F", pct: Math.round(fatCalFrac * 100) },
+  ];
+
   return (
     <View style={styles.wrapper}>
-      <View style={styles.ringContainer}>
+      <Pressable
+        onPress={() => hasData && setShowPercentages((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={
+          showPercentages ? "Hide macro percentages" : "Show macro percentages"
+        }
+        style={styles.ringContainer}
+      >
         <Svg width={size} height={size}>
           <Circle
             cx={center}
@@ -181,7 +204,7 @@ export function MacroRing({
               ) : null
             )}
         </Svg>
-      </View>
+      </Pressable>
 
       <View style={styles.legend}>
         {legend.map((item) => (
@@ -193,6 +216,16 @@ export function MacroRing({
           </View>
         ))}
       </View>
+
+      {showPercentages && hasData && (
+        <View style={styles.percentageRow}>
+          {percentages.map((item, i) => (
+            <Text key={item.label} style={[styles.percentageText, { color: item.color }]}>
+              {item.label} {item.pct}%{i < percentages.length - 1 ? " ·" : ""}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -225,5 +258,15 @@ const styles = StyleSheet.create({
   legendLabel: {
     fontSize: 10,
     fontFamily: "Inter_600SemiBold",
+  },
+  percentageRow: {
+    flexDirection: "row",
+    gap: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  percentageText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   },
 });
