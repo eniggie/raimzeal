@@ -1,1 +1,3 @@
 - [EAS Store Submission](eas-store-submission.md) — build/submit commands, credentials, Apple Team ID, Replit git-block workaround
+- [OSA MODE](osa-mode.md) — full-audit QA convention: one confirmed fix at a time, all four typechecks after every change
+- [Phase 2 Audit Results](phase2-audit.md) — June 6 2026 scan: all SAST HIGH = false positives, zero npm CVEs, 3 dead code items fixed
