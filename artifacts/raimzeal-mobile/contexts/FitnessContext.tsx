@@ -206,7 +206,7 @@ interface FitnessContextType extends AppState {
   addMealLog: (meal: MealLog, onSyncResult?: (ok: boolean) => void) => void;
   removeMealLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
   removeWorkoutLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
-  updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id" | "date">>, onSyncResult?: (ok: boolean) => void) => void;
+  updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id">>, onSyncResult?: (ok: boolean) => void) => void;
   /**
    * Propagate a name change to all meal log entries that are linked to `editedId`
    * via `sourceMealLogId` (i.e. the original entry and any siblings created by "Log Today").
@@ -634,7 +634,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateMealLog = useCallback(
-    (id: string, updates: Partial<Omit<MealLog, "id" | "date">>, onSyncResult?: (ok: boolean) => void) => {
+    (id: string, updates: Partial<Omit<MealLog, "id">>, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const updatedMeal = prev.mealLogs.find((m) => m.id === id);
         const next = {

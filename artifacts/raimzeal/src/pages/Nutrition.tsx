@@ -92,7 +92,7 @@ async function pushFilterPrefs(userId: string, prefs: {
 interface NutritionProps {
   state: AppState;
   onAddMeal: (meal: MealLog) => void;
-  onUpdateMeal: (id: string, updates: Partial<Omit<MealLog, 'id' | 'date'>>) => void;
+  onUpdateMeal: (id: string, updates: Partial<Omit<MealLog, 'id'>>) => void;
   onUpdateWater: (glasses: number) => void;
   onRemoveMealLogOptimistic: (id: string) => void;
   onRestoreMealLog: (meal: MealLog) => void;
@@ -113,6 +113,7 @@ export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRem
   const [editingMeal, setEditingMeal] = useState<MealLog | null>(null);
   const [editForm, setEditForm] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
   const [editMealType, setEditMealType] = useState<MealLog['mealType']>('breakfast');
+  const [editDate, setEditDate] = useState('');
 
   function openEditMeal(meal: MealLog) {
     setEditingMeal(meal);
@@ -124,6 +125,7 @@ export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRem
       fat: String(meal.fat),
     });
     setEditMealType(meal.mealType);
+    setEditDate(meal.date);
   }
 
   function handleSaveEdit() {
@@ -138,6 +140,7 @@ export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRem
       carbs: parseFloat(editForm.carbs) || 0,
       fat: parseFloat(editForm.fat) || 0,
       mealType: editMealType,
+      date: editDate || editingMeal.date,
     });
     setEditingMeal(null);
   }
@@ -1513,6 +1516,15 @@ export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRem
                 value={editForm.name}
                 onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Meal name"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Date</label>
+              <Input
+                type="date"
+                value={editDate}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={e => setEditDate(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -8691,6 +8691,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   );
   const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const [editDate, setEditDate] = useState(log.date);
   const histSaveShakeX = useSharedValue(0);
   const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
 
@@ -8707,6 +8708,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     });
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     setEditMealType(log.mealType);
+    setEditDate(log.date);
     setEditServings(1);
     editServingsRef.current = 1;
     setEditServingsText("1");
@@ -8718,7 +8720,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
         ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
         : ""
     );
-  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, showEditSheet]);
+  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, log.date, showEditSheet]);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -8927,6 +8929,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
+      date: editDate,
     }, histFinishSync);
     if (name !== oldName) {
       syncMealName(log.id, name);
@@ -9413,6 +9416,40 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
               ))}
             </View>
 
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Date
+            </Text>
+            <View style={styles.datePickerRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  const d = new Date(editDate + "T12:00:00");
+                  d.setDate(d.getDate() - 1);
+                  setEditDate(d.toISOString().split("T")[0]);
+                }}
+                style={styles.dateArrowBtn}
+                hitSlop={8}
+              >
+                <Ionicons name="chevron-back" size={20} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={[styles.datePickerLabel, { color: colors.foreground }]}>
+                {new Date(editDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  if (editDate >= today) return;
+                  const d = new Date(editDate + "T12:00:00");
+                  d.setDate(d.getDate() + 1);
+                  setEditDate(d.toISOString().split("T")[0]);
+                }}
+                style={styles.dateArrowBtn}
+                hitSlop={8}
+                disabled={editDate >= new Date().toISOString().split("T")[0]}
+              >
+                <Ionicons name="chevron-forward" size={20} color={editDate >= new Date().toISOString().split("T")[0] ? colors.mutedForeground : colors.foreground} />
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 onPress={() => setShowEditSheet(false)}
@@ -9489,6 +9526,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const editCaloriesAutoFilled = useRef(false);
   const [showRowBreakdown, setShowRowBreakdown] = useState(false);
+  const [editDate, setEditDate] = useState(log.date);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
 
@@ -9505,6 +9543,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     });
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     setEditMealType(log.mealType);
+    setEditDate(log.date);
     setEditServings(1);
     editServingsRef.current = 1;
     setEditServingsText("1");
@@ -9516,7 +9555,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
         ? (Number.isInteger(g) ? String(g) : g.toFixed(1))
         : ""
     );
-  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, showEditSheet]);
+  }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, log.date, showEditSheet]);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -9728,6 +9767,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       fat: Math.round(savedBase.fat * savedServings * 10) / 10,
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
+      date: editDate,
     }, rowFinishSync);
     if (name !== oldName) {
       syncMealName(log.id, name);
@@ -10206,6 +10246,40 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Date
+            </Text>
+            <View style={styles.datePickerRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  const d = new Date(editDate + "T12:00:00");
+                  d.setDate(d.getDate() - 1);
+                  setEditDate(d.toISOString().split("T")[0]);
+                }}
+                style={styles.dateArrowBtn}
+                hitSlop={8}
+              >
+                <Ionicons name="chevron-back" size={20} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={[styles.datePickerLabel, { color: colors.foreground }]}>
+                {new Date(editDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  if (editDate >= today) return;
+                  const d = new Date(editDate + "T12:00:00");
+                  d.setDate(d.getDate() + 1);
+                  setEditDate(d.toISOString().split("T")[0]);
+                }}
+                style={styles.dateArrowBtn}
+                hitSlop={8}
+                disabled={editDate >= new Date().toISOString().split("T")[0]}
+              >
+                <Ionicons name="chevron-forward" size={20} color={editDate >= new Date().toISOString().split("T")[0] ? colors.mutedForeground : colors.foreground} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.modalBtns}>
@@ -12107,5 +12181,22 @@ const styles = StyleSheet.create({
   drillDownDismissText: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+  },
+  datePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  dateArrowBtn: {
+    padding: 6,
+    borderRadius: 8,
+  },
+  datePickerLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+    textAlign: "center",
   },
 });

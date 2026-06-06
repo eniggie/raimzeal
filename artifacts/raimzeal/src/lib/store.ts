@@ -523,7 +523,7 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
     }
   };
 
-  const updateMealLog = (id: string, updates: Partial<Omit<MealLog, 'id' | 'date'>>) => {
+  const updateMealLog = (id: string, updates: Partial<Omit<MealLog, 'id'>>) => {
     setState(prev => ({
       ...prev,
       mealLogs: prev.mealLogs.map(m => m.id === id ? { ...m, ...updates } : m),
@@ -531,8 +531,9 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
 
     if (supabaseConfigured) {
       const apiUpdates: Partial<{
-        name: string; calories: number; protein: number; carbs: number; fat: number; meal_type: MealLog['mealType'];
+        date: string; name: string; calories: number; protein: number; carbs: number; fat: number; meal_type: MealLog['mealType'];
       }> = {};
+      if (updates.date !== undefined) apiUpdates.date = updates.date;
       if (updates.name !== undefined) apiUpdates.name = updates.name;
       if (updates.calories !== undefined) apiUpdates.calories = updates.calories;
       if (updates.protein !== undefined) apiUpdates.protein = updates.protein;
