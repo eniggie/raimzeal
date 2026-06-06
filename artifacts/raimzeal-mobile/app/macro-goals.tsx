@@ -69,6 +69,9 @@ export default function MacroGoalsScreen() {
   const fieldOffsets = useRef<Record<string, number>>({});
   const focusApplied = useRef(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  // Tracks the field the keyboard is currently open on (independent of the
+  // deep-link pulse animation tracked by focusedField).
+  const [editingField, setEditingField] = useState<string | null>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   const initialised = useRef(false);
@@ -184,6 +187,14 @@ export default function MacroGoalsScreen() {
     { key: "carbs", label: "Carbohydrates", unit: "g", placeholder: "250", color: colors.warning },
     { key: "fat", label: "Fat", unit: "g", placeholder: "70", color: colors.accent },
   ];
+
+  // Map each macro field key to the glossary entry that explains it.
+  // calories has no standalone glossary entry, so it is intentionally absent.
+  const MACRO_TIP_KEY: Partial<Record<GoalField["key"], string>> = {
+    protein: "macro_protein",
+    carbs: "macro_carbs",
+    fat: "macro_fat",
+  } as const;
 
   const values: Record<string, string> = { calories, protein, carbs, fat };
   const setters: Record<string, (v: string) => void> = {
@@ -505,9 +516,21 @@ export default function MacroGoalsScreen() {
                   placeholderTextColor={colors.mutedForeground}
                   keyboardType="numeric"
                   returnKeyType="done"
+                  onFocus={() => setEditingField(field.key)}
+                  onBlur={() => setEditingField(null)}
                 />
                 <Text style={[styles.unit, { color: colors.mutedForeground }]}>{field.unit}</Text>
               </Animated.View>
+
+              {/* Inline glossary tip — visible while the field is focused */}
+              {editingField === field.key && MACRO_TIP_KEY[field.key] && (
+                <View style={[styles.macroTip, { backgroundColor: field.color + "12", borderColor: field.color + "40" }]}>
+                  <Ionicons name="information-circle-outline" size={13} color={field.color} style={styles.macroTipIcon} />
+                  <Text style={[styles.macroTipText, { color: colors.mutedForeground }]} numberOfLines={2}>
+                    {BREAKDOWN_GLOSSARY[MACRO_TIP_KEY[field.key]!].body.split(".")[0] + "."}
+                  </Text>
+                </View>
+              )}
             </View>
           );
         })}
@@ -838,6 +861,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   macroHintIcon: { marginTop: 1 },
+  macroTip: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    marginTop: 6,
+  },
+  macroTipIcon: { marginTop: 1, flexShrink: 0 },
+  macroTipText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
   macroHintBody: { flex: 1, gap: 3 },
   macroHintPrimary: {
     fontSize: 13,
