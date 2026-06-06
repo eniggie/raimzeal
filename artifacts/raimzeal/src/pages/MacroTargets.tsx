@@ -86,12 +86,17 @@ export function MacroTargets({ user }: MacroTargetsProps) {
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json() as MacroData;
       setMacros(data);
-      setIsManual(data.auto === false);
+      const manual = data.auto === false;
+      setIsManual(manual);
+      // In auto mode, seed from the live computed suggestion (same formula as
+      // liveComputed) so the form never shows stale server values.
+      // In manual mode, always show what the user explicitly saved.
+      const liveValues = !manual && user ? computeMacrosFromProfile(user) : null;
       setForm({
-        calories: String(data.calories),
-        protein: String(data.protein),
-        carbs: String(data.carbs),
-        fat: String(data.fat),
+        calories: String(liveValues?.calories ?? data.calories),
+        protein: String(liveValues?.protein ?? data.protein),
+        carbs: String(liveValues?.carbs ?? data.carbs),
+        fat: String(liveValues?.fat ?? data.fat),
       });
     } catch {
       toast({ title: 'Could not load macro targets', variant: 'destructive' });
