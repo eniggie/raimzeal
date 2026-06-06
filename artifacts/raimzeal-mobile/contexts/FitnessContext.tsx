@@ -205,6 +205,7 @@ interface FitnessContextType extends AppState {
   addWorkoutLog: (log: WorkoutLog, onSyncResult?: (ok: boolean) => void) => void;
   addMealLog: (meal: MealLog, onSyncResult?: (ok: boolean) => void) => void;
   removeMealLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
+  removeMealLogsByName: (name: string, onSyncResult?: (ok: boolean) => void) => void;
   removeWorkoutLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
   updateMealLog: (id: string, updates: Partial<Omit<MealLog, "id">>, onSyncResult?: (ok: boolean) => void) => void;
   /**
@@ -604,6 +605,26 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         if (isSupabaseConfigured) {
           deleteMealLog(id)
+            .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
+            .catch(() => onSyncResult?.(false));
+        } else {
+          onSyncResult?.(false);
+        }
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  const removeMealLogsByName = useCallback(
+    (name: string, onSyncResult?: (ok: boolean) => void) => {
+      setState((prev) => {
+        const toRemove = prev.mealLogs.filter((m) => m.name === name);
+        if (toRemove.length === 0) { onSyncResult?.(false); return prev; }
+        const next = { ...prev, mealLogs: prev.mealLogs.filter((m) => m.name !== name) };
+        persist(next);
+        if (isSupabaseConfigured) {
+          Promise.all(toRemove.map((m) => deleteMealLog(m.id)))
             .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
             .catch(() => onSyncResult?.(false));
         } else {
@@ -1186,6 +1207,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         addWorkoutLog,
         addMealLog,
         removeMealLog,
+        removeMealLogsByName,
         removeWorkoutLog,
         updateMealLog,
         syncMealName,

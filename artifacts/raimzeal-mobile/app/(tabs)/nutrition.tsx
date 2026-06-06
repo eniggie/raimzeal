@@ -985,7 +985,7 @@ export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user, dismissedHints } = useFitness();
+  const { getTodayMeals, getTodayMacros, addMealLog, removeMealLog, removeMealLogsByName, mealLogs, favoriteFoods, reorderFavoriteFoods, settings, dismissHint, isHintDismissed, getHintDismissedAt, quickFoods, updateQuickFoods, dataResetCount, user, dismissedHints } = useFitness();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const { syncStatus, startSync, finishSync } = useSyncIndicator();
   const CALORIE_GOAL = macroGoals.calories;
@@ -2771,9 +2771,29 @@ export default function NutritionScreen() {
 
   function handleMealDelete(meal: MealLog) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    startSync();
-    removeMealLog(meal.id, finishSync);
-    showUndoToast(meal);
+    const sameNameCount = mealLogs.filter((m) => m.name === meal.name && m.id !== meal.id).length;
+    if (sameNameCount === 0) {
+      startSync();
+      removeMealLog(meal.id, finishSync);
+      showUndoToast(meal);
+      return;
+    }
+    Alert.alert(
+      "Delete meal entry?",
+      `There are ${sameNameCount} other entr${sameNameCount === 1 ? "y" : "ies"} named "${meal.name}" across your history. Delete all of them too?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Only this one",
+          onPress: () => { startSync(); removeMealLog(meal.id, finishSync); showUndoToast(meal); },
+        },
+        {
+          text: `Delete all ${sameNameCount + 1}`,
+          style: "destructive",
+          onPress: () => { startSync(); removeMealLogsByName(meal.name, finishSync); },
+        },
+      ]
+    );
   }
 
   function handleLogToday(log: MealLog) {
