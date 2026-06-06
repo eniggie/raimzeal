@@ -6442,18 +6442,32 @@ export default function NutritionScreen() {
                               {isYesterday ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""}
                             </Text>
                             {isHighlighted && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                  flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
-                                }}
-                                activeOpacity={0.75}
-                                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                                style={[styles.backToChartBtn, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "60" }]}
-                              >
-                                <Ionicons name="arrow-up" size={10} color={colors.warning} />
-                                <Text style={[styles.backToChartBtnText, { color: colors.warning }]}>Chart</Text>
-                              </TouchableOpacity>
+                              <>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
+                                  }}
+                                  activeOpacity={0.75}
+                                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                                  style={[styles.backToChartBtn, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "60" }]}
+                                >
+                                  <Ionicons name="arrow-up" size={10} color={colors.warning} />
+                                  <Text style={[styles.backToChartBtnText, { color: colors.warning }]}>Chart</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setHighlightedDate(null);
+                                  }}
+                                  activeOpacity={0.75}
+                                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                                  style={[styles.backToChartBtn, { backgroundColor: colors.warning + "20", borderColor: colors.warning + "60" }]}
+                                >
+                                  <Ionicons name="close" size={10} color={colors.warning} />
+                                  <Text style={[styles.backToChartBtnText, { color: colors.warning }]}>Clear</Text>
+                                </TouchableOpacity>
+                              </>
                             )}
                             {allGoalsMet && (
                               <TouchableOpacity
