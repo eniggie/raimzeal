@@ -115,6 +115,17 @@ export function CalorieTrendChart({
   const barAnimValues = useRef<Map<string, Animated.Value>>(new Map());
   const prevBarHighlight = useRef<string | null>(null);
 
+  // --- Ghost bar: retains the last highlighted bar's pixel geometry so it can
+  //     fade out as an AnimatedRect overlay even after the date has left days. ---
+  const ghostBarGeometry = useRef<{ x: number; y: number; h: number; w: number; rx: number } | null>(null);
+  const ghostBarOpacity = useRef(new Animated.Value(0)).current;
+  const ghostAnimStarted = useRef(false);
+  const [ghostBarActive, setGhostBarActive] = useState(false);
+
+  // Always-current snapshot of days (safe ref mutation avoids stale-closure issues).
+  const currentDaysRef = useRef(days);
+  currentDaysRef.current = days;
+
   // --- Bar grow-in animation (height scale 0→1) ---
   const barGrowValues = useRef<Map<string, Animated.Value>>(new Map());
 
@@ -170,6 +181,12 @@ export function CalorieTrendChart({
     const next = highlightedDate;
     prevBarHighlight.current = next;
 
+    if (next) {
+      // A new bar was selected — reset ghost tracking so the next auto-clear
+      // can show a fresh ghost fade-out.
+      ghostAnimStarted.current = false;
+    }
+
     const animations: Animated.CompositeAnimation[] = [];
 
     if (prev && prev !== next && barAnimValues.current.has(prev)) {
@@ -180,6 +197,26 @@ export function CalorieTrendChart({
           useNativeDriver: false,
         })
       );
+    }
+
+    // When clearing (prev → null): if the bar is no longer in days AND the
+    // ghost wasn't already started by the daysDateKey effect, kick off the ghost
+    // fade now (handles edge-cases where date disappears and highlight clears in
+    // the same batch without the daysDateKey effect running first).
+    if (prev && !next && !ghostAnimStarted.current && ghostBarGeometry.current) {
+      const prevInDays = currentDaysRef.current.some((d) => d.date === prev);
+      if (!prevInDays) {
+        ghostAnimStarted.current = true;
+        ghostBarOpacity.setValue(1);
+        setGhostBarActive(true);
+        Animated.timing(ghostBarOpacity, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) setGhostBarActive(false);
+        });
+      }
     }
 
     if (next && barAnimValues.current.has(next)) {
@@ -196,6 +233,39 @@ export function CalorieTrendChart({
       Animated.parallel(animations).start();
     }
   }, [highlightedDate]);
+
+  // Cache the highlighted bar's pixel geometry while it is visible, and
+  // immediately start the ghost fade-out the moment the date falls out of days.
+  // This fires during the parent's 200 ms grace-period so the animation
+  // completes before highlightedDate is nulled.
+  const daysDateKey = days.map((d) => d.date).join(",");
+  useEffect(() => {
+    if (!highlightedDate) return;
+
+    const idx = days.findIndex((d) => d.date === highlightedDate);
+    if (idx !== -1) {
+      // Bar is visible — update the cached geometry and reset the ghost flag.
+      const day = days[idx];
+      const barH = Math.max(MIN_BAR_H, barAreaH * (day.value / maxVal));
+      const x = SIDE_PADDING + idx * (barW + barGap);
+      const y = TOP_PADDING + barAreaH - barH;
+      ghostBarGeometry.current = { x, y, h: barH, w: barW, rx: barW > 8 ? 3 : 2 };
+      ghostAnimStarted.current = false;
+    } else if (!ghostAnimStarted.current && ghostBarGeometry.current) {
+      // Bar just left the visible range — start ghost fade immediately.
+      ghostAnimStarted.current = true;
+      ghostBarOpacity.setValue(1);
+      setGhostBarActive(true);
+      Animated.timing(ghostBarOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) setGhostBarActive(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daysDateKey, highlightedDate]);
 
   useEffect(() => {
     if (highlightedDate) {
@@ -489,6 +559,22 @@ export function CalorieTrendChart({
             </React.Fragment>
           );
         })}
+
+        {/* Ghost bar — rendered at the last highlighted bar's position and faded
+            out while the parent holds highlightedDate for 200 ms after the date
+            leaves the visible range. Renders on top of normal bars so the fade
+            is always visible regardless of z-order. */}
+        {ghostBarActive && ghostBarGeometry.current && (
+          <AnimatedRect
+            x={ghostBarGeometry.current.x}
+            y={ghostBarGeometry.current.y}
+            width={ghostBarGeometry.current.w}
+            height={ghostBarGeometry.current.h}
+            rx={ghostBarGeometry.current.rx}
+            fill={colors.warning}
+            opacity={ghostBarOpacity}
+          />
+        )}
       </Svg>
 
       {/* Animated tooltip label overlay */}

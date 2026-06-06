@@ -1210,6 +1210,7 @@ export default function NutritionScreen() {
 
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
   const [highlightedMacro, setHighlightedMacro] = useState<"calories" | "protein" | "carbs" | "fat" | null>(null);
+  const highlightClearTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(HIGHLIGHTED_DATE_STORAGE_KEY).then((val) => {
@@ -1323,15 +1324,40 @@ export default function NutritionScreen() {
   );
 
   useEffect(() => {
-    if (!highlightedDate) return;
     // Wait until the underlying history data has loaded before validating.
     // Once historyDays is non-empty we know data has settled; after that,
     // absence from trendChartDays (even an empty chart) means the date is stale.
-    if (historyDays.length === 0) return;
-    const found = trendChartDays.some((d) => d.date === highlightedDate);
-    if (!found) {
-      setHighlightedDate(null);
+    if (!highlightedDate || historyDays.length === 0) {
+      if (highlightClearTimeoutRef.current) {
+        clearTimeout(highlightClearTimeoutRef.current);
+        highlightClearTimeoutRef.current = null;
+      }
+      return;
     }
+    const found = trendChartDays.some((d) => d.date === highlightedDate);
+    if (found) {
+      // Date is valid again (e.g. user changed range back) — cancel any pending clear.
+      if (highlightClearTimeoutRef.current) {
+        clearTimeout(highlightClearTimeoutRef.current);
+        highlightClearTimeoutRef.current = null;
+      }
+    } else {
+      // Date is outside the visible range. Delay clearing state so the chart's ghost
+      // bar and pill fade-out animations have time to complete (180 ms) before the
+      // parent state is nulled. The timeout is cancelled if the date re-appears or
+      // the component unmounts.
+      if (highlightClearTimeoutRef.current) clearTimeout(highlightClearTimeoutRef.current);
+      highlightClearTimeoutRef.current = setTimeout(() => {
+        setHighlightedDate(null);
+        highlightClearTimeoutRef.current = null;
+      }, 200);
+    }
+    return () => {
+      if (highlightClearTimeoutRef.current) {
+        clearTimeout(highlightClearTimeoutRef.current);
+        highlightClearTimeoutRef.current = null;
+      }
+    };
   }, [trendChartDays, highlightedDate, historyDays.length]);
 
   const chartDisplayDays = React.useMemo(
