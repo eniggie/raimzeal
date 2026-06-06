@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Dimensions, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
@@ -54,6 +54,8 @@ const LABEL_HEIGHT = 20;
 const TOP_PADDING = 24;
 const SIDE_PADDING = 4;
 const MIN_BAR_H = 3;
+const SCROLL_THRESHOLD = 14; // bars before the chart becomes horizontally scrollable
+const BAR_W_SCROLLABLE = 18; // fixed bar width (px) in scrollable mode
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -84,7 +86,14 @@ export function CalorieTrendChart({
 
   const barCount = days.length;
   const barGap = barCount > 10 ? 3 : 5;
-  const barW = Math.floor((drawWidth - barGap * (barCount - 1)) / Math.max(barCount, 1));
+  const isScrollable = barCount > SCROLL_THRESHOLD;
+  const barW = isScrollable
+    ? BAR_W_SCROLLABLE
+    : Math.floor((drawWidth - barGap * Math.max(barCount - 1, 0)) / Math.max(barCount, 1));
+  // Expanded SVG width when scrollable; otherwise equals containerWidth
+  const svgWidth = isScrollable
+    ? SIDE_PADDING * 2 + barCount * BAR_W_SCROLLABLE + Math.max(barCount - 1, 0) * barGap
+    : containerWidth;
   const barAreaH = CHART_HEIGHT - TOP_PADDING - LABEL_HEIGHT;
 
   const goalY = TOP_PADDING + barAreaH * (1 - goal / maxVal);
@@ -97,6 +106,10 @@ export function CalorieTrendChart({
   const badgeTranslateY = useRef(new Animated.Value(0)).current;
   const lastMealFilterRef = useRef(mealFilter && mealFilter !== "all" ? mealFilter : "");
   const [badgeVisible, setBadgeVisible] = useState(!!(mealFilter && mealFilter !== "all"));
+
+  // --- Scroll hint animation ---
+  const scrollHintOpacity = useRef(new Animated.Value(0)).current;
+  const scrollHintShownRef = useRef(false);
 
   // --- Bar colour animation ---
   const barAnimValues = useRef<Map<string, Animated.Value>>(new Map());
@@ -222,6 +235,21 @@ export function CalorieTrendChart({
       });
     }
   }, [mealFilter]);
+
+  useEffect(() => {
+    if (!isScrollable) {
+      scrollHintShownRef.current = false;
+      return;
+    }
+    if (scrollHintShownRef.current) return;
+    scrollHintShownRef.current = true;
+    scrollHintOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(scrollHintOpacity, { toValue: 0.85, duration: 300, useNativeDriver: true }),
+      Animated.delay(2000),
+      Animated.timing(scrollHintOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start();
+  }, [isScrollable]);
 
   const [pillLabel, setPillLabel] = useState("");
 
@@ -354,13 +382,24 @@ export function CalorieTrendChart({
 
   return (
     <View>
-      <View style={{ position: "relative", width: containerWidth, height: CHART_HEIGHT + LABEL_HEIGHT }}>
-      <Svg width={containerWidth} height={CHART_HEIGHT + LABEL_HEIGHT}>
+      {/* Chart area: scrollable when barCount > SCROLL_THRESHOLD */}
+      <View style={{ position: "relative" }}>
+        <ScrollView
+          horizontal
+          scrollEnabled={isScrollable}
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={() => {
+            Animated.timing(scrollHintOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          }}
+        >
+          <View style={{ position: "relative", width: svgWidth, height: CHART_HEIGHT + LABEL_HEIGHT }}>
+      <Svg width={svgWidth} height={CHART_HEIGHT + LABEL_HEIGHT}>
         {/* Goal line */}
         <Line
           x1={SIDE_PADDING}
           y1={goalY}
-          x2={containerWidth - SIDE_PADDING}
+          x2={svgWidth - SIDE_PADDING}
           y2={goalY}
           stroke={colors.warning}
           strokeWidth={1}
@@ -370,7 +409,7 @@ export function CalorieTrendChart({
 
         {/* Goal label */}
         <SvgText
-          x={containerWidth - SIDE_PADDING - 2}
+          x={svgWidth - SIDE_PADDING - 2}
           y={goalY - 4}
           fontSize={9}
           fill={colors.warning}
@@ -494,6 +533,26 @@ export function CalorieTrendChart({
           </Text>
         </Animated.View>
       )}
+          </View>
+        </ScrollView>
+
+        {/* "scroll →" hint: fades in on first render, auto-dismisses after ~2 s or on scroll */}
+        {isScrollable && (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              right: 6,
+              top: 4,
+              opacity: scrollHintOpacity,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Text style={{ fontSize: 10, color: colors.mutedForeground }}>scroll →</Text>
+          </Animated.View>
+        )}
       </View>
 
       {/* Summary pill — fades in when a date is highlighted */}

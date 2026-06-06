@@ -1288,18 +1288,21 @@ export default function NutritionScreen() {
     ]).start();
   }, [trendMetric]);
 
-  const TREND_CHART_MAX_DAYS = 14;
+  // "all" gets a generous cap to avoid rendering thousands of bars;
+  // filtered ranges show every day so the scrollable chart covers the full selection.
+  const TREND_CHART_MAX_DAYS_ALL = 90;
 
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    // Always cap at TREND_CHART_MAX_DAYS most-recent days so bars stay readable
-    // on narrow phones regardless of which date range is selected.
     const source =
       historyDateRange === "all"
-        ? historyDays.slice(0, TREND_CHART_MAX_DAYS).reverse()
-        : filteredHistoryDays.slice(0, TREND_CHART_MAX_DAYS).reverse();
-    const useShortDate = source.length <= 7;
+        ? historyDays.slice(0, TREND_CHART_MAX_DAYS_ALL).reverse()
+        : filteredHistoryDays.slice().reverse();
+    // ≤7 bars: "Jan 5" (readable with wide bars)
+    // 8–14 bars: "Mon" (day names, non-repeating within one week)
+    // >14 bars: "Jan 5" (scrollable — day names would repeat across weeks)
+    const useShortDate = source.length <= 7 || source.length > 14;
     return source.map(({ date, totals }) => {
       const d = new Date(date + "T12:00:00");
       const label = useShortDate
