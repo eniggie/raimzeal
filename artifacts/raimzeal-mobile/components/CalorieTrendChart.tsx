@@ -97,13 +97,55 @@ export function CalorieTrendChart({
   const barAnimValues = useRef<Map<string, Animated.Value>>(new Map());
   const prevBarHighlight = useRef<string | null>(null);
 
-  // Initialise an animated value for any day not yet tracked
+  // --- Bar grow-in animation (height scale 0→1) ---
+  const barGrowValues = useRef<Map<string, Animated.Value>>(new Map());
+
+  // Initialise animated values for any day not yet tracked
   days.forEach((day) => {
     if (!barAnimValues.current.has(day.date)) {
       const initialVal = day.date === highlightedDate ? 1 : 0;
       barAnimValues.current.set(day.date, new Animated.Value(initialVal));
     }
+    if (!barGrowValues.current.has(day.date)) {
+      barGrowValues.current.set(day.date, new Animated.Value(0));
+    }
   });
+
+  // Trigger grow-in whenever dates or their values change
+  const daysKey = days.map((d) => `${d.date}:${d.value}`).join(",");
+  useEffect(() => {
+    // Prune stale keys
+    const currentDates = new Set(days.map((d) => d.date));
+    for (const key of barGrowValues.current.keys()) {
+      if (!currentDates.has(key)) barGrowValues.current.delete(key);
+    }
+
+    // Reset each bar to 0 then stagger to 1
+    days.forEach((day) => {
+      const v = barGrowValues.current.get(day.date);
+      if (v) {
+        v.setValue(0);
+      } else {
+        barGrowValues.current.set(day.date, new Animated.Value(0));
+      }
+    });
+
+    const runningAnimation = Animated.parallel(
+      days.map((day, idx) =>
+        Animated.sequence([
+          Animated.delay(idx * 20),
+          Animated.timing(barGrowValues.current.get(day.date)!, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+        ])
+      )
+    );
+    runningAnimation.start();
+    return () => runningAnimation.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daysKey]);
 
   useEffect(() => {
     const prev = prevBarHighlight.current;
@@ -335,13 +377,24 @@ export function CalorieTrendChart({
             outputRange: [colors.mutedForeground, colors.warning],
           });
 
+          const growValue =
+            barGrowValues.current.get(day.date) ?? new Animated.Value(1);
+          const animatedBarH = growValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, barH],
+          });
+          const animatedBarY = growValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [TOP_PADDING + barAreaH, y],
+          });
+
           return (
             <React.Fragment key={day.date}>
               <AnimatedRect
                 x={x}
-                y={y}
+                y={animatedBarY}
                 width={barW}
-                height={barH}
+                height={animatedBarH}
                 rx={barW > 8 ? 3 : 2}
                 fill={animatedFill}
                 opacity={animatedOpacity}
