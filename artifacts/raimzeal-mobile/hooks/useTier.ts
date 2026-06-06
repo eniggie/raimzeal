@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export type TierName = "foundation" | "rise" | "reign" | "legacy";
@@ -9,21 +10,29 @@ export interface TierState {
   status: string;
   currentPeriodEnd: string | null;
   loading: boolean;
+  refetch: () => void;
 }
 
 /**
  * Fetches the given user's subscription tier and permissions from their Supabase profile.
  * canWrite === true  →  Rise / Reign / Legacy (subscription_status = "active")
  * canWrite === false →  Foundation (free) or unauthenticated
+ *
+ * Auto-refetches when the app comes back to the foreground so the tier badge
+ * stays current after a web checkout without requiring an app restart.
+ * Exposes a `refetch()` callback for screens to trigger on focus.
  */
 export function useTier(userId: string | null): TierState {
-  const [state, setState] = useState<TierState>({
+  const [refetchTick, setRefetchTick] = useState(0);
+  const [state, setState] = useState<Omit<TierState, "refetch">>({
     canWrite: false,
     tier: "foundation",
     status: "none",
     currentPeriodEnd: null,
     loading: true,
   });
+
+  const refetch = useCallback(() => setRefetchTick((t) => t + 1), []);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !userId) {
@@ -53,7 +62,19 @@ export function useTier(userId: string | null): TierState {
       }
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, refetchTick]);
 
-  return state;
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
+      if (appStateRef.current !== "active" && nextState === "active") {
+        setRefetchTick((t) => t + 1);
+      }
+      appStateRef.current = nextState;
+    });
+    return () => subscription.remove();
+  }, []);
+
+  return { ...state, refetch };
 }

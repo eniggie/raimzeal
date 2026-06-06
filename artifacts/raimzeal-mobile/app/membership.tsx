@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -173,6 +173,16 @@ export default function MembershipScreen() {
   const paymentLabel = getPlatformPaymentLabel();
   const isPremium = customerInfo ? hasPremium(customerInfo) : false;
 
+  const loadCustomerInfo = useCallback(async () => {
+    if (!isMobilePlatform) return;
+    try {
+      const info = await getCustomerInfo();
+      if (info) setCustomerInfo(info);
+    } catch {
+      // silent — stale customerInfo is fine
+    }
+  }, [isMobilePlatform]);
+
   useEffect(() => {
     if (!isMobilePlatform) return;
     let cancelled = false;
@@ -202,6 +212,12 @@ export default function MembershipScreen() {
     load();
     return () => { cancelled = true; };
   }, [isMobilePlatform]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCustomerInfo();
+    }, [loadCustomerInfo])
+  );
 
   const handleSubscribeTap = useCallback(
     async (plan: PaidPlanDef, interval: "monthly" | "yearly") => {

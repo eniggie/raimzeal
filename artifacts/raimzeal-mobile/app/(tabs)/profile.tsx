@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -21,7 +21,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -146,7 +146,13 @@ export default function ProfileScreen() {
     return () => clearInterval(id);
   }, []);
   const { signOut, user: authUser } = useAuth();
-  const { tier } = useTier(authUser?.id ?? null);
+  const { tier, refetch: refetchTier } = useTier(authUser?.id ?? null);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchTier();
+    }, [refetchTier])
+  );
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
