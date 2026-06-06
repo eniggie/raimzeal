@@ -8763,30 +8763,35 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     if (field === 'calories') {
       editCaloriesAutoFilled.current = false;
     }
+    const n = parseFloat(text);
+    const isValid = !isNaN(n) && n >= 0;
+    const baseValue = isValid ? (editServings > 0 ? n / editServings : n) : null;
+    // Compute auto-fill decision synchronously before any state updates
+    let autoFillBase: number | null = null;
+    if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
+      const p = field === 'protein' ? baseValue : editBase.protein;
+      const c = field === 'carbs' ? baseValue : editBase.carbs;
+      const ft = field === 'fat' ? baseValue : editBase.fat;
+      const kcal = p * 4 + c * 4 + ft * 9;
+      if (kcal > 0) {
+        editCaloriesAutoFilled.current = true;
+        autoFillBase = kcal;
+      }
+    }
     setEditForm(f => {
       const updated = { ...f, [field]: text };
-      if (field !== 'calories' && (editCaloriesAutoFilled.current || f.calories === "")) {
-        const n = parseFloat(text);
-        if (!isNaN(n) && n >= 0) {
-          const p = field === 'protein' ? n : (parseFloat(f.protein) || 0);
-          const c = field === 'carbs' ? n : (parseFloat(f.carbs) || 0);
-          const ft = field === 'fat' ? n : (parseFloat(f.fat) || 0);
-          const kcal = p * 4 + c * 4 + ft * 9;
-          if (kcal > 0) {
-            editCaloriesAutoFilled.current = true;
-            const caloriesStr = String(Math.round(kcal * editServings));
-            updated.calories = caloriesStr;
-          }
-        }
+      if (autoFillBase !== null) {
+        updated.calories = String(Math.round(autoFillBase * editServings));
       }
       return updated;
     });
-    const n = parseFloat(text);
-    if (!isNaN(n) && n >= 0) {
-      const baseValue = editServings > 0 ? n / editServings : n;
+    if (baseValue !== null) {
       const grams = editGramsRef.current;
       setEditBase(prev => {
         const newBase = { ...prev, [field]: baseValue };
+        if (autoFillBase !== null) {
+          newBase.calories = autoFillBase;
+        }
         if (grams !== undefined && grams > 0) {
           perGramRef.current = {
             calories: newBase.calories / grams,
@@ -9524,29 +9529,35 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     if (field === 'calories') {
       editCaloriesAutoFilled.current = false;
     }
+    const n = parseFloat(text);
+    const isValid = !isNaN(n) && n >= 0;
+    const baseValue = isValid ? (editServings > 0 ? n / editServings : n) : null;
+    // Compute auto-fill decision synchronously before any state updates
+    let autoFillBase: number | null = null;
+    if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
+      const p = field === 'protein' ? baseValue : editBase.protein;
+      const c = field === 'carbs' ? baseValue : editBase.carbs;
+      const ft = field === 'fat' ? baseValue : editBase.fat;
+      const kcal = p * 4 + c * 4 + ft * 9;
+      if (kcal > 0) {
+        editCaloriesAutoFilled.current = true;
+        autoFillBase = kcal;
+      }
+    }
     setEditForm(f => {
       const updated = { ...f, [field]: text };
-      if (field !== 'calories' && (editCaloriesAutoFilled.current || f.calories === "")) {
-        const n = parseFloat(text);
-        if (!isNaN(n) && n >= 0) {
-          const p = field === 'protein' ? n : (parseFloat(f.protein) || 0);
-          const c = field === 'carbs' ? n : (parseFloat(f.carbs) || 0);
-          const ft = field === 'fat' ? n : (parseFloat(f.fat) || 0);
-          const kcal = p * 4 + c * 4 + ft * 9;
-          if (kcal > 0) {
-            editCaloriesAutoFilled.current = true;
-            updated.calories = String(Math.round(kcal * editServings));
-          }
-        }
+      if (autoFillBase !== null) {
+        updated.calories = String(Math.round(autoFillBase * editServings));
       }
       return updated;
     });
-    const n = parseFloat(text);
-    if (!isNaN(n) && n >= 0) {
-      const baseValue = editServings > 0 ? n / editServings : n;
+    if (baseValue !== null) {
       const grams = editGramsRef.current;
       setEditBase(prev => {
         const newBase = { ...prev, [field]: baseValue };
+        if (autoFillBase !== null) {
+          newBase.calories = autoFillBase;
+        }
         if (grams !== undefined && grams > 0) {
           perGramRef.current = {
             calories: newBase.calories / grams,
