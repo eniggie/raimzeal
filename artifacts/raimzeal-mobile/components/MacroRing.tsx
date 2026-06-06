@@ -144,10 +144,26 @@ export function MacroRing({
   // Guard so the entry animation fires at most once per mount.
   const hasAnimatedRef = useRef(false);
 
+  // Ref that always reflects the current shouldAnimate prop without adding it
+  // to the sync effect's dependency array (avoids retriggering sync logic when
+  // shouldAnimate changes — the entry effect owns that transition).
+  const shouldAnimateRef = useRef(shouldAnimate);
+  useEffect(() => {
+    shouldAnimateRef.current = shouldAnimate;
+  });
+
+  // Entry animation — fires when animation is first enabled (shouldAnimate
+  // flipping false→true for scroll-triggered history cards, or on mount for
+  // the home ring). hasData is intentionally NOT a dependency here: when the
+  // home ring starts at zero and data later arrives, the sync effect below
+  // fires its own entry-style sweep so these two effects don't race.
   useEffect(() => {
     if (!shouldAnimate || !hasData) return;
     if (hasAnimatedRef.current) return;
     hasAnimatedRef.current = true;
+
+    // Show segments so the SVG elements exist before withTiming starts.
+    setShowSegments(true);
 
     // Query the accessibility preference once at the moment of animation, not
     // via a persistent subscription — avoids creating one listener per ring
@@ -165,18 +181,46 @@ export function MacroRing({
         fatOffset.value = withTiming(targetFatOffset, config);
       }
     });
-  }, [shouldAnimate, hasData]);
+  }, [shouldAnimate]); // ← hasData intentionally omitted; see comment above
 
   // After the entry animation has fired, keep arc lengths in sync when macro
-  // props change (e.g., the user edits or deletes a logged meal). Skip the
-  // very first run (mount) so we don't cancel the entry animation mid-flight.
+  // props change (e.g., the user edits or deletes a logged meal). Also handles
+  // the 0 → non-zero transition when the ring was mounted empty (shouldAnimate
+  // was already true but hasData was false at mount time).
   const isFirstSyncRun = useRef(true);
   useEffect(() => {
     if (isFirstSyncRun.current) {
       isFirstSyncRun.current = false;
       return;
     }
-    if (!hasAnimatedRef.current) return;
+
+    // Ring was mounted at zero and the first meal just arrived — play a full
+    // entry-style sweep (ANIMATION_DURATION) so the arcs draw in gracefully
+    // rather than snapping or staying invisible.
+    if (!hasAnimatedRef.current) {
+      if (!hasData || !shouldAnimateRef.current) return;
+      hasAnimatedRef.current = true;
+      if (unmountTimerRef.current) {
+        clearTimeout(unmountTimerRef.current);
+        unmountTimerRef.current = null;
+      }
+      setShowSegments(true);
+      AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+        if (reduceMotion) {
+          proteinOffset.value = targetProteinOffset;
+          carbsOffset.value = targetCarbsOffset;
+          fatOffset.value = targetFatOffset;
+        } else {
+          const config = { duration: ANIMATION_DURATION, easing: ANIMATION_EASING };
+          proteinOffset.value = withTiming(targetProteinOffset, config);
+          carbsOffset.value = withTiming(targetCarbsOffset, config);
+          fatOffset.value = withTiming(targetFatOffset, config);
+        }
+      });
+      return;
+    }
+
+    // Normal sync path: entry animation already fired, update to new values.
 
     // If macros are coming back from zero, show segments immediately before
     // the animation so the arcs are in the tree when withTiming starts.
