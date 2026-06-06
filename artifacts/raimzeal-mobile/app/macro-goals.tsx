@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -168,6 +169,8 @@ export default function MacroGoalsScreen() {
     setFat(suggested.fat.toString());
   }
 
+  const [isCopied, setIsCopied] = useState(false);
+
   async function handleShareBreakdown() {
     if (!breakdown || !suggested) return;
     Haptics.selectionAsync();
@@ -179,6 +182,15 @@ export default function MacroGoalsScreen() {
     } catch {
       // share sheet could not be displayed (e.g. simulator restriction)
     }
+  }
+
+  async function handleCopyBreakdown() {
+    if (!breakdown || !suggested) return;
+    const text = formatBreakdownText(breakdown, suggested, goalLabel);
+    await Clipboard.setStringAsync(text);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   }
 
   const fields: GoalField[] = [
@@ -435,16 +447,27 @@ export default function MacroGoalsScreen() {
                       </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                      activeOpacity={0.82}
-                      onPress={handleShareBreakdown}
-                      style={[styles.shareBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12" }]}
-                    >
-                      <Ionicons name="share-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
-                      <Text style={[styles.shareBtnText, { color: colors.primary }]}>
-                        Share breakdown
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={styles.shareCopyRow}>
+                      <TouchableOpacity
+                        activeOpacity={0.82}
+                        onPress={handleShareBreakdown}
+                        style={[styles.shareBtn, styles.shareCopyBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12" }]}
+                      >
+                        <Ionicons name="share-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={[styles.shareBtnText, { color: colors.primary }]}>Share</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.82}
+                        onPress={handleCopyBreakdown}
+                        style={[styles.shareBtn, styles.shareCopyBtn, { borderColor: colors.primary + "55", backgroundColor: isCopied ? colors.primary + "28" : colors.primary + "12" }]}
+                      >
+                        <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={[styles.shareBtnText, { color: colors.primary }]}>
+                          {isCopied ? "Copied!" : "Copy text"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
 
@@ -802,6 +825,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
+  shareCopyRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  shareCopyBtn: {
+    flex: 1,
+  },
   shareBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -809,7 +840,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     height: 38,
-    marginTop: 4,
   },
   shareBtnText: {
     fontSize: 13,
