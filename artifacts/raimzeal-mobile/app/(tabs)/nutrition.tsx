@@ -1388,6 +1388,7 @@ export default function NutritionScreen() {
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
   // true while calories has been auto-filled from macros (not typed by the user)
   const manualCaloriesAutoFilled = useRef(false);
+  const [showManualBreakdown, setShowManualBreakdown] = useState(false);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
   const [activeTab, setActiveTab] = useState<"today" | "history">("today");
 
@@ -4217,6 +4218,7 @@ export default function NutritionScreen() {
   function handleManualEntry() {
     setManualForm(EMPTY_MANUAL);
     manualCaloriesAutoFilled.current = false;
+    setShowManualBreakdown(false);
     setManualMeal("snack");
     setManualMacrosPrefilledFor(null);
     setShowManualEntry(true);
@@ -6824,15 +6826,20 @@ export default function NutritionScreen() {
               if (!hasAnyMacro) return null;
               return (
                 <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
-                  <Text
-                    style={[
-                      styles.macroCalHint,
-                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
-                    ]}
+                  <TouchableOpacity
+                    onPress={() => { if (mismatch) setShowManualBreakdown(v => !v); }}
+                    activeOpacity={mismatch ? 0.7 : 1}
                   >
-                    ~{macroKcal} kcal from macros
-                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.macroCalHint,
+                        { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                      ]}
+                    >
+                      ~{macroKcal} kcal from macros
+                      {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                    </Text>
+                  </TouchableOpacity>
                   {mismatch && (
                     <TouchableOpacity
                       onPress={() => {
@@ -6842,6 +6849,13 @@ export default function NutritionScreen() {
                     >
                       <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
                     </TouchableOpacity>
+                  )}
+                  {mismatch && showManualBreakdown && (
+                    <View style={{ width: "100%", backgroundColor: "#f59e0b11", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#f59e0b33" }}>
+                      <Text style={{ color: "#f59e0b", fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+                        {`Protein ${protein}g × 4 = ${Math.round(protein * 4)} kcal\nCarbs ${carbs}g × 4 = ${Math.round(carbs * 4)} kcal\nFat ${fat}g × 9 = ${Math.round(fat * 9)} kcal`}
+                      </Text>
+                    </View>
                   )}
                 </View>
               );
@@ -8599,6 +8613,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
   const editGramsRef = useRef<number | undefined>(log.amountGrams);
   const editCaloriesAutoFilled = useRef(false);
+  const [showHistBreakdown, setShowHistBreakdown] = useState(false);
   const [editGramsText, setEditGramsText] = useState(
     log.amountGrams !== undefined
       ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
@@ -8612,6 +8627,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   useEffect(() => {
     if (showEditSheet) return;
     editCaloriesAutoFilled.current = false;
+    setShowHistBreakdown(false);
     setEditForm({
       name: log.name,
       calories: String(log.calories),
@@ -9219,11 +9235,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
             </View>
 
             {(() => {
-              const macroKcal = Math.round(
-                editBase.protein * editServings * 4 +
-                editBase.carbs * editServings * 4 +
-                editBase.fat * editServings * 9
-              );
+              const pKcal = Math.round(editBase.protein * editServings * 4);
+              const cKcal = Math.round(editBase.carbs * editServings * 4);
+              const fKcal = Math.round(editBase.fat * editServings * 9);
+              const macroKcal = pKcal + cKcal + fKcal;
+              const pG = Math.round(editBase.protein * editServings * 10) / 10;
+              const cG = Math.round(editBase.carbs * editServings * 10) / 10;
+              const fG = Math.round(editBase.fat * editServings * 10) / 10;
               const statedKcal = Math.round(editBase.calories * editServings);
               const mismatch =
                 statedKcal > 0 &&
@@ -9231,15 +9249,20 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
               const perServing = editBase.protein * 4 + editBase.carbs * 4 + editBase.fat * 9;
               return (
                 <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <Text
-                    style={[
-                      styles.macroCalHint,
-                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
-                    ]}
+                  <TouchableOpacity
+                    onPress={() => { if (mismatch) setShowHistBreakdown(v => !v); }}
+                    activeOpacity={mismatch ? 0.7 : 1}
                   >
-                    ~{macroKcal} kcal from macros
-                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.macroCalHint,
+                        { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                      ]}
+                    >
+                      ~{macroKcal} kcal from macros
+                      {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                    </Text>
+                  </TouchableOpacity>
                   {mismatch && (
                     <TouchableOpacity
                       onPress={() => {
@@ -9251,6 +9274,13 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                     >
                       <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
                     </TouchableOpacity>
+                  )}
+                  {mismatch && showHistBreakdown && (
+                    <View style={{ width: "100%", backgroundColor: "#f59e0b11", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#f59e0b33" }}>
+                      <Text style={{ color: "#f59e0b", fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+                        {`Protein ${pG}g × 4 = ${pKcal} kcal\nCarbs ${cG}g × 4 = ${cKcal} kcal\nFat ${fG}g × 9 = ${fKcal} kcal`}
+                      </Text>
+                    </View>
                   )}
                 </View>
               );
@@ -9369,12 +9399,14 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const editCaloriesAutoFilled = useRef(false);
+  const [showRowBreakdown, setShowRowBreakdown] = useState(false);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
 
   useEffect(() => {
     if (showEditSheet) return;
     editCaloriesAutoFilled.current = false;
+    setShowRowBreakdown(false);
     setEditForm({
       name: log.name,
       calories: String(log.calories),
@@ -9979,11 +10011,13 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
             </View>
 
             {(() => {
-              const macroKcal = Math.round(
-                editBase.protein * editServings * 4 +
-                editBase.carbs * editServings * 4 +
-                editBase.fat * editServings * 9
-              );
+              const pKcal = Math.round(editBase.protein * editServings * 4);
+              const cKcal = Math.round(editBase.carbs * editServings * 4);
+              const fKcal = Math.round(editBase.fat * editServings * 9);
+              const macroKcal = pKcal + cKcal + fKcal;
+              const pG = Math.round(editBase.protein * editServings * 10) / 10;
+              const cG = Math.round(editBase.carbs * editServings * 10) / 10;
+              const fG = Math.round(editBase.fat * editServings * 10) / 10;
               const statedKcal = Math.round(editBase.calories * editServings);
               const mismatch =
                 statedKcal > 0 &&
@@ -9991,15 +10025,20 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
               const perServing = editBase.protein * 4 + editBase.carbs * 4 + editBase.fat * 9;
               return (
                 <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <Text
-                    style={[
-                      styles.macroCalHint,
-                      { color: mismatch ? "#f59e0b" : colors.mutedForeground },
-                    ]}
+                  <TouchableOpacity
+                    onPress={() => { if (mismatch) setShowRowBreakdown(v => !v); }}
+                    activeOpacity={mismatch ? 0.7 : 1}
                   >
-                    ~{macroKcal} kcal from macros
-                    {mismatch ? "  ⚠ doesn't match stated calories" : ""}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.macroCalHint,
+                        { color: mismatch ? "#f59e0b" : colors.mutedForeground },
+                      ]}
+                    >
+                      ~{macroKcal} kcal from macros
+                      {mismatch ? "  ⚠ doesn't match stated calories" : ""}
+                    </Text>
+                  </TouchableOpacity>
                   {mismatch && (
                     <TouchableOpacity
                       onPress={() => {
@@ -10011,6 +10050,13 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                     >
                       <Text style={{ color: "#f59e0b", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Use macro total</Text>
                     </TouchableOpacity>
+                  )}
+                  {mismatch && showRowBreakdown && (
+                    <View style={{ width: "100%", backgroundColor: "#f59e0b11", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#f59e0b33" }}>
+                      <Text style={{ color: "#f59e0b", fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+                        {`Protein ${pG}g × 4 = ${pKcal} kcal\nCarbs ${cG}g × 4 = ${cKcal} kcal\nFat ${fG}g × 9 = ${fKcal} kcal`}
+                      </Text>
+                    </View>
                   )}
                 </View>
               );
