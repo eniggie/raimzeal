@@ -2828,17 +2828,38 @@ export default function NutritionScreen() {
       AsyncStorage.getItem(HISTORY_MEAL_FILTER_KEY),
       AsyncStorage.getItem(CUSTOM_DATE_RANGE_KEY),
     ]).then(([dateRaw, mealRaw, customRaw]) => {
+      // Parse the saved custom date range first so we can use it as a guard below.
+      let parsedCustom: { start: string; end: string } | null = null;
       if (customRaw) {
         try {
           const parsed = JSON.parse(customRaw) as unknown;
-          if (parsed && typeof parsed === "object" && "start" in parsed && "end" in parsed) {
-            setCustomDateRange(parsed as { start: string; end: string });
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            "start" in parsed &&
+            "end" in parsed &&
+            typeof (parsed as Record<string, unknown>).start === "string" &&
+            typeof (parsed as Record<string, unknown>).end === "string"
+          ) {
+            parsedCustom = parsed as { start: string; end: string };
           }
         } catch {}
       }
-      if (dateRaw && VALID_DATE_RANGES.has(dateRaw)) {
-        setHistoryDateRange(dateRaw as HistoryDateRange);
+
+      // Restore the custom date range if it was successfully parsed.
+      if (parsedCustom) {
+        setCustomDateRange(parsedCustom);
       }
+
+      // Restore the selected range.  If the stored range is "custom" but the
+      // date object couldn't be recovered, fall back to "all" so the filter
+      // never shows as "custom" with an empty date range.
+      const resolvedRange =
+        dateRaw === "custom" && !parsedCustom ? "all" : dateRaw;
+      if (resolvedRange && VALID_DATE_RANGES.has(resolvedRange)) {
+        setHistoryDateRange(resolvedRange as HistoryDateRange);
+      }
+
       if (mealRaw && VALID_MEAL_FILTERS.has(mealRaw)) {
         setHistoryMealFilter(mealRaw as HistoryMealFilter);
       }
