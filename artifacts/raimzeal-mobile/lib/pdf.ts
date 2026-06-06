@@ -2,6 +2,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { AppState } from "@/contexts/FitnessContext";
 import type { MacroGoals } from "@/contexts/MacroGoalsContext";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 
 export type DateRangeOption = "7d" | "30d" | "90d" | "all" | "custom";
 
@@ -82,6 +83,9 @@ export async function exportToPdf(
       : 0;
   const latestWeight = bodyMeasurements[bodyMeasurements.length - 1]?.weight ?? user?.weight ?? 0;
   const unit = settings.weightUnit;
+
+  const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
+  const suggestedResult = computeSuggestedGoalsWithBreakdown(user ?? null);
 
   const workoutRows = workoutLogs
     .map(
@@ -196,6 +200,21 @@ export async function exportToPdf(
     .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
     .notice { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 11px; color: #92400e; margin-top: 16px; }
     .empty { font-size: 13px; color: #9ca3af; font-style: italic; padding: 12px 0; }
+    /* Macro Breakdown */
+    .breakdown-chain { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+    .breakdown-chain thead tr { background: #0a0a0b; color: #fff; }
+    .breakdown-chain thead th { padding: 8px 10px; text-align: left; font-size: 11px; }
+    .breakdown-chain tbody tr:nth-child(even) { background: #f9fafb; }
+    .breakdown-chain tbody td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+    .breakdown-chain .target-row { font-weight: 700; background: #f0fdf0 !important; }
+    .macro-split { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .macro-split-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 12px; text-align: center; background: #f9fafb; }
+    .macro-split-card .ms-name { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .macro-split-card .ms-val { font-size: 22px; font-weight: 800; }
+    .macro-split-card .ms-pct { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+    .macro-split-card .ms-kcal { font-size: 10px; color: #9ca3af; }
+    .breakdown-note { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
+    .breakdown-sub { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -276,6 +295,56 @@ export async function exportToPdf(
         .join("")}
     </div>
   </div>` : ""}
+
+  <!-- Macro Breakdown (calculated from profile) -->
+  ${suggestedResult ? (() => {
+    const bd = suggestedResult.breakdown;
+    const sg = suggestedResult.goals;
+    const adjSign = bd.goalAdjustment > 0 ? "+" : "";
+    const adjNote = bd.goalAdjustment < 0
+      ? "Calorie deficit"
+      : bd.goalAdjustment > 0
+      ? "Calorie surplus"
+      : "No adjustment — eating at TDEE";
+    return `
+  <div class="section">
+    <div class="section-title">🔬 Calculated Macro Breakdown</div>
+    <p class="breakdown-note">
+      Calculated from your profile (weight, height, age, biological sex, activity level)
+      using the Mifflin-St Jeor formula for <strong>${goalLabel}</strong>.
+    </p>
+    <table class="breakdown-chain">
+      <thead><tr><th>Metric</th><th>Value</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Basal Metabolic Rate (BMR)</td><td>${bd.bmr} kcal</td><td>Calories burned at complete rest · ${bd.sexLabel}</td></tr>
+        <tr><td>Total Daily Energy (TDEE)</td><td>${bd.tdee} kcal</td><td>${bd.activityLabel} activity multiplier applied</td></tr>
+        <tr><td>Goal adjustment (${goalLabel})</td><td>${adjSign}${bd.goalAdjustment} kcal</td><td>${adjNote}</td></tr>
+        <tr class="target-row"><td>Target Calories</td><td>${bd.targetCalories} kcal</td><td>Rounded to nearest 50 kcal</td></tr>
+      </tbody>
+    </table>
+    <p class="breakdown-sub">Macro Split</p>
+    <div class="macro-split">
+      <div class="macro-split-card">
+        <div class="ms-name" style="color:#C9A84C;">Protein</div>
+        <div class="ms-val" style="color:#C9A84C;">${sg.protein}g</div>
+        <div class="ms-pct">${Math.round(bd.proteinRatio * 100)}% of calories</div>
+        <div class="ms-kcal">4 kcal/g</div>
+      </div>
+      <div class="macro-split-card">
+        <div class="ms-name" style="color:#f97316;">Carbs</div>
+        <div class="ms-val" style="color:#f97316;">${sg.carbs}g</div>
+        <div class="ms-pct">${Math.round(bd.carbRatio * 100)}% of calories</div>
+        <div class="ms-kcal">4 kcal/g</div>
+      </div>
+      <div class="macro-split-card">
+        <div class="ms-name" style="color:#8B31C7;">Fat</div>
+        <div class="ms-val" style="color:#8B31C7;">${sg.fat}g</div>
+        <div class="ms-pct">${Math.round(bd.fatRatio * 100)}% of calories</div>
+        <div class="ms-kcal">9 kcal/g</div>
+      </div>
+    </div>
+  </div>`;
+  })() : ""}
 
   <!-- Workout History -->
   <div class="section">
