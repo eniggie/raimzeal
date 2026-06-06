@@ -3,6 +3,7 @@ import { Animated, Dimensions, Text, TouchableOpacity, View } from "react-native
 import Svg, { Line, Rect, Text as SvgText } from "react-native-svg";
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const AnimatedSvgText = Animated.createAnimatedComponent(SvgText);
 
 interface ChartDay {
   date: string;
@@ -329,6 +330,10 @@ export function CalorieTrendChart({
             inputRange: [0, 1],
             outputRange: [restingOpacity, 1],
           });
+          const animatedLabelColor = animValue.interpolate({
+            inputRange: [0, 1],
+            outputRange: [colors.mutedForeground, colors.warning],
+          });
 
           return (
             <React.Fragment key={day.date}>
@@ -351,16 +356,16 @@ export function CalorieTrendChart({
                 onPress={() => onBarPress(day.date)}
               />
               {/* X-axis label */}
-              <SvgText
+              <AnimatedSvgText
                 x={x + barW / 2}
                 y={CHART_HEIGHT + LABEL_HEIGHT - 2}
                 fontSize={barCount > 10 ? 8 : 9}
-                fill={isHighlighted ? colors.warning : colors.mutedForeground}
+                fill={animatedLabelColor}
                 textAnchor="middle"
                 fontWeight={isHighlighted ? "bold" : "normal"}
               >
                 {day.label}
-              </SvgText>
+              </AnimatedSvgText>
             </React.Fragment>
           );
         })}
