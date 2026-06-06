@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useReduceMotion } from "../hooks/useReduceMotion";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
@@ -152,6 +153,16 @@ export function MacroRing({
     shouldAnimateRef.current = shouldAnimate;
   });
 
+  // Shared reduce-motion value — sourced from a module-level singleton that
+  // registers exactly one native listener for the whole app (not one per ring).
+  // Reading via a ref inside effects means we always get the current value
+  // without adding reduceMotion to any effect's dependency array.
+  const reduceMotion = useReduceMotion();
+  const reduceMotionRef = useRef(reduceMotion);
+  useEffect(() => {
+    reduceMotionRef.current = reduceMotion;
+  });
+
   // Entry animation — fires when animation is first enabled (shouldAnimate
   // flipping false→true for scroll-triggered history cards, or on mount for
   // the home ring). hasData is intentionally NOT a dependency here: when the
@@ -165,22 +176,17 @@ export function MacroRing({
     // Show segments so the SVG elements exist before withTiming starts.
     setShowSegments(true);
 
-    // Query the accessibility preference once at the moment of animation, not
-    // via a persistent subscription — avoids creating one listener per ring
-    // instance when a long history list is rendered.
-    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-      if (reduceMotion) {
-        // Jump to final values with no animation.
-        proteinOffset.value = targetProteinOffset;
-        carbsOffset.value = targetCarbsOffset;
-        fatOffset.value = targetFatOffset;
-      } else {
-        const config = { duration: ANIMATION_DURATION, easing: ANIMATION_EASING };
-        proteinOffset.value = withTiming(targetProteinOffset, config);
-        carbsOffset.value = withTiming(targetCarbsOffset, config);
-        fatOffset.value = withTiming(targetFatOffset, config);
-      }
-    });
+    if (reduceMotionRef.current) {
+      // Jump to final values with no animation.
+      proteinOffset.value = targetProteinOffset;
+      carbsOffset.value = targetCarbsOffset;
+      fatOffset.value = targetFatOffset;
+    } else {
+      const config = { duration: ANIMATION_DURATION, easing: ANIMATION_EASING };
+      proteinOffset.value = withTiming(targetProteinOffset, config);
+      carbsOffset.value = withTiming(targetCarbsOffset, config);
+      fatOffset.value = withTiming(targetFatOffset, config);
+    }
   }, [shouldAnimate]); // ← hasData intentionally omitted; see comment above
 
   // After the entry animation has fired, keep arc lengths in sync when macro
@@ -205,18 +211,16 @@ export function MacroRing({
         unmountTimerRef.current = null;
       }
       setShowSegments(true);
-      AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-        if (reduceMotion) {
-          proteinOffset.value = targetProteinOffset;
-          carbsOffset.value = targetCarbsOffset;
-          fatOffset.value = targetFatOffset;
-        } else {
-          const config = { duration: ANIMATION_DURATION, easing: ANIMATION_EASING };
-          proteinOffset.value = withTiming(targetProteinOffset, config);
-          carbsOffset.value = withTiming(targetCarbsOffset, config);
-          fatOffset.value = withTiming(targetFatOffset, config);
-        }
-      });
+      if (reduceMotionRef.current) {
+        proteinOffset.value = targetProteinOffset;
+        carbsOffset.value = targetCarbsOffset;
+        fatOffset.value = targetFatOffset;
+      } else {
+        const config = { duration: ANIMATION_DURATION, easing: ANIMATION_EASING };
+        proteinOffset.value = withTiming(targetProteinOffset, config);
+        carbsOffset.value = withTiming(targetCarbsOffset, config);
+        fatOffset.value = withTiming(targetFatOffset, config);
+      }
       return;
     }
 
@@ -232,38 +236,32 @@ export function MacroRing({
       setShowSegments(true);
     }
 
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-      if (cancelled) return;
+    if (reduceMotionRef.current) {
+      proteinOffset.value = targetProteinOffset;
+      carbsOffset.value = targetCarbsOffset;
+      fatOffset.value = targetFatOffset;
 
-      if (reduceMotion) {
-        proteinOffset.value = targetProteinOffset;
-        carbsOffset.value = targetCarbsOffset;
-        fatOffset.value = targetFatOffset;
-
-        // No animation — hide segments immediately when transitioning to zero.
-        if (!hasData) {
-          setShowSegments(false);
-        }
-      } else {
-        const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
-        proteinOffset.value = withTiming(targetProteinOffset, config);
-        carbsOffset.value = withTiming(targetCarbsOffset, config);
-        fatOffset.value = withTiming(targetFatOffset, config);
-
-        // When transitioning to zero, keep segments mounted for the full animation
-        // duration so the arcs visibly sweep to empty before being removed.
-        if (!hasData) {
-          unmountTimerRef.current = setTimeout(
-            () => setShowSegments(false),
-            UPDATE_ANIMATION_DURATION,
-          );
-        }
+      // No animation — hide segments immediately when transitioning to zero.
+      if (!hasData) {
+        setShowSegments(false);
       }
-    });
+    } else {
+      const config = { duration: UPDATE_ANIMATION_DURATION, easing: ANIMATION_EASING };
+      proteinOffset.value = withTiming(targetProteinOffset, config);
+      carbsOffset.value = withTiming(targetCarbsOffset, config);
+      fatOffset.value = withTiming(targetFatOffset, config);
+
+      // When transitioning to zero, keep segments mounted for the full animation
+      // duration so the arcs visibly sweep to empty before being removed.
+      if (!hasData) {
+        unmountTimerRef.current = setTimeout(
+          () => setShowSegments(false),
+          UPDATE_ANIMATION_DURATION,
+        );
+      }
+    }
 
     return () => {
-      cancelled = true;
       if (unmountTimerRef.current) {
         clearTimeout(unmountTimerRef.current);
         unmountTimerRef.current = null;
@@ -281,35 +279,33 @@ export function MacroRing({
     const visible = showPercentages && hasData;
     const config = { duration: PCT_ANIM_DURATION, easing: ANIMATION_EASING };
 
-    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-      if (visible) {
-        // Mount first, then animate in.
-        setShowPctRow(true);
-        if (reduceMotion) {
-          pctOpacity.value = 1;
-          pctTranslateY.value = 0;
-        } else {
-          pctOpacity.value = 0;
-          pctTranslateY.value = -6;
-          pctOpacity.value = withTiming(1, config);
-          pctTranslateY.value = withTiming(0, config);
-        }
+    if (visible) {
+      // Mount first, then animate in.
+      setShowPctRow(true);
+      if (reduceMotionRef.current) {
+        pctOpacity.value = 1;
+        pctTranslateY.value = 0;
       } else {
-        // Animate out, then unmount after the animation completes.
-        if (reduceMotion) {
-          pctOpacity.value = 0;
-          pctTranslateY.value = -6;
-          setShowPctRow(false);
-        } else {
-          pctOpacity.value = withTiming(0, config);
-          pctTranslateY.value = withTiming(-6, config);
-          pctUnmountTimerRef.current = setTimeout(
-            () => setShowPctRow(false),
-            PCT_ANIM_DURATION,
-          );
-        }
+        pctOpacity.value = 0;
+        pctTranslateY.value = -6;
+        pctOpacity.value = withTiming(1, config);
+        pctTranslateY.value = withTiming(0, config);
       }
-    });
+    } else {
+      // Animate out, then unmount after the animation completes.
+      if (reduceMotionRef.current) {
+        pctOpacity.value = 0;
+        pctTranslateY.value = -6;
+        setShowPctRow(false);
+      } else {
+        pctOpacity.value = withTiming(0, config);
+        pctTranslateY.value = withTiming(-6, config);
+        pctUnmountTimerRef.current = setTimeout(
+          () => setShowPctRow(false),
+          PCT_ANIM_DURATION,
+        );
+      }
+    }
 
     return () => {
       if (pctUnmountTimerRef.current) {
