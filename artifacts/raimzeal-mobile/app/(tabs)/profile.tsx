@@ -94,6 +94,19 @@ function formatExportCustomLabel(start: string, end: string): string {
   return `Custom (${MONTHS[s.getMonth()]} ${s.getDate()} \u2013 ${MONTHS[e.getMonth()]} ${e.getDate()})`;
 }
 
+function formatRelativeTime(date: Date | null): string {
+  if (!date) return "Never";
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return diffMin === 1 ? "1 min ago" : `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return diffHr === 1 ? "1 hour ago" : `${diffHr} hours ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return diffDay === 1 ? "Yesterday" : `${diffDay} days ago`;
+}
+
 const GOAL_LABELS: Record<string, string> = {
   muscle_gain: "Build Muscle",
   weight_loss: "Lose Weight",
@@ -125,7 +138,13 @@ export default function ProfileScreen() {
     resetHints,
     undismissHint,
     clearAllData,
+    lastSyncedAt,
   } = useFitness();
+  const [, setSyncTimeTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSyncTimeTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const { signOut, user: authUser } = useAuth();
   const { tier } = useTier(authUser?.id ?? null);
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
@@ -1938,8 +1957,16 @@ export default function ProfileScreen() {
               sublabel="Wipe filters, goals, history & preferences"
               color={colors.destructive}
               onPress={handleClearAppData}
-              isLast
             />
+            <View style={styles.actionRow}>
+              <View style={[styles.actionIconWrap, { backgroundColor: "#10b98120" }]}>
+                <Ionicons name="cloud-done-outline" size={18} color="#10b981" />
+              </View>
+              <Text style={[styles.actionLabel, { color: colors.foreground, flex: 1 }]}>Last synced</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                {formatRelativeTime(lastSyncedAt)}
+              </Text>
+            </View>
           </GlassCard>
           </View>
 

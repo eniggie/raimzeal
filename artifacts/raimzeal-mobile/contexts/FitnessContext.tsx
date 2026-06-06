@@ -200,6 +200,8 @@ export interface AppState {
 }
 
 interface FitnessContextType extends AppState {
+  /** Timestamp of the most recent successful cloud sync (read or write). Null if none this session. */
+  lastSyncedAt: Date | null;
   addWorkoutLog: (log: WorkoutLog, onSyncResult?: (ok: boolean) => void) => void;
   addMealLog: (meal: MealLog, onSyncResult?: (ok: boolean) => void) => void;
   removeMealLog: (id: string, onSyncResult?: (ok: boolean) => void) => void;
@@ -320,6 +322,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const [stateHydrated, setStateHydrated] = useState(false);
   const [dataResetCount, setDataResetCount] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Debounce refs for settings cloud sync — accumulates rapid changes so only
   // one fetch+write round-trip happens per burst, eliminating the race where
@@ -475,6 +478,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               : prev.quickFoods,
           };
         });
+        setLastSyncedAt(new Date());
 
         // Retry failed adds: push local-only foods to server and cache _serverId + _foodId on success
         localOnlyFoods.forEach((f) => {
@@ -550,7 +554,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
               insertWorkoutLog(session.user.id, log)
-                .then(() => onSyncResult?.(true))
+                .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
                 .catch(() => onSyncResult?.(false));
             } else {
               onSyncResult?.(false);
@@ -578,7 +582,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
               insertMealLog(session.user.id, meal)
-                .then(() => onSyncResult?.(true))
+                .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
                 .catch(() => onSyncResult?.(false));
             } else {
               onSyncResult?.(false);
@@ -600,7 +604,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         if (isSupabaseConfigured) {
           deleteMealLog(id)
-            .then(() => onSyncResult?.(true))
+            .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
             .catch(() => onSyncResult?.(false));
         } else {
           onSyncResult?.(false);
@@ -618,7 +622,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         if (isSupabaseConfigured) {
           deleteWorkoutLog(id)
-            .then(() => onSyncResult?.(true))
+            .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
             .catch(() => onSyncResult?.(false));
         } else {
           onSyncResult?.(false);
@@ -643,7 +647,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
               upsertMealLog(session.user.id, merged)
-                .then(() => onSyncResult?.(true))
+                .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
                 .catch(() => onSyncResult?.(false));
             } else {
               onSyncResult?.(false);
@@ -1199,6 +1203,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         resetState,
         clearAllData,
         dataResetCount,
+        lastSyncedAt,
       }}
     >
       {children}
