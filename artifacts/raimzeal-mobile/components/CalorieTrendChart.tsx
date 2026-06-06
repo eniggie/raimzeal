@@ -94,7 +94,9 @@ export function CalorieTrendChart({
   const pillVisible = useRef(false);
 
   const badgeOpacity = useRef(new Animated.Value(mealFilter && mealFilter !== "all" ? 1 : 0)).current;
+  const badgeTranslateY = useRef(new Animated.Value(0)).current;
   const lastMealFilterRef = useRef(mealFilter && mealFilter !== "all" ? mealFilter : "");
+  const [badgeVisible, setBadgeVisible] = useState(!!(mealFilter && mealFilter !== "all"));
 
   // --- Bar colour animation ---
   const barAnimValues = useRef<Map<string, Animated.Value>>(new Map());
@@ -204,12 +206,21 @@ export function CalorieTrendChart({
   useEffect(() => {
     if (mealFilter && mealFilter !== "all") {
       lastMealFilterRef.current = mealFilter;
+      badgeOpacity.setValue(0);
+      badgeTranslateY.setValue(4);
+      setBadgeVisible(true);
+      Animated.parallel([
+        Animated.timing(badgeOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(badgeTranslateY, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(badgeOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(badgeTranslateY, { toValue: 4, duration: 180, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setBadgeVisible(false);
+      });
     }
-    Animated.timing(badgeOpacity, {
-      toValue: mealFilter && mealFilter !== "all" ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
   }, [mealFilter]);
 
   const [pillLabel, setPillLabel] = useState("");
@@ -631,16 +642,19 @@ export function CalorieTrendChart({
         )}
       </Animated.View>
 
-      {/* Meal filter badge */}
-      <Animated.View
-        style={{ opacity: badgeOpacity }}
-        pointerEvents={mealFilter && mealFilter !== "all" ? "auto" : "none"}
-      >
-        {(() => {
-          const displayFilter =
-            mealFilter && mealFilter !== "all" ? mealFilter : lastMealFilterRef.current;
-          const dotColor = MEAL_DOT_COLORS[displayFilter] ?? colors.primary;
-          return (
+      {/* Meal filter badge — mounts/unmounts around the 180ms fade+slide transition */}
+      {badgeVisible && (() => {
+        const displayFilter =
+          mealFilter && mealFilter !== "all" ? mealFilter : lastMealFilterRef.current;
+        const dotColor = MEAL_DOT_COLORS[displayFilter] ?? colors.primary;
+        return (
+          <Animated.View
+            style={{
+              opacity: badgeOpacity,
+              transform: [{ translateY: badgeTranslateY }],
+            }}
+            pointerEvents={mealFilter && mealFilter !== "all" ? "auto" : "none"}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -673,14 +687,12 @@ export function CalorieTrendChart({
                   letterSpacing: 0.1,
                 }}
               >
-                {displayFilter
-                  ? displayFilter.charAt(0).toUpperCase() + displayFilter.slice(1) + " only"
-                  : ""}
+                {displayFilter.charAt(0).toUpperCase() + displayFilter.slice(1)} only
               </Text>
             </View>
-          );
-        })()}
-      </Animated.View>
+          </Animated.View>
+        );
+      })()}
 
       {/* Legend row */}
       <View
