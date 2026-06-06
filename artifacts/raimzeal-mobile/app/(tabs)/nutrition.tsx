@@ -8747,6 +8747,14 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   const histSaveShakeX = useSharedValue(0);
   const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
 
+  // Narrow sync: keep editForm.name current even when the sheet is open.
+  // The full-reset effect below is guarded by showEditSheet, so if syncMealName
+  // propagates a name change to this linked entry while the sheet is open, the
+  // name in the form would otherwise go stale until the sheet is closed.
+  useEffect(() => {
+    setEditForm((prev) => (prev.name === log.name ? prev : { ...prev, name: log.name }));
+  }, [log.name]);
+
   useEffect(() => {
     if (showEditSheet) return;
     editCaloriesAutoFilled.current = false;
@@ -8784,6 +8792,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       fat: String(log.fat),
     });
     setEditMealType(log.mealType);
+    setEditDate(log.date);
     setEditServings(1);
     editServingsRef.current = 1;
     setEditServingsText("1");
@@ -9585,6 +9594,14 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
 
+  // Narrow sync: keep editForm.name current even when the sheet is open.
+  // The full-reset effect below is guarded by showEditSheet, so if syncMealName
+  // propagates a name change to this linked entry while the sheet is open, the
+  // name in the form would otherwise go stale until the sheet is closed.
+  useEffect(() => {
+    setEditForm((prev) => (prev.name === log.name ? prev : { ...prev, name: log.name }));
+  }, [log.name]);
+
   useEffect(() => {
     if (showEditSheet) return;
     editCaloriesAutoFilled.current = false;
@@ -9622,6 +9639,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       fat: String(log.fat),
     });
     setEditMealType(log.mealType);
+    setEditDate(log.date);
     setEditServings(1);
     editServingsRef.current = 1;
     setEditServingsText("1");
