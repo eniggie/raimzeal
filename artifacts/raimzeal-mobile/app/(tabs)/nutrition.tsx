@@ -8710,6 +8710,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
               fat: perGramRef.current.fat * 100,
             });
             setEditServings(1);
+            editServingsRef.current = 1;
             setEditServingsText("1");
           } else {
             setEditShowPer100g(false);
@@ -8786,7 +8787,8 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     }
     const n = parseFloat(text);
     const isValid = !isNaN(n) && n >= 0;
-    const baseValue = isValid ? (editServingsRef.current > 0 ? n / editServingsRef.current : n) : null;
+    const servingsAtEdit = editServingsRef.current;
+    const baseValue = isValid ? (servingsAtEdit > 0 ? n / servingsAtEdit : n) : null;
     // Compute auto-fill decision synchronously before any state updates
     let autoFillBase: number | null = null;
     if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
@@ -8802,7 +8804,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     setEditForm(f => {
       const updated = { ...f, [field]: text };
       if (autoFillBase !== null) {
-        updated.calories = String(Math.round(autoFillBase * editServingsRef.current));
+        updated.calories = String(Math.round(autoFillBase * servingsAtEdit));
       }
       return updated;
     });
@@ -9017,6 +9019,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                         });
                       }
                       setEditServings(1);
+                      editServingsRef.current = 1;
                       setEditServingsText("1");
                     }
                   }}
@@ -9053,6 +9056,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                         fat: perGramRef.current.fat * 100,
                       });
                       setEditServings(1);
+                      editServingsRef.current = 1;
                       setEditServingsText("1");
                     }
                   }}
@@ -9499,6 +9503,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
               fat: perGramRef.current.fat * 100,
             });
             setEditServings(1);
+            editServingsRef.current = 1;
             setEditServingsText("1");
           } else {
             setEditShowPer100g(false);
@@ -9577,7 +9582,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     }
     const n = parseFloat(text);
     const isValid = !isNaN(n) && n >= 0;
-    const baseValue = isValid ? (editServingsRef.current > 0 ? n / editServingsRef.current : n) : null;
+    const servingsAtEdit = editServingsRef.current;
+    const baseValue = isValid ? (servingsAtEdit > 0 ? n / servingsAtEdit : n) : null;
     // Compute auto-fill decision synchronously before any state updates
     let autoFillBase: number | null = null;
     if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
@@ -9593,7 +9599,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     setEditForm(f => {
       const updated = { ...f, [field]: text };
       if (autoFillBase !== null) {
-        updated.calories = String(Math.round(autoFillBase * editServingsRef.current));
+        updated.calories = String(Math.round(autoFillBase * servingsAtEdit));
       }
       return updated;
     });
@@ -9802,6 +9808,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                         });
                       }
                       setEditServings(1);
+                      editServingsRef.current = 1;
                       setEditServingsText("1");
                     }
                   }}
@@ -9838,6 +9845,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                         fat: perGramRef.current.fat * 100,
                       });
                       setEditServings(1);
+                      editServingsRef.current = 1;
                       setEditServingsText("1");
                     }
                   }}
