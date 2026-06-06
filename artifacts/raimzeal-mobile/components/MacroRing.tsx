@@ -4,6 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedProps,
+  useAnimatedStyle,
   withTiming,
   Easing,
 } from "react-native-reanimated";
@@ -54,6 +55,18 @@ export function MacroRing({
   // can play out before the circles are removed from the tree.
   const [showSegments, setShowSegments] = useState(() => protein + carbs + fat > 0);
   const unmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Percentage-row animation — the row stays mounted during the exit animation
+  // so the fade+slide-out plays before the element leaves the tree.
+  const [showPctRow, setShowPctRow] = useState(false);
+  const pctUnmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PCT_ANIM_DURATION = 150;
+  const pctOpacity = useSharedValue(0);
+  const pctTranslateY = useSharedValue(-6);
+  const pctAnimStyle = useAnimatedStyle(() => ({
+    opacity: pctOpacity.value,
+    transform: [{ translateY: pctTranslateY.value }],
+  }));
 
   const total = protein + carbs + fat;
   const radius = (size - strokeWidth) / 2;
@@ -165,6 +178,54 @@ export function MacroRing({
       }
     };
   }, [targetProteinOffset, targetCarbsOffset, targetFatOffset, hasData]);
+
+  // Drive the percentage-row fade+slide animation whenever visibility changes.
+  useEffect(() => {
+    if (pctUnmountTimerRef.current) {
+      clearTimeout(pctUnmountTimerRef.current);
+      pctUnmountTimerRef.current = null;
+    }
+
+    const visible = showPercentages && hasData;
+    const config = { duration: PCT_ANIM_DURATION, easing: ANIMATION_EASING };
+
+    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+      if (visible) {
+        // Mount first, then animate in.
+        setShowPctRow(true);
+        if (reduceMotion) {
+          pctOpacity.value = 1;
+          pctTranslateY.value = 0;
+        } else {
+          pctOpacity.value = 0;
+          pctTranslateY.value = -6;
+          pctOpacity.value = withTiming(1, config);
+          pctTranslateY.value = withTiming(0, config);
+        }
+      } else {
+        // Animate out, then unmount after the animation completes.
+        if (reduceMotion) {
+          pctOpacity.value = 0;
+          pctTranslateY.value = -6;
+          setShowPctRow(false);
+        } else {
+          pctOpacity.value = withTiming(0, config);
+          pctTranslateY.value = withTiming(-6, config);
+          pctUnmountTimerRef.current = setTimeout(
+            () => setShowPctRow(false),
+            PCT_ANIM_DURATION,
+          );
+        }
+      }
+    });
+
+    return () => {
+      if (pctUnmountTimerRef.current) {
+        clearTimeout(pctUnmountTimerRef.current);
+        pctUnmountTimerRef.current = null;
+      }
+    };
+  }, [showPercentages, hasData]);
 
   const proteinAnimProps = useAnimatedProps(() => ({
     strokeDashoffset: proteinOffset.value,
@@ -297,14 +358,14 @@ export function MacroRing({
         ))}
       </View>
 
-      {showPercentages && hasData && (
-        <View style={styles.percentageRow}>
+      {showPctRow && (
+        <Animated.View style={[styles.percentageRow, pctAnimStyle]}>
           {percentages.map((item, i) => (
             <Text key={item.label} style={[styles.percentageText, { color: item.color }]}>
               {item.label} {item.pct}%{i < percentages.length - 1 ? " ·" : ""}
             </Text>
           ))}
-        </View>
+        </Animated.View>
       )}
     </View>
   );
