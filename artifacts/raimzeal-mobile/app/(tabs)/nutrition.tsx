@@ -8830,7 +8830,8 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
   function handleSaveEdit() {
     const name = editForm.name.trim();
-    if (!name) {
+    const hasBlankNumeric = editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "";
+    if (!name || hasBlankNumeric) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       histSaveShakeX.value = withSequence(
         withTiming(-6, { duration: 50 }),
@@ -9246,6 +9247,11 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                 </View>
               ))}
             </View>
+            {(editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "") && (
+              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4, marginBottom: 2, fontFamily: "Inter_400Regular" }}>
+                {editForm.calories === "" ? "Calories can't be blank" : editForm.protein === "" ? "Protein can't be blank" : editForm.carbs === "" ? "Carbs can't be blank" : "Fat can't be blank"}
+              </Text>
+            )}
 
             {(() => {
               const pKcal = Math.round(editBase.protein * editServings * 4);
@@ -9350,7 +9356,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
               <Reanimated.View style={[histSaveShakeStyle, { flex: 2 }]}>
                 <TouchableOpacity
                   onPress={handleSaveEdit}
-                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: editForm.name.trim() ? 1 : 0.45 }]}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
                 >
                   <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
                     Save Changes
@@ -9625,7 +9631,8 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
 
   function handleSaveEdit() {
     const name = editForm.name.trim();
-    if (!name) {
+    const hasBlankNumeric = editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "";
+    if (!name || hasBlankNumeric) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       rowSaveShakeX.value = withSequence(
         withTiming(-6, { duration: 50 }),
@@ -10035,6 +10042,11 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                 </View>
               ))}
             </View>
+            {(editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "") && (
+              <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4, marginBottom: 2, fontFamily: "Inter_400Regular" }}>
+                {editForm.calories === "" ? "Calories can't be blank" : editForm.protein === "" ? "Protein can't be blank" : editForm.carbs === "" ? "Carbs can't be blank" : "Fat can't be blank"}
+              </Text>
+            )}
 
             {(() => {
               const pKcal = Math.round(editBase.protein * editServings * 4);
@@ -10139,7 +10151,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
               <Reanimated.View style={[rowSaveShakeStyle, { flex: 2 }]}>
                 <TouchableOpacity
                   onPress={handleSaveEdit}
-                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: editForm.name.trim() ? 1 : 0.45 }]}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
                 >
                   <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
                     Save Changes
