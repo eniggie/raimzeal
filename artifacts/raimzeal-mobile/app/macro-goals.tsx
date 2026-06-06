@@ -242,12 +242,33 @@ export default function MacroGoalsScreen() {
     }
 
     const newGoals = { calories: cal, protein: pro, carbs: car, fat: fa };
-    await setGoals(newGoals);
-    if (authUser?.id) {
-      upsertUserPreferences(authUser.id, { macroGoals: newGoals }).catch(() => {});
+
+    async function commitSave() {
+      await setGoals(newGoals);
+      if (authUser?.id) {
+        upsertUserPreferences(authUser.id, { macroGoals: newGoals }).catch(() => {});
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.back();
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+
+    if (macroMismatch && kcalFromMacros !== null) {
+      const diff = Math.round(kcalFromMacros - cal);
+      const direction = diff > 0 ? "over" : "under";
+      const absDiff = Math.abs(diff);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        "Macro mismatch",
+        `Your macros add up to ${kcalFromMacros} kcal — ${absDiff} kcal ${direction} your ${cal} kcal calorie target (${Math.round((absDiff / cal) * 100)}% off).\n\nYou can save anyway or go back and adjust the values.`,
+        [
+          { text: "Go back and fix", style: "cancel" },
+          { text: "Save anyway", onPress: commitSave },
+        ]
+      );
+      return;
+    }
+
+    await commitSave();
   }
 
   function handleReset() {
