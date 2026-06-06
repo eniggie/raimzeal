@@ -1685,6 +1685,7 @@ export default function NutritionScreen() {
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
   const starScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyCardYsRef = useRef<Record<string, number>>({});
+  const mealSectionYsRef = useRef<Record<string, Record<string, number>>>({});
   const trendChartYRef = useRef<number>(0);
   const historyFilterBarYRef = useRef<number>(0);
   const [historyFilterPanelOpen, setHistoryFilterPanelOpen] = useState(false);
@@ -4498,6 +4499,17 @@ export default function NutritionScreen() {
     scrollToDateCard(date);
   }
 
+  function handleMealBreakdownPress(mealType: string) {
+    if (!highlightedDate) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const cardY = historyCardYsRef.current[highlightedDate];
+    if (cardY == null) return;
+    const mealY = mealSectionYsRef.current[highlightedDate]?.[mealType] ?? 0;
+    setTimeout(() => {
+      flatListRef.current?.scrollToOffset({ offset: cardY + mealY, animated: true });
+    }, 50);
+  }
+
   function handleClearHighlight() {
     setHighlightedDate(null);
   }
@@ -6301,6 +6313,7 @@ export default function NutritionScreen() {
                       onBarPress={handleChartBarPress}
                       onPillPress={handleChartPillPress}
                       onClearHighlight={handleClearHighlight}
+                      onMealPress={handleMealBreakdownPress}
                       mealBreakdown={highlightedDateMealBreakdown}
                       mealFilter={historyMealFilter}
                       onClearMealFilter={() => setHistoryMealFilter("all")}
@@ -6542,7 +6555,16 @@ export default function NutritionScreen() {
                           if (mealEntries.length === 0) return null;
                           const mealCal = mealEntries.reduce((s, m) => s + m.calories, 0);
                           return (
-                            <View key={meal} style={styles.historyMealSection}>
+                            <View
+                              key={meal}
+                              style={styles.historyMealSection}
+                              onLayout={(e) => {
+                                if (!mealSectionYsRef.current[date]) {
+                                  mealSectionYsRef.current[date] = {};
+                                }
+                                mealSectionYsRef.current[date][meal] = e.nativeEvent.layout.y;
+                              }}
+                            >
                               <View style={styles.historyMealHeader}>
                                 <View style={[styles.mealDot, { backgroundColor: MEAL_COLORS[meal] }]} />
                                 <Text style={[styles.historyMealTitle, { color: colors.foreground }]}>

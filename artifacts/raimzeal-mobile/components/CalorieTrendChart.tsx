@@ -33,6 +33,7 @@ interface CalorieTrendChartProps {
   onPillPress?: (date: string) => void;
   onClearHighlight?: () => void;
   onEditGoals?: () => void;
+  onMealPress?: (mealType: string) => void;
   mealBreakdown?: MealBreakdownEntry[];
   mealFilter?: string;
   onClearMealFilter?: () => void;
@@ -75,6 +76,7 @@ export function CalorieTrendChart({
   onPillPress,
   onClearHighlight,
   onEditGoals,
+  onMealPress,
   mealBreakdown,
   mealFilter,
   onClearMealFilter,
@@ -722,7 +724,7 @@ export function CalorieTrendChart({
 
       {/* Meal breakdown row — animates in/out with the pill */}
       <Animated.View
-        pointerEvents="none"
+        pointerEvents={highlightedDate && onMealPress ? "auto" : "none"}
         style={{
           opacity: pillOpacity,
           alignItems: "center",
@@ -758,31 +760,37 @@ export function CalorieTrendChart({
                     ·
                   </Text>
                 )}
-                <View
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: MEAL_DOT_COLORS[mealType] ?? colors.mutedForeground,
-                    marginRight: 4,
-                  }}
-                />
-                <Text
-                  style={{
-                    fontSize: 11,
-                    color: colors.mutedForeground,
-                  }}
+                <TouchableOpacity
+                  activeOpacity={onMealPress ? 0.6 : 1}
+                  onPress={() => onMealPress?.(mealType)}
+                  style={{ flexDirection: "row", alignItems: "center" }}
                 >
-                  {mealType.charAt(0).toUpperCase() + mealType.slice(1)}{" "}
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: MEAL_DOT_COLORS[mealType] ?? colors.mutedForeground,
+                      marginRight: 4,
+                    }}
+                  />
                   <Text
                     style={{
-                      fontWeight: "600",
-                      color: colors.foreground,
+                      fontSize: 11,
+                      color: colors.mutedForeground,
                     }}
                   >
-                    {value.toLocaleString()}{unit}
+                    {mealType.charAt(0).toUpperCase() + mealType.slice(1)}{" "}
+                    <Text
+                      style={{
+                        fontWeight: "600",
+                        color: colors.foreground,
+                      }}
+                    >
+                      {value.toLocaleString()}{unit}
+                    </Text>
                   </Text>
-                </Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
