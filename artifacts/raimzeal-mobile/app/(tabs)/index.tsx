@@ -153,6 +153,10 @@ export default function HomeScreen() {
 
   const { goals: macroGoals, setGoals } = useMacroGoals();
   const [quickGoalMacro, setQuickGoalMacro] = useState<QuickGoalMacro | null>(null);
+  // Prevents the onPress navigation from firing after a long-press opens the
+  // QuickGoalSheet — TouchableOpacity fires onPress on release even after
+  // onLongPress, so we suppress it with this ref.
+  const didLongPressRef = useRef(false);
   const calorieGoal = macroGoals.calories;
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -321,11 +325,16 @@ export default function HomeScreen() {
                 >
                   <AnimatedPressable
                     onPress={(e) => {
+                      if (didLongPressRef.current) {
+                        didLongPressRef.current = false;
+                        return;
+                      }
                       e.stopPropagation();
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push(`/macro-goals?focus=${macroKey}`);
                     }}
                     onLongPress={() => {
+                      didLongPressRef.current = true;
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       setQuickGoalMacro(macroKey as QuickGoalMacro);
                     }}
