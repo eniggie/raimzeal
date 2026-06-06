@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,7 +15,8 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useFitness } from "@/contexts/FitnessContext";
+import { useFitness, UserProfile } from "@/contexts/FitnessContext";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 
 const BLOOD_TYPES = ["A", "B", "AB", "O"] as const;
 const RH_FACTORS = ["+", "-"] as const;
@@ -60,8 +61,25 @@ export default function HealthOnboardingScreen() {
     user?.biologicalSex
   );
 
-  const STEPS = ["body", "fitness", "health"];
-  const STEP_LABELS = ["Body Stats", "Fitness Profile", "Health Profile"];
+  const STEPS = ["body", "fitness", "health", "summary"];
+  const STEP_LABELS = ["Body Stats", "Fitness Profile", "Health Profile", "Your Plan"];
+
+  // Live breakdown for the summary step — merges form values onto the user profile
+  const summaryBreakdown = useMemo(() => {
+    const h = parseFloat(height);
+    const w = parseFloat(weight);
+    if (!h || !w) return null;
+    return computeSuggestedGoalsWithBreakdown({
+      ...(user as Partial<UserProfile>),
+      age: user?.age ?? 25,
+      height: h,
+      weight: w,
+      fitnessLevel,
+      goals,
+      units: user?.units ?? "metric",
+      biologicalSex,
+    } as UserProfile);
+  }, [height, weight, fitnessLevel, goals, biologicalSex, user]);
 
   function toggleGoal(id: string) {
     Haptics.selectionAsync();
@@ -133,14 +151,22 @@ export default function HealthOnboardingScreen() {
           </View>
           <View style={styles.headerText}>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              {step === 0 ? "Your Body Stats" : step === 1 ? "Your Fitness Profile" : "Your Health Profile"}
+              {step === 0
+                ? "Your Body Stats"
+                : step === 1
+                ? "Your Fitness Profile"
+                : step === 2
+                ? "Your Health Profile"
+                : "Your Suggested Plan"}
             </Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               {step === 0
                 ? "Help Ovia AI personalise your plan"
                 : step === 1
                 ? "Set your level and goals"
-                : "Optional — used for health guidance"}
+                : step === 2
+                ? "Optional — used for health guidance"
+                : "Here's how your calorie target was calculated"}
             </Text>
           </View>
         </View>
@@ -377,6 +403,133 @@ export default function HealthOnboardingScreen() {
           </View>
         )}
 
+        {/* STEP 3: Calorie breakdown summary */}
+        {step === 3 && summaryBreakdown && (
+          <View style={styles.section}>
+            {/* Celebration header */}
+            <View style={[styles.planHeader, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+              <View style={[styles.planIconCircle, { backgroundColor: colors.primary + "20" }]}>
+                <Ionicons name="checkmark-circle" size={32} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planTitle, { color: colors.foreground }]}>Your Plan is Ready!</Text>
+                <Text style={[styles.planSubtitle, { color: colors.mutedForeground }]}>
+                  Based on your profile — accept below to save it.
+                </Text>
+              </View>
+            </View>
+
+            {/* Breakdown card */}
+            <View style={[styles.breakdownCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Text style={[styles.breakdownCardTitle, { color: colors.foreground }]}>Calorie Breakdown</Text>
+
+              {/* BMR */}
+              <View style={styles.breakdownRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.breakdownLabel, { color: colors.foreground }]}>Basal Metabolic Rate</Text>
+                  <Text style={[styles.breakdownHint, { color: colors.mutedForeground }]}>
+                    Mifflin-St Jeor · {summaryBreakdown.breakdown.sexLabel}
+                  </Text>
+                </View>
+                <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
+                  {summaryBreakdown.breakdown.bmr.toLocaleString()} kcal
+                </Text>
+              </View>
+
+              <View style={[styles.breakdownSep, { backgroundColor: colors.border }]} />
+
+              {/* TDEE */}
+              <View style={styles.breakdownRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.breakdownLabel, { color: colors.foreground }]}>TDEE</Text>
+                  <Text style={[styles.breakdownHint, { color: colors.mutedForeground }]}>
+                    {summaryBreakdown.breakdown.activityLabel}
+                  </Text>
+                </View>
+                <Text style={[styles.breakdownValue, { color: colors.foreground }]}>
+                  {summaryBreakdown.breakdown.tdee.toLocaleString()} kcal
+                </Text>
+              </View>
+
+              <View style={[styles.breakdownSep, { backgroundColor: colors.border }]} />
+
+              {/* Goal adjustment */}
+              <View style={styles.breakdownRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.breakdownLabel, { color: colors.foreground }]}>Goal Adjustment</Text>
+                  <Text style={[styles.breakdownHint, { color: colors.mutedForeground }]}>
+                    {primaryGoalLabel(goals)}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.breakdownValue,
+                    {
+                      color:
+                        summaryBreakdown.breakdown.goalAdjustment < 0
+                          ? "#22c55e"
+                          : summaryBreakdown.breakdown.goalAdjustment > 0
+                          ? "#f59e0b"
+                          : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  {summaryBreakdown.breakdown.goalAdjustment === 0
+                    ? "—"
+                    : `${summaryBreakdown.breakdown.goalAdjustment > 0 ? "+" : ""}${summaryBreakdown.breakdown.goalAdjustment} kcal`}
+                </Text>
+              </View>
+
+              {/* Target calories highlight */}
+              <View style={[styles.targetRow, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}>
+                <Text style={[styles.targetLabel, { color: colors.foreground }]}>Daily Target</Text>
+                <Text style={[styles.targetValue, { color: colors.primary }]}>
+                  {summaryBreakdown.breakdown.targetCalories.toLocaleString()} kcal/day
+                </Text>
+              </View>
+            </View>
+
+            {/* Macro targets */}
+            <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Macro Targets</Text>
+            <View style={styles.macroRow}>
+              {[
+                { label: "Protein", value: summaryBreakdown.goals.protein, color: "#f97316" },
+                { label: "Carbs", value: summaryBreakdown.goals.carbs, color: "#3b82f6" },
+                { label: "Fat", value: summaryBreakdown.goals.fat, color: "#a855f7" },
+              ].map((m) => (
+                <View
+                  key={m.label}
+                  style={[styles.macroChip, { backgroundColor: m.color + "15", borderColor: m.color + "40" }]}
+                >
+                  <Text style={[styles.macroGrams, { color: m.color }]}>{m.value}g</Text>
+                  <Text style={[styles.macroChipLabel, { color: colors.mutedForeground }]}>{m.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Note if age was estimated */}
+            {!user?.age && (
+              <View style={[styles.infoBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={16} color={colors.mutedForeground} />
+                <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                  Age wasn't set — using 25 as an estimate. Update your profile anytime to refine this further.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {step === 3 && !summaryBreakdown && (
+          <View style={styles.section}>
+            <View style={[styles.infoBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Ionicons name="alert-circle-outline" size={16} color={colors.mutedForeground} />
+              <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                Enter your height and weight in Step 1 to see your personalised plan.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Navigation buttons */}
         <View style={styles.btnRow}>
           {step > 0 && (
@@ -401,7 +554,10 @@ export default function HealthOnboardingScreen() {
         </View>
 
         {step === 2 && (
-          <TouchableOpacity onPress={handleComplete} style={styles.skipBtn}>
+          <TouchableOpacity
+            onPress={() => { Haptics.selectionAsync(); setStep(3); }}
+            style={styles.skipBtn}
+          >
             <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip health profile for now</Text>
           </TouchableOpacity>
         )}
@@ -484,4 +640,23 @@ const styles = StyleSheet.create({
   nextBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   skipBtn: { alignItems: "center", paddingVertical: 8 },
   skipText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  // Summary step
+  planHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 14, borderWidth: 1 },
+  planIconCircle: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  planTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  planSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  breakdownCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 10 },
+  breakdownCardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  breakdownRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  breakdownLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  breakdownHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  breakdownValue: { fontSize: 13, fontFamily: "Inter_600SemiBold", textAlign: "right", flexShrink: 0 },
+  breakdownSep: { height: 1 },
+  targetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderRadius: 10, borderWidth: 1, marginTop: 2 },
+  targetLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  targetValue: { fontSize: 22, fontFamily: "SpaceGrotesk_700Bold" },
+  macroRow: { flexDirection: "row", gap: 8 },
+  macroChip: { flex: 1, alignItems: "center", paddingVertical: 12, paddingHorizontal: 8, borderRadius: 12, borderWidth: 1, gap: 4 },
+  macroGrams: { fontSize: 20, fontFamily: "SpaceGrotesk_700Bold" },
+  macroChipLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
 });
