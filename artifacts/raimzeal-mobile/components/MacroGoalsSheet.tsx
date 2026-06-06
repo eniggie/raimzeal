@@ -143,6 +143,15 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
     if (f < 5) issues.push("fat looks very low (under 5g)");
     else if (f > 700) issues.push("fat looks very high (over 700g)");
 
+    if (issues.length === 0) {
+      const impliedCalories = pro * 4 + carb * 4 + f * 9;
+      if (cal > 0 && Math.abs(impliedCalories - cal) / cal > 0.1) {
+        issues.push(
+          `your macros add up to ~${impliedCalories.toLocaleString()} kcal but your calorie goal is ${cal.toLocaleString()} — they might be off by a bit`
+        );
+      }
+    }
+
     if (issues.length === 0) return null;
 
     const list = issues.map((s) => `• ${s.charAt(0).toUpperCase() + s.slice(1)}`).join("\n");
