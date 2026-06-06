@@ -1622,6 +1622,8 @@ export default function NutritionScreen() {
   const todayResetSlideAnim = useRef(new Animated.Value(16)).current;
   const todayClearFadeAnim = useRef(new Animated.Value(0)).current;
   const todayClearSlideAnim = useRef(new Animated.Value(16)).current;
+  const todaySaveFadeAnim = useRef(new Animated.Value(0)).current;
+  const todaySaveSlideAnim = useRef(new Animated.Value(16)).current;
   const searchLoadingDimAnim = useRef(new Animated.Value(1)).current;
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyDividerSlideAnim = useRef(new Animated.Value(-8)).current;
@@ -3889,6 +3891,21 @@ export default function NutritionScreen() {
     }
   }, [activeFilters.size]);
 
+  useEffect(() => {
+    if (activeFilters.size >= 1) {
+      todaySaveSlideAnim.setValue(16);
+      Animated.parallel([
+        Animated.timing(todaySaveFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(todaySaveSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(todaySaveFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(todaySaveSlideAnim, { toValue: 16, duration: 180, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [activeFilters.size]);
+
   function resetAllThresholds() {
     Alert.alert(
       "Reset All Thresholds to Default?",
@@ -5034,7 +5051,13 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </View>
                     )}
-                    {activeFilters.size >= 1 && (
+                    <Animated.View
+                      style={{
+                        opacity: Animated.multiply(todaySaveFadeAnim, searchLoadingDimAnim),
+                        transform: [{ translateX: todaySaveSlideAnim }],
+                      }}
+                      pointerEvents={activeFilters.size >= 1 ? "auto" : "none"}
+                    >
                       <TouchableOpacity
                         onPress={openSavePresetModal}
                         style={[
@@ -5048,7 +5071,7 @@ export default function NutritionScreen() {
                           Save
                         </Text>
                       </TouchableOpacity>
-                    )}
+                    </Animated.View>
                     <Animated.View
                       style={{
                         opacity: Animated.multiply(todayResetFadeAnim, searchLoadingDimAnim),
