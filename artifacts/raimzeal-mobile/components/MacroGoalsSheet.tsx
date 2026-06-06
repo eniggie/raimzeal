@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
@@ -46,6 +47,7 @@ interface FieldConfig {
 export function MacroGoalsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { goals, setGoals } = useMacroGoals();
   const { user } = useFitness();
 
@@ -218,6 +220,25 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
             <Text style={[styles.sheetSub, { color: colors.mutedForeground }]}>
               Set your daily targets — changes apply immediately.
             </Text>
+
+            {/* Incomplete profile nudge */}
+            {!suggested && (
+              <View style={[styles.incompleteNudge, { backgroundColor: colors.muted + "60" }]}>
+                <Ionicons name="person-circle-outline" size={15} color={colors.mutedForeground} />
+                <Text style={[styles.incompleteNudgeText, { color: colors.mutedForeground }]}>
+                  Complete your profile to get a suggestion —{" "}
+                  <Text
+                    style={[styles.incompleteNudgeLink, { color: colors.primary }]}
+                    onPress={() => {
+                      onClose();
+                      router.navigate("/(tabs)/profile");
+                    }}
+                  >
+                    Go to Profile
+                  </Text>
+                </Text>
+              </View>
+            )}
 
             {/* Use Suggested chip + breakdown */}
             {suggested && breakdown && (
@@ -633,6 +654,24 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 10,
     lineHeight: 15,
+  },
+  incompleteNudge: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 7,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 16,
+  },
+  incompleteNudgeText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  incompleteNudgeLink: {
+    fontFamily: "Inter_600SemiBold",
   },
   fields: {
     gap: 12,
