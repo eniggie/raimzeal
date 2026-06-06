@@ -8608,6 +8608,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   });
   const [editMealType, setEditMealType] = useState<MealType>(log.mealType);
   const [editServings, setEditServings] = useState(1);
+  const editServingsRef = useRef(1);
   const [editServingsText, setEditServingsText] = useState("1");
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
@@ -8638,6 +8639,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     setEditMealType(log.mealType);
     setEditServings(1);
+    editServingsRef.current = 1;
     setEditServingsText("1");
     const g = log.amountGrams;
     setEditGrams(g);
@@ -8660,6 +8662,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     });
     setEditMealType(log.mealType);
     setEditServings(1);
+    editServingsRef.current = 1;
     setEditServingsText("1");
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     const g = log.amountGrams;
@@ -8746,6 +8749,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
           fat: String(Math.round(newBase.fat * 10) / 10),
         }));
         setEditServings(1);
+        editServingsRef.current = 1;
         setEditServingsText("1");
       }
     } else if (normalized === "" || normalized === "0") {
@@ -8771,6 +8775,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
         fat: perGramRef.current.fat * n,
       });
       setEditServings(1);
+      editServingsRef.current = 1;
       setEditServingsText("1");
     }
   }
@@ -8781,7 +8786,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     }
     const n = parseFloat(text);
     const isValid = !isNaN(n) && n >= 0;
-    const baseValue = isValid ? (editServings > 0 ? n / editServings : n) : null;
+    const baseValue = isValid ? (editServingsRef.current > 0 ? n / editServingsRef.current : n) : null;
     // Compute auto-fill decision synchronously before any state updates
     let autoFillBase: number | null = null;
     if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
@@ -8797,7 +8802,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     setEditForm(f => {
       const updated = { ...f, [field]: text };
       if (autoFillBase !== null) {
-        updated.calories = String(Math.round(autoFillBase * editServings));
+        updated.calories = String(Math.round(autoFillBase * editServingsRef.current));
       }
       return updated;
     });
@@ -9117,6 +9122,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                       const steps = Math.round(editServings * 200) / 100;
                       const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
                       setEditServings(next);
+                      editServingsRef.current = next;
                       setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                       setEditForm(f => ({
                         ...f,
@@ -9145,6 +9151,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                     const n = parseFloat(normalized);
                     if (!isNaN(n) && n > 0) {
                       setEditServings(n);
+                      editServingsRef.current = n;
                       setEditForm(f => ({
                         ...f,
                         calories: String(Math.round(editBase.calories * n)),
@@ -9158,6 +9165,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
                     setEditServings(snapped);
+                    editServingsRef.current = snapped;
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
                     setEditForm(f => ({
                       ...f,
@@ -9178,6 +9186,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
                     const steps = Math.round(editServings * 200) / 100;
                     const next = Math.floor(steps + 1) * 0.5;
                     setEditServings(next);
+                    editServingsRef.current = next;
                     setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                     setEditForm(f => ({
                       ...f,
@@ -9387,6 +9396,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   });
   const [editMealType, setEditMealType] = useState<MealType>(log.mealType);
   const [editServings, setEditServings] = useState(1);
+  const editServingsRef = useRef(1);
   const [editServingsText, setEditServingsText] = useState("1");
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
@@ -9417,6 +9427,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     setEditMealType(log.mealType);
     setEditServings(1);
+    editServingsRef.current = 1;
     setEditServingsText("1");
     const g = log.amountGrams;
     setEditGrams(g);
@@ -9439,6 +9450,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     });
     setEditMealType(log.mealType);
     setEditServings(1);
+    editServingsRef.current = 1;
     setEditServingsText("1");
     setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
     const g = log.amountGrams;
@@ -9526,6 +9538,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
           fat: String(Math.round(newBase.fat * 10) / 10),
         }));
         setEditServings(1);
+        editServingsRef.current = 1;
         setEditServingsText("1");
       }
       // If perGramRef.current is null (no stored amountGrams), wait for onBlur
@@ -9553,6 +9566,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
         fat: perGramRef.current.fat * n,
       });
       setEditServings(1);
+      editServingsRef.current = 1;
       setEditServingsText("1");
     }
   }
@@ -9563,7 +9577,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     }
     const n = parseFloat(text);
     const isValid = !isNaN(n) && n >= 0;
-    const baseValue = isValid ? (editServings > 0 ? n / editServings : n) : null;
+    const baseValue = isValid ? (editServingsRef.current > 0 ? n / editServingsRef.current : n) : null;
     // Compute auto-fill decision synchronously before any state updates
     let autoFillBase: number | null = null;
     if (field !== 'calories' && baseValue !== null && (editCaloriesAutoFilled.current || editForm.calories === "")) {
@@ -9579,7 +9593,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     setEditForm(f => {
       const updated = { ...f, [field]: text };
       if (autoFillBase !== null) {
-        updated.calories = String(Math.round(autoFillBase * editServings));
+        updated.calories = String(Math.round(autoFillBase * editServingsRef.current));
       }
       return updated;
     });
@@ -9893,6 +9907,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                       const steps = Math.round(editServings * 200) / 100;
                       const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
                       setEditServings(next);
+                      editServingsRef.current = next;
                       setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                       setEditForm(f => ({
                         ...f,
@@ -9921,6 +9936,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                     const n = parseFloat(normalized);
                     if (!isNaN(n) && n > 0) {
                       setEditServings(n);
+                      editServingsRef.current = n;
                       setEditForm(f => ({
                         ...f,
                         calories: String(Math.round(editBase.calories * n)),
@@ -9934,6 +9950,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
                     setEditServings(snapped);
+                    editServingsRef.current = snapped;
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
                     setEditForm(f => ({
                       ...f,
@@ -9954,6 +9971,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
                     const steps = Math.round(editServings * 200) / 100;
                     const next = Math.floor(steps + 1) * 0.5;
                     setEditServings(next);
+                    editServingsRef.current = next;
                     setEditServingsText(Number.isInteger(next) ? String(next) : next.toFixed(1));
                     setEditForm(f => ({
                       ...f,
