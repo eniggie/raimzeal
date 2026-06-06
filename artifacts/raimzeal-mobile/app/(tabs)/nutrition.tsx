@@ -981,6 +981,24 @@ function AnimatedCountdown({ value, style }: { value: number; style?: object }) 
   );
 }
 
+/**
+ * Aggregate multiple independent sync callbacks into one finishSync call.
+ * Waits for all `count` callbacks to fire; calls `finishSync(false)` if any
+ * one of them reported failure, `finishSync(true)` only if all succeeded.
+ * This prevents a later success from masking an earlier failure.
+ */
+function makeCombinedSyncCallback(
+  count: number,
+  finishSync: (ok: boolean) => void
+): (ok: boolean) => void {
+  let pending = count;
+  let anyFailed = false;
+  return (ok: boolean) => {
+    if (!ok) anyFailed = true;
+    if (--pending === 0) finishSync(!anyFailed);
+  };
+}
+
 export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -8941,6 +8959,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
     histStartSync();
+    const histSyncCb = name !== oldName
+      ? makeCombinedSyncCallback(2, histFinishSync)
+      : histFinishSync;
     updateMealLog(log.id, {
       name,
       calories: savedCalories,
@@ -8950,9 +8971,9 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
       date: editDate,
-    }, histFinishSync);
+    }, histSyncCb);
     if (name !== oldName) {
-      syncMealName(log.id, name, histFinishSync);
+      syncMealName(log.id, name, histSyncCb);
     }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
@@ -9779,6 +9800,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
     rowStartSync();
+    const rowSyncCb = name !== oldName
+      ? makeCombinedSyncCallback(2, rowFinishSync)
+      : rowFinishSync;
     updateMealLog(log.id, {
       name,
       calories: savedCalories,
@@ -9788,9 +9812,9 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       mealType: savedMealType,
       amountGrams: savedGrams !== undefined ? Math.round(savedGrams * savedServings * 10) / 10 : undefined,
       date: editDate,
-    }, rowFinishSync);
+    }, rowSyncCb);
     if (name !== oldName) {
-      syncMealName(log.id, name, rowFinishSync);
+      syncMealName(log.id, name, rowSyncCb);
     }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
