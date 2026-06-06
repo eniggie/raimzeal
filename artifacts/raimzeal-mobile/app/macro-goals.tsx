@@ -52,10 +52,15 @@ export default function MacroGoalsScreen() {
   // Force a re-render whenever this screen comes back into focus so the
   // suggestion banner always reflects the latest profile data (e.g. after
   // the user saves edits in the Edit Profile screen and navigates back).
-  const [, setFocusTick] = useState(0);
+  // Also resets focusApplied on blur so the scroll+pulse animation replays
+  // if the user returns with the same `focus` query param still present.
+  const [focusTick, setFocusTick] = useState(0);
   useFocusEffect(
     useCallback(() => {
       setFocusTick((t) => t + 1);
+      return () => {
+        focusApplied.current = false;
+      };
     }, [])
   );
 
@@ -106,7 +111,7 @@ export default function MacroGoalsScreen() {
 
     const timer = setTimeout(applyFocus, 120);
     return () => clearTimeout(timer);
-  }, [focus, loaded]);
+  }, [focus, loaded, focusTick]);
 
   // Derive the suggestion and breakdown from individual profile fields so the
   // card recomputes immediately whenever any field changes — including
