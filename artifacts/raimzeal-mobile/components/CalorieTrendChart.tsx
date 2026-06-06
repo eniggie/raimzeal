@@ -35,6 +35,7 @@ interface CalorieTrendChartProps {
   onEditGoals?: () => void;
   mealBreakdown?: MealBreakdownEntry[];
   mealFilter?: string;
+  onClearMealFilter?: () => void;
   colors: {
     primary: string;
     secondary: string;
@@ -76,6 +77,7 @@ export function CalorieTrendChart({
   onEditGoals,
   mealBreakdown,
   mealFilter,
+  onClearMealFilter,
   colors,
 }: CalorieTrendChartProps) {
   const screenWidth = Dimensions.get("window").width;
@@ -800,7 +802,9 @@ export function CalorieTrendChart({
             }}
             pointerEvents={mealFilter && mealFilter !== "all" ? "auto" : "none"}
           >
-            <View
+            <TouchableOpacity
+              onPress={onClearMealFilter}
+              activeOpacity={onClearMealFilter ? 0.65 : 1}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -834,7 +838,21 @@ export function CalorieTrendChart({
               >
                 {displayFilter.charAt(0).toUpperCase() + displayFilter.slice(1)} only
               </Text>
-            </View>
+              {!!onClearMealFilter && (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: dotColor,
+                    opacity: 0.75,
+                    lineHeight: 14,
+                    marginLeft: 1,
+                  }}
+                >
+                  ×
+                </Text>
+              )}
+            </TouchableOpacity>
           </Animated.View>
         );
       })()}
