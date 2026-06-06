@@ -367,6 +367,10 @@ export function MacroRing({
           ))}
         </Animated.View>
       )}
+
+      {!hasData && (
+        <Text style={styles.emptyLabel}>No meals logged</Text>
+      )}
     </View>
   );
 }
@@ -412,5 +416,11 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 10,
     fontFamily: "Inter_500Medium",
+  },
+  emptyLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(128,128,128,0.5)",
+    textAlign: "center",
   },
 });
