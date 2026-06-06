@@ -720,7 +720,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) insertBodyMeasurement(session.user.id, m).catch(() => {});
+            if (session?.user) insertBodyMeasurement(session.user.id, m).then(() => setLastSyncedAt(new Date())).catch(() => {});
           });
         }
         return next;
@@ -746,7 +746,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
-              insertOviaMessage(session.user.id, newMsg).catch(() => {});
+              insertOviaMessage(session.user.id, newMsg).then(() => setLastSyncedAt(new Date())).catch(() => {});
             }
           });
         }
@@ -768,7 +768,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         persist(next);
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) upsertWaterIntake(session.user.id, today, glasses).catch(() => {});
+            if (session?.user) upsertWaterIntake(session.user.id, today, glasses).then(() => setLastSyncedAt(new Date())).catch(() => {});
           });
         }
         return next;
@@ -811,7 +811,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               method: "DELETE",
               headers: { Authorization: `Bearer ${session.access_token}` },
             }).then((res) => {
-              if (!res.ok) {
+              if (res.ok) {
+                setLastSyncedAt(new Date());
+              } else {
                 void queuePendingRemove(capturedServerId!, capturedFoodId!, uid);
               }
             }).catch(() => {
@@ -838,6 +840,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                   persist(next);
                   return next;
                 });
+                setLastSyncedAt(new Date());
               }
             }
           }).catch(() => {});
@@ -863,6 +866,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ foods }),
         }).then(async (res) => {
           if (res.ok) {
+            setLastSyncedAt(new Date());
             const body = await res.json() as { foods?: (FavoriteFood & { _serverId?: string })[] };
             if (Array.isArray(body.foods) && body.foods.length > 0) {
               // Refresh _serverId for all foods (PUT reorder deletes+reinserts rows)
@@ -905,6 +909,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               },
             })
           )
+          .then(() => setLastSyncedAt(new Date()))
           .catch(() => {});
       });
     },
@@ -940,6 +945,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               },
             })
           )
+          .then(() => setLastSyncedAt(new Date()))
           .catch(() => {});
       });
     },
@@ -971,6 +977,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               },
             })
           )
+          .then(() => setLastSyncedAt(new Date()))
           .catch(() => {});
       });
     },
@@ -1009,6 +1016,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             appSettings: { ...(existing?.appSettings ?? {}), dismissedHints: [] },
           })
         )
+        .then(() => setLastSyncedAt(new Date()))
         .catch(() => {});
     });
   }, [persist]);
@@ -1053,7 +1061,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         // Background push to Supabase
         if (next.user && isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) upsertProfile(session.user.id, next.user!).catch(() => {});
+            if (session?.user) upsertProfile(session.user.id, next.user!).then(() => setLastSyncedAt(new Date())).catch(() => {});
           });
         }
         return next;
@@ -1122,6 +1130,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                 appSettings: { ...(existing?.appSettings ?? {}), ...patch },
               })
             )
+            .then(() => setLastSyncedAt(new Date()))
             .catch(() => {});
         });
       }, 600);
