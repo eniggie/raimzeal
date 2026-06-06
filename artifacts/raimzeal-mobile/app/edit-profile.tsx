@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -143,6 +144,30 @@ export default function EditProfileScreen() {
       biologicalSex,
     });
   }, [age, height, weight, fitnessLevel, goals, units, biologicalSex, user]);
+
+  // Keep the last non-null preview so the banner stays mounted during exit animation
+  const lastPreviewRef = useRef<typeof livePreview>(livePreview);
+  if (livePreview !== null) lastPreviewRef.current = livePreview;
+
+  // Animated values for fade + slide transition
+  const bannerOpacity = useRef(new Animated.Value(livePreview ? 1 : 0)).current;
+  const bannerTranslateY = useRef(new Animated.Value(livePreview ? 0 : 10)).current;
+
+  useEffect(() => {
+    const visible = livePreview !== null;
+    Animated.parallel([
+      Animated.timing(bannerOpacity, {
+        toValue: visible ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bannerTranslateY, {
+        toValue: visible ? 0 : 10,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [livePreview, bannerOpacity, bannerTranslateY]);
 
   // Null guard: profile not yet loaded (context still hydrating)
   if (!user) {
@@ -513,14 +538,22 @@ export default function EditProfileScreen() {
           })}
         </View>
 
-        {/* Live macro suggestion preview */}
-        {livePreview && (
-          <MacroPreviewBanner
-            preview={livePreview}
-            expanded={previewExpanded}
-            onToggle={() => setPreviewExpanded((v) => !v)}
-            colors={colors}
-          />
+        {/* Live macro suggestion preview — fades/slides in and out */}
+        {lastPreviewRef.current && (
+          <Animated.View
+            style={{
+              opacity: bannerOpacity,
+              transform: [{ translateY: bannerTranslateY }],
+            }}
+            pointerEvents={livePreview ? "auto" : "none"}
+          >
+            <MacroPreviewBanner
+              preview={lastPreviewRef.current}
+              expanded={previewExpanded}
+              onToggle={() => setPreviewExpanded((v) => !v)}
+              colors={colors}
+            />
+          </Animated.View>
         )}
 
         {/* Save */}
