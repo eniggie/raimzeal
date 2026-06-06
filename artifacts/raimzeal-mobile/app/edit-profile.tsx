@@ -126,6 +126,23 @@ export default function EditProfileScreen() {
   const [biologicalSex, setBiologicalSex] = useState<"male" | "female" | "prefer_not_to_say" | undefined>(user?.biologicalSex);
   const [previewExpanded, setPreviewExpanded] = useState(true);
 
+  // One-time seed: if the component mounted before FitnessContext finished
+  // hydrating (user was null), useState initial values defaulted to undefined.
+  // When user first becomes available, re-seed all picker/chip fields so the
+  // chips display correctly and the live macro preview uses the right TDEE.
+  const hasSeededFromUser = useRef(!!user);
+  useEffect(() => {
+    if (!user || hasSeededFromUser.current) return;
+    hasSeededFromUser.current = true;
+    setBiologicalSex(user.biologicalSex);
+    setBloodType(user.bloodType);
+    setRhFactor(user.rhFactor);
+    setGenotype(user.genotype);
+    setFitnessLevel(user.fitnessLevel ?? "intermediate");
+    setGoals(Array.isArray(user.goals) ? user.goals : []);
+    setUnits(user.units ?? "metric");
+  }, [user]);
+
   // Live macro preview — recomputed on every relevant field change without saving
   const livePreview = useMemo(() => {
     if (!user) return null;
