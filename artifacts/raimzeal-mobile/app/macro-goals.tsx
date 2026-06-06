@@ -1,5 +1,5 @@
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -108,7 +108,25 @@ export default function MacroGoalsScreen() {
     return () => clearTimeout(timer);
   }, [focus, loaded]);
 
-  const suggestedResult = computeSuggestedGoalsWithBreakdown(user);
+  // Derive the suggestion and breakdown from individual profile fields so the
+  // card recomputes immediately whenever any field changes — including
+  // biologicalSex — even while the screen remains focused (no navigate-away
+  // required). useFocusEffect above handles the async Supabase resync path.
+  const suggestedResult = useMemo(
+    () => computeSuggestedGoalsWithBreakdown(user),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      user?.weight,
+      user?.height,
+      user?.age,
+      user?.biologicalSex,
+      user?.fitnessLevel,
+      // goals is an array — JSON-stringify for stable comparison
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(user?.goals),
+      user?.units,
+    ]
+  );
   const suggested = suggestedResult?.goals ?? null;
   const breakdown = suggestedResult?.breakdown ?? null;
   const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
