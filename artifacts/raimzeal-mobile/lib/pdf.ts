@@ -2,7 +2,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { AppState } from "@/contexts/FitnessContext";
 import type { MacroGoals } from "@/contexts/MacroGoalsContext";
-import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
+import { computeSuggestedGoalsWithBreakdown, formatBreakdownText, primaryGoalLabel } from "@/lib/tdee";
 
 export type DateRangeOption = "7d" | "30d" | "90d" | "all" | "custom";
 
@@ -215,6 +215,8 @@ export async function exportToPdf(
     .macro-split-card .ms-kcal { font-size: 10px; color: #9ca3af; }
     .breakdown-note { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
     .breakdown-sub { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .breakdown-text-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 4px; }
+    .bd-line { font-size: 12px; color: #1a1a1a; line-height: 1.7; font-family: 'Helvetica Neue', Arial, sans-serif; }
   </style>
 </head>
 <body>
@@ -296,33 +298,28 @@ export async function exportToPdf(
     </div>
   </div>` : ""}
 
-  <!-- Macro Breakdown (calculated from profile) -->
+  <!-- Macro Goals section — text sourced via formatBreakdownText() -->
   ${suggestedResult ? (() => {
     const bd = suggestedResult.breakdown;
     const sg = suggestedResult.goals;
-    const adjSign = bd.goalAdjustment > 0 ? "+" : "";
-    const adjNote = bd.goalAdjustment < 0
-      ? "Calorie deficit"
-      : bd.goalAdjustment > 0
-      ? "Calorie surplus"
-      : "No adjustment — eating at TDEE";
+    // formatBreakdownText() is the canonical source of truth for all breakdown
+    // text and values. We render its output as HTML lines so the PDF stays in
+    // sync with any future changes to the helper.
+    const canonicalLines = formatBreakdownText(bd, sg, goalLabel)
+      .split("\n")
+      .filter((l) => !l.startsWith("📊") && l !== "Generated with RAIMZEAL");
+    const bodyHtml = canonicalLines
+      .map((l) => l === "" ? `<div style="height:8px;"></div>` : `<div class="bd-line">${l}</div>`)
+      .join("");
     return `
   <div class="section">
-    <div class="section-title">🔬 Calculated Macro Breakdown</div>
+    <div class="section-title">🎯 Macro Goals</div>
     <p class="breakdown-note">
       Calculated from your profile (weight, height, age, biological sex, activity level)
       using the Mifflin-St Jeor formula for <strong>${goalLabel}</strong>.
     </p>
-    <table class="breakdown-chain">
-      <thead><tr><th>Metric</th><th>Value</th><th>Note</th></tr></thead>
-      <tbody>
-        <tr><td>Basal Metabolic Rate (BMR)</td><td>${bd.bmr} kcal</td><td>Calories burned at complete rest · ${bd.sexLabel}</td></tr>
-        <tr><td>Total Daily Energy (TDEE)</td><td>${bd.tdee} kcal</td><td>${bd.activityLabel} activity multiplier applied</td></tr>
-        <tr><td>Goal adjustment (${goalLabel})</td><td>${adjSign}${bd.goalAdjustment} kcal</td><td>${adjNote}</td></tr>
-        <tr class="target-row"><td>Target Calories</td><td>${bd.targetCalories} kcal</td><td>Rounded to nearest 50 kcal</td></tr>
-      </tbody>
-    </table>
-    <p class="breakdown-sub">Macro Split</p>
+    <div class="breakdown-text-box">${bodyHtml}</div>
+    <p class="breakdown-sub" style="margin-top:16px;">Visual Split</p>
     <div class="macro-split">
       <div class="macro-split-card">
         <div class="ms-name" style="color:#C9A84C;">Protein</div>
