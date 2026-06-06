@@ -27,6 +27,7 @@ import {
 
 const CACHE_PREFIX = "barcode_cache_v1:";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const CORRECTIONS_PREFIX = "barcode_correction_v1:";
 
 const RECENT_SCANS_KEY = "barcode_recent_scans_v1";
 const RECENT_LAST_VIEWED_KEY = "barcode_recent_last_viewed_v1";
@@ -146,6 +147,28 @@ async function setCachedBarcode(barcode: string, food: ScannedFood): Promise<voi
   } catch {
     // Non-fatal: cache write failure is ignored
   }
+}
+
+async function getCorrection(barcode: string): Promise<ScannedFood | null> {
+  try {
+    const raw = await AsyncStorage.getItem(CORRECTIONS_PREFIX + barcode);
+    if (!raw) return null;
+    return JSON.parse(raw) as ScannedFood;
+  } catch {
+    return null;
+  }
+}
+
+async function saveCorrection(barcode: string, food: ScannedFood): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CORRECTIONS_PREFIX + barcode, JSON.stringify(food));
+  } catch {}
+}
+
+async function clearCorrection(barcode: string): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(CORRECTIONS_PREFIX + barcode);
+  } catch {}
 }
 
 export interface ScannedFood {
@@ -270,22 +293,28 @@ async function fetchFromNetwork(barcode: string): Promise<ScannedFood | null> {
 interface FetchResult {
   food: ScannedFood;
   fromCache: boolean;
+  fromCorrection?: boolean;
   cachedAt?: number;
 }
 
 async function fetchFoodByBarcode(barcode: string): Promise<FetchResult | null> {
-  const cached = await getCachedBarcode(barcode);
+  const [correction, cached] = await Promise.all([
+    getCorrection(barcode),
+    getCachedBarcode(barcode),
+  ]);
   if (cached) {
-    await addToRecentScans(barcode, cached.food);
-    return { food: cached.food, fromCache: true, cachedAt: cached.cachedAt };
+    const food = correction ?? cached.food;
+    await addToRecentScans(barcode, food);
+    return { food, fromCache: true, fromCorrection: !!correction, cachedAt: cached.cachedAt };
   }
 
-  const food = await fetchFromNetwork(barcode);
-  if (!food) return null;
+  const networkFood = await fetchFromNetwork(barcode);
+  if (!networkFood) return null;
 
-  await setCachedBarcode(barcode, food);
+  await setCachedBarcode(barcode, networkFood);
+  const food = correction ?? networkFood;
   await addToRecentScans(barcode, food);
-  return { food, fromCache: false };
+  return { food, fromCache: false, fromCorrection: !!correction };
 }
 
 function formatCacheAge(cachedAt: number): string {
@@ -354,7 +383,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number } | null>(null);
+  const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number; fromCorrection?: boolean } | null>(null);
   const [servingMultiplier, setServingMultiplier] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
@@ -379,6 +408,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const [correctedBarcodes, setCorrectedBarcodes] = useState<Set<string>>(new Set());
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -433,6 +463,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     }
     setPer100gScans(restoredPer100g);
 
+    const correctionChecks = await Promise.all(
+      data.map((s) => getCorrection(s.barcode).then((c) => (c ? s.barcode : null)))
+    );
+    setCorrectedBarcodes(new Set<string>(correctionChecks.filter((b): b is string => b !== null)));
+
     if (markViewed) {
       await setRecentLastViewed();
       setHasNewScans(false);
@@ -461,6 +496,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setHasNewScans(false);
       setNewScanTrigger(0);
       setPer100gScans(new Set());
+      setCorrectedBarcodes(new Set());
       loadRecentScans();
     }
   }, [visible, loadRecentScans]);
@@ -493,7 +529,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
       if (result) {
         if (result.fromCache) {
-          setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now() });
+          setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now(), fromCorrection: result.fromCorrection });
           setHasNewScans(true);
           setNewScanTrigger((c) => c + 1);
           loadRecentScans();
@@ -654,8 +690,14 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await removeRecentScan(barcode);
     await removeViewPreference(barcode);
+    await clearCorrection(barcode);
     setRecentScans((prev) => prev.filter((s) => s.barcode !== barcode));
     setPer100gScans((prev) => {
+      const next = new Set(prev);
+      next.delete(barcode);
+      return next;
+    });
+    setCorrectedBarcodes((prev) => {
       const next = new Set(prev);
       next.delete(barcode);
       return next;
@@ -681,6 +723,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
   async function handleSaveEdit(updated: ScannedFood) {
     if (!editTarget) return;
+    await saveCorrection(editTarget.barcode, updated);
+    setCorrectedBarcodes((prev) => { const n = new Set(prev); n.add(editTarget.barcode); return n; });
     await updateRecentScan(editTarget.barcode, updated);
     setRecentScans((prev) =>
       prev.map((s) =>
@@ -688,13 +732,15 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       )
     );
     setCachedResult((prev) =>
-      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated } : prev
+      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated, fromCorrection: true } : prev
     );
     setEditTarget(null);
   }
 
   async function handleSaveAndAdd(updated: ScannedFood) {
     if (!editTarget) return;
+    await saveCorrection(editTarget.barcode, updated);
+    setCorrectedBarcodes((prev) => { const n = new Set(prev); n.add(editTarget.barcode); return n; });
     await updateRecentScan(editTarget.barcode, updated);
     setRecentScans((prev) =>
       prev.map((s) =>
@@ -702,7 +748,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       )
     );
     setCachedResult((prev) =>
-      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated } : prev
+      prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated, fromCorrection: true } : prev
     );
     onFoodFound(updated);
   }
@@ -987,6 +1033,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                             {formatCacheAge(cachedResult.cachedAt)}
                           </Text>
                         </View>
+                        {cachedResult.fromCorrection && (
+                          <View style={styles.correctionRow}>
+                            <Ionicons name="create-outline" size={12} color="rgba(163,230,53,0.85)" />
+                            <Text style={styles.correctionText}>Your corrections applied</Text>
+                          </View>
+                        )}
                         {refreshFailed && (
                           <View style={styles.refreshFailedRow}>
                             <Ionicons name="cloud-offline-outline" size={13} color="#f87171" />
@@ -1247,6 +1299,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                 <Text style={styles.recentItemDate}>
                                   {formatScannedDate(scan.scannedAt)}
                                 </Text>
+                                {correctedBarcodes.has(scan.barcode) && (
+                                  <View style={styles.correctionPill}>
+                                    <Ionicons name="create-outline" size={9} color="rgba(163,230,53,0.9)" />
+                                    <Text style={styles.correctionPillText}>Edited</Text>
+                                  </View>
+                                )}
                               </View>
                             </View>
                             <View style={styles.recentItemActions}>
@@ -1975,6 +2033,31 @@ const styles = StyleSheet.create({
   filterClearBtnText: {
     color: "rgba(255,255,255,0.75)",
     fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  correctionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 3,
+  },
+  correctionText: {
+    color: "rgba(163,230,53,0.85)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  correctionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(163,230,53,0.12)",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  correctionPillText: {
+    color: "rgba(163,230,53,0.9)",
+    fontSize: 10,
     fontFamily: "Inter_500Medium",
   },
 });
