@@ -18,7 +18,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
-import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
+import {
+  computeSuggestedGoalsWithBreakdown,
+  primaryGoalLabel,
+  BREAKDOWN_GLOSSARY,
+  GlossaryEntry,
+} from "@/lib/tdee";
 
 interface Props {
   visible: boolean;
@@ -54,6 +59,7 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
   const [carbs, setCarbs] = useState(goals.carbs.toString());
   const [fat, setFat] = useState(goals.fat.toString());
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+  const [glossaryEntry, setGlossaryEntry] = useState<GlossaryEntry | null>(null);
 
   const initialised = useRef(false);
 
@@ -64,6 +70,7 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
       setCarbs(goals.carbs.toString());
       setFat(goals.fat.toString());
       setBreakdownExpanded(false);
+      setGlossaryEntry(null);
       initialised.current = false;
     }
   }, [visible, goals]);
@@ -105,6 +112,13 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setBreakdownExpanded((v) => !v);
     Haptics.selectionAsync();
+  }
+
+  function openGlossary(key: string) {
+    const entry = BREAKDOWN_GLOSSARY[key];
+    if (!entry) return;
+    Haptics.selectionAsync();
+    setGlossaryEntry(entry);
   }
 
   function getOutOfRangeWarning(): string | null {
@@ -225,7 +239,7 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
                     style={styles.howBtn}
                   >
                     <Text style={[styles.howBtnText, { color: colors.primary }]}>
-                      How?
+                      How is this calculated?
                     </Text>
                     <Ionicons
                       name={breakdownExpanded ? "chevron-up" : "chevron-down"}
@@ -237,20 +251,29 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
 
                 {breakdownExpanded && (
                   <View style={[styles.breakdownPanel, { borderTopColor: colors.primary + "30" }]}>
+                    {/* Section: calorie calculation chain */}
+                    <Text style={[styles.breakdownSectionLabel, { color: colors.mutedForeground }]}>
+                      How your calorie target was worked out
+                    </Text>
+
                     <MiniBreakdownRow
-                      label="BMR"
+                      label="Resting burn (BMR)"
                       value={`${breakdown.bmr} kcal`}
-                      note={breakdown.sexLabel}
+                      note={`Calories your body needs at rest · ${breakdown.sexLabel}`}
+                      glossaryKey="bmr"
+                      onInfoPress={openGlossary}
                       colors={colors}
                     />
                     <MiniBreakdownRow
-                      label={`× Activity (${breakdown.activityLabel})`}
+                      label={`Activity level (${breakdown.activityLabel})`}
                       value={`${breakdown.tdee} kcal`}
-                      note="TDEE"
+                      note="Total daily burn, including movement"
+                      glossaryKey="tdee"
+                      onInfoPress={openGlossary}
                       colors={colors}
                     />
                     <MiniBreakdownRow
-                      label={`Goal adjustment (${goalLabel})`}
+                      label={`Goal tweak (${goalLabel})`}
                       value={
                         breakdown.goalAdjustment === 0
                           ? "0 kcal"
@@ -258,10 +281,10 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
                       }
                       note={
                         breakdown.goalAdjustment < 0
-                          ? "Calorie deficit"
+                          ? "Eating a little less than you burn"
                           : breakdown.goalAdjustment > 0
-                          ? "Calorie surplus"
-                          : "No adjustment — maintenance"
+                          ? "Eating a little more than you burn"
+                          : "Eating exactly what you burn — maintenance"
                       }
                       valueColor={
                         breakdown.goalAdjustment < 0
@@ -270,15 +293,58 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
                           ? colors.secondary
                           : undefined
                       }
+                      glossaryKey="goal_adjustment"
+                      onInfoPress={openGlossary}
                       colors={colors}
                     />
                     <MiniBreakdownRow
-                      label="Target calories"
+                      label="Your daily calorie target"
                       value={`${breakdown.targetCalories} kcal`}
-                      note="Rounded to nearest 50 kcal"
+                      note="Rounded to the nearest 50 kcal"
+                      glossaryKey="target_calories"
+                      onInfoPress={openGlossary}
                       colors={colors}
                       bold
                     />
+
+                    {/* Divider */}
+                    <View style={[styles.breakdownDivider, { backgroundColor: colors.primary + "20" }]} />
+
+                    {/* Section: macro split */}
+                    <Text style={[styles.breakdownSectionLabel, { color: colors.mutedForeground }]}>
+                      How your macros were split
+                    </Text>
+
+                    <MiniBreakdownRow
+                      label={`Protein (${Math.round(breakdown.proteinRatio * 100)}% of calories)`}
+                      value={`${suggested.protein}g`}
+                      note="Keeps you full and supports muscle"
+                      glossaryKey="macro_protein"
+                      onInfoPress={openGlossary}
+                      colors={colors}
+                    />
+                    <MiniBreakdownRow
+                      label={`Carbs (${Math.round(breakdown.carbRatio * 100)}% of calories)`}
+                      value={`${suggested.carbs}g`}
+                      note="Your body's go-to energy source"
+                      glossaryKey="macro_carbs"
+                      onInfoPress={openGlossary}
+                      colors={colors}
+                    />
+                    <MiniBreakdownRow
+                      label={`Fat (${Math.round(breakdown.fatRatio * 100)}% of calories)`}
+                      value={`${suggested.fat}g`}
+                      note="Supports hormones and long-lasting energy"
+                      glossaryKey="macro_fat"
+                      onInfoPress={openGlossary}
+                      colors={colors}
+                    />
+
+                    <Text style={[styles.breakdownFooter, { color: colors.mutedForeground }]}>
+                      Tap the{" "}
+                      <Ionicons name="information-circle-outline" size={11} color={colors.mutedForeground} />{" "}
+                      icon next to any term to learn more.
+                    </Text>
                   </View>
                 )}
               </View>
@@ -336,6 +402,51 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Glossary explanation modal */}
+      {glossaryEntry && (
+        <Modal
+          visible={!!glossaryEntry}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setGlossaryEntry(null)}
+          statusBarTranslucent
+        >
+          <TouchableOpacity
+            style={styles.glossaryBackdrop}
+            activeOpacity={1}
+            onPress={() => setGlossaryEntry(null)}
+          />
+          <View style={styles.glossaryWrapper} pointerEvents="box-none">
+            <View style={[styles.glossaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.glossaryHeader}>
+                <Ionicons name="information-circle" size={18} color={colors.primary} />
+                <Text style={[styles.glossaryTitle, { color: colors.foreground }]}>
+                  {glossaryEntry.title}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setGlossaryEntry(null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.glossaryBody, { color: colors.mutedForeground }]}>
+                {glossaryEntry.body}
+              </Text>
+              <TouchableOpacity
+                style={[styles.glossaryDismiss, { backgroundColor: colors.primary }]}
+                onPress={() => setGlossaryEntry(null)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.glossaryDismissText, { color: colors.primaryForeground }]}>
+                  Got it
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -346,22 +457,48 @@ interface MiniBreakdownRowProps {
   note?: string;
   bold?: boolean;
   valueColor?: string;
+  glossaryKey?: string;
+  onInfoPress?: (key: string) => void;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }
 
-function MiniBreakdownRow({ label, value, note, bold, valueColor, colors }: MiniBreakdownRowProps) {
+function MiniBreakdownRow({
+  label,
+  value,
+  note,
+  bold,
+  valueColor,
+  glossaryKey,
+  onInfoPress,
+  colors,
+}: MiniBreakdownRowProps) {
   return (
     <View style={miniStyles.row}>
       <View style={miniStyles.left}>
-        <Text
-          style={[
-            miniStyles.label,
-            { color: colors.foreground },
-            bold && { fontFamily: "Inter_600SemiBold" },
-          ]}
-        >
-          {label}
-        </Text>
+        <View style={miniStyles.labelRow}>
+          <Text
+            style={[
+              miniStyles.label,
+              { color: colors.foreground },
+              bold && { fontFamily: "Inter_600SemiBold" },
+            ]}
+          >
+            {label}
+          </Text>
+          {glossaryKey && onInfoPress && (
+            <TouchableOpacity
+              onPress={() => onInfoPress(glossaryKey)}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={miniStyles.infoBtn}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={13}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         {note ? (
           <Text style={[miniStyles.note, { color: colors.mutedForeground }]}>{note}</Text>
         ) : null}
@@ -385,12 +522,18 @@ const miniStyles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
   },
   left: { flex: 1, gap: 1 },
-  label: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  label: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, flexShrink: 1 },
   note: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
   value: { fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "right", flexShrink: 0 },
+  infoBtn: { flexShrink: 0 },
 });
 
 const styles = StyleSheet.create({
@@ -443,12 +586,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 9,
+    gap: 8,
   },
   suggestChipInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    flex: 1,
+    flexShrink: 1,
   },
   suggestChipText: {
     fontSize: 13,
@@ -458,17 +602,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    paddingLeft: 10,
+    paddingLeft: 6,
+    flexShrink: 0,
   },
   howBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
   breakdownPanel: {
     borderTopWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 2,
+    paddingTop: 10,
+    paddingBottom: 12,
+    gap: 0,
+  },
+  breakdownSectionLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 2,
+  },
+  breakdownDivider: {
+    height: 1,
+    marginVertical: 10,
+  },
+  breakdownFooter: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    marginTop: 10,
+    lineHeight: 15,
   },
   fields: {
     gap: 12,
@@ -520,6 +684,47 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  glossaryBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  glossaryWrapper: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  glossaryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 20,
+    gap: 12,
+  },
+  glossaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  glossaryTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "SpaceGrotesk_700Bold",
+    lineHeight: 20,
+  },
+  glossaryBody: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+  },
+  glossaryDismiss: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginTop: 2,
+  },
+  glossaryDismissText: {
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
 });
