@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   LayoutAnimation,
   Platform,
@@ -425,6 +426,13 @@ export default function WorkoutsScreen() {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const expandedInitRef = useRef(false);
 
+  // ── Undo-delete for workout logs ──────────────────────────────────────────
+  const UNDO_DURATION_MS = 5_000;
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; workoutName: string } | null>(null);
+  const pendingDeleteRef = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const undoOpacity = useRef(new Animated.Value(0)).current;
+  const undoTranslateY = useRef(new Animated.Value(12)).current;
+
   // ── Library search / filter ──────────────────────────────────────────────
   const [librarySearch, setLibrarySearch] = useState("");
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -479,12 +487,15 @@ export default function WorkoutsScreen() {
   }, [debouncedSearch, selectedMuscles, customWorkouts]);
 
   const flatItems = useMemo((): FlatItem[] => {
+    const pendingId = pendingDelete?.id ?? null;
     if (historyViewMode === "week") {
       const items: FlatItem[] = [];
       for (const g of weekGroups) {
         items.push({ type: "weekHeader", group: g });
         if (expandedKeys.has(g.weekKey)) {
-          for (const log of g.logs) items.push({ type: "log", log, indented: false });
+          for (const log of g.logs) {
+            if (log.id !== pendingId) items.push({ type: "log", log, indented: false });
+          }
         }
       }
       return items;
@@ -496,20 +507,73 @@ export default function WorkoutsScreen() {
           for (const wg of mg.weekGroups) {
             items.push({ type: "weekSubHeader", group: wg });
             if (expandedKeys.has(wg.weekKey)) {
-              for (const log of wg.logs) items.push({ type: "log", log, indented: true });
+              for (const log of wg.logs) {
+                if (log.id !== pendingId) items.push({ type: "log", log, indented: true });
+              }
             }
           }
         }
       }
       return items;
     }
-  }, [historyViewMode, weekGroups, monthGroups, expandedKeys]);
+  }, [historyViewMode, weekGroups, monthGroups, expandedKeys, pendingDelete]);
 
   useEffect(() => {
     if (expandedInitRef.current || weekGroups.length === 0) return;
     expandedInitRef.current = true;
     setExpandedKeys(new Set(weekGroups.slice(0, 2).map((g) => g.weekKey)));
   }, [weekGroups]);
+
+  function handleDeleteWithUndo(log: WorkoutLog) {
+    // Commit any already-pending delete before queuing a new one
+    if (pendingDeleteRef.current) {
+      const { id, timer } = pendingDeleteRef.current;
+      clearTimeout(timer);
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+      startSync();
+      removeWorkoutLog(id, finishSync);
+      undoOpacity.setValue(0);
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    const timer = setTimeout(() => {
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+      startSync();
+      removeWorkoutLog(log.id, finishSync);
+      Animated.timing(undoOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    }, UNDO_DURATION_MS);
+
+    pendingDeleteRef.current = { id: log.id, timer };
+    setPendingDelete({ id: log.id, workoutName: log.workoutName });
+
+    undoOpacity.stopAnimation();
+    undoTranslateY.stopAnimation();
+    undoOpacity.setValue(0);
+    undoTranslateY.setValue(12);
+    Animated.parallel([
+      Animated.timing(undoOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(undoTranslateY, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }
+
+  function handleUndo() {
+    const pd = pendingDeleteRef.current;
+    if (!pd) return;
+    clearTimeout(pd.timer);
+    pendingDeleteRef.current = null;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Animated.parallel([
+      Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(undoTranslateY, { toValue: 12, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setPendingDelete(null);
+    });
+  }
 
   function toggleKey(key: string) {
     Haptics.selectionAsync();
@@ -540,6 +604,21 @@ export default function WorkoutsScreen() {
     useCallback(() => {
       loadCustomWorkouts().then(setCustomWorkouts);
     }, [])
+  );
+
+  // Commit any pending workout delete when the user leaves the history tab
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const pd = pendingDeleteRef.current;
+        if (!pd) return;
+        clearTimeout(pd.timer);
+        pendingDeleteRef.current = null;
+        setPendingDelete(null);
+        removeWorkoutLog(pd.id);
+        undoOpacity.setValue(0);
+      };
+    }, [removeWorkoutLog, undoOpacity])
   );
 
   useEffect(() => {
@@ -1306,25 +1385,7 @@ export default function WorkoutsScreen() {
                 <Swipeable
                   renderRightActions={() => (
                     <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        Alert.alert(
-                          "Delete Workout",
-                          `Delete "${item.log.workoutName}"? This cannot be undone.`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                startSync();
-                                removeWorkoutLog(item.log.id, finishSync);
-                              },
-                            },
-                          ]
-                        );
-                      }}
+                      onPress={() => handleDeleteWithUndo(item.log)}
                       style={secStyles.deleteAction}
                     >
                       <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -1339,6 +1400,28 @@ export default function WorkoutsScreen() {
             );
           }}
         />
+      )}
+      {pendingDelete !== null && (
+        <Animated.View
+          style={[
+            styles.undoToast,
+            {
+              bottom: insets.bottom + 72,
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              opacity: undoOpacity,
+              transform: [{ translateY: undoTranslateY }],
+            },
+          ]}
+        >
+          <Ionicons name="trash-outline" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+            "{pendingDelete.workoutName}" deleted
+          </Text>
+          <TouchableOpacity onPress={handleUndo} style={styles.undoBtn} hitSlop={8}>
+            <Text style={[styles.undoBtnText, { color: colors.primary }]}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
       )}
       <SyncIndicator status={syncStatus} />
     </View>
@@ -1583,6 +1666,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   historyToggleLabel: { fontSize: 13 },
+  undoToast: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  undoToastText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  undoBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  undoBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
 });
 
 const libStyles = StyleSheet.create({
