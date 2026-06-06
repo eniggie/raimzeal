@@ -688,7 +688,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     (editedId: string, newName: string, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const edited = prev.mealLogs.find((m) => m.id === editedId);
-        if (!edited) return prev;
+        if (!edited) {
+          // Entry not found — nothing to propagate, not a cloud error.
+          onSyncResult?.(true);
+          return prev;
+        }
 
         const sourceId = edited.sourceMealLogId;
 
@@ -709,7 +713,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        if (linkedIds.size === 0) return prev;
+        if (linkedIds.size === 0) {
+          // No linked entries to propagate — not a cloud error.
+          onSyncResult?.(true);
+          return prev;
+        }
 
         const affected = prev.mealLogs.filter((m) => linkedIds.has(m.id));
         const updatedLogs = prev.mealLogs.map((m) =>
@@ -729,6 +737,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               onSyncResult?.(false);
             }
           }).catch(() => onSyncResult?.(false));
+        } else {
+          // Supabase not configured — can't reach the cloud.
+          onSyncResult?.(false);
         }
 
         return next;
