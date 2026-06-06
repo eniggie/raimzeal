@@ -48,7 +48,7 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { goals, setGoals } = useMacroGoals();
+  const { goals, previousGoals, setGoals } = useMacroGoals();
   const { user } = useFitness();
 
   const suggestedResult = computeSuggestedGoalsWithBreakdown(user);
@@ -108,6 +108,15 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
     setProtein(suggested.protein.toString());
     setCarbs(suggested.carbs.toString());
     setFat(suggested.fat.toString());
+  }
+
+  function handleUndoLastChange() {
+    if (!previousGoals) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setCalories(previousGoals.calories.toString());
+    setProtein(previousGoals.protein.toString());
+    setCarbs(previousGoals.carbs.toString());
+    setFat(previousGoals.fat.toString());
   }
 
   function toggleBreakdown() {
@@ -247,6 +256,20 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
                   </Text>
                 </Text>
               </View>
+            )}
+
+            {/* Undo last change chip */}
+            {previousGoals && (
+              <TouchableOpacity
+                style={[styles.undoChip, { borderColor: colors.border, backgroundColor: colors.muted + "60" }]}
+                onPress={handleUndoLastChange}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="arrow-undo-outline" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.undoChipText, { color: colors.mutedForeground }]}>
+                  Undo last change ({previousGoals.calories} kcal)
+                </Text>
+              </TouchableOpacity>
             )}
 
             {/* Use Suggested chip + breakdown */}
@@ -681,6 +704,21 @@ const styles = StyleSheet.create({
   },
   incompleteNudgeLink: {
     fontFamily: "Inter_600SemiBold",
+  },
+  undoChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+    alignSelf: "flex-start",
+  },
+  undoChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   fields: {
     gap: 12,

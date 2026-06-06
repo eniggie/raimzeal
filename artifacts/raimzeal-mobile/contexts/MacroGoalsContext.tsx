@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export interface MacroGoals {
   calories: number;
@@ -16,9 +16,11 @@ export const DEFAULT_MACRO_GOALS: MacroGoals = {
 };
 
 const STORAGE_KEY = "raimzeal_macro_goals";
+const PREVIOUS_STORAGE_KEY = "macro_goals_previous";
 
 interface MacroGoalsContextType {
   goals: MacroGoals;
+  previousGoals: MacroGoals | null;
   setGoals: (goals: MacroGoals) => Promise<void>;
   loaded: boolean;
 }
@@ -37,9 +39,23 @@ interface MacroGoalsProviderProps {
 
 export function MacroGoalsProvider({ children, initialGoals }: MacroGoalsProviderProps) {
   const [goals, setGoalsState] = useState<MacroGoals>(initialGoals);
+  const [previousGoals, setPreviousGoals] = useState<MacroGoals | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(PREVIOUS_STORAGE_KEY)
+      .then((raw) => {
+        if (raw) setPreviousGoals(JSON.parse(raw) as MacroGoals);
+      })
+      .catch(() => {});
+  }, []);
 
   const setGoals = useCallback(async (newGoals: MacroGoals) => {
-    setGoalsState(newGoals);
+    setGoalsState((current) => {
+      const snapshot = current;
+      setPreviousGoals(snapshot);
+      AsyncStorage.setItem(PREVIOUS_STORAGE_KEY, JSON.stringify(snapshot)).catch(() => {});
+      return newGoals;
+    });
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newGoals));
     } catch {
@@ -48,7 +64,7 @@ export function MacroGoalsProvider({ children, initialGoals }: MacroGoalsProvide
   }, []);
 
   return (
-    <MacroGoalsContext.Provider value={{ goals, setGoals, loaded: true }}>
+    <MacroGoalsContext.Provider value={{ goals, previousGoals, setGoals, loaded: true }}>
       {children}
     </MacroGoalsContext.Provider>
   );
