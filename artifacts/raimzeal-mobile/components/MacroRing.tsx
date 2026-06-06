@@ -316,7 +316,10 @@ export function MacroRing({
                 origin={`${center}, ${center}`}
                 onPress={
                   onLegendPress
-                    ? () => onLegendPress(seg.macro)
+                    ? (e) => {
+                        e.stopPropagation();
+                        onLegendPress(seg.macro);
+                      }
                     : undefined
                 }
                 accessible={!!onLegendPress}
