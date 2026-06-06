@@ -243,18 +243,21 @@ export function MacroRing({
       len: proteinLen,
       startAngle: -90,
       animProps: proteinAnimProps,
+      macro: "protein" as const,
     },
     {
       color: MACRO_RING_COLORS.carbs,
       len: carbsLen,
       startAngle: -90 + proteinFrac * 360,
       animProps: carbsAnimProps,
+      macro: "carbs" as const,
     },
     {
       color: MACRO_RING_COLORS.fat,
       len: fatLen,
       startAngle: -90 + (proteinFrac + carbsFrac) * 360,
       animProps: fatAnimProps,
+      macro: "fat" as const,
     },
   ];
 
@@ -311,6 +314,15 @@ export function MacroRing({
                 animatedProps={seg.animProps}
                 rotation={seg.startAngle}
                 origin={`${center}, ${center}`}
+                onPress={
+                  onLegendPress
+                    ? () => onLegendPress(seg.macro)
+                    : undefined
+                }
+                accessible={!!onLegendPress}
+                accessibilityLabel={
+                  onLegendPress ? `Edit ${seg.macro} goal` : undefined
+                }
               />
             ))}
         </Svg>
