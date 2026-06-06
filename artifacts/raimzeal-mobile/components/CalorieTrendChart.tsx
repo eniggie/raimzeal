@@ -455,9 +455,14 @@ export function CalorieTrendChart({
           <Text
             style={{
               fontSize: 9,
-              fontWeight: "bold",
-              color: colors.warning,
+              fontWeight: labelInfo.valueText === "No data" ? "normal" : "bold",
+              color:
+                labelInfo.valueText === "No data"
+                  ? colors.mutedForeground
+                  : colors.warning,
               textAlign: "center",
+              fontStyle:
+                labelInfo.valueText === "No data" ? "italic" : "normal",
             }}
           >
             {labelInfo.valueText}
