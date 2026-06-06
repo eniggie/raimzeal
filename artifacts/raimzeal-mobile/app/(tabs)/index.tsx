@@ -325,11 +325,11 @@ export default function HomeScreen() {
                 >
                   <AnimatedPressable
                     onPress={(e) => {
+                      e.stopPropagation();
                       if (didLongPressRef.current) {
                         didLongPressRef.current = false;
                         return;
                       }
-                      e.stopPropagation();
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push(`/macro-goals?focus=${macroKey}`);
                     }}
