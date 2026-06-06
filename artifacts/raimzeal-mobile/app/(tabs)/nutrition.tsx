@@ -8952,7 +8952,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       date: editDate,
     }, histFinishSync);
     if (name !== oldName) {
-      syncMealName(log.id, name);
+      syncMealName(log.id, name, histFinishSync);
     }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
@@ -9790,7 +9790,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       date: editDate,
     }, rowFinishSync);
     if (name !== oldName) {
-      syncMealName(log.id, name);
+      syncMealName(log.id, name, rowFinishSync);
     }
     setShowEditSheet(false);
     onSaved?.(`${name} saved · ${savedCalories} kcal`);

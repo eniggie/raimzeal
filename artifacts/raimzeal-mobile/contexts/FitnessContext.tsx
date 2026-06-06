@@ -212,8 +212,9 @@ interface FitnessContextType extends AppState {
    * Propagate a name change to all meal log entries that are linked to `editedId`
    * via `sourceMealLogId` (i.e. the original entry and any siblings created by "Log Today").
    * Only updates entries that share an explicit ID linkage — never matches by name.
+   * `onSyncResult(false)` is called if the cloud upsert for any linked entry fails.
    */
-  syncMealName: (editedId: string, newName: string) => void;
+  syncMealName: (editedId: string, newName: string, onSyncResult?: (ok: boolean) => void) => void;
   addBodyMeasurement: (m: BodyMeasurement) => void;
   addOviaMessage: (msg: Omit<OviaMessage, "id" | "timestamp">) => void;
   updateWaterIntake: (glasses: number) => void;
@@ -684,7 +685,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const syncMealName = useCallback(
-    (editedId: string, newName: string) => {
+    (editedId: string, newName: string, onSyncResult?: (ok: boolean) => void) => {
       setState((prev) => {
         const edited = prev.mealLogs.find((m) => m.id === editedId);
         if (!edited) return prev;
@@ -721,11 +722,13 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session?.user) {
               const userId = session.user.id;
-              affected.forEach((m) => {
-                upsertMealLog(userId, { ...m, name: newName }).catch(() => {});
-              });
+              Promise.all(affected.map((m) => upsertMealLog(userId, { ...m, name: newName })))
+                .then(() => { setLastSyncedAt(new Date()); onSyncResult?.(true); })
+                .catch(() => onSyncResult?.(false));
+            } else {
+              onSyncResult?.(false);
             }
-          }).catch(() => {});
+          }).catch(() => onSyncResult?.(false));
         }
 
         return next;
