@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
   Flame, Droplets, Plus, Minus, ChevronRight, 
-  Dumbbell, MessageCircle, Users, Trophy, Zap, Crown, Heart, Snowflake,
-  Moon, Sun, Wind, BedDouble, Smartphone, X
+  Dumbbell, MessageCircle, Users, Trophy, Crown, Heart, Snowflake,
+  Moon, Sun, Wind, BedDouble, Smartphone, X,
+  UtensilsCrossed, ListChecks, Pill, ChefHat, Calculator
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from '@/lib/supabase';
@@ -110,12 +111,15 @@ export function Home({ state, onUpdateWater, onUpdateSettings }: HomeProps) {
   });
 
   const quickActions = [
-    { icon: Dumbbell, label: 'Workout', href: '/workouts', color: 'bg-primary/20 text-primary' },
-    { icon: MessageCircle, label: 'Ovia AI', href: '/coach', color: 'bg-secondary/20 text-secondary' },
-    { icon: Users, label: 'Community', href: '/community', color: 'bg-accent/20 text-accent' },
-    { icon: Zap, label: 'Programs', href: '/programs', color: 'bg-warning/20 text-warning' },
-    { icon: Wind, label: 'Breathe', href: '/breathing', color: 'bg-cyan-500/20 text-cyan-400' },
-    { icon: BedDouble, label: 'Sleep', href: '/sleep', color: 'bg-indigo-500/20 text-indigo-400' },
+    { icon: UtensilsCrossed, label: 'Nutrition',   href: '/nutrition',   color: 'bg-emerald-500/20 text-emerald-400' },
+    { icon: Dumbbell,        label: 'Workout',     href: '/workouts',    color: 'bg-primary/20 text-primary'         },
+    { icon: ListChecks,      label: 'Habits',      href: '/habits',      color: 'bg-teal-500/20 text-teal-400'       },
+    { icon: MessageCircle,   label: 'Ovia AI',     href: '/coach',       color: 'bg-secondary/20 text-secondary'     },
+    { icon: Wind,            label: 'Breathe',     href: '/breathing',   color: 'bg-cyan-500/20 text-cyan-400'       },
+    { icon: BedDouble,       label: 'Sleep',       href: '/sleep',       color: 'bg-indigo-500/20 text-indigo-400'   },
+    { icon: Pill,            label: 'Supplements', href: '/supplements', color: 'bg-violet-500/20 text-violet-400'   },
+    { icon: ChefHat,         label: 'Recipes',     href: '/recipes',     color: 'bg-amber-500/20 text-amber-400'     },
+    { icon: Users,           label: 'Community',   href: '/community',   color: 'bg-accent/20 text-accent'           },
   ];
 
   function dismissAndroidBanner() {
