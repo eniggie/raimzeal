@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
+import { useMacroGoals } from "@/contexts/MacroGoalsContext";
 
 /**
  * Route-level error boundary — Expo Router picks this up automatically.
@@ -100,6 +101,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, updateProfile } = useFitness();
+  const { goals: savedMacroGoals, setGoals: saveMacroGoals } = useMacroGoals();
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
   const [name, setName] = useState(user?.name ?? "");
@@ -566,6 +568,16 @@ export default function EditProfileScreen() {
               expanded={previewExpanded}
               onToggle={() => setPreviewExpanded((v) => !v)}
               colors={colors}
+              alreadyApplied={
+                renderedPreview.goals.calories === savedMacroGoals.calories &&
+                renderedPreview.goals.protein === savedMacroGoals.protein &&
+                renderedPreview.goals.carbs === savedMacroGoals.carbs &&
+                renderedPreview.goals.fat === savedMacroGoals.fat
+              }
+              onApply={() => {
+                saveMacroGoals(renderedPreview.goals);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
             />
           </Animated.View>
         )}
@@ -591,13 +603,25 @@ function MacroPreviewBanner({
   expanded,
   onToggle,
   colors,
+  alreadyApplied,
+  onApply,
 }: {
   preview: SuggestedGoalsResult;
   expanded: boolean;
   onToggle: () => void;
   colors: ReturnType<typeof useColors>;
+  alreadyApplied: boolean;
+  onApply: () => void;
 }) {
   const { goals, breakdown } = preview;
+  const [justApplied, setJustApplied] = useState(false);
+
+  function handleApply() {
+    onApply();
+    setJustApplied(true);
+    setTimeout(() => setJustApplied(false), 2000);
+  }
+
   return (
     <View
       style={[
@@ -639,6 +663,45 @@ function MacroPreviewBanner({
               ? ` · goal adjustment ${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`
               : ""}
           </Text>
+
+          {!alreadyApplied && (
+            <TouchableOpacity
+              onPress={handleApply}
+              activeOpacity={0.8}
+              style={[
+                styles.applyBtn,
+                {
+                  backgroundColor: justApplied
+                    ? "#22c55e18"
+                    : colors.primary + "18",
+                  borderColor: justApplied ? "#22c55e60" : colors.primary + "60",
+                },
+              ]}
+            >
+              <Ionicons
+                name={justApplied ? "checkmark-circle" : "flash-outline"}
+                size={14}
+                color={justApplied ? "#22c55e" : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.applyBtnText,
+                  { color: justApplied ? "#22c55e" : colors.primary },
+                ]}
+              >
+                {justApplied ? "Applied!" : "Apply these targets"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {alreadyApplied && (
+            <View style={styles.alreadyAppliedRow}>
+              <Ionicons name="checkmark-circle" size={13} color="#22c55e" />
+              <Text style={[styles.alreadyAppliedText, { color: "#22c55e" }]}>
+                These targets are already saved
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -825,6 +888,29 @@ const styles = StyleSheet.create({
   },
   macroPillLabel: {
     fontSize: 10,
+    fontFamily: "Inter_500Medium",
+  },
+  applyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  applyBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  alreadyAppliedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  alreadyAppliedText: {
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
 });
