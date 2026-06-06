@@ -4,6 +4,7 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
 
 const BBT_ACCENT = "#ec4899";
+const OVU_COLOR = "#f59e0b";
 
 const CHART_H = 260;
 const LEFT_PAD = 38;
@@ -22,6 +23,54 @@ export interface BBTPoint {
 function formatDate(s: string): string {
   const parts = s.split("-");
   return `${MONTHS[parseInt(parts[1]) - 1]} ${parseInt(parts[2])}`;
+}
+
+/**
+ * Detects the first day of a post-ovulatory thermal shift.
+ *
+ * Criteria (conservative, per sympto-thermal method):
+ *  - The 6-point baseline window must be 6 strictly consecutive cycle days
+ *    (no gaps). If any gap exists in the baseline, that candidate is skipped.
+ *  - The rise window (points[i], points[i+1], points[i+2]) must also be
+ *    3 strictly consecutive cycle days with no gaps.
+ *  - Each of the 3 rise days must have BBT ≥ (baseline mean + 0.2 °C).
+ *
+ * Returns the BBTPoint at the first day of the rise, or null if not detected
+ * or if data is insufficient.
+ */
+function detectOvulation(points: BBTPoint[]): BBTPoint | null {
+  if (points.length < 9) return null;
+
+  for (let i = 6; i <= points.length - 3; i++) {
+    const baselineWindow = points.slice(i - 6, i);
+
+    // Require the 6 baseline days to be strictly consecutive (no skipped days).
+    const baselineConsecutive = baselineWindow.every(
+      (p, idx) =>
+        idx === 0 || p.cycleDay === baselineWindow[idx - 1].cycleDay + 1
+    );
+    if (!baselineConsecutive) continue;
+
+    // Require the 3 rise days to be strictly consecutive.
+    const riseConsecutive =
+      points[i + 1].cycleDay === points[i].cycleDay + 1 &&
+      points[i + 2].cycleDay === points[i + 1].cycleDay + 1;
+    if (!riseConsecutive) continue;
+
+    const baseline =
+      baselineWindow.reduce((sum, p) => sum + p.bbt, 0) / baselineWindow.length;
+    const threshold = baseline + 0.2;
+
+    if (
+      points[i].bbt >= threshold &&
+      points[i + 1].bbt >= threshold &&
+      points[i + 2].bbt >= threshold
+    ) {
+      return points[i];
+    }
+  }
+
+  return null;
 }
 
 interface BBTChartProps {
@@ -74,6 +123,12 @@ export function BBTChart({ points }: BBTChartProps) {
     return ticks;
   })();
 
+  const ovulationPoint = detectOvulation(points);
+  const ovuX = ovulationPoint ? toX(ovulationPoint.cycleDay) : null;
+
+  const chartTopY = TOP_PAD;
+  const chartBottomY = TOP_PAD + drawH;
+
   return (
     <View>
       <Svg width={cardWidth} height={CHART_H}>
@@ -118,6 +173,31 @@ export function BBTChart({ points }: BBTChartProps) {
           </SvgText>
         ))}
 
+        {/* Ovulation marker — dashed vertical line */}
+        {ovuX !== null && (
+          <>
+            <Line
+              x1={ovuX}
+              y1={chartTopY - 4}
+              x2={ovuX}
+              y2={chartBottomY}
+              stroke={OVU_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="4,3"
+              opacity={0.9}
+            />
+            {/* Sun / sparkle icon above the line */}
+            <SvgText
+              x={ovuX}
+              y={chartTopY - 6}
+              fontSize={13}
+              textAnchor="middle"
+            >
+              ☀
+            </SvgText>
+          </>
+        )}
+
         {/* Connecting polyline */}
         <Polyline
           points={polylinePoints}
@@ -156,6 +236,30 @@ export function BBTChart({ points }: BBTChartProps) {
         })}
       </Svg>
 
+      {/* Ovulation annotation label + disclaimer */}
+      {ovulationPoint && (
+        <View
+          style={{
+            marginTop: 4,
+            marginBottom: 2,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: 10,
+            backgroundColor: OVU_COLOR + "18",
+            borderWidth: 1,
+            borderColor: OVU_COLOR + "55",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: OVU_COLOR }}>
+            ☀ Likely ovulation ~D{ovulationPoint.cycleDay}
+          </Text>
+          <Text style={{ fontSize: 10, color: OVU_COLOR + "BB", marginTop: 2, textAlign: "center" }}>
+            Estimate only — confirm with your healthcare provider
+          </Text>
+        </View>
+      )}
+
       {/* Tooltip pill */}
       {tooltip ? (
         <View style={{ alignItems: "center", marginTop: 6 }}>
@@ -182,11 +286,11 @@ export function BBTChart({ points }: BBTChartProps) {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={{ height: 30 }} />
+        <View style={{ height: ovulationPoint ? 0 : 30 }} />
       )}
 
       {/* Legend */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
         <View style={{ width: 20, height: 2, backgroundColor: BBT_ACCENT, borderRadius: 1, opacity: 0.8 }} />
         <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Basal Body Temperature (°C)</Text>
       </View>
