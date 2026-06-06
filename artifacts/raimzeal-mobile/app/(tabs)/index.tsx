@@ -25,6 +25,7 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { MacroRing } from "@/components/MacroRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
+import { QuickGoalSheet, QuickGoalMacro } from "@/components/QuickGoalSheet";
 
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
@@ -150,7 +151,8 @@ export default function HomeScreen() {
   const waterGlasses = getTodayWaterGlasses();
   const unit = settings.weightUnit;
 
-  const { goals: macroGoals } = useMacroGoals();
+  const { goals: macroGoals, setGoals } = useMacroGoals();
+  const [quickGoalMacro, setQuickGoalMacro] = useState<QuickGoalMacro | null>(null);
   const calorieGoal = macroGoals.calories;
 
   const todayStr = new Date().toISOString().split("T")[0];
@@ -322,6 +324,10 @@ export default function HomeScreen() {
                       e.stopPropagation();
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       router.push(`/macro-goals?focus=${macroKey}`);
+                    }}
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setQuickGoalMacro(macroKey as QuickGoalMacro);
                     }}
                     scale={0.92}
                     style={{ alignItems: "center" }}
@@ -838,6 +844,19 @@ export default function HomeScreen() {
       <Text style={{ fontSize: 10, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 24, paddingVertical: 14, lineHeight: 15 }}>
         RAIMZEAL is not here to replace any doctor, dietitian, or healthcare professional — we exist to complement their work and spread health awareness.
       </Text>
+
+      <QuickGoalSheet
+        visible={quickGoalMacro !== null}
+        macro={quickGoalMacro}
+        currentGoal={quickGoalMacro !== null ? macroGoals[quickGoalMacro] : 0}
+        onClose={() => setQuickGoalMacro(null)}
+        onSave={(value) => {
+          if (quickGoalMacro !== null) {
+            setGoals({ ...macroGoals, [quickGoalMacro]: value });
+          }
+          setQuickGoalMacro(null);
+        }}
+      />
     </ScrollView>
   );
 }
