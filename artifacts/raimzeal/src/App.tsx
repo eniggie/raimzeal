@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { useAppState, type UserProfile } from '@/lib/store';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SyncStatusProvider } from '@/contexts/SyncStatusContext';
+import { supabaseConfigured } from '@/lib/supabase';
 import { SyncIndicator } from '@/components/SyncIndicator';
 
 import { Onboarding } from '@/pages/Onboarding';
@@ -201,7 +202,7 @@ function AppContent() {
 
   // Authenticated + verified — show the app
   return (
-    <SyncStatusProvider lastSyncedAt={lastSyncedAt} loggedIn={!!session}>
+    <SyncStatusProvider lastSyncedAt={lastSyncedAt} loggedIn={!!session} syncConfigured={supabaseConfigured}>
     <>
       {/* Top loading bar — visible while initial cloud data is being fetched */}
       {session && !cloudSynced && (

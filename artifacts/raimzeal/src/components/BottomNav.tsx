@@ -3,7 +3,6 @@ import { Home, Dumbbell, BarChart3, Bot, User, Utensils, Users } from 'lucide-re
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useSyncStatus } from '@/contexts/SyncStatusContext';
-import { supabaseConfigured } from '@/lib/supabase';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
@@ -15,16 +14,9 @@ const navItems = [
   { path: '/settings', icon: User, label: 'Profile' },
 ];
 
-const STALE_MS = 30 * 60 * 1000;
-
 export function BottomNav() {
   const [location] = useLocation();
-  const { lastSyncedAt, loggedIn } = useSyncStatus();
-
-  const isStale =
-    supabaseConfigured &&
-    loggedIn &&
-    (!lastSyncedAt || Date.now() - lastSyncedAt.getTime() > STALE_MS);
+  const { isStale } = useSyncStatus();
 
   return (
     /*
