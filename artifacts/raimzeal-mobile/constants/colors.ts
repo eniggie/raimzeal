@@ -1,60 +1,60 @@
 /**
- * Design tokens — RAIMZEAL Luxury Edition
+ * Design tokens — RAIMZEAL Punchy Edition
  *
  * Palette:
- * --primary:   Luxury Emerald Green  #2E8B57  (HSL 147 50% 36%)
- * --secondary: Luxury Antique Gold   #C9A84C  (HSL  44 54% 54%)
- * --accent:    Luxury Saffron Yellow #E8B84B  (HSL  42 77% 60%)
- * --background: #0a0a0b  (near black)
- * --card:       #111113
- * --muted:      #222225
- * --border:     #1d1d20
+ * --primary:   Electric Spring Green  #00FF7F  (HSL 153 100% 50%)
+ * --secondary: Electric Amber         #FFB800  (HSL  44 100% 50%)
+ * --accent:    Electric Violet        #BF00FF  (HSL 285 100% 50%)
+ * --background: #070709  (deep black)
+ * --card:       #0d0d10
+ * --muted:      #1a1a1f
+ * --border:     #18181d
  */
 
 const colors = {
   light: {
     text: "#0a0a0a",
-    tint: "#2E8B57",
+    tint: "#00c060",
     background: "#ffffff",
     foreground: "#0a0a0a",
-    card: "#f4f4f5",
+    card: "#f0f0f2",
     cardForeground: "#0a0a0a",
-    primary: "#2E8B57",
-    primaryForeground: "#ffffff",
-    secondary: "#C9A84C",
+    primary: "#00c060",
+    primaryForeground: "#0a0a0a",
+    secondary: "#e6a600",
     secondaryForeground: "#0a0a0a",
-    muted: "#f4f4f5",
-    mutedForeground: "#71717a",
-    accent: "#8B31C7",
+    muted: "#ebebee",
+    mutedForeground: "#606068",
+    accent: "#9900cc",
     accentForeground: "#ffffff",
-    destructive: "#dc2828",
+    destructive: "#ff1a1a",
     destructiveForeground: "#ffffff",
-    success: "#21c45d",
-    warning: "#f59f0a",
-    border: "#e4e4e7",
-    input: "#e4e4e7",
+    success: "#00c060",
+    warning: "#e6a600",
+    border: "#d8d8de",
+    input: "#d8d8de",
   },
   dark: {
     text: "#fafafa",
-    tint: "#2E8B57",
-    background: "#0a0a0b",
+    tint: "#00FF7F",
+    background: "#070709",
     foreground: "#fafafa",
-    card: "#111113",
+    card: "#0d0d10",
     cardForeground: "#fafafa",
-    primary: "#2E8B57",
-    primaryForeground: "#fafafa",
-    secondary: "#C9A84C",
-    secondaryForeground: "#0a0a0b",
-    muted: "#222225",
-    mutedForeground: "#878792",
-    accent: "#8B31C7",
-    accentForeground: "#fafafa",
-    destructive: "#dc2828",
-    destructiveForeground: "#fafafa",
-    success: "#21c45d",
-    warning: "#f59f0a",
-    border: "#1d1d20",
-    input: "#222225",
+    primary: "#00FF7F",
+    primaryForeground: "#070709",
+    secondary: "#FFB800",
+    secondaryForeground: "#070709",
+    muted: "#1a1a1f",
+    mutedForeground: "#8a8a96",
+    accent: "#BF00FF",
+    accentForeground: "#ffffff",
+    destructive: "#FF2020",
+    destructiveForeground: "#ffffff",
+    success: "#00FF7F",
+    warning: "#FFB800",
+    border: "#18181d",
+    input: "#1a1a1f",
   },
   radius: 12,
 };
