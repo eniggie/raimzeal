@@ -300,7 +300,10 @@ export function CalorieTrendChart({
     if (highlightedDate) {
       const highlightedDay = days.find((d) => d.date === highlightedDate);
       if (!highlightedDay) return;
-      const nextLabel = `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`;
+      const nextLabel =
+        highlightedDay.value === 0
+          ? `${formatPillDate(highlightedDate)} · No data`
+          : `${formatPillDate(highlightedDate)} · ${highlightedDay.value.toLocaleString()} ${unit}`;
       if (pillLabel === "") {
         setPillLabel(nextLabel);
         return;
