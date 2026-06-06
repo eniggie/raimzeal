@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness, BodyMeasurement } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 
 function generateId(): string {
   return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -68,6 +70,7 @@ export default function BodyMeasurementsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ add?: string }>();
   const { bodyMeasurements, addBodyMeasurement, user, settings } = useFitness();
+  const { syncStatus, startSync, finishSync } = useSyncIndicator();
 
   const { user: authUser } = useAuth();
 
@@ -124,7 +127,13 @@ export default function BodyMeasurementsScreen() {
       arms: fields.arms ? parseFloat(fields.arms) || undefined : undefined,
       thighs: fields.thighs ? parseFloat(fields.thighs) || undefined : undefined,
     };
-    addBodyMeasurement(measurement);
+    startSync();
+    try {
+      addBodyMeasurement(measurement);
+      finishSync(true);
+    } catch {
+      finishSync(false);
+    }
     setShowModal(false);
     setSaving(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -516,6 +525,7 @@ export default function BodyMeasurementsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <SyncIndicator status={syncStatus} />
     </View>
   );
 }

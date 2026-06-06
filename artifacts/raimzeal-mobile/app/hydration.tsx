@@ -15,6 +15,8 @@ import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
+import { SyncIndicator } from "@/components/SyncIndicator";
+import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 
 const BASE_GOAL = 10;
 const ML_PER_GLASS = 250;
@@ -74,6 +76,7 @@ export default function HydrationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { waterIntake, getTodayWaterGlasses, updateWaterIntake, workoutLogs, user } = useFitness();
+  const { syncStatus, startSync, finishSync } = useSyncIndicator();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const today = todayStr();
@@ -97,8 +100,14 @@ export default function HydrationScreen() {
 
   const handleAdd = useCallback((amount: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    updateWaterIntake(Math.max(0, currentGlasses + amount));
-  }, [currentGlasses, updateWaterIntake]);
+    startSync();
+    try {
+      updateWaterIntake(Math.max(0, currentGlasses + amount));
+      finishSync(true);
+    } catch {
+      finishSync(false);
+    }
+  }, [currentGlasses, updateWaterIntake, startSync, finishSync]);
 
   const statusColor =
     pct >= 1 ? "#10b981" :
@@ -113,8 +122,9 @@ export default function HydrationScreen() {
     "Start hydrating — you need water!";
 
   return (
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
     <ScrollView
-      style={[styles.screen, { backgroundColor: colors.background }]}
+      style={{ flex: 1 }}
       contentContainerStyle={[
         styles.content,
         { paddingTop: topPad + 16, paddingBottom: Platform.OS === "web" ? 40 + 84 : 110 },
@@ -283,6 +293,8 @@ export default function HydrationScreen() {
         ))}
       </GlassCard>
     </ScrollView>
+    <SyncIndicator status={syncStatus} />
+    </View>
   );
 }
 
