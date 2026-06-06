@@ -1386,6 +1386,8 @@ export default function NutritionScreen() {
   const [macrosFromMemory, setMacrosFromMemory] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MealType>("lunch");
   const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL);
+  // true while calories has been auto-filled from macros (not typed by the user)
+  const manualCaloriesAutoFilled = useRef(false);
   const [manualMeal, setManualMeal] = useState<MealType>("snack");
   const [activeTab, setActiveTab] = useState<"today" | "history">("today");
 
@@ -4214,6 +4216,7 @@ export default function NutritionScreen() {
 
   function handleManualEntry() {
     setManualForm(EMPTY_MANUAL);
+    manualCaloriesAutoFilled.current = false;
     setManualMeal("snack");
     setManualMacrosPrefilledFor(null);
     setShowManualEntry(true);
@@ -6748,13 +6751,26 @@ export default function NutritionScreen() {
               <MacroInput
                 label="Calories"
                 value={manualForm.calories}
-                onChangeText={(v) => setManualForm((f) => ({ ...f, calories: v }))}
+                onChangeText={(v) => {
+                  manualCaloriesAutoFilled.current = false;
+                  setManualForm((f) => ({ ...f, calories: v }));
+                }}
                 colors={colors}
               />
               <MacroInput
                 label="Protein (g)"
                 value={manualForm.protein}
-                onChangeText={(v) => setManualForm((f) => ({ ...f, protein: v }))}
+                onChangeText={(v) => setManualForm((f) => {
+                  const updated = { ...f, protein: v };
+                  if (manualCaloriesAutoFilled.current || updated.calories === "") {
+                    const p = parseFloat(v) || 0;
+                    const c = parseFloat(updated.carbs) || 0;
+                    const ft = parseFloat(updated.fat) || 0;
+                    const kcal = p * 4 + c * 4 + ft * 9;
+                    if (kcal > 0) { manualCaloriesAutoFilled.current = true; return { ...updated, calories: String(Math.round(kcal)) }; }
+                  }
+                  return updated;
+                })}
                 colors={colors}
               />
             </View>
@@ -6762,13 +6778,33 @@ export default function NutritionScreen() {
               <MacroInput
                 label="Carbs (g)"
                 value={manualForm.carbs}
-                onChangeText={(v) => setManualForm((f) => ({ ...f, carbs: v }))}
+                onChangeText={(v) => setManualForm((f) => {
+                  const updated = { ...f, carbs: v };
+                  if (manualCaloriesAutoFilled.current || updated.calories === "") {
+                    const p = parseFloat(updated.protein) || 0;
+                    const c = parseFloat(v) || 0;
+                    const ft = parseFloat(updated.fat) || 0;
+                    const kcal = p * 4 + c * 4 + ft * 9;
+                    if (kcal > 0) { manualCaloriesAutoFilled.current = true; return { ...updated, calories: String(Math.round(kcal)) }; }
+                  }
+                  return updated;
+                })}
                 colors={colors}
               />
               <MacroInput
                 label="Fat (g)"
                 value={manualForm.fat}
-                onChangeText={(v) => setManualForm((f) => ({ ...f, fat: v }))}
+                onChangeText={(v) => setManualForm((f) => {
+                  const updated = { ...f, fat: v };
+                  if (manualCaloriesAutoFilled.current || updated.calories === "") {
+                    const p = parseFloat(updated.protein) || 0;
+                    const c = parseFloat(updated.carbs) || 0;
+                    const ft = parseFloat(v) || 0;
+                    const kcal = p * 4 + c * 4 + ft * 9;
+                    if (kcal > 0) { manualCaloriesAutoFilled.current = true; return { ...updated, calories: String(Math.round(kcal)) }; }
+                  }
+                  return updated;
+                })}
                 colors={colors}
               />
             </View>
@@ -8562,6 +8598,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   const [editBase, setEditBase] = useState({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
   const [editGrams, setEditGrams] = useState<number | undefined>(log.amountGrams);
   const editGramsRef = useRef<number | undefined>(log.amountGrams);
+  const editCaloriesAutoFilled = useRef(false);
   const [editGramsText, setEditGramsText] = useState(
     log.amountGrams !== undefined
       ? (Number.isInteger(log.amountGrams) ? String(log.amountGrams) : log.amountGrams.toFixed(1))
@@ -8574,6 +8611,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
   useEffect(() => {
     if (showEditSheet) return;
+    editCaloriesAutoFilled.current = false;
     setEditForm({
       name: log.name,
       calories: String(log.calories),
@@ -8722,7 +8760,27 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
   }
 
   function handleMacroDirectEdit(field: 'calories' | 'protein' | 'carbs' | 'fat', text: string) {
-    setEditForm(f => ({ ...f, [field]: text }));
+    if (field === 'calories') {
+      editCaloriesAutoFilled.current = false;
+    }
+    setEditForm(f => {
+      const updated = { ...f, [field]: text };
+      if (field !== 'calories' && (editCaloriesAutoFilled.current || f.calories === "")) {
+        const n = parseFloat(text);
+        if (!isNaN(n) && n >= 0) {
+          const p = field === 'protein' ? n : (parseFloat(f.protein) || 0);
+          const c = field === 'carbs' ? n : (parseFloat(f.carbs) || 0);
+          const ft = field === 'fat' ? n : (parseFloat(f.fat) || 0);
+          const kcal = p * 4 + c * 4 + ft * 9;
+          if (kcal > 0) {
+            editCaloriesAutoFilled.current = true;
+            const caloriesStr = String(Math.round(kcal * editServings));
+            updated.calories = caloriesStr;
+          }
+        }
+      }
+      return updated;
+    });
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
       const baseValue = editServings > 0 ? n / editServings : n;
@@ -9305,11 +9363,13 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   );
   const [editShowPer100g, setEditShowPer100g] = useState(false);
   const perGramRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const editCaloriesAutoFilled = useRef(false);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
 
   useEffect(() => {
     if (showEditSheet) return;
+    editCaloriesAutoFilled.current = false;
     setEditForm({
       name: log.name,
       calories: String(log.calories),
@@ -9461,7 +9521,26 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
   }
 
   function handleMacroDirectEdit(field: 'calories' | 'protein' | 'carbs' | 'fat', text: string) {
-    setEditForm(f => ({ ...f, [field]: text }));
+    if (field === 'calories') {
+      editCaloriesAutoFilled.current = false;
+    }
+    setEditForm(f => {
+      const updated = { ...f, [field]: text };
+      if (field !== 'calories' && (editCaloriesAutoFilled.current || f.calories === "")) {
+        const n = parseFloat(text);
+        if (!isNaN(n) && n >= 0) {
+          const p = field === 'protein' ? n : (parseFloat(f.protein) || 0);
+          const c = field === 'carbs' ? n : (parseFloat(f.carbs) || 0);
+          const ft = field === 'fat' ? n : (parseFloat(f.fat) || 0);
+          const kcal = p * 4 + c * 4 + ft * 9;
+          if (kcal > 0) {
+            editCaloriesAutoFilled.current = true;
+            updated.calories = String(Math.round(kcal * editServings));
+          }
+        }
+      }
+      return updated;
+    });
     const n = parseFloat(text);
     if (!isNaN(n) && n >= 0) {
       const baseValue = editServings > 0 ? n / editServings : n;
