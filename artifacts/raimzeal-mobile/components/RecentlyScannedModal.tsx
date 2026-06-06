@@ -68,6 +68,7 @@ interface ScanRowProps {
   onLongPress: () => void;
   onRemove: () => void;
   onToggle100g: () => void;
+  onUseMacroTotal?: (correctedCalories: number) => void;
   runHintAnimation?: boolean;
 }
 
@@ -80,6 +81,7 @@ function ScanRow({
   onLongPress,
   onRemove,
   onToggle100g,
+  onUseMacroTotal,
   runHintAnimation,
 }: ScanRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
@@ -201,6 +203,67 @@ function ScanRow({
               1 serving = {scan.food.servingLabel}
             </Text>
           ) : null}
+          {(() => {
+            const macroKcal = Math.round(
+              displayProtein * 4 + displayCarbs * 4 + displayFat * 9
+            );
+            const hasAnyMacro =
+              displayProtein > 0 || displayCarbs > 0 || displayFat > 0;
+            const mismatch =
+              hasAnyMacro &&
+              displayCalories > 0 &&
+              Math.abs(macroKcal - displayCalories) / displayCalories > 0.2;
+            if (!hasAnyMacro) return null;
+            return (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  marginTop: 2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontFamily: "Inter_400Regular",
+                    color: mismatch ? "#f59e0b" : colors.mutedForeground,
+                  }}
+                >
+                  {`~${macroKcal} kcal from macros`}
+                  {mismatch ? "  ⚠" : ""}
+                </Text>
+                {mismatch && onUseMacroTotal && (
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      onUseMacroTotal(macroKcal);
+                    }}
+                    style={{
+                      backgroundColor: "#f59e0b22",
+                      borderRadius: 6,
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
+                      borderWidth: 1,
+                      borderColor: "#f59e0b66",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#f59e0b",
+                        fontSize: 11,
+                        fontFamily: "Inter_600SemiBold",
+                      }}
+                    >
+                      Use macro total
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
           <View style={styles.itemBottom}>
             <TouchableOpacity
               activeOpacity={canToggle ? 0.7 : 1}
@@ -649,6 +712,19 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                     onLongPress={() => handleLongPress(scan)}
                     onRemove={() => handleRemove(scan.barcode)}
                     runHintAnimation={index === 0 && runSwipeHint}
+                    onUseMacroTotal={(correctedCals) => {
+                      const updatedFood: typeof scan.food = showing100g && scan.food.nutrients100g
+                        ? {
+                            ...scan.food,
+                            nutrients100g: {
+                              ...scan.food.nutrients100g,
+                              calories: correctedCals,
+                            },
+                          }
+                        : { ...scan.food, calories: correctedCals };
+                      onFoodFound(updatedFood, showing100g);
+                      handleClose();
+                    }}
                     onToggle100g={() => {
                       const nowPer100g = !per100gScans.has(scan.barcode);
                       setPer100gScans((prev) => {
