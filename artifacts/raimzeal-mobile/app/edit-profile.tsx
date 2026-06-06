@@ -145,17 +145,26 @@ export default function EditProfileScreen() {
     });
   }, [age, height, weight, fitnessLevel, goals, units, biologicalSex, user]);
 
-  // Keep the last non-null preview so the banner stays mounted during exit animation
-  const lastPreviewRef = useRef<typeof livePreview>(livePreview);
-  if (livePreview !== null) lastPreviewRef.current = livePreview;
+  // `renderedPreview` is what actually drives the banner render.
+  // It is set to the latest non-null preview immediately on entry, and cleared
+  // only after the exit animation completes — so the banner stays mounted (and
+  // animatable) during the fade-out but takes zero layout space once fully gone.
+  const [renderedPreview, setRenderedPreview] = useState<typeof livePreview>(livePreview);
 
   // Animated values for fade + slide transition
   const bannerOpacity = useRef(new Animated.Value(livePreview ? 1 : 0)).current;
   const bannerTranslateY = useRef(new Animated.Value(livePreview ? 0 : 10)).current;
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     const visible = livePreview !== null;
-    Animated.parallel([
+
+    // If appearing: update displayed data first, then animate in
+    if (visible) setRenderedPreview(livePreview);
+
+    // Cancel any in-flight animation before starting a new one
+    animRef.current?.stop();
+    animRef.current = Animated.parallel([
       Animated.timing(bannerOpacity, {
         toValue: visible ? 1 : 0,
         duration: 200,
@@ -166,8 +175,13 @@ export default function EditProfileScreen() {
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [livePreview, bannerOpacity, bannerTranslateY]);
+    ]);
+    animRef.current.start(({ finished }) => {
+      // Unmount only after the exit animation fully completes
+      if (finished && !visible) setRenderedPreview(null);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [livePreview]);
 
   // Null guard: profile not yet loaded (context still hydrating)
   if (!user) {
@@ -539,7 +553,7 @@ export default function EditProfileScreen() {
         </View>
 
         {/* Live macro suggestion preview — fades/slides in and out */}
-        {lastPreviewRef.current && (
+        {renderedPreview && (
           <Animated.View
             style={{
               opacity: bannerOpacity,
@@ -548,7 +562,7 @@ export default function EditProfileScreen() {
             pointerEvents={livePreview ? "auto" : "none"}
           >
             <MacroPreviewBanner
-              preview={lastPreviewRef.current}
+              preview={renderedPreview}
               expanded={previewExpanded}
               onToggle={() => setPreviewExpanded((v) => !v)}
               colors={colors}
