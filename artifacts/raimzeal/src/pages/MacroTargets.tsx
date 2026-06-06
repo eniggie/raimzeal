@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Target, RotateCcw, Save, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronDown, Target, RotateCcw, Save, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -58,6 +58,45 @@ function computeMacrosFromProfile(user: UserProfile): { calories: number; protei
   return { calories, protein, carbs, fat };
 }
 
+interface MacroBreakdown {
+  bmr: number;
+  activityMultiplier: number;
+  activityLabel: string;
+  tdee: number;
+  calorieMultiplier: number;
+  adjustmentLabel: string;
+  targetCalories: number;
+}
+
+function computeBreakdownFromProfile(user: UserProfile): MacroBreakdown {
+  let weightKg = user.weight || 70;
+  let heightCm = user.height || 170;
+  const age = user.age || 25;
+
+  if (user.units !== 'metric') {
+    weightKg = weightKg * 0.453592;
+    heightCm = heightCm * 2.54;
+  }
+
+  const bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age - 78);
+
+  const level = user.fitnessLevel ?? 'beginner';
+  const activityMultiplier = level === 'advanced' ? 1.8 : level === 'intermediate' ? 1.6 : 1.4;
+  const activityLabel = level === 'advanced' ? 'Advanced' : level === 'intermediate' ? 'Intermediate' : 'Beginner';
+
+  const tdee = Math.round(bmr * activityMultiplier);
+
+  const goals = user.goals ?? [];
+  const wantsLose = goals.includes('lose_weight');
+  const wantsGain = goals.includes('build_muscle') || goals.includes('gain_weight');
+  const calorieMultiplier = wantsLose ? 0.85 : wantsGain ? 1.15 : 1.0;
+  const adjustmentLabel = wantsLose ? 'Weight loss (−15%)' : wantsGain ? 'Muscle gain (+15%)' : 'Maintain weight';
+
+  const targetCalories = Math.round(tdee * calorieMultiplier);
+
+  return { bmr, activityMultiplier, activityLabel, tdee, calorieMultiplier, adjustmentLabel, targetCalories };
+}
+
 interface MacroTargetsProps {
   user?: UserProfile | null;
 }
@@ -69,6 +108,7 @@ export function MacroTargets({ user }: MacroTargetsProps) {
   const [saving, setSaving] = useState(false);
   const [isManual, setIsManual] = useState(false);
   const [form, setForm] = useState({ calories: '', protein: '', carbs: '', fat: '' });
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const hasUserEdited = useRef(false);
 
   useEffect(() => {
@@ -156,6 +196,11 @@ export function MacroTargets({ user }: MacroTargetsProps) {
     [user?.age, user?.weight, user?.height, user?.fitnessLevel, user?.units, user?.goals],
   );
 
+  const liveBreakdown = useMemo(
+    () => (user ? computeBreakdownFromProfile(user) : null),
+    [user?.age, user?.weight, user?.height, user?.fitnessLevel, user?.units, user?.goals],
+  );
+
   // Re-seed form whenever the live suggestion changes, but only when in auto mode
   // and the user hasn't started typing their own values yet.
   useEffect(() => {
@@ -219,14 +264,62 @@ export function MacroTargets({ user }: MacroTargetsProps) {
                 <div className="flex items-center gap-2 mb-1">
                   <Target className="w-4 h-4 text-primary" />
                   <span className="text-sm font-semibold">
-                    {displayMacros.source === 'computed' ? 'Auto-calculated' : 'Manually set'}
+                    {displayMacros.source === 'computed' ? 'Suggested for you' : 'Manually set'}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {displayMacros.source === 'computed'
-                    ? 'These targets are calculated using the Mifflin-St Jeor formula based on your profile height, weight, age, activity level, and goals.'
+                    ? 'Calculated from your profile using the Mifflin-St Jeor formula. Updates live as you change your profile.'
                     : 'You have manually set these targets. Reset to auto-compute from your profile.'}
                 </p>
+
+                {displayMacros.source === 'computed' && liveBreakdown && (
+                  <>
+                    <button
+                      onClick={() => setShowBreakdown(v => !v)}
+                      className="mt-3 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showBreakdown ? 'rotate-180' : ''}`} />
+                      {showBreakdown ? 'Hide' : 'Show'} how this was calculated
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {showBreakdown && (
+                        <motion.div
+                          key="breakdown"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.22, ease: 'easeInOut' }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-3 rounded-lg border border-muted/40 overflow-hidden text-xs">
+                            <div className="flex justify-between items-center px-3 py-2 border-b border-muted/30">
+                              <span className="text-muted-foreground">BMR (Mifflin-St Jeor)</span>
+                              <span className="font-semibold tabular-nums">{liveBreakdown.bmr.toLocaleString()} kcal</span>
+                            </div>
+                            <div className="flex justify-between items-center px-3 py-2 border-b border-muted/30">
+                              <span className="text-muted-foreground">Activity — {liveBreakdown.activityLabel}</span>
+                              <span className="font-semibold tabular-nums">×{liveBreakdown.activityMultiplier}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-3 py-2 border-b border-muted/30 bg-muted/20">
+                              <span className="font-medium">TDEE</span>
+                              <span className="font-bold tabular-nums">{liveBreakdown.tdee.toLocaleString()} kcal</span>
+                            </div>
+                            <div className="flex justify-between items-center px-3 py-2 border-b border-muted/30">
+                              <span className="text-muted-foreground">Goal — {liveBreakdown.adjustmentLabel}</span>
+                              <span className="font-semibold tabular-nums">×{liveBreakdown.calorieMultiplier}</span>
+                            </div>
+                            <div className="flex justify-between items-center px-3 py-2 bg-primary/10">
+                              <span className="font-semibold text-primary">Target calories</span>
+                              <span className="font-bold text-primary tabular-nums">{liveBreakdown.targetCalories.toLocaleString()} kcal</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
+                )}
               </Card>
             )}
 
