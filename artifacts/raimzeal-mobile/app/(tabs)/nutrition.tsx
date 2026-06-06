@@ -5217,6 +5217,10 @@ export default function NutritionScreen() {
                         goal={PROTEIN_GOAL}
                         color={colors.secondary}
                         isHighlighted={highlightedMacro === "protein"}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          router.push("/macro-goals?focus=protein");
+                        }}
                       />
                       <MacroBar
                         label="Carbs"
@@ -5224,6 +5228,10 @@ export default function NutritionScreen() {
                         goal={CARBS_GOAL}
                         color={colors.warning}
                         isHighlighted={highlightedMacro === "carbs"}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          router.push("/macro-goals?focus=carbs");
+                        }}
                       />
                       <MacroBar
                         label="Fat"
@@ -5231,6 +5239,10 @@ export default function NutritionScreen() {
                         goal={FAT_GOAL}
                         color={colors.accent}
                         isHighlighted={highlightedMacro === "fat"}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          router.push("/macro-goals?focus=fat");
+                        }}
                       />
                     </View>
                   </View>
@@ -8515,12 +8527,14 @@ function MacroBar({
   goal,
   color,
   isHighlighted = false,
+  onPress,
 }: {
   label: string;
   value: number;
   goal: number;
   color: string;
   isHighlighted?: boolean;
+  onPress?: () => void;
 }) {
   const colors = useColors();
   const fillRatio = Math.min(1, Math.max(0, value / goal));
@@ -8572,54 +8586,61 @@ function MacroBar({
   const animatedShadowOpacity = isOver ? glowAnim : undefined;
 
   return (
-    <Animated.View
-      style={[
-        styles.macroBarContainer,
-        {
-          backgroundColor: highlightAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: ["transparent", color + "18"],
-          }),
-          borderRadius: 8,
-          paddingHorizontal: 4,
-        },
-      ]}
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
     >
-      <View style={styles.macroBarHeader}>
-        <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>
-          {label}
-        </Text>
-        {badge !== null && (
-          <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
-            <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>
-              {badge === "low" ? "Low" : "Over"}
-            </Text>
-          </View>
-        )}
-        <Text style={[styles.macroBarValue, { color: colors.foreground }]}>
-          {value}/{goal}g
-        </Text>
-      </View>
       <Animated.View
         style={[
-          styles.macroTrackWrapper,
-          isOver && {
-            shadowColor: colors.destructive,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: animatedShadowOpacity,
-            shadowRadius: 7,
-            elevation: 6,
+          styles.macroBarContainer,
+          {
+            backgroundColor: highlightAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ["transparent", color + "18"],
+            }),
+            borderRadius: 8,
+            paddingHorizontal: 4,
           },
         ]}
       >
-        <View style={[styles.macroTrack, { backgroundColor: isOver ? colors.destructive + "30" : colors.muted }]}>
-          <View style={styles.macroFlex}>
-            <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: isOver ? colors.destructive : color }]} />
-            <View style={{ flex: 1 - fillRatio }} />
-          </View>
+        <View style={styles.macroBarHeader}>
+          <Text style={[styles.macroBarLabel, { color: colors.mutedForeground }]}>
+            {label}
+          </Text>
+          {badge !== null && (
+            <View style={[styles.historyMacroBadge, { backgroundColor: badgeColor + "22", borderColor: badgeColor + "66" }]}>
+              <Text style={[styles.historyMacroBadgeText, { color: badgeColor }]}>
+                {badge === "low" ? "Low" : "Over"}
+              </Text>
+            </View>
+          )}
+          <Text style={[styles.macroBarValue, { color: colors.foreground }]}>
+            {value}/{goal}g
+          </Text>
         </View>
+        <Animated.View
+          style={[
+            styles.macroTrackWrapper,
+            isOver && {
+              shadowColor: colors.destructive,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: animatedShadowOpacity,
+              shadowRadius: 7,
+              elevation: 6,
+            },
+          ]}
+        >
+          <View style={[styles.macroTrack, { backgroundColor: isOver ? colors.destructive + "30" : colors.muted }]}>
+            <View style={styles.macroFlex}>
+              <View style={[styles.macroFill, { flex: fillRatio, backgroundColor: isOver ? colors.destructive : color }]} />
+              <View style={{ flex: 1 - fillRatio }} />
+            </View>
+          </View>
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+    </TouchableOpacity>
   );
 }
 
