@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Target, RotateCcw, Save, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -69,6 +69,7 @@ export function MacroTargets({ user }: MacroTargetsProps) {
   const [saving, setSaving] = useState(false);
   const [isManual, setIsManual] = useState(false);
   const [form, setForm] = useState({ calories: '', protein: '', carbs: '', fat: '' });
+  const hasUserEdited = useRef(false);
 
   useEffect(() => {
     loadMacros();
@@ -135,6 +136,7 @@ export function MacroTargets({ user }: MacroTargetsProps) {
       if (!session) return;
       await fetch('/api/user/macros', { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } });
       setIsManual(false);
+      hasUserEdited.current = false;
       await loadMacros();
       toast({ title: 'Reverted to auto-computed targets' });
     } catch {
@@ -148,6 +150,18 @@ export function MacroTargets({ user }: MacroTargetsProps) {
     () => (user ? computeMacrosFromProfile(user) : null),
     [user?.age, user?.weight, user?.height, user?.fitnessLevel, user?.units, user?.goals],
   );
+
+  // Re-seed form whenever the live suggestion changes, but only when in auto mode
+  // and the user hasn't started typing their own values yet.
+  useEffect(() => {
+    if (!liveComputed || isManual || hasUserEdited.current) return;
+    setForm({
+      calories: String(liveComputed.calories),
+      protein: String(liveComputed.protein),
+      carbs: String(liveComputed.carbs),
+      fat: String(liveComputed.fat),
+    });
+  }, [liveComputed, isManual]);
 
   const displayMacros = useMemo(() => {
     if (!macros) return null;
@@ -221,7 +235,10 @@ export function MacroTargets({ user }: MacroTargetsProps) {
                     <Input
                       type="number"
                       value={form[key]}
-                      onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
+                      onChange={e => {
+                        hasUserEdited.current = true;
+                        setForm(prev => ({ ...prev, [key]: e.target.value }));
+                      }}
                       className="h-9"
                     />
                   </div>
