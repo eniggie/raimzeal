@@ -533,9 +533,19 @@ export default function MacroGoalsScreen() {
             >
               <View style={styles.fieldLabelRow}>
                 <View style={[styles.fieldDot, { backgroundColor: field.color }]} />
-                <Text style={[styles.fieldLabel, { color: isHighlighted ? field.color : colors.mutedForeground }]}>
+                <Animated.Text
+                  style={[
+                    styles.fieldLabel,
+                    {
+                      color: isHighlighted ? field.color : colors.mutedForeground,
+                      transform: isHighlighted
+                        ? [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }]
+                        : [{ scale: 1 }],
+                    },
+                  ]}
+                >
                   {field.label}
-                </Text>
+                </Animated.Text>
               </View>
               <Animated.View
                 style={[
