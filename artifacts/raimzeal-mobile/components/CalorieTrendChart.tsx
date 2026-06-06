@@ -13,7 +13,7 @@ interface ChartDay {
 
 interface MealBreakdownEntry {
   mealType: string;
-  calories: number;
+  value: number;
 }
 
 const MEAL_DOT_COLORS: Record<string, string> = {
@@ -739,7 +739,7 @@ export function CalorieTrendChart({
               gap: 0,
             }}
           >
-            {mealBreakdown.map(({ mealType, calories }, idx) => (
+            {mealBreakdown.map(({ mealType, value }, idx) => (
               <View
                 key={mealType}
                 style={{ flexDirection: "row", alignItems: "center" }}
@@ -778,7 +778,7 @@ export function CalorieTrendChart({
                       color: colors.foreground,
                     }}
                   >
-                    {calories.toLocaleString()}
+                    {value.toLocaleString()}{unit}
                   </Text>
                 </Text>
               </View>

@@ -1394,13 +1394,13 @@ export default function NutritionScreen() {
     const totals: Partial<Record<MealType, number>> = {};
     for (const log of mealLogs) {
       if (log.date !== highlightedDate) continue;
-      totals[log.mealType] = (totals[log.mealType] ?? 0) + log.calories;
+      totals[log.mealType] = (totals[log.mealType] ?? 0) + log[trendMetric];
     }
     return ORDER.filter((mt) => totals[mt] !== undefined).map((mt) => ({
       mealType: mt,
-      calories: Math.round(totals[mt]!),
+      value: Math.round(totals[mt]!),
     }));
-  }, [highlightedDate, mealLogs]);
+  }, [highlightedDate, mealLogs, trendMetric]);
 
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
