@@ -10,6 +10,8 @@ export interface TdeeBreakdown {
   carbRatio: number;
   fatRatio: number;
   activityLabel: string;
+  /** Human-readable label for the biological sex constant used in BMR calculation */
+  sexLabel: string;
 }
 
 export interface SuggestedGoalsResult {
@@ -61,6 +63,12 @@ export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): Su
   //   unknown/prefer-not-to-say → average (−78)
   const sexConstant =
     biologicalSex === "male" ? 5 : biologicalSex === "female" ? -161 : -78;
+  const sexLabel =
+    biologicalSex === "male"
+      ? "male constant (+5)"
+      : biologicalSex === "female"
+      ? "female constant (−161)"
+      : "average constant (−78)";
   const bmr = Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + sexConstant);
 
   // Activity multiplier
@@ -119,6 +127,7 @@ export function computeSuggestedGoalsWithBreakdown(user: UserProfile | null): Su
       carbRatio,
       fatRatio,
       activityLabel: activityLabel(fitnessLevel),
+      sexLabel,
     },
   };
 }

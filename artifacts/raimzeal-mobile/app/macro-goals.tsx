@@ -274,20 +274,6 @@ export default function MacroGoalsScreen() {
                   <Text style={[styles.suggestionTitle, { color: colors.primary }]}>
                     Suggested for you
                   </Text>
-                  <TouchableOpacity
-                    onPress={toggleBreakdown}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={[
-                      styles.infoBtn,
-                      { backgroundColor: breakdownExpanded ? colors.primary + "30" : colors.primary + "18" },
-                    ]}
-                  >
-                    <Ionicons
-                      name={breakdownExpanded ? "close-circle" : "information-circle-outline"}
-                      size={16}
-                      color={colors.primary}
-                    />
-                  </TouchableOpacity>
                 </View>
                 <Text style={[styles.suggestionSubtitle, { color: colors.mutedForeground }]}>
                   Based on your profile & {goalLabel} — tap to pre-fill
@@ -299,19 +285,39 @@ export default function MacroGoalsScreen() {
                   <SuggestionPill label={`${suggested.fat}g fat`} color={colors.accent} />
                 </View>
 
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  onPress={toggleBreakdown}
+                  style={[
+                    styles.howCalculatedRow,
+                    { borderColor: colors.primary + "35", backgroundColor: colors.primary + "0C" },
+                  ]}
+                >
+                  <Ionicons name="calculator-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.howCalculatedText, { color: colors.primary }]}>
+                    How is this calculated?
+                  </Text>
+                  <Ionicons
+                    name={breakdownExpanded ? "chevron-up" : "chevron-down"}
+                    size={14}
+                    color={colors.primary}
+                    style={styles.howCalculatedChevron}
+                  />
+                </TouchableOpacity>
+
                 {breakdownExpanded && breakdown && (
                   <View style={[styles.breakdownCard, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
                     <Text style={[styles.breakdownHeading, { color: colors.primary }]}>
                       How we calculated this
                     </Text>
                     <Text style={[styles.breakdownNote, { color: colors.mutedForeground }]}>
-                      Based on your weight, height, age, and activity level using the Mifflin-St Jeor formula.
+                      Based on your weight, height, age, biological sex, and activity level using the Mifflin-St Jeor formula.
                     </Text>
 
                     <BreakdownRow
                       label="Basal Metabolic Rate (BMR)"
                       value={`${breakdown.bmr} kcal`}
-                      note="Calories your body burns at rest"
+                      note={`Calories your body burns at rest · ${breakdown.sexLabel}`}
                       colors={colors}
                       glossaryKey="bmr"
                       onHelpPress={openGlossary}
@@ -324,17 +330,27 @@ export default function MacroGoalsScreen() {
                       glossaryKey="tdee"
                       onHelpPress={openGlossary}
                     />
-                    {breakdown.goalAdjustment !== 0 && (
-                      <BreakdownRow
-                        label={`Goal adjustment (${goalLabel})`}
-                        value={`${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`}
-                        note={breakdown.goalAdjustment < 0 ? "Calorie deficit to support fat loss" : "Calorie surplus to support muscle growth"}
-                        colors={colors}
-                        valueColor={breakdown.goalAdjustment < 0 ? colors.warning : colors.secondary}
-                        glossaryKey="goal_adjustment"
-                        onHelpPress={openGlossary}
-                      />
-                    )}
+                    <BreakdownRow
+                      label={`Goal adjustment (${goalLabel})`}
+                      value={breakdown.goalAdjustment === 0 ? "0 kcal" : `${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`}
+                      note={
+                        breakdown.goalAdjustment < 0
+                          ? "Calorie deficit to support fat loss"
+                          : breakdown.goalAdjustment > 0
+                          ? "Calorie surplus to support muscle growth"
+                          : "No adjustment — eating at TDEE maintains current weight"
+                      }
+                      colors={colors}
+                      valueColor={
+                        breakdown.goalAdjustment < 0
+                          ? colors.warning
+                          : breakdown.goalAdjustment > 0
+                          ? colors.secondary
+                          : colors.mutedForeground
+                      }
+                      glossaryKey="goal_adjustment"
+                      onHelpPress={openGlossary}
+                    />
                     <BreakdownRow
                       label="Target calories"
                       value={`${breakdown.targetCalories} kcal`}
@@ -658,9 +674,24 @@ const styles = StyleSheet.create({
   suggestionPills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
   pill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   pillText: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  infoBtn: {
-    borderRadius: 12,
-    padding: 3,
+  howCalculatedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    alignSelf: "flex-start",
+  },
+  howCalculatedText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+  howCalculatedChevron: {
+    marginLeft: 2,
   },
   breakdownCard: {
     marginTop: 12,

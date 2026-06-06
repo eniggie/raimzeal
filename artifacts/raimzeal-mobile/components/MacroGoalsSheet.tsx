@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
-import { computeSuggestedGoals } from "@/lib/tdee";
+import { computeSuggestedGoalsWithBreakdown, primaryGoalLabel } from "@/lib/tdee";
 
 interface Props {
   visible: boolean;
@@ -39,14 +41,19 @@ interface FieldConfig {
 export function MacroGoalsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { goals, setGoals, loaded } = useMacroGoals();
+  const { goals, setGoals } = useMacroGoals();
   const { user } = useFitness();
-  const suggested = computeSuggestedGoals(user);
+
+  const suggestedResult = computeSuggestedGoalsWithBreakdown(user);
+  const suggested = suggestedResult?.goals ?? null;
+  const breakdown = suggestedResult?.breakdown ?? null;
+  const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());
   const [carbs, setCarbs] = useState(goals.carbs.toString());
   const [fat, setFat] = useState(goals.fat.toString());
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
 
   const initialised = useRef(false);
 
@@ -56,6 +63,7 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
       setProtein(goals.protein.toString());
       setCarbs(goals.carbs.toString());
       setFat(goals.fat.toString());
+      setBreakdownExpanded(false);
       initialised.current = false;
     }
   }, [visible, goals]);
@@ -91,6 +99,12 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
     setProtein(suggested.protein.toString());
     setCarbs(suggested.carbs.toString());
     setFat(suggested.fat.toString());
+  }
+
+  function toggleBreakdown() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setBreakdownExpanded((v) => !v);
+    Haptics.selectionAsync();
   }
 
   function getOutOfRangeWarning(): string | null {
@@ -172,91 +186,212 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
           {/* Handle bar */}
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
-          {/* Header */}
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
-              Edit Macro Goals
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            {/* Header */}
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
+                Edit Macro Goals
+              </Text>
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sheetSub, { color: colors.mutedForeground }]}>
+              Set your daily targets — changes apply immediately.
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-              <Ionicons name="close" size={22} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          </View>
 
-          <Text style={[styles.sheetSub, { color: colors.mutedForeground }]}>
-            Set your daily targets — changes apply immediately.
-          </Text>
+            {/* Use Suggested chip + breakdown */}
+            {suggested && breakdown && (
+              <View style={[styles.suggestBlock, { borderColor: colors.primary + "40", backgroundColor: colors.primary + "0A" }]}>
+                <View style={styles.suggestChipRow}>
+                  <TouchableOpacity
+                    style={styles.suggestChipInner}
+                    onPress={handleUseSuggested}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+                    <Text style={[styles.suggestChipText, { color: colors.primary }]}>
+                      Use Suggested ({suggested.calories} kcal)
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={toggleBreakdown}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.howBtn}
+                  >
+                    <Text style={[styles.howBtnText, { color: colors.primary }]}>
+                      How?
+                    </Text>
+                    <Ionicons
+                      name={breakdownExpanded ? "chevron-up" : "chevron-down"}
+                      size={13}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
 
-          {/* Use Suggested chip */}
-          {suggested && (
+                {breakdownExpanded && (
+                  <View style={[styles.breakdownPanel, { borderTopColor: colors.primary + "30" }]}>
+                    <MiniBreakdownRow
+                      label="BMR"
+                      value={`${breakdown.bmr} kcal`}
+                      note={breakdown.sexLabel}
+                      colors={colors}
+                    />
+                    <MiniBreakdownRow
+                      label={`× Activity (${breakdown.activityLabel})`}
+                      value={`${breakdown.tdee} kcal`}
+                      note="TDEE"
+                      colors={colors}
+                    />
+                    <MiniBreakdownRow
+                      label={`Goal adjustment (${goalLabel})`}
+                      value={
+                        breakdown.goalAdjustment === 0
+                          ? "0 kcal"
+                          : `${breakdown.goalAdjustment > 0 ? "+" : ""}${breakdown.goalAdjustment} kcal`
+                      }
+                      note={
+                        breakdown.goalAdjustment < 0
+                          ? "Calorie deficit"
+                          : breakdown.goalAdjustment > 0
+                          ? "Calorie surplus"
+                          : "No adjustment — maintenance"
+                      }
+                      valueColor={
+                        breakdown.goalAdjustment < 0
+                          ? colors.warning
+                          : breakdown.goalAdjustment > 0
+                          ? colors.secondary
+                          : undefined
+                      }
+                      colors={colors}
+                    />
+                    <MiniBreakdownRow
+                      label="Target calories"
+                      value={`${breakdown.targetCalories} kcal`}
+                      note="Rounded to nearest 50 kcal"
+                      colors={colors}
+                      bold
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Fields */}
+            <View style={styles.fields}>
+              {fields.map((f) => (
+                <View key={f.key} style={styles.fieldRow}>
+                  <View style={[styles.fieldDot, { backgroundColor: f.color }]} />
+                  <View style={styles.fieldLabelWrap}>
+                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{f.label}</Text>
+                    <Text style={[styles.fieldUnit, { color: colors.mutedForeground }]}>{f.unit}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.fieldInputWrap,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      value={values[f.key]}
+                      onChangeText={setters[f.key]}
+                      keyboardType="number-pad"
+                      style={[styles.fieldInput, { color: colors.foreground }]}
+                      placeholderTextColor={colors.mutedForeground}
+                      placeholder={f.placeholder}
+                      selectTextOnFocus
+                      maxLength={5}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Save button */}
             <TouchableOpacity
               style={[
-                styles.suggestChip,
-                { backgroundColor: colors.primary + "18", borderColor: colors.primary + "40" },
+                styles.saveBtn,
+                {
+                  backgroundColor: hasChanges() ? colors.primary : colors.muted,
+                },
               ]}
-              onPress={handleUseSuggested}
-              activeOpacity={0.75}
+              onPress={handleSave}
+              activeOpacity={0.85}
             >
-              <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
-              <Text style={[styles.suggestChipText, { color: colors.primary }]}>
-                Use Suggested ({suggested.calories} kcal)
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.primaryForeground} />
+              <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
+                Save Goals
               </Text>
             </TouchableOpacity>
-          )}
-
-          {/* Fields */}
-          <View style={styles.fields}>
-            {fields.map((f) => (
-              <View key={f.key} style={styles.fieldRow}>
-                <View style={[styles.fieldDot, { backgroundColor: f.color }]} />
-                <View style={styles.fieldLabelWrap}>
-                  <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{f.label}</Text>
-                  <Text style={[styles.fieldUnit, { color: colors.mutedForeground }]}>{f.unit}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.fieldInputWrap,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <TextInput
-                    value={values[f.key]}
-                    onChangeText={setters[f.key]}
-                    keyboardType="number-pad"
-                    style={[styles.fieldInput, { color: colors.foreground }]}
-                    placeholderTextColor={colors.mutedForeground}
-                    placeholder={f.placeholder}
-                    selectTextOnFocus
-                    maxLength={5}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Save button */}
-          <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              {
-                backgroundColor: hasChanges() ? colors.primary : colors.muted,
-              },
-            ]}
-            onPress={handleSave}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="checkmark-circle-outline" size={18} color={colors.primaryForeground} />
-            <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-              Save Goals
-            </Text>
-          </TouchableOpacity>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
+
+interface MiniBreakdownRowProps {
+  label: string;
+  value: string;
+  note?: string;
+  bold?: boolean;
+  valueColor?: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function MiniBreakdownRow({ label, value, note, bold, valueColor, colors }: MiniBreakdownRowProps) {
+  return (
+    <View style={miniStyles.row}>
+      <View style={miniStyles.left}>
+        <Text
+          style={[
+            miniStyles.label,
+            { color: colors.foreground },
+            bold && { fontFamily: "Inter_600SemiBold" },
+          ]}
+        >
+          {label}
+        </Text>
+        {note ? (
+          <Text style={[miniStyles.note, { color: colors.mutedForeground }]}>{note}</Text>
+        ) : null}
+      </View>
+      <Text
+        style={[
+          miniStyles.value,
+          { color: valueColor ?? colors.foreground },
+          bold && { fontFamily: "Inter_700Bold" },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const miniStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 4,
+  },
+  left: { flex: 1, gap: 1 },
+  label: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  note: { fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
+  value: { fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "right", flexShrink: 0 },
+});
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -272,7 +407,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
-    gap: 0,
+    maxHeight: "90%",
   },
   handle: {
     width: 36,
@@ -294,7 +429,46 @@ const styles = StyleSheet.create({
   sheetSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    marginBottom: 16,
+  },
+  suggestBlock: {
+    borderRadius: 12,
+    borderWidth: 1,
     marginBottom: 20,
+    overflow: "hidden",
+  },
+  suggestChipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  suggestChipInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+  suggestChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  howBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingLeft: 10,
+  },
+  howBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  breakdownPanel: {
+    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 2,
   },
   fields: {
     gap: 12,
@@ -335,21 +509,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     minWidth: 56,
   },
-  suggestChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 20,
-  },
-  suggestChipText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
   saveBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -357,6 +516,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 14,
+    marginBottom: 4,
   },
   saveBtnText: {
     fontSize: 15,
