@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -14,6 +15,11 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const ANIMATION_DURATION = 400;
 const UPDATE_ANIMATION_DURATION = 200;
 const ANIMATION_EASING = Easing.out(Easing.quad);
+
+const LEGEND_TIP_KEY = "raimzeal_legend_tip_seen";
+const TOOLTIP_DELAY = 600;
+const TOOLTIP_HOLD = 2500;
+const TOOLTIP_FADE = 220;
 
 export const MACRO_RING_COLORS = {
   protein: "#3b82f6",
@@ -67,6 +73,48 @@ export function MacroRing({
     opacity: pctOpacity.value,
     transform: [{ translateY: pctTranslateY.value }],
   }));
+
+  // One-shot tooltip — shown once per install the first time the legend is
+  // interactive (onLegendPress provided). Persisted in AsyncStorage.
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipOpacity = useSharedValue(0);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tooltipAnimStyle = useAnimatedStyle(() => ({
+    opacity: tooltipOpacity.value,
+  }));
+
+  const dismissTooltip = () => {
+    tooltipOpacity.value = withTiming(0, { duration: TOOLTIP_FADE, easing: ANIMATION_EASING });
+    tooltipTimerRef.current = setTimeout(() => setShowTooltip(false), TOOLTIP_FADE);
+    AsyncStorage.setItem(LEGEND_TIP_KEY, "1").catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!onLegendPress) return;
+    let cancelled = false;
+
+    AsyncStorage.getItem(LEGEND_TIP_KEY)
+      .then((val) => {
+        if (cancelled || val === "1") return;
+        tooltipTimerRef.current = setTimeout(() => {
+          if (cancelled) return;
+          setShowTooltip(true);
+          tooltipOpacity.value = withTiming(1, { duration: TOOLTIP_FADE, easing: ANIMATION_EASING });
+          tooltipTimerRef.current = setTimeout(() => {
+            if (!cancelled) dismissTooltip();
+          }, TOOLTIP_HOLD);
+        }, TOOLTIP_DELAY);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current);
+        tooltipTimerRef.current = null;
+      }
+    };
+  }, [onLegendPress]);
 
   const total = protein + carbs + fat;
   const radius = (size - strokeWidth) / 2;
@@ -365,6 +413,7 @@ export function MacroRing({
               style={[
                 styles.legendLabel,
                 { color: hasData ? item.color : "rgba(128,128,128,0.45)" },
+                onLegendPress && hasData && styles.legendLabelTappable,
               ]}
             >
               {item.label} {hasData ? `${item.grams}g` : "—"}
@@ -385,6 +434,19 @@ export function MacroRing({
 
       {!hasData && (
         <Text style={styles.emptyLabel}>No meals logged</Text>
+      )}
+
+      {showTooltip && onLegendPress && (
+        <Pressable
+          onPress={dismissTooltip}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss tip"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Animated.View style={[styles.tooltip, tooltipAnimStyle]}>
+            <Text style={styles.tooltipText}>Tap P · C · F to set goals</Text>
+          </Animated.View>
+        </Pressable>
       )}
     </View>
   );
@@ -422,6 +484,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: "Inter_600SemiBold",
   },
+  legendLabelTappable: {
+    textDecorationLine: "underline",
+  },
   percentageRow: {
     flexDirection: "row",
     gap: 2,
@@ -437,5 +502,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "rgba(128,128,128,0.5)",
     textAlign: "center",
+  },
+  tooltip: {
+    backgroundColor: "rgba(30,30,40,0.82)",
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    alignSelf: "flex-end",
+  },
+  tooltipText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
+    letterSpacing: 0.2,
   },
 });
