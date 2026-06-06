@@ -2,6 +2,8 @@ import { useLocation, Link } from 'wouter';
 import { Home, Dumbbell, BarChart3, Bot, User, Utensils, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useSyncStatus } from '@/contexts/SyncStatusContext';
+import { supabaseConfigured } from '@/lib/supabase';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
@@ -13,8 +15,16 @@ const navItems = [
   { path: '/settings', icon: User, label: 'Profile' },
 ];
 
+const STALE_MS = 30 * 60 * 1000;
+
 export function BottomNav() {
   const [location] = useLocation();
+  const { lastSyncedAt, loggedIn } = useSyncStatus();
+
+  const isStale =
+    supabaseConfigured &&
+    loggedIn &&
+    (!lastSyncedAt || Date.now() - lastSyncedAt.getTime() > STALE_MS);
 
   return (
     /*
@@ -35,6 +45,7 @@ export function BottomNav() {
           {navItems.map((item) => {
             const isActive = location === item.path ||
               (item.path !== '/' && location.startsWith(item.path));
+            const showBadge = item.path === '/settings' && isStale;
 
             return (
               <Link key={item.path} href={item.path} className="flex-1 flex">
@@ -58,6 +69,9 @@ export function BottomNav() {
                     />
                   )}
                   <item.icon className="w-[18px] h-[18px] relative z-10" strokeWidth={isActive ? 2.5 : 2} />
+                  {showBadge && (
+                    <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-amber-400 z-20 ring-1 ring-background" />
+                  )}
                   <span className="text-[9px] font-medium mt-0.5 relative z-10 leading-none">{item.label}</span>
                 </motion.div>
               </Link>
