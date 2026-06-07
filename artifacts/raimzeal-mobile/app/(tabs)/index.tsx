@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   GestureResponderEvent,
@@ -13,7 +13,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { usePedometer } from "@/hooks/usePedometer";
@@ -929,6 +929,15 @@ function WeeklyCalorieTrend({
     }, 1500);
   }
 
+  // Increment each time the home tab comes into focus so the animation
+  // useEffect re-runs and bars grow in again.
+  const [focusTick, setFocusTick] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      setFocusTick((t) => t + 1);
+    }, [])
+  );
+
   // Keep a stable ref array, extending it if data ever grows.
   const animValuesRef = useRef<Animated.Value[]>([]);
   for (let i = animValuesRef.current.length; i < data.length; i++) {
@@ -936,7 +945,8 @@ function WeeklyCalorieTrend({
   }
 
   useEffect(() => {
-    // Reset each bar to 0 before re-animating (handles data updates too).
+    // Reset each bar to 0 before re-animating (handles data updates and
+    // tab re-focus via focusTick).
     data.forEach((_, i) => animValuesRef.current[i].setValue(0));
 
     const animations = data.map((item, i) => {
@@ -955,7 +965,7 @@ function WeeklyCalorieTrend({
     const composite = Animated.parallel(animations);
     composite.start();
     return () => composite.stop();
-  }, [data, maxCal]);
+  }, [data, maxCal, focusTick]);
 
   const tooltipLeft =
     chartWidth > 0 && activeBar !== null && data.length > 0
