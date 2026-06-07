@@ -39,5 +39,6 @@ cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 ASC_APP_ID=<id> eas submit --platfo
 ## Version history
 - 1.1.0: versionCode 19, multiple iOS builds (2, 4, 5)
 - 1.2.0: versionCode 21, iOS buildNumber 4 (builds ac85bd9c / 1d3555e1, queued 2026-06-01)
+- 1.3.0: versionCode 24 (auto-incremented from 23), build 4fdc301f, queued 2026-06-07, auto-submit to Play Store internal track scheduled (submission e0cf7555)
 
 **Why:** Replit blocks git operations from main agent; EAS_NO_VCS=1 is mandatory.

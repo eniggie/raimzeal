@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 23,
+      "versionCode": 24,
       "minSdkVersion": 26,
       "intentFilters": [
         {
