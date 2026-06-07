@@ -921,6 +921,24 @@ function WeeklyCalorieTrend({
 
     if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
 
+    // Spring the tapped bar up; dim all other bars.
+    const highlightAnims = data.map((d, i) => {
+      if (i === idx) {
+        return Animated.spring(pressScalesRef.current[i], {
+          toValue: 1.25,
+          useNativeDriver: false,
+          bounciness: 14,
+          speed: 20,
+        });
+      }
+      return Animated.timing(barOpacityRef.current[i], {
+        toValue: 0.18,
+        duration: 150,
+        useNativeDriver: false,
+      });
+    });
+    Animated.parallel(highlightAnims).start();
+
     setActiveBar({ idx, day: item.day, calories: item.calories });
     tooltipOpacity.setValue(0);
     Animated.timing(tooltipOpacity, {
@@ -931,6 +949,24 @@ function WeeklyCalorieTrend({
 
     const date = item.date;
     tooltipTimerRef.current = setTimeout(() => {
+      // Reset bar highlight state while dismissing the tooltip and navigating.
+      const resetAnims = data.map((d, i) => {
+        if (i === idx) {
+          return Animated.spring(pressScalesRef.current[i], {
+            toValue: 1,
+            useNativeDriver: false,
+            bounciness: 10,
+            speed: 20,
+          });
+        }
+        const base = i === todayIdx ? 1 : d.calories === 0 ? 0.25 : 0.75;
+        return Animated.timing(barOpacityRef.current[i], {
+          toValue: base,
+          duration: 150,
+          useNativeDriver: false,
+        });
+      });
+      Animated.parallel(resetAnims).start();
       dismissTooltip(() => onBarPress?.(date));
     }, 1500);
   }
@@ -950,10 +986,29 @@ function WeeklyCalorieTrend({
     animValuesRef.current.push(new Animated.Value(0));
   }
 
+  // Per-bar scale values for the tap-highlight spring animation.
+  const pressScalesRef = useRef<Animated.Value[]>([]);
+  for (let i = pressScalesRef.current.length; i < data.length; i++) {
+    pressScalesRef.current.push(new Animated.Value(1));
+  }
+
+  // Per-bar opacity values so non-selected bars can dim on tap.
+  const barOpacityRef = useRef<Animated.Value[]>([]);
+  for (let i = barOpacityRef.current.length; i < data.length; i++) {
+    const item = data[i];
+    const base = i === todayIdx ? 1 : item.calories === 0 ? 0.25 : 0.75;
+    barOpacityRef.current.push(new Animated.Value(base));
+  }
+
   useEffect(() => {
     // Reset each bar to 0 before re-animating (handles data updates and
     // tab re-focus via focusTick).
-    data.forEach((_, i) => animValuesRef.current[i].setValue(0));
+    data.forEach((item, i) => {
+      animValuesRef.current[i].setValue(0);
+      pressScalesRef.current[i]?.setValue(1);
+      const base = i === todayIdx ? 1 : item.calories === 0 ? 0.25 : 0.75;
+      barOpacityRef.current[i]?.setValue(base);
+    });
 
     const animations = data.map((item, i) => {
       const targetHeight =
@@ -1058,9 +1113,9 @@ function WeeklyCalorieTrend({
                     {
                       height: animValuesRef.current[i],
                       backgroundColor: barColor,
-                      borderRadius: isToday || isActive ? 4 : 3,
-                      opacity: isActive ? 1 : isToday ? 1 : item.calories === 0 ? 0.25 : 0.75,
-                      width: isActive ? "90%" : "70%",
+                      borderRadius: isToday ? 4 : 3,
+                      opacity: barOpacityRef.current[i],
+                      transform: [{ scale: pressScalesRef.current[i] }],
                     },
                   ]}
                 />
