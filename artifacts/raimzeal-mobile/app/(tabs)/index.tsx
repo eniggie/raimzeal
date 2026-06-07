@@ -1015,10 +1015,11 @@ function WeeklyCalorieTrend({
 
         {data.map((item, i) => {
           const isToday = i === todayIdx;
+          const isActive = activeBar !== null && activeBar.idx === i;
           const overGoal = goal > 0 && item.calories > goal;
           const barColor = overGoal
             ? colors.warning
-            : isToday
+            : isToday || isActive
             ? colors.primary
             : colors.primary + "55";
 
@@ -1036,8 +1037,9 @@ function WeeklyCalorieTrend({
                     {
                       height: animValuesRef.current[i],
                       backgroundColor: barColor,
-                      borderRadius: isToday ? 4 : 3,
-                      opacity: isToday ? 1 : item.calories === 0 ? 0.25 : 0.75,
+                      borderRadius: isToday || isActive ? 4 : 3,
+                      opacity: isActive ? 1 : isToday ? 1 : item.calories === 0 ? 0.25 : 0.75,
+                      width: isActive ? "90%" : "70%",
                     },
                   ]}
                 />
