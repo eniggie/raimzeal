@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
 
@@ -49,6 +49,7 @@ export function ProgressRing({
       Animated.timing(animatedOffset, {
         toValue: targetOffset,
         duration: 700,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }).start();
     }, delay);
