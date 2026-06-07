@@ -898,6 +898,19 @@ function WeeklyCalorieTrend({
     };
   }, []);
 
+  function dismissTooltip(navigate?: () => void) {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    tooltipTimerRef.current = null;
+    Animated.timing(tooltipOpacity, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveBar(null);
+      navigate?.();
+    });
+  }
+
   function handleBarPress(
     idx: number,
     item: { day: string; date: string; calories: number },
@@ -918,14 +931,7 @@ function WeeklyCalorieTrend({
 
     const date = item.date;
     tooltipTimerRef.current = setTimeout(() => {
-      Animated.timing(tooltipOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        setActiveBar(null);
-        onBarPress?.(date);
-      });
+      dismissTooltip(() => onBarPress?.(date));
     }, 1500);
   }
 
@@ -1004,10 +1010,9 @@ function WeeklyCalorieTrend({
           ]}
         />
 
-        {/* Calorie tooltip */}
+        {/* Calorie tooltip — tap to dismiss early */}
         {activeBar !== null && (
           <Animated.View
-            pointerEvents="none"
             style={[
               sparkStyles.tooltip,
               {
@@ -1017,9 +1022,15 @@ function WeeklyCalorieTrend({
               },
             ]}
           >
-            <Text style={[sparkStyles.tooltipText, { color: colors.background }]}>
-              {activeBar.day} · {activeBar.calories.toLocaleString()} kcal
-            </Text>
+            <TouchableOpacity
+              onPress={() => dismissTooltip()}
+              activeOpacity={0.8}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[sparkStyles.tooltipText, { color: colors.background }]}>
+                {activeBar.day} · {activeBar.calories.toLocaleString()} kcal
+              </Text>
+            </TouchableOpacity>
           </Animated.View>
         )}
 

@@ -15,7 +15,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const ANIMATION_DURATION = 400;
 const UPDATE_ANIMATION_DURATION = 200;
-const ANIMATION_EASING = Easing.out(Easing.quad);
+const ANIMATION_EASING = Easing.inOut(Easing.cubic);
 
 const LEGEND_TIP_KEY = "raimzeal_legend_tip_seen";
 const TOOLTIP_DELAY = 600;

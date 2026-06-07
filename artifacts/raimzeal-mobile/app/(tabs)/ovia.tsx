@@ -342,7 +342,7 @@ export default function OviaScreen() {
             }
             if (json.content) {
               accumulated += json.content;
-              setStreamingContent(accumulated);
+              setStreamingContent(stripMarkdown(accumulated));
             }
             if (json.done || json.error) {
               streamDone = true;
