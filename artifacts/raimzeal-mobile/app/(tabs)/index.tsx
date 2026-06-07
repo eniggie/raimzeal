@@ -383,9 +383,7 @@ export default function HomeScreen() {
           <WeeklyCalorieTrend
             data={getWeekCalories()}
             goal={calorieGoal}
-            onBarPress={async (date, e) => {
-              e.stopPropagation();
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onBarPress={async (date) => {
               const isToday = date === new Date().toISOString().split("T")[0];
               if (!isToday) {
                 try {
@@ -869,6 +867,8 @@ export default function HomeScreen() {
   );
 }
 
+const TOOLTIP_HALF_W = 52;
+
 function WeeklyCalorieTrend({
   data,
   goal,
@@ -876,12 +876,58 @@ function WeeklyCalorieTrend({
 }: {
   data: { day: string; date: string; calories: number }[];
   goal: number;
-  onBarPress?: (date: string, e: GestureResponderEvent) => void;
+  onBarPress?: (date: string) => void;
 }) {
   const colors = useColors();
   const CHART_HEIGHT = 48;
   const maxCal = Math.max(goal, ...data.map((d) => d.calories), 1);
   const todayIdx = data.length - 1;
+
+  const [activeBar, setActiveBar] = useState<{
+    idx: number;
+    day: string;
+    calories: number;
+  } | null>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+  const tooltipOpacity = useRef(new Animated.Value(0)).current;
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    };
+  }, []);
+
+  function handleBarPress(
+    idx: number,
+    item: { day: string; date: string; calories: number },
+    e: GestureResponderEvent,
+  ) {
+    e.stopPropagation();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+
+    setActiveBar({ idx, day: item.day, calories: item.calories });
+    tooltipOpacity.setValue(0);
+    Animated.timing(tooltipOpacity, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+
+    const date = item.date;
+    tooltipTimerRef.current = setTimeout(() => {
+      Animated.timing(tooltipOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setActiveBar(null);
+        onBarPress?.(date);
+      });
+    }, 1500);
+  }
 
   // Keep a stable ref array, extending it if data ever grows.
   const animValuesRef = useRef<Animated.Value[]>([]);
@@ -911,6 +957,17 @@ function WeeklyCalorieTrend({
     return () => composite.stop();
   }, [data, maxCal]);
 
+  const tooltipLeft =
+    chartWidth > 0 && activeBar !== null && data.length > 0
+      ? Math.min(
+          Math.max(
+            TOOLTIP_HALF_W,
+            ((activeBar.idx + 0.5) / data.length) * chartWidth,
+          ),
+          chartWidth - TOOLTIP_HALF_W,
+        )
+      : 0;
+
   return (
     <View style={sparkStyles.wrapper}>
       <View style={[sparkStyles.divider, { backgroundColor: colors.border }]} />
@@ -922,7 +979,10 @@ function WeeklyCalorieTrend({
           Goal: {goal} kcal
         </Text>
       </View>
-      <View style={[sparkStyles.chart, { height: CHART_HEIGHT }]}>
+      <View
+        style={[sparkStyles.chart, { height: CHART_HEIGHT, overflow: "visible" }]}
+        onLayout={(ev) => setChartWidth(ev.nativeEvent.layout.width)}
+      >
         {/* Goal line */}
         <View
           style={[
@@ -933,6 +993,26 @@ function WeeklyCalorieTrend({
             },
           ]}
         />
+
+        {/* Calorie tooltip */}
+        {activeBar !== null && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              sparkStyles.tooltip,
+              {
+                left: tooltipLeft - TOOLTIP_HALF_W,
+                backgroundColor: colors.foreground,
+                opacity: tooltipOpacity,
+              },
+            ]}
+          >
+            <Text style={[sparkStyles.tooltipText, { color: colors.background }]}>
+              {activeBar.day} · {activeBar.calories.toLocaleString()} kcal
+            </Text>
+          </Animated.View>
+        )}
+
         {data.map((item, i) => {
           const isToday = i === todayIdx;
           const overGoal = goal > 0 && item.calories > goal;
@@ -947,10 +1027,7 @@ function WeeklyCalorieTrend({
               key={i}
               style={sparkStyles.barCol}
               activeOpacity={0.7}
-              onPress={(e) => {
-                e.stopPropagation();
-                onBarPress?.(item.date, e);
-              }}
+              onPress={(e) => handleBarPress(i, item, e)}
             >
               <View style={[sparkStyles.barTrack, { height: CHART_HEIGHT }]}>
                 <Animated.View
@@ -997,6 +1074,21 @@ const sparkStyles = StyleSheet.create({
   },
   title: { fontSize: 11, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.5 },
   goalLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  tooltip: {
+    position: "absolute",
+    top: -30,
+    width: TOOLTIP_HALF_W * 2,
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  tooltipText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
   chart: {
     flexDirection: "row",
     alignItems: "flex-end",
