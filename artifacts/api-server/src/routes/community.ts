@@ -4,6 +4,7 @@ import { requireAuth, optionalAuth } from "../middleware/auth";
 import { communityMutateLimitLight, communityMutateLimitHeavy } from "../lib/rateLimiter";
 import { randomUUID } from "crypto";
 import { getUserTier } from "../lib/tier";
+import { sendAppEmail } from "../lib/mailer";
 
 // Supabase project URL — fall back to the known project ref if the env var
 // contains the anon key value instead of the URL (a common misconfiguration).
@@ -29,6 +30,52 @@ function getAdminClient() {
 }
 
 const communityRouter = Router();
+
+const OBJECTIONABLE_TERMS = [
+  "kill yourself",
+  "kys",
+  "hate speech",
+  "racial slur",
+  "nazi",
+  "terrorist",
+  "porn",
+  "nude",
+  "explicit sex",
+  "sell drugs",
+  "illegal drugs",
+  "self harm",
+  "suicide method",
+];
+
+function containsObjectionableContent(value: string): boolean {
+  const normalized = value.toLowerCase().replace(/\s+/g, " ").trim();
+  return OBJECTIONABLE_TERMS.some((term) => normalized.includes(term));
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function notifyModeration(subject: string, details: Record<string, unknown>): Promise<void> {
+  const to = process.env["MODERATION_EMAIL"] ?? process.env["SUPPORT_EMAIL"] ?? "support@raimzeal.com";
+  const rows = Object.entries(details)
+    .map(([key, value]) => `<tr><td style="padding:4px 8px;color:#71717a;">${escapeHtml(key)}</td><td style="padding:4px 8px;color:#111;">${escapeHtml(value)}</td></tr>`)
+    .join("");
+  await sendAppEmail({
+    fromName: "RAIMZEAL Moderation",
+    to,
+    subject,
+    html: `<div style="font-family:sans-serif;"><h2>${escapeHtml(subject)}</h2><table>${rows}</table></div>`,
+  }).catch((err) => {
+    // Moderation records are stored even if email delivery is unavailable.
+    console.warn("[community] moderation email failed", err);
+  });
+}
 
 // ── POST /api/community/image-upload-url ─────────────────────────────────────
 // Returns a Supabase Storage signed upload URL so the client can PUT an image
@@ -160,7 +207,21 @@ communityRouter.get(
       return;
     }
 
-    const rows = (data ?? []) as Record<string, unknown>[];
+    let rows = (data ?? []) as Record<string, unknown>[];
+
+    const viewerId = (req as any).userId as string | undefined;
+    if (viewerId && rows.length > 0) {
+      const { data: blocks } = await supabase
+        .from("community_blocks")
+        .select("blocked_user_id")
+        .eq("blocker_user_id", viewerId);
+      const blockedIds = new Set(
+        ((blocks ?? []) as Array<{ blocked_user_id: string }>).map((block) => block.blocked_user_id)
+      );
+      if (blockedIds.size > 0) {
+        rows = rows.filter((row) => !blockedIds.has(row["user_id"] as string));
+      }
+    }
 
     // Fetch likes and comments counts in bulk via separate queries — avoids
     // requiring FK relationships to be configured in PostgREST.
@@ -244,6 +305,10 @@ communityRouter.post(
     }
     if (content.trim().length > 2000) {
       res.status(400).json({ error: "content too long (max 2000 characters)" });
+      return;
+    }
+    if (containsObjectionableContent(content)) {
+      res.status(400).json({ error: "This post contains content that is not allowed in the RAIMZEAL community." });
       return;
     }
     const safeImageUrl =
@@ -353,6 +418,10 @@ communityRouter.post(
     }
     if (content.trim().length > 1000) {
       res.status(400).json({ error: "comment too long (max 1000 characters)" });
+      return;
+    }
+    if (containsObjectionableContent(content)) {
+      res.status(400).json({ error: "This comment contains content that is not allowed in the RAIMZEAL community." });
       return;
     }
 
@@ -465,5 +534,118 @@ communityRouter.delete(
   }
 );
 
-export default communityRouter;
+// ── POST /api/community/posts/:postId/report ────────────────────────────────
+// Lets users flag objectionable content for 24-hour moderation review.
+communityRouter.post(
+  "/community/posts/:postId/report",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const reporterUserId = (req as any).userId as string;
+    const { postId } = req.params;
+    const { reason, details } = req.body as { reason?: unknown; details?: unknown };
 
+    const supabase = getAdminClient();
+    const { data: post } = await supabase
+      .from("community_posts")
+      .select("id,user_id,user_name,content")
+      .eq("id", postId)
+      .maybeSingle();
+
+    if (!post) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+
+    const safeReason = typeof reason === "string" && reason.trim()
+      ? reason.trim().slice(0, 80)
+      : "objectionable_content";
+    const safeDetails = typeof details === "string" && details.trim()
+      ? details.trim().slice(0, 1000)
+      : null;
+
+    const { error } = await supabase.from("community_reports").insert({
+      reporter_user_id: reporterUserId,
+      reported_user_id: post.user_id,
+      post_id: post.id,
+      reason: safeReason,
+      details: safeDetails,
+    });
+
+    if (error) {
+      req.log.error({ err: error }, "Failed to record community report");
+      res.status(500).json({ error: "Could not report this post. Please try again." });
+      return;
+    }
+
+    await notifyModeration("RAIMZEAL community post reported", {
+      reporterUserId,
+      reportedUserId: post.user_id,
+      postId: post.id,
+      reason: safeReason,
+      details: safeDetails ?? "",
+      excerpt: String(post.content ?? "").slice(0, 500),
+    });
+
+    res.json({ reported: true });
+  }
+);
+
+// ── POST /api/community/users/:targetUserId/block ───────────────────────────
+// Blocks an abusive user and records a moderation report tied to the source post.
+communityRouter.post(
+  "/community/users/:targetUserId/block",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const blockerUserId = (req as any).userId as string;
+    const { targetUserId } = req.params;
+    const { postId, reason } = req.body as { postId?: unknown; reason?: unknown };
+
+    if (!targetUserId || targetUserId === blockerUserId) {
+      res.status(400).json({ error: "You cannot block this user." });
+      return;
+    }
+
+    const supabase = getAdminClient();
+    const safePostId = typeof postId === "string" && postId.trim() ? postId.trim() : null;
+    const safeReason = typeof reason === "string" && reason.trim()
+      ? reason.trim().slice(0, 80)
+      : "abusive_user";
+
+    const { error } = await supabase.from("community_blocks").upsert(
+      {
+        blocker_user_id: blockerUserId,
+        blocked_user_id: targetUserId,
+        post_id: safePostId,
+        reason: safeReason,
+      },
+      { onConflict: "blocker_user_id,blocked_user_id" }
+    );
+
+    if (error) {
+      req.log.error({ err: error }, "Failed to block community user");
+      res.status(500).json({ error: "Could not block this user. Please try again." });
+      return;
+    }
+
+    await supabase.from("community_reports").insert({
+      reporter_user_id: blockerUserId,
+      reported_user_id: targetUserId,
+      post_id: safePostId,
+      reason: safeReason,
+      details: "User blocked from the in-app community feed.",
+    });
+
+    await notifyModeration("RAIMZEAL community user blocked", {
+      blockerUserId,
+      blockedUserId: targetUserId,
+      postId: safePostId ?? "",
+      reason: safeReason,
+    });
+
+    res.json({ blocked: true });
+  }
+);
+
+export default communityRouter;
