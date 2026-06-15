@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
-import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { sendAppEmail } from "../lib/mailer";
 import {
   authSignupLoginRateLimit,
   authSendCodeRateLimit,
@@ -28,6 +28,12 @@ const SignupSchema = z.object({
 const LoginSchema = z.object({
   email: z.string().email("Invalid email address."),
   password: z.string().min(1, "Password is required."),
+});
+
+const AppleLoginSchema = z.object({
+  identityToken: z.string().min(1, "Apple identity token is required."),
+  email: z.string().email("Invalid email address.").optional().nullable(),
+  fullName: z.string().optional().nullable(),
 });
 
 const SendEmailCodeSchema = z.object({
@@ -62,25 +68,8 @@ function parseBody<T>(schema: z.ZodType<T>, body: unknown): ParseResult<T> {
   return { ok: true, data: result.data };
 }
 
-// ─── Nodemailer transporter ─────────────────────────────────────────────────
-
-function createTransport() {
-  const host = process.env["SMTP_HOST"];
-  const user = process.env["SMTP_USER"];
-  const pass = process.env["SMTP_PASS"];
-  const port = parseInt(process.env["SMTP_PORT"] ?? "587", 10);
-  if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
-}
-
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  const transport = createTransport();
-  if (!transport) {
-    logger.warn({ subject, to }, "[auth] SMTP not configured — skipping email OTP");
-    return;
-  }
-  const from = process.env["SMTP_FROM"] ?? process.env["SMTP_USER"] ?? "noreply@raimzeal.com";
-  await transport.sendMail({ from: `"RAIMZEAL" <${from}>`, to, subject, html });
+  await sendAppEmail({ fromName: "RAIMZEAL", to, subject, html });
 }
 
 // ─── Twilio ─────────────────────────────────────────────────────────────────
@@ -147,6 +136,54 @@ async function checkRateLimit(
   return { limited: false, message: "" };
 }
 
+type AuthUser = NonNullable<
+  Awaited<ReturnType<typeof supabaseAdmin.auth.admin.listUsers>>["data"]
+>["users"][number];
+
+async function findUserByEmail(email: string): Promise<AuthUser | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const perPage = 1000;
+
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    const user = data.users.find((u) => u.email?.toLowerCase() === normalizedEmail);
+    if (user) return user;
+    if (data.users.length < perPage) return null;
+  }
+
+  logger.warn({ email }, "[auth] User lookup exceeded pagination search limit");
+  return null;
+}
+
+function authSessionPayload(data: {
+  session: {
+    access_token: string;
+    refresh_token?: string;
+    expires_at?: number;
+  };
+  user: {
+    id: string;
+    email?: string | null;
+    email_confirmed_at?: string | null;
+    user_metadata?: Record<string, unknown>;
+  };
+}) {
+  const { session, user } = data;
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at: session.expires_at,
+    user: {
+      id: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at,
+      user_metadata: user.user_metadata,
+    },
+  };
+}
+
 // ─── OTP email HTML ──────────────────────────────────────────────────────────
 
 function emailOtpHtml(code: string, name: string): string {
@@ -192,6 +229,29 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
     if (createError) {
       const msg = createError.message.toLowerCase();
       if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("user already")) {
+        let existingUser: AuthUser | null = null;
+        try {
+          existingUser = await findUserByEmail(email);
+        } catch (err) {
+          req.log?.warn({ err }, "Failed to look up existing user after signup conflict");
+        }
+
+        if (existingUser && !existingUser.email_confirmed_at) {
+          const rl = await checkRateLimit(existingUser.id, "email");
+          if (rl.limited) { res.status(429).json({ error: rl.message }); return; }
+
+          const emailCode = generateCode();
+          try {
+            await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(emailCode, fullName));
+            await storeCode(existingUser.id, "email", emailCode);
+            res.json({ success: true });
+          } catch (err) {
+            req.log?.error({ err }, "Failed to resend verification email for existing unverified signup");
+            res.status(503).json({ error: "Email verification is temporarily unavailable. Please contact support or try again later." });
+          }
+          return;
+        }
+
         res.status(409).json({ error: "An account with this email already exists." });
       } else {
         req.log?.warn({ err: createError }, "Supabase createUser error");
@@ -222,7 +282,15 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
       await storeCode(userId, "email", emailCode);
     } catch (err) {
       req.log?.error({ err }, "Failed to send verification email — aborting signup");
-      res.status(500).json({ error: "Could not send verification email. Please try again." });
+      await supabaseAdmin.from("profiles").delete().eq("id", userId).then(
+        () => undefined,
+        (cleanupErr) => req.log?.warn({ err: cleanupErr }, "Failed to clean up profile after email send failure")
+      );
+      await supabaseAdmin.auth.admin.deleteUser(userId).then(
+        () => undefined,
+        (cleanupErr) => req.log?.warn({ err: cleanupErr }, "Failed to clean up auth user after email send failure")
+      );
+      res.status(503).json({ error: "Email verification is temporarily unavailable. Please contact support or try again later." });
       return;
     }
 
@@ -256,20 +324,52 @@ authRouter.post("/auth/login", authSignupLoginRateLimit, async (req, res) => {
       return;
     }
 
-    const { session, user } = data;
-    res.json({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-      expires_at: session.expires_at,
-      user: {
-        id: user.id,
-        email: user.email,
-        email_confirmed_at: user.email_confirmed_at,
-        user_metadata: user.user_metadata,
-      },
-    });
+    res.json(authSessionPayload(data));
   } catch (err) {
     req.log?.error({ err }, "POST /auth/login error");
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// ─── POST /api/auth/apple ─────────────────────────────────────────────────────
+
+authRouter.post("/auth/apple", authSignupLoginRateLimit, async (req, res) => {
+  try {
+    const parsed = parseBody(AppleLoginSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+    const { identityToken, email, fullName } = parsed.data;
+
+    const { data, error } = await supabaseAdmin.auth.signInWithIdToken({
+      provider: "apple",
+      token: identityToken,
+    });
+
+    if (error || !data.session || !data.user) {
+      req.log?.warn({ err: error }, "Apple sign-in failed");
+      res.status(401).json({ error: "Apple sign-in failed. Please try again." });
+      return;
+    }
+
+    const resolvedName =
+      fullName?.trim() ||
+      (typeof data.user.user_metadata?.["full_name"] === "string" ? data.user.user_metadata["full_name"] : "") ||
+      (typeof data.user.user_metadata?.["name"] === "string" ? data.user.user_metadata["name"] : "") ||
+      data.user.email?.split("@")[0] ||
+      email?.split("@")[0] ||
+      "RAIMZEAL Member";
+
+    await supabaseAdmin.from("profiles").upsert({
+      id: data.user.id,
+      name: resolvedName,
+      full_name: resolvedName,
+      email_verified: Boolean(data.user.email_confirmed_at),
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    });
+
+    res.json(authSessionPayload(data));
+  } catch (err) {
+    req.log?.error({ err }, "POST /auth/apple error");
     res.status(500).json({ error: "Internal server error." });
   }
 });
@@ -282,10 +382,14 @@ authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res)
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     const { email } = parsed.data;
 
-    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) { res.status(500).json({ error: "Failed to look up user." }); return; }
-
-    const user = listData.users.find((u) => u.email === email);
+    let user: AuthUser | null = null;
+    try {
+      user = await findUserByEmail(email);
+    } catch (err) {
+      req.log?.warn({ err }, "Failed to look up user for email OTP resend");
+      res.status(500).json({ error: "Failed to look up user." });
+      return;
+    }
 
     // Always return success regardless of whether the email is registered.
     // Returning 404 for unknown emails would let attackers enumerate which
@@ -301,7 +405,7 @@ authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res)
       await sendEmail(email, "Your RAIMZEAL verification code", emailOtpHtml(code, name));
     } catch (err: unknown) {
       req.log?.warn({ err }, "Failed to send email OTP resend");
-      res.status(503).json({ error: "Failed to send email. Please check your inbox or try again later." });
+      res.status(503).json({ error: "Email verification is temporarily unavailable. Please contact support or try again later." });
       return;
     }
 
@@ -322,10 +426,14 @@ authRouter.post("/auth/verify-email-code", emailVerifyRateLimit, async (req, res
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     const { email, code } = parsed.data;
 
-    const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) { res.status(500).json({ error: "Failed to look up user." }); return; }
-
-    const user = listData.users.find((u) => u.email === email);
+    let user: AuthUser | null = null;
+    try {
+      user = await findUserByEmail(email);
+    } catch (err) {
+      req.log?.warn({ err }, "Failed to look up user for email OTP verification");
+      res.status(500).json({ error: "Failed to look up user." });
+      return;
+    }
     if (!user) { res.status(400).json({ error: "Code expired or not found. Request a new one." }); return; }
 
     const { data: rows } = await supabaseAdmin
