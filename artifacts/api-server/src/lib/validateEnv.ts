@@ -1,4 +1,5 @@
 import { logger } from "./logger";
+import { getEmailConfigStatus } from "./mailer";
 
 const REQUIRED: string[] = [
   "PORT",
@@ -13,11 +14,8 @@ const OPTIONAL: Array<{ key: string; feature: string }> = [
   { key: "STRIPE_PRICE_RISE_YEARLY",    feature: "Rise yearly subscription checkout" },
   { key: "STRIPE_PRICE_REIGN_MONTHLY",  feature: "Reign monthly subscription checkout" },
   { key: "STRIPE_PRICE_REIGN_YEARLY",   feature: "Reign yearly subscription checkout" },
-  { key: "STRIPE_PRICE_LEGACY_MONTHLY", feature: "Legacy monthly subscription checkout" },
+  { key: "STRIPE_PRICE_LEGACY_MONTHLY", feature: "Legacy yearly subscription checkout" },
   { key: "STRIPE_PRICE_LEGACY_YEARLY",  feature: "Legacy yearly subscription checkout" },
-  { key: "SMTP_HOST", feature: "Email OTP delivery" },
-  { key: "SMTP_USER", feature: "Email OTP delivery" },
-  { key: "SMTP_PASS", feature: "Email OTP delivery" },
   { key: "TWILIO_ACCOUNT_SID", feature: "SMS OTP delivery" },
   { key: "TWILIO_AUTH_TOKEN", feature: "SMS OTP delivery" },
   { key: "TWILIO_FROM_NUMBER", feature: "SMS OTP delivery" },
@@ -39,5 +37,14 @@ export function validateEnv(): void {
     if (!process.env[key]) {
       logger.warn(`[startup] Optional env var ${key} is not set — ${feature} will be degraded`);
     }
+  }
+
+  const emailStatus = getEmailConfigStatus();
+  if (!emailStatus.configured) {
+    logger.warn(
+      `[startup] Email delivery is not configured — missing ${emailStatus.missing.join(", ")}. ` +
+      "Set RESEND_API_KEY plus RESEND_FROM/SMTP_FROM/EMAIL_FROM. " +
+      "For backup delivery, set POSTMARK_SERVER_TOKEN plus POSTMARK_FROM, or BACKUP_SMTP_HOST/BACKUP_SMTP_USER/BACKUP_SMTP_PASS.",
+    );
   }
 }
