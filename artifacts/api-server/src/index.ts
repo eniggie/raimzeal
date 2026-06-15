@@ -59,6 +59,28 @@ async function runSupabaseSchemaMigration() {
         content TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      CREATE TABLE IF NOT EXISTS community_reports (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        reporter_user_id UUID NOT NULL,
+        reported_user_id UUID,
+        post_id UUID REFERENCES community_posts(id) ON DELETE SET NULL,
+        comment_id UUID REFERENCES community_comments(id) ON DELETE SET NULL,
+        reason TEXT NOT NULL DEFAULT 'objectionable_content',
+        details TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS community_blocks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        blocker_user_id UUID NOT NULL,
+        blocked_user_id UUID NOT NULL,
+        post_id UUID REFERENCES community_posts(id) ON DELETE SET NULL,
+        reason TEXT NOT NULL DEFAULT 'abusive_user',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE(blocker_user_id, blocked_user_id)
+      );
     `);
     // Reload PostgREST schema cache via direct connection (bypasses PgBouncer).
     await pool.query(`SELECT pg_notify('pgrst', 'reload schema')`);
