@@ -333,7 +333,7 @@ export default function SignupScreen() {
                 >
                   Terms, Conditions & Full Disclaimer
                 </Text>
-                . I confirm I am 18+ years old. I understand RAIMZEAL is a free, non-profit platform and is not a substitute for professional medical advice, diagnosis, or treatment. I am solely responsible for any decisions or actions I take based on information in this app.
+                . I confirm I am 18+ years old. I understand RAIMZEAL is a free, non-profit platform and is not a substitute for professional medical advice, diagnosis, or treatment. I am solely responsible for any decisions or actions I take based on information in this app. I also agree to the Community Guidelines: there is ZERO TOLERANCE for objectionable content or abusive behavior, and any such content or user will be removed.
               </Text>
             </View>
           </View>
