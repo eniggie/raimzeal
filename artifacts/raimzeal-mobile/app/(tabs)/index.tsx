@@ -25,11 +25,10 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { MacroRing } from "@/components/MacroRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
+import { STRIPE_DONATION_URL } from "@/lib/constants";
 
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
-
-const STRIPE_DONATION_URL = "https://donate.stripe.com/aFa6oH7GE50z37Xdmh6kg00";
 
 const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
 
