@@ -273,7 +273,8 @@ authRouter.post("/auth/signup", authSignupLoginRateLimit, async (req, res) => {
       phone_verified: false,
       email_verified: false,
       updated_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      // created_at intentionally omitted — the DB column default sets it on INSERT
+      // and including it here would overwrite the original timestamp on any re-upsert.
     });
 
     const emailCode = generateCode();
@@ -364,7 +365,8 @@ authRouter.post("/auth/apple", authSignupLoginRateLimit, async (req, res) => {
       full_name: resolvedName,
       email_verified: Boolean(data.user.email_confirmed_at),
       updated_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
+      // created_at intentionally omitted — overwriting it on every Apple sign-in
+      // would corrupt the original account creation timestamp.
     });
 
     res.json(authSessionPayload(data));
