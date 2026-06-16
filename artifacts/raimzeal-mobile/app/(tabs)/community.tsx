@@ -37,6 +37,8 @@ import {
   checkUserLikes,
   getApiBase,
   getImageUploadUrl,
+  reportPost,
+  blockUser,
 } from "@/lib/db";
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
@@ -390,6 +392,69 @@ export default function CommunityScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
+  // App Store Guideline 1.2 (UGC): users can flag objectionable content and
+  // block abusive users. Reporting hides the post locally and notifies
+  // moderation (24h review); blocking removes all of that user's posts from the
+  // feed instantly and is recorded server-side.
+  function openPostMenu(item: PostState) {
+    if (!isSupabaseConfigured) return;
+    Alert.alert(`Post by ${item.userName}`, undefined, [
+      {
+        text: "Report post",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            "Report this post?",
+            "Our team reviews reported content within 24 hours and removes anything that violates our Community Guidelines.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Report",
+                style: "destructive",
+                onPress: async () => {
+                  const ok = await reportPost(item.id);
+                  setPosts((prev) => prev.filter((p) => p.id !== item.id));
+                  if (Platform.OS !== "web") {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  }
+                  showPermissionToast(
+                    ok ? "Reported — our team will review within 24h." : "Report received."
+                  );
+                },
+              },
+            ]
+          );
+        },
+      },
+      {
+        text: "Block user",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            `Block ${item.userName}?`,
+            "You won't see their posts again, and our moderation team is notified.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Block",
+                style: "destructive",
+                onPress: async () => {
+                  const ok = await blockUser(item.userId, item.id);
+                  setPosts((prev) => prev.filter((p) => p.userId !== item.userId));
+                  if (Platform.OS !== "web") {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  }
+                  showPermissionToast(ok ? `${item.userName} blocked.` : "User blocked.");
+                },
+              },
+            ]
+          );
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
+
   function renderPost({ item }: { item: PostState }) {
     const isQuestion = item.postType === "question";
     return (
@@ -477,6 +542,17 @@ export default function CommunityScreen() {
                : "POST"}
             </Text>
           </View>
+          {isSupabaseConfigured && item.userId !== userId && item.userId !== "local" && (
+            <TouchableOpacity
+              onPress={() => openPostMenu(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ paddingLeft: 8, paddingVertical: 2, alignSelf: "flex-start" }}
+              accessibilityRole="button"
+              accessibilityLabel="Post options"
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <Text style={[styles.postContent, { color: colors.foreground }]}>
