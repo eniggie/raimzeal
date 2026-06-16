@@ -366,7 +366,9 @@ export function Community() {
               key={t}
               onClick={() => {
                 setCommunityTab(t);
-                loadPosts(t);
+                // loadPosts is not called here — the useEffect([loadPosts]) fires
+                // when communityTab changes, triggering exactly one fetch per tab switch.
+                // Calling loadPosts(t) here too caused a double-fetch race.
               }}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',

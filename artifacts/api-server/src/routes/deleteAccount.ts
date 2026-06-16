@@ -8,7 +8,10 @@ const deleteAccountRouter = Router();
 async function deleteWhere(table: string, column: string, value: string): Promise<void> {
   const { error } = await supabaseAdmin.from(table).delete().eq(column, value);
   if (error) {
-    logger.warn({ table, column, err: error }, "Account deletion table cleanup failed");
+    // Log as error (not warn) so monitoring surfaces partial deletion failures.
+    // We deliberately do NOT throw: the auth user must always be deleted (GDPR),
+    // and orphaned rows are inaccessible via RLS even without the auth record.
+    logger.error({ table, column, err: error }, "Account deletion: data table cleanup failed");
   }
 }
 
