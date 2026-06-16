@@ -85,7 +85,7 @@ export default function ProfileScreen() {
     resetHints,
     clearAllData,
   } = useFitness();
-  const { signOut, user: authUser } = useAuth();
+  const { signOut, deleteAccount, user: authUser } = useAuth();
   const { tier } = useTier(authUser?.id ?? null);
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
@@ -744,6 +744,49 @@ export default function ProfileScreen() {
             if (!isSupabaseConfigured) {
               Alert.alert("Signed out", "You have been signed out.");
             }
+          },
+        },
+      ]
+    );
+  }
+
+  // App Store Guideline 5.1.1(v): users who can create an account must be able
+  // to delete it from within the app. Double-confirmation prevents accidents,
+  // then the server permanently erases the account and all associated data.
+  async function handleDeleteAccount() {
+    Alert.alert(
+      "Delete Account",
+      "This permanently deletes your RAIMZEAL account and ALL of your data — profile, workouts, meals, progress photos, community posts, and your sign-in. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Confirm permanent deletion",
+              "Are you absolutely sure? Your account and all data will be erased immediately and cannot be recovered.",
+              [
+                { text: "Keep my account", style: "cancel" },
+                {
+                  text: "Delete forever",
+                  style: "destructive",
+                  onPress: async () => {
+                    const { error } = await deleteAccount();
+                    if (error) {
+                      Alert.alert("Deletion failed", error);
+                      return;
+                    }
+                    resetHints();
+                    resetState();
+                    if (Platform.OS !== "web") {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }
+                    router.replace("/auth/welcome");
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -1563,6 +1606,13 @@ export default function ProfileScreen() {
               label="Sign Out"
               color={colors.destructive}
               onPress={handleLogout}
+            />
+            <ActionRow
+              icon="trash-outline"
+              label="Delete Account"
+              sublabel="Permanently erase your account and all data"
+              color={colors.destructive}
+              onPress={handleDeleteAccount}
               isLast
             />
           </GlassCard>
