@@ -45,6 +45,7 @@ interface AuthContextType {
   resendEmailConfirmation: (email: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updateUserProfile: (data: Record<string, unknown>) => Promise<{ error: string | null }>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -170,6 +171,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  // Permanently deletes the user's account and all associated data.
+  // Calls the trusted API server (service-role) which erases every user row
+  // across all tables, removes storage files, and deletes the Supabase auth
+  // user, then clears the local session. Required by App Store Guideline 5.1.1(v).
+  const deleteAccount = useCallback(async () => {
+    if (!isSupabaseConfigured) return { error: "Supabase not configured" };
+    try {
+      const { data: { session: current } } = await supabase.auth.getSession();
+      const token = current?.access_token;
+      if (!token) return { error: "You must be signed in to delete your account." };
+      const res = await fetch(`${getApiBase()}/user/delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        return { error: body.error ?? "Could not delete account. Please try again." };
+      }
+      // Server confirmed deletion — clear the local session so the app returns
+      // to the signed-out state.
+      await supabase.auth.signOut();
+      return { error: null };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Could not delete account." };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -185,6 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resendEmailConfirmation,
         resetPassword,
         updateUserProfile,
+        deleteAccount,
       }}
     >
       {children}
