@@ -825,3 +825,42 @@ export async function fetchPrograms(): Promise<ProgramItem[]> {
     return [];
   }
 }
+
+// ─── Community Moderation (report / block) ──────────────────────────────────
+// Required by App Store Guideline 1.2 (user-generated content). Both calls are
+// routed through the trusted API server, which records the action, removes the
+// reported/blocked content from feeds, and notifies moderation for 24h review.
+
+/** Flags a post as objectionable for moderation review. */
+export async function reportPost(postId: string, reason = "objectionable_content", details?: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const token = await getAccessToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${getApiBase()}/community/posts/${encodeURIComponent(postId)}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reason, ...(details ? { details } : {}) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Blocks an abusive user; their content is removed from the viewer's feed. */
+export async function blockUser(targetUserId: string, postId?: string, reason = "abusive_user"): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const token = await getAccessToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${getApiBase()}/community/users/${encodeURIComponent(targetUserId)}/block`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reason, ...(postId ? { postId } : {}) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
