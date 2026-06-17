@@ -10591,6 +10591,25 @@ function HistoryMacroChip({
     }
   }, [chipColor]);
 
+  const progressAnim = useRef(new Animated.Value(progress)).current;
+  const prevProgressRef = useRef(progress);
+
+  useLayoutEffect(() => {
+    if (prevProgressRef.current !== progress) {
+      prevProgressRef.current = progress;
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [progress]);
+
+  const animBarWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
   const animBg = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "15", chipColor + "15"] });
   const animBgPressable = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "15", chipColor + "15"] });
   const animBorder = colorAnim.interpolate({ inputRange: [0, 1], outputRange: [fromColor + "55", chipColor + "55"] });
@@ -10626,7 +10645,7 @@ function HistoryMacroChip({
         {value}<Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>/{goal}g</Text>
       </Animated.Text>
       <Animated.View style={[styles.historyMacroChipBar, { backgroundColor: animBarBg }]}>
-        <Animated.View style={[styles.historyMacroChipBarFill, { backgroundColor: animText, width: `${Math.round(progress * 100)}%` as `${number}%` }]} />
+        <Animated.View style={[styles.historyMacroChipBarFill, { backgroundColor: animText, width: animBarWidth }]} />
       </Animated.View>
     </>
   );
