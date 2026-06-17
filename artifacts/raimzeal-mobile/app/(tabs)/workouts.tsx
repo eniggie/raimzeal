@@ -1388,7 +1388,7 @@ export default function WorkoutsScreen() {
                       onPress={() => {
                         Alert.alert(
                           "Delete this workout?",
-                          `"${item.log.name}" will be removed from your log.`,
+                          `"${item.log.workoutName}" will be removed from your log.`,
                           [
                             { text: "Cancel", style: "cancel" },
                             {
