@@ -263,7 +263,13 @@ export default function HomeScreen() {
                   : colors.primary
               }
               label={netCalories.toString()}
-              sublabel="net kcal"
+              sublabel={`net kcal · ${
+                calorieGoal > 0
+                  ? netCalories / calorieGoal > 1
+                    ? "100%+"
+                    : `${Math.max(0, Math.round((netCalories / calorieGoal) * 100))}%`
+                  : "0%"
+              }`}
               animateOnMount
               delay={0}
             />
