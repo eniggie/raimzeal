@@ -6,6 +6,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -21,6 +22,7 @@ import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { useFitness } from "@/contexts/FitnessContext";
 import {
   computeSuggestedGoalsWithBreakdown,
+  formatBreakdownText,
   primaryGoalLabel,
   BREAKDOWN_GLOSSARY,
   GlossaryEntry,
@@ -55,6 +57,17 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
   const suggested = suggestedResult?.goals ?? null;
   const breakdown = suggestedResult?.breakdown ?? null;
   const goalLabel = user?.goals?.length ? primaryGoalLabel(user.goals) : "your goals";
+
+  async function handleShareBreakdown() {
+    if (!breakdown || !suggested) return;
+    Haptics.selectionAsync();
+    const text = formatBreakdownText(breakdown, suggested, goalLabel);
+    try {
+      await Share.share({ message: text });
+    } catch {
+      // share sheet could not be displayed (e.g. simulator restriction)
+    }
+  }
 
   const [calories, setCalories] = useState(goals.calories.toString());
   const [protein, setProtein] = useState(goals.protein.toString());
@@ -398,6 +411,15 @@ export function MacroGoalsSheet({ visible, onClose }: Props) {
                       <Ionicons name="information-circle-outline" size={11} color={colors.mutedForeground} />{" "}
                       icon next to any term to learn more.
                     </Text>
+
+                    <TouchableOpacity
+                      activeOpacity={0.82}
+                      onPress={handleShareBreakdown}
+                      style={[styles.shareBreakdownBtn, { borderColor: colors.primary + "55", backgroundColor: colors.primary + "12" }]}
+                    >
+                      <Ionicons name="share-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                      <Text style={[styles.shareBreakdownBtnText, { color: colors.primary }]}>Share</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -686,6 +708,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 10,
     lineHeight: 15,
+  },
+  shareBreakdownBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 8,
+    marginTop: 12,
+  },
+  shareBreakdownBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   incompleteNudge: {
     flexDirection: "row",
