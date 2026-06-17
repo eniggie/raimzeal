@@ -11,6 +11,7 @@
     "generate-ebook": "tsx ./src/generate-ebook.ts",
     "fix-stripe-webhook": "tsx ./src/fix-stripe-webhook.ts",
     "seed-revenuecat": "tsx ./src/seedRevenueCat.ts",
+    "sync-github": "tsx ./src/sync-github.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
