@@ -979,6 +979,23 @@ function WeeklyCalorieTrend({
     }, 1500);
   }
 
+  function handleTooltipTap() {
+    if (!activeBar) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (tooltipTimerRef.current) { clearTimeout(tooltipTimerRef.current); tooltipTimerRef.current = null; }
+    const idx = activeBar.idx;
+    const date = data[idx]?.date;
+    const resetAnims = data.map((d, i) => {
+      if (i === idx) {
+        return Animated.spring(pressScalesRef.current[i], { toValue: 1, useNativeDriver: false, bounciness: 10, speed: 20 });
+      }
+      const base = i === todayIdx ? 1 : d.calories === 0 ? 0.25 : 0.75;
+      return Animated.timing(barOpacityRef.current[i], { toValue: base, duration: 150, useNativeDriver: false });
+    });
+    Animated.parallel(resetAnims).start();
+    dismissTooltip(date ? () => onBarPress?.(date) : undefined);
+  }
+
   // Increment each time the home tab comes into focus so the animation
   // useEffect re-runs and bars grow in again.
   const [focusTick, setFocusTick] = useState(0);
@@ -1086,7 +1103,7 @@ function WeeklyCalorieTrend({
             ]}
           >
             <TouchableOpacity
-              onPress={() => dismissTooltip()}
+              onPress={handleTooltipTap}
               activeOpacity={0.8}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
