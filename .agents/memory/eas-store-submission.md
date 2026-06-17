@@ -42,3 +42,12 @@ cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 ASC_APP_ID=<id> eas submit --platfo
 - 1.3.0: versionCode 24 (auto-incremented from 23), build 4fdc301f, queued 2026-06-07, auto-submit to Play Store internal track scheduled (submission e0cf7555)
 
 **Why:** Replit blocks git operations from main agent; EAS_NO_VCS=1 is mandatory.
+
+## iOS Bundle ID correction (June 17 2026)
+- `app.json` had wrong bundleIdentifier: `app.replit.raimzeal` (Replit scaffold default)
+- Correct value is `com.econteur.raimzeal` — fixed
+- **Why this breaks submission:** EAS submit matches the built binary's bundle ID against the ASC app entry. A mismatch causes immediate rejection from TestFlight.
+- Always verify bundleIdentifier == com.econteur.raimzeal before triggering a production build
+
+## EAS CLI version
+- Upgraded from 19.0.1 → 20.2.0 (June 17 2026)
