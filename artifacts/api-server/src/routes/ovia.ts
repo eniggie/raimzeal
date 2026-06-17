@@ -118,7 +118,7 @@ function cleanChunk(text: string): string {
     .replace(/^(\s*)--+\s*/gm, "$1")
     .replace(/^(\s*)-\s+/gm, "$1")
     .replace(/^(\s*)\*\s+/gm, "$1")
-    .replace(/^\d+\.\s+/gm, "")
+    .replace(/(^|[ \t])\d+\.\s+/gm, "$1")
     .replace(/`{1,3}[^`]*`{1,3}/g, "")
     .replace(/~~([^~]*)~~/g, "$1")
     .replace(/[–—]/g, " ")
