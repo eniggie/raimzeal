@@ -1226,6 +1226,18 @@ export default function NutritionScreen() {
     };
   }, [filteredHistoryDays]);
 
+  const perfectDaysCount = React.useMemo(
+    () =>
+      filteredHistoryDays.filter(
+        ({ totals }) =>
+          totals.calories <= CALORIE_GOAL &&
+          totals.protein >= PROTEIN_GOAL &&
+          totals.carbs >= CARBS_GOAL &&
+          totals.fat >= FAT_GOAL,
+      ).length,
+    [filteredHistoryDays, CALORIE_GOAL, PROTEIN_GOAL, CARBS_GOAL, FAT_GOAL],
+  );
+
   const [highlightedDate, setHighlightedDate] = useState<string | null>(null);
   const [highlightedMacro, setHighlightedMacro] = useState<"calories" | "protein" | "carbs" | "fat" | null>(null);
   const highlightClearTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -6420,6 +6432,17 @@ export default function NutritionScreen() {
                         onBadgePress={() => openMacroDrillDown("fat", "Fat", FAT_GOAL, colors.accent, weeklyAvgSummary.avgFat)}
                       />
                     </View>
+                    {perfectDaysCount > 0 && (
+                      <View style={[styles.perfectDaysRow, { borderTopColor: colors.border }]}>
+                        <Text style={styles.perfectDaysStar}>🌟</Text>
+                        <Text style={[styles.perfectDaysText, { color: colors.success }]}>
+                          {perfectDaysCount} perfect {perfectDaysCount === 1 ? "day" : "days"}
+                        </Text>
+                        <Text style={[styles.perfectDaysLabel, { color: colors.mutedForeground }]}>
+                          — all goals met
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 )}
 
@@ -11542,6 +11565,25 @@ const styles = StyleSheet.create({
   allGoalsMetText: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
+  },
+  perfectDaysRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  perfectDaysStar: {
+    fontSize: 13,
+  },
+  perfectDaysText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  perfectDaysLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
   historyDayBadge: {
     paddingHorizontal: 10,
