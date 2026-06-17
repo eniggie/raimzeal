@@ -1385,7 +1385,20 @@ export default function WorkoutsScreen() {
                 <Swipeable
                   renderRightActions={() => (
                     <TouchableOpacity
-                      onPress={() => handleDeleteWithUndo(item.log)}
+                      onPress={() => {
+                        Alert.alert(
+                          "Delete this workout?",
+                          `"${item.log.name}" will be removed from your log.`,
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () => handleDeleteWithUndo(item.log),
+                            },
+                          ]
+                        );
+                      }}
                       style={secStyles.deleteAction}
                     >
                       <Ionicons name="trash-outline" size={20} color="#fff" />

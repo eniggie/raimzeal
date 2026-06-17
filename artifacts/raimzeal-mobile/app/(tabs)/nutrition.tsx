@@ -2807,9 +2807,18 @@ export default function NutritionScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const sameNameCount = mealLogs.filter((m) => m.name === meal.name && m.id !== meal.id).length;
     if (sameNameCount === 0) {
-      startSync();
-      removeMealLog(meal.id, finishSync);
-      showUndoToast(meal);
+      Alert.alert(
+        "Delete this meal?",
+        `"${meal.name}" will be removed from your log.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => { startSync(); removeMealLog(meal.id, finishSync); showUndoToast(meal); },
+          },
+        ]
+      );
       return;
     }
     Alert.alert(
