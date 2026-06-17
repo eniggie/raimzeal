@@ -9106,6 +9106,21 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
 
+  function handleCancelEdit() {
+    const g = log.amountGrams;
+    setEditForm({ name: log.name, calories: String(log.calories), protein: String(log.protein), carbs: String(log.carbs), fat: String(log.fat) });
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    setEditMealType(log.mealType);
+    setEditDate(log.date);
+    setEditServings(1);
+    editServingsRef.current = 1;
+    setEditServingsText("1");
+    setEditGrams(g);
+    editGramsRef.current = g;
+    setEditGramsText(g !== undefined ? (Number.isInteger(g) ? String(g) : g.toFixed(1)) : "");
+    setShowEditSheet(false);
+  }
+
   function handleDelete() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
@@ -9192,7 +9207,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
         visible={showEditSheet}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowEditSheet(false)}
+        onRequestClose={handleCancelEdit}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -9620,7 +9635,7 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
 
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => setShowEditSheet(false)}
+                onPress={handleCancelEdit}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
@@ -9956,6 +9971,21 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
     onSaved?.(`${name} saved · ${savedCalories} kcal`);
   }
 
+  function handleCancelEdit() {
+    const g = log.amountGrams;
+    setEditForm({ name: log.name, calories: String(log.calories), protein: String(log.protein), carbs: String(log.carbs), fat: String(log.fat) });
+    setEditBase({ calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat });
+    setEditMealType(log.mealType);
+    setEditDate(log.date);
+    setEditServings(1);
+    editServingsRef.current = 1;
+    setEditServingsText("1");
+    setEditGrams(g);
+    editGramsRef.current = g;
+    setEditGramsText(g !== undefined ? (Number.isInteger(g) ? String(g) : g.toFixed(1)) : "");
+    setShowEditSheet(false);
+  }
+
   function handleDelete() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     swipeableRef.current?.close();
@@ -10034,7 +10064,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
         visible={showEditSheet}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowEditSheet(false)}
+        onRequestClose={handleCancelEdit}
       >
         <View style={styles.modalOverlay}>
           <GlassCard
@@ -10464,7 +10494,7 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
 
             <View style={styles.modalBtns}>
               <TouchableOpacity
-                onPress={() => setShowEditSheet(false)}
+                onPress={handleCancelEdit}
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
