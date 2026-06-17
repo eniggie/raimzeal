@@ -191,6 +191,43 @@ authRouter.post("/auth/verify-sms-code", emailVerifyRateLimit, requireAuth, asyn
 // is required — the Supabase token is only issued after they click the link.
 // Rate-limited to 5 req/min per IP to prevent abuse.
 
+// ─── POST /api/auth/send-email-code (unauthenticated, rate-limited) ───────────
+// Sends a 6-digit OTP to the supplied email via Supabase's native OTP flow.
+// Returns 400 for invalid/missing email, 200 on success.
+
+const SendEmailCodeSchema = z.object({
+  email: z.string().email("Invalid email address."),
+});
+
+authRouter.post("/auth/send-email-code", authSendCodeRateLimit, async (req, res) => {
+  try {
+    const parsed = parseBody(SendEmailCodeSchema, req.body);
+    if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
+
+    const { email } = parsed.data;
+
+    // Trigger Supabase's built-in email OTP. shouldCreateUser:false means the
+    // OTP only works for existing accounts (sign-in flow, not registration).
+    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+
+    if (otpError) {
+      req.log?.warn({ err: otpError }, "POST /auth/send-email-code — Supabase OTP error (non-fatal)");
+    }
+
+    // Always return success to prevent email enumeration
+    req.log?.info({ email }, "POST /auth/send-email-code — OTP requested");
+    res.json({ success: true });
+  } catch (err) {
+    req.log?.error({ err }, "POST /auth/send-email-code error");
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// ─── POST /api/auth/welcome-email ─────────────────────────────────────────────
+
 const WelcomeEmailSchema = z.object({
   email: z.string().email("Invalid email address."),
   name: z.string().min(1).max(100, "Name too long."),

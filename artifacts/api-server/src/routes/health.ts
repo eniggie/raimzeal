@@ -38,14 +38,45 @@ router.get("/healthz", async (_req, res) => {
       ? "up"
       : "down";
 
+  // Email: verify SMTP credentials can connect
+  let email: "up" | "down" = "down";
+  let emailProvider: string = "not configured";
+  const smtpHost = process.env["SMTP_HOST"];
+  const smtpUser = process.env["SMTP_USER"];
+  const smtpPass = process.env["SMTP_PASS"];
+  if (smtpHost && smtpUser && smtpPass) {
+    emailProvider = smtpHost;
+    try {
+      const nodemailer = (await import("nodemailer")).default;
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: Number(process.env["SMTP_PORT"] ?? "587"),
+        secure: false,
+        auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 5000,
+        socketTimeout: 5000,
+      });
+      await transporter.verify();
+      email = "up";
+    } catch {
+      email = "down";
+    }
+  }
+
+  // AI: Ovia AI is up when the Brave Search key is configured
+  const ai: "up" | "degraded" = process.env["BRAVE_SEARCH_API_KEY"] ? "up" : "degraded";
+
   if (supabase === "down") {
     logger.warn("[healthz] Supabase ping failed");
   }
   if (stripe === "down") {
     logger.warn("[healthz] Stripe ping failed");
   }
+  if (email === "down") {
+    logger.warn("[healthz] SMTP verification failed");
+  }
 
-  res.json({ ok: true, supabase, stripe, twilio });
+  res.json({ ok: true, supabase, stripe, twilio, email, emailProvider, ai });
 });
 
 router.get("/health/donation-history", requireAdminSecret, (_req, res) => {

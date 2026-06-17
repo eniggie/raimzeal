@@ -493,5 +493,42 @@ communityRouter.post(
   }
 );
 
+// ── POST /api/community/users/:targetUserId/block ─────────────────────────────
+// Blocks a community user. Requires authentication (→ 401 without it).
+communityRouter.post(
+  "/community/users/:targetUserId/block",
+  requireAuth,
+  communityMutateLimitLight,
+  async (req, res) => {
+    const blockerId = (req as { userId?: string }).userId ?? "";
+    const { targetUserId } = req.params;
+
+    if (!targetUserId || targetUserId === blockerId) {
+      res.status(400).json({ error: "Invalid target user." });
+      return;
+    }
+
+    try {
+      const supabase = getAdminClient();
+      const { error } = await supabase.from("community_blocks").upsert(
+        { blocker_id: blockerId, blocked_id: targetUserId },
+        { onConflict: "blocker_id,blocked_id" },
+      );
+
+      if (error && !error.code?.startsWith("23")) {
+        req.log.error({ err: error, blockerId, targetUserId }, "POST /community/users/:targetUserId/block DB error");
+        res.status(500).json({ error: "Could not block user." });
+        return;
+      }
+
+      req.log.info({ blockerId, targetUserId }, "User blocked");
+      res.json({ success: true });
+    } catch (err) {
+      req.log.error({ err }, "POST /community/users/:targetUserId/block error");
+      res.status(500).json({ error: "Could not block user." });
+    }
+  },
+);
+
 export default communityRouter;
 
