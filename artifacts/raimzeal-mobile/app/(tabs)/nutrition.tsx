@@ -1295,6 +1295,7 @@ export default function NutritionScreen() {
 
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("calories");
   const trendPillPulse = useRef(new Animated.Value(1)).current;
+  const calRowPulse = useRef(new Animated.Value(1)).current;
   const trendMetricMounted = useRef(false);
 
   useEffect(() => {
@@ -1317,6 +1318,13 @@ export default function NutritionScreen() {
       Animated.timing(trendPillPulse, { toValue: 0.93, duration: 70, useNativeDriver: true }),
       Animated.timing(trendPillPulse, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start();
+    if (trendMetric === "calories") {
+      calRowPulse.setValue(1);
+      Animated.sequence([
+        Animated.timing(calRowPulse, { toValue: 1.05, duration: 90, useNativeDriver: true }),
+        Animated.timing(calRowPulse, { toValue: 1, duration: 80, useNativeDriver: true }),
+      ]).start();
+    }
   }, [trendMetric]);
 
   const trendChartDays = React.useMemo(() => {
@@ -6409,16 +6417,17 @@ export default function NutritionScreen() {
                         flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
                       }}
                     >
-                      <View style={[styles.weeklyAvgCalBadge, {
+                      <Animated.View style={[styles.weeklyAvgCalBadge, {
                           backgroundColor: trendMetric === "calories" ? colors.primary + "30" : colors.primary + "18",
                           borderWidth: trendMetric === "calories" ? 1 : 0,
                           borderColor: trendMetric === "calories" ? colors.primary + "99" : "transparent",
+                          transform: [{ scale: calRowPulse }],
                         }]}>
                         <Ionicons name="flame-outline" size={13} color={colors.primary} />
                         <Text style={[styles.weeklyAvgCalText, { color: colors.primary }]}>
                           {weeklyAvgSummary.avgCalories} / {CALORIE_GOAL} kcal avg/day
                         </Text>
-                      </View>
+                      </Animated.View>
                     </TouchableOpacity>
                     <View style={styles.weeklyAvgMacroRow}>
                       <HistoryMacroChip
