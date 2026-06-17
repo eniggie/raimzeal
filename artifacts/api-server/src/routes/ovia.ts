@@ -108,7 +108,7 @@ class SentenceBuffer {
   }
 }
 
-function cleanChunk(text: string): string {
+export function cleanChunk(text: string): string {
   return text
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/\*{2,3}([^*]*)\*{2,3}/g, "$1")
