@@ -2228,21 +2228,21 @@ export default function ProfileScreen() {
             />
             <ActionRow
               icon="flash-outline"
-              label="Rise — $4.99/mo · $39.99/yr"
+              label="Rise — $9.99/mo · $99/yr"
               sublabel="Improved scans · Macros · Meal planning · Habit reminders"
               color="#60a5fa"
               onPress={() => router.push("/membership")}
             />
             <ActionRow
               icon="star-outline"
-              label="Reign — $9.99/mo · $79.99/yr ⭐ Best Value"
+              label="Reign — $19.99/mo · $199/yr ⭐ Best Value"
               sublabel="Full AI coach · Cycle sync · Adaptive programs · Nutrition plans"
               color="#c084fc"
               onPress={() => router.push("/membership")}
             />
             <ActionRow
               icon="trophy-outline"
-              label="Legacy — $19.99/mo · $149.99/yr"
+              label="Legacy — $49.99/mo · $499/yr"
               sublabel="Fertility tracking · Wearables · Predictive alerts · Priority support"
               color="#fbbf24"
               onPress={() => router.push("/membership")}
