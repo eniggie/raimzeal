@@ -264,6 +264,8 @@ export default function HomeScreen() {
               }
               label={netCalories.toString()}
               sublabel="net kcal"
+              animateOnMount
+              delay={0}
             />
             <View style={styles.ringStats}>
               <RingStat color={colors.primary} label="Consumed" value={totalCaloriesToday} />
