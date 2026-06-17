@@ -1685,7 +1685,6 @@ export default function NutritionScreen() {
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
   const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
-  const [breakdownBarTooltipMeal, setBreakdownBarTooltipMeal] = useState<string | null>(null);
   const [tooltipMountedMeal, setTooltipMountedMeal] = useState<string | null>(null);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
   const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -8020,7 +8019,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); setTooltipMountedMeal(null); }}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -8048,7 +8047,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); setTooltipMountedMeal(null); }}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -8112,18 +8111,15 @@ export default function NutritionScreen() {
                             const tooltipMounted = tooltipMountedMeal === meal;
                             const showTooltip = () => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setBreakdownBarTooltipMeal(meal);
                               tooltipAnim.setValue(0);
                               setTooltipMountedMeal(meal);
-                              Animated.parallel([
-                                Animated.timing(tooltipAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-                              ]).start();
+                              Animated.timing(tooltipAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
                             };
                             const hideTooltip = () => {
+                              const hidingMeal = meal;
                               Animated.timing(tooltipAnim, { toValue: 0, duration: 100, useNativeDriver: true }).start(({ finished }) => {
                                 if (finished) {
-                                  setBreakdownBarTooltipMeal(null);
-                                  setTooltipMountedMeal(null);
+                                  setTooltipMountedMeal((current) => (current === hidingMeal ? null : current));
                                 }
                               });
                             };
@@ -8225,7 +8221,7 @@ export default function NutritionScreen() {
                 )}
 
                 <TouchableOpacity
-                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownBarTooltipMeal(null); setTooltipMountedMeal(null); }}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
