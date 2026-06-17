@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
+import { supabaseAdmin } from "./supabaseAdmin";
 
 const HISTORY_CAP = 48;
 
@@ -196,12 +197,30 @@ function buildRecoveryHtml(recovered: ProbeResult[], checkedAt: string): string 
   `;
 }
 
+async function getAlertEmail(): Promise<string | undefined> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("app_config")
+      .select("value")
+      .eq("key", "alert_email")
+      .maybeSingle();
+    if (error) {
+      logger.warn({ err: error }, "Failed to read alert email from app_config — falling back to env var");
+    } else if (data?.value) {
+      return data.value as string;
+    }
+  } catch (err) {
+    logger.warn({ err }, "Unexpected error reading alert email from app_config — falling back to env var");
+  }
+  return process.env["ALERT_EMAIL"] ?? process.env["SMTP_USER"];
+}
+
 async function sendAlertEmail(failures: ProbeResult[]): Promise<void> {
   const host = process.env["SMTP_HOST"];
   const port = Number(process.env["SMTP_PORT"] ?? "587");
   const user = process.env["SMTP_USER"];
   const pass = process.env["SMTP_PASS"];
-  const alertTo = process.env["ALERT_EMAIL"] ?? user;
+  const alertTo = await getAlertEmail();
 
   if (!host || !user || !pass || !alertTo) {
     logger.warn(
@@ -294,7 +313,7 @@ async function sendRecoveryEmail(recovered: ProbeResult[]): Promise<void> {
   const port = Number(process.env["SMTP_PORT"] ?? "587");
   const user = process.env["SMTP_USER"];
   const pass = process.env["SMTP_PASS"];
-  const alertTo = process.env["ALERT_EMAIL"] ?? user;
+  const alertTo = await getAlertEmail();
 
   if (!host || !user || !pass || !alertTo) {
     logger.warn(
