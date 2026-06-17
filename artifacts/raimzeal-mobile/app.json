@@ -3,7 +3,7 @@
     "name": "RAIMZEAL",
     "slug": "raimzeal",
     "owner": "econteur",
-    "version": "1.1.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "raimzeal",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.econteur.raimzeal",
-      "buildNumber": "1",
+      "buildNumber": "16",
       "associatedDomains": [
         "applinks:raimzeal.com"
       ],
@@ -87,7 +87,7 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "RAIMZEAL reads your Apple Health data \u2014 steps, sleep, heart rate and weight \u2014 to keep your fitness stats accurate and up to date.",
+          "healthSharePermission": "RAIMZEAL reads your Apple Health data — steps, sleep, heart rate and weight — to keep your fitness stats accurate and up to date.",
           "healthUpdatePermission": "RAIMZEAL writes your workout and activity data back to Apple Health so all your apps stay in sync."
         }
       ],
