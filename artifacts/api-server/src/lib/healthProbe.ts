@@ -3,6 +3,11 @@ import { logger } from "./logger";
 
 const HISTORY_CAP = 48;
 
+/** Labels that were failing at the end of the previous probe run. */
+const lastFailingLabels = new Set<string>();
+/** True until the very first probe run completes (no prior state). */
+let isFirstRun = true;
+
 export interface ProbeRun {
   timestamp: string;
   durationMs: number;
@@ -146,8 +151,47 @@ function buildAlertHtml(failures: ProbeResult[], checkedAt: string): string {
     </p>
 
     <p style="margin:0;font-size:12px;color:#4b5563;">
-      This alert is sent automatically every time the 15-minute probe finds a failure.
-      It will stop once all checks pass.
+      This alert fires once when a new failure is detected.
+      A recovery notice will be sent automatically when all checks pass again.
+    </p>
+  `;
+}
+
+function buildRecoveryHtml(recovered: ProbeResult[], checkedAt: string): string {
+  const rows = recovered
+    .map(
+      (r) => `
+      <tr>
+        <td style="padding:10px 14px;border-bottom:1px solid #1e1e22;color:#e8e8ec;font-weight:600;">${r.label}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #1e1e22;color:#9ca3af;font-size:12px;word-break:break-all;">${r.url}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #1e1e22;color:#4ade80;">✓ OK${r.status ? ` (HTTP ${r.status})` : ""}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return `
+    <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">Resolved at ${checkedAt} UTC</p>
+    <p style="margin:0 0 20px;font-size:20px;font-weight:700;color:#4ade80;">✅ Donation / Payment Health Recovered</p>
+
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#e8e8ec;">
+      All previously failing checks on <strong>raimzeal.com</strong> are now
+      <strong style="color:#4ade80;">passing</strong>.
+      ${recovered.length} check${recovered.length !== 1 ? "s" : ""} recovered.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e1e22;border-radius:8px;overflow:hidden;margin-bottom:24px;">
+      <thead>
+        <tr style="background:#1a1a1e;">
+          <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:1px;color:#9ca3af;text-transform:uppercase;">Check</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:1px;color:#9ca3af;text-transform:uppercase;">URL</th>
+          <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;letter-spacing:1px;color:#9ca3af;text-transform:uppercase;">Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <p style="margin:0;font-size:12px;color:#4b5563;">
+      No further action is required. This notice is sent once when all checks return to healthy.
     </p>
   `;
 }
@@ -237,10 +281,95 @@ async function sendAlertEmail(failures: ProbeResult[]): Promise<void> {
     text: [
       `RAIMZEAL Health Alert — ${checkedAt}`,
       "",
-      `${failures.length} check(s) failed:`,
+      `${failures.length} new failing check(s):`,
       ...failures.map((f) => `  • ${f.label}: ${f.reason ?? `HTTP ${f.status}`} (${f.url})`),
       "",
       "Please review the API server logs and Stripe integration immediately.",
+    ].join("\n"),
+  });
+}
+
+async function sendRecoveryEmail(recovered: ProbeResult[]): Promise<void> {
+  const host = process.env["SMTP_HOST"];
+  const port = Number(process.env["SMTP_PORT"] ?? "587");
+  const user = process.env["SMTP_USER"];
+  const pass = process.env["SMTP_PASS"];
+  const alertTo = process.env["ALERT_EMAIL"] ?? user;
+
+  if (!host || !user || !pass || !alertTo) {
+    logger.warn(
+      { recoveredCount: recovered.length },
+      "Health probe recovered but SMTP not configured — cannot send recovery email",
+    );
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+
+  const checkedAt = new Date().toUTCString();
+  const subject = `✅ RAIMZEAL Health Recovered — All Checks Passing`;
+
+  const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0b;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0b;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#111113;border-radius:16px;overflow:hidden;border:1px solid #1e1e22;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#051a0a 0%,#0a1a0f 100%);padding:24px 32px;border-bottom:2px solid #4ade80;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:14px;">
+                    <img src="https://raimzeal.com/favicon.png" alt="RAIMZEAL" style="width:52px;height:52px;border-radius:13px;display:block;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <p style="margin:0;font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">RAIMZEAL</p>
+                    <p style="margin:3px 0 0;font-size:12px;color:#4ade80;font-weight:600;letter-spacing:0.3px;">✅ Health Recovered — All Clear</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              ${buildRecoveryHtml(recovered, checkedAt)}
+              <hr style="border:none;border-top:1px solid #1e1e22;margin:28px 0 20px;" />
+              <p style="margin:0;font-size:11px;color:#4b5563;line-height:1.8;text-align:center;">
+                Automated recovery notice · RAIMZEAL · Operated by ECONTEUR LLC<br />
+                <a href="https://www.raimzeal.com" style="color:#6b7280;text-decoration:none;">raimzeal.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  await transporter.sendMail({
+    from: `"RAIMZEAL Health Monitor" <${user}>`,
+    to: alertTo,
+    subject,
+    html: htmlBody,
+    text: [
+      `RAIMZEAL Health Recovered — ${checkedAt}`,
+      "",
+      `${recovered.length} check(s) are back to healthy:`,
+      ...recovered.map((r) => `  • ${r.label} (${r.url})`),
+      "",
+      "No further action required.",
     ].join("\n"),
   });
 }
@@ -258,6 +387,7 @@ export async function runDonationHealthProbe(): Promise<void> {
 
   const durationMs = Date.now() - startMs;
   const failures = results.filter((r) => !r.ok);
+  const currentFailingLabels = new Set(failures.map((f) => f.label));
 
   const run: ProbeRun = {
     timestamp: new Date().toISOString(),
@@ -271,21 +401,55 @@ export async function runDonationHealthProbe(): Promise<void> {
 
   if (failures.length === 0) {
     logger.info({ checks: results.length, durationMs }, "Donation health probe passed — all checks OK");
+
+    if (!isFirstRun && lastFailingLabels.size > 0) {
+      // All previously-failing checks have recovered.
+      const recovered = results.filter((r) => lastFailingLabels.has(r.label));
+      logger.info(
+        { recoveredCount: recovered.length, labels: Array.from(lastFailingLabels) },
+        "All checks recovered — sending recovery email",
+      );
+      try {
+        await sendRecoveryEmail(recovered);
+        logger.info({ alertTo: process.env["ALERT_EMAIL"] ?? process.env["SMTP_USER"] }, "Recovery email sent");
+      } catch (err) {
+        logger.error({ err }, "Failed to send recovery email");
+      }
+    }
+
+    lastFailingLabels.clear();
+    isFirstRun = false;
     return;
   }
+
+  // Determine which failures are genuinely new (not already known).
+  const newFailures = failures.filter((f) => !lastFailingLabels.has(f.label));
 
   logger.warn(
     {
       failureCount: failures.length,
+      newFailureCount: newFailures.length,
+      knownFailureCount: failures.length - newFailures.length,
       failures: failures.map((f) => ({ label: f.label, reason: f.reason, status: f.status })),
     },
-    "Donation health probe detected failures — sending alert",
+    newFailures.length > 0
+      ? "Donation health probe detected new failures — sending alert"
+      : "Donation health probe detected failures — all already known, skipping alert",
   );
 
-  try {
-    await sendAlertEmail(failures);
-    logger.info({ alertTo: process.env["ALERT_EMAIL"] ?? process.env["SMTP_USER"] }, "Health alert email sent");
-  } catch (err) {
-    logger.error({ err }, "Failed to send health alert email");
+  if (newFailures.length > 0 || isFirstRun) {
+    try {
+      await sendAlertEmail(newFailures.length > 0 ? newFailures : failures);
+      logger.info({ alertTo: process.env["ALERT_EMAIL"] ?? process.env["SMTP_USER"] }, "Health alert email sent");
+    } catch (err) {
+      logger.error({ err }, "Failed to send health alert email");
+    }
   }
+
+  // Update the known-failing set for the next run.
+  lastFailingLabels.clear();
+  for (const label of currentFailingLabels) {
+    lastFailingLabels.add(label);
+  }
+  isFirstRun = false;
 }
