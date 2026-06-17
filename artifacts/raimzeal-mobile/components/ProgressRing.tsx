@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
@@ -37,6 +37,7 @@ export function ProgressRing({
   const clampedProgress = Math.min(1, Math.max(0, progress));
   const targetOffset = circumference * (1 - clampedProgress);
 
+  // ── Ring stroke animation ────────────────────────────────────────────────────
   const animatedOffset = useRef(new Animated.Value(circumference)).current;
 
   useEffect(() => {
@@ -61,6 +62,54 @@ export function ProgressRing({
       animatedOffset.setValue(targetOffset);
     }
   }, [targetOffset, animateOnMount]);
+
+  // ── Percentage label counter animation ───────────────────────────────────────
+  // If the label looks like a percentage ("72%"), count it up in sync with the
+  // ring fill so both finish at the same time. Other label formats are untouched.
+  const finalPercent =
+    typeof label === "string" && label.endsWith("%")
+      ? parseInt(label, 10)
+      : null;
+  const isPercentLabel = finalPercent !== null && !Number.isNaN(finalPercent);
+
+  const animatedPercent = useRef(new Animated.Value(0)).current;
+  const [displayLabel, setDisplayLabel] = useState<string | undefined>(
+    animateOnMount && isPercentLabel ? "0%" : label,
+  );
+
+  useEffect(() => {
+    if (!animateOnMount || !isPercentLabel) {
+      setDisplayLabel(label);
+      return;
+    }
+
+    // Reset to 0% immediately so there's no stale value on re-mount
+    animatedPercent.setValue(0);
+    setDisplayLabel("0%");
+
+    const listenerId = animatedPercent.addListener(({ value }) => {
+      setDisplayLabel(`${Math.round(value)}%`);
+    });
+
+    const timer = setTimeout(() => {
+      Animated.timing(animatedPercent, {
+        toValue: finalPercent,
+        duration: 700,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(() => {
+        // Pin to the exact label string after animation so rounding never leaves
+        // a 1-off value (e.g. 99% instead of 100%).
+        setDisplayLabel(label);
+        animatedPercent.removeListener(listenerId);
+      });
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+      animatedPercent.removeListener(listenerId);
+    };
+  }, [animateOnMount, delay, isPercentLabel, finalPercent, label]);
 
   const center = size / 2;
 
@@ -97,7 +146,7 @@ export function ProgressRing({
               { color: resolvedLabelColor, fontSize: size * 0.18 },
             ]}
           >
-            {label}
+            {displayLabel}
           </Text>
         )}
         {sublabel && (
