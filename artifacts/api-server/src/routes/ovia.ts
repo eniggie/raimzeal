@@ -17,6 +17,47 @@ const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via ov
 // by one entry per active user per day.
 const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
 
+// ── Per-user short-term conversation history ───────────────────────────────────
+// Stores the last MAX_HISTORY_PAIRS user+assistant turn pairs per user so Ovia
+// can maintain conversational continuity across requests without the mobile app
+// needing to replay full history on every call.
+// Each entry auto-expires after HISTORY_TTL_MS (24 h).
+const MAX_HISTORY_PAIRS = 10;
+const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface HistoryEntry {
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  updatedAt: number;
+}
+
+const conversationHistory = new Map<string, HistoryEntry>();
+
+function getHistory(userId: string): Array<{ role: "user" | "assistant"; content: string }> {
+  const entry = conversationHistory.get(userId);
+  if (!entry) return [];
+  if (Date.now() - entry.updatedAt > HISTORY_TTL_MS) {
+    conversationHistory.delete(userId);
+    return [];
+  }
+  return entry.messages;
+}
+
+function appendToHistory(userId: string, userContent: string, assistantContent: string): void {
+  if (!userContent || !assistantContent) return;
+  const now = Date.now();
+  const existing = conversationHistory.get(userId);
+  const base: Array<{ role: "user" | "assistant"; content: string }> =
+    existing && now - existing.updatedAt <= HISTORY_TTL_MS ? [...existing.messages] : [];
+
+  base.push({ role: "user", content: userContent });
+  base.push({ role: "assistant", content: assistantContent });
+
+  const maxMessages = MAX_HISTORY_PAIRS * 2;
+  const trimmed = base.length > maxMessages ? base.slice(base.length - maxMessages) : base;
+
+  conversationHistory.set(userId, { messages: trimmed, updatedAt: now });
+}
+
 function consumeUserDailyQuota(userId: string, limit: number): { allowed: boolean; remaining: number } {
   const now = Date.now();
   const entry = userDailyCounters.get(userId);
@@ -448,15 +489,25 @@ This is your automated Weekly Wellness Brief for ${wkName}. Do NOT ask intake qu
 CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up question — this is a proactive weekly brief, not a conversation opener. Write it as their trusted personal coach delivering a Sunday morning wellness update.`;
     }
 
+    // Resolve the new user turn (last user message in the incoming array).
+    const incomingUserMessage = [...messages].reverse().find((m) => m.role === "user");
+
+    // Load server-side history and prepend it so Ovia remembers recent turns
+    // even when the client does not replay history in its request payload.
+    const historyMessages = getHistory(userId);
+
+    const clientMessages = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
-      ...messages
-        .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
+      ...historyMessages,
+      ...clientMessages,
     ];
+
+    // Accumulates the full plain-text reply so we can persist it to history.
+    let assistantReplyAccumulator = "";
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
@@ -545,7 +596,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const ready = mainBuf.push(content);
         if (ready) {
           const cleaned = cleanChunk(ready);
-          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          if (cleaned) {
+            assistantReplyAccumulator += cleaned;
+            res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
         }
       }
 
@@ -554,7 +608,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const mainRemainder = mainBuf.flush();
         if (mainRemainder) {
           const cleaned = cleanChunk(mainRemainder);
-          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          if (cleaned) {
+            assistantReplyAccumulator += cleaned;
+            res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
         }
 
         let searchQuery = "";
@@ -600,7 +657,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             const ready = searchBuf.push(cnt);
             if (ready) {
               const cleaned = cleanChunk(ready);
-              if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+              if (cleaned) {
+                assistantReplyAccumulator += cleaned;
+                res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+              }
             }
           }
         }
@@ -608,14 +668,20 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const searchRemainder = searchBuf.flush();
         if (searchRemainder) {
           const cleaned = cleanChunk(searchRemainder);
-          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          if (cleaned) {
+            assistantReplyAccumulator += cleaned;
+            res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
         }
       } else if (chunk.choices[0]?.finish_reason === "tool_calls" && toolCallName === "update_profile") {
         // Flush any main-stream remainder before switching to tool handling.
         const mainRemainder = mainBuf.flush();
         if (mainRemainder) {
           const cleaned = cleanChunk(mainRemainder);
-          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          if (cleaned) {
+            assistantReplyAccumulator += cleaned;
+            res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
         }
 
         let profileUpdates: Record<string, unknown> = {};
@@ -668,7 +734,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             const ready = profileBuf.push(cnt);
             if (ready) {
               const cleaned = cleanChunk(ready);
-              if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+              if (cleaned) {
+                assistantReplyAccumulator += cleaned;
+                res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+              }
             }
           }
         }
@@ -676,7 +745,10 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
         const profileRemainder = profileBuf.flush();
         if (profileRemainder) {
           const cleaned = cleanChunk(profileRemainder);
-          if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          if (cleaned) {
+            assistantReplyAccumulator += cleaned;
+            res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+          }
         }
       }
     }
@@ -686,7 +758,15 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     const mainFinal = mainBuf.flush();
     if (mainFinal) {
       const cleaned = cleanChunk(mainFinal);
-      if (cleaned) res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+      if (cleaned) {
+        assistantReplyAccumulator += cleaned;
+        res.write(`data: ${JSON.stringify({ content: cleaned })}\n\n`);
+      }
+    }
+
+    // Persist this turn to server-side history so Ovia remembers it next time.
+    if (incomingUserMessage && assistantReplyAccumulator) {
+      appendToHistory(userId, incomingUserMessage.content, assistantReplyAccumulator);
     }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
