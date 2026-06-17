@@ -1,9 +1,23 @@
-import { Router, type IRouter } from "express";
+import { Router, type Request, type Response, type NextFunction, type IRouter } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { getUncachableStripeClient } from "../stripeClient";
 import { logger } from "../lib/logger";
+import { getProbeHistory } from "../lib/healthProbe";
 
 const router: IRouter = Router();
+
+function requireAdminSecret(req: Request, res: Response, next: NextFunction): void {
+  const secret = process.env["ADMIN_SECRET"];
+  if (!secret) {
+    res.status(503).json({ error: "Admin secret not configured on this server." });
+    return;
+  }
+  if (req.headers["x-admin-secret"] !== secret) {
+    res.status(401).json({ error: "Unauthorized." });
+    return;
+  }
+  next();
+}
 
 router.get("/healthz", async (_req, res) => {
   const results = await Promise.allSettled([
@@ -32,6 +46,15 @@ router.get("/healthz", async (_req, res) => {
   }
 
   res.json({ ok: true, supabase, stripe, twilio });
+});
+
+router.get("/health/donation-history", requireAdminSecret, (_req, res) => {
+  const history = getProbeHistory();
+  res.json({
+    count: history.length,
+    cap: 48,
+    runs: history.slice().reverse(),
+  });
 });
 
 export default router;

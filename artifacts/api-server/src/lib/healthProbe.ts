@@ -1,6 +1,22 @@
 import nodemailer from "nodemailer";
 import { logger } from "./logger";
 
+const HISTORY_CAP = 48;
+
+export interface ProbeRun {
+  timestamp: string;
+  durationMs: number;
+  passCount: number;
+  failCount: number;
+  results: ProbeResult[];
+}
+
+const probeHistory: ProbeRun[] = [];
+
+export function getProbeHistory(): ProbeRun[] {
+  return probeHistory.slice();
+}
+
 const PRODUCTION_BASE = "https://www.raimzeal.com";
 
 const PAGE_PROBES = [
@@ -232,16 +248,29 @@ async function sendAlertEmail(failures: ProbeResult[]): Promise<void> {
 export async function runDonationHealthProbe(): Promise<void> {
   logger.info("Donation health probe starting");
 
+  const startMs = Date.now();
+
   const results = await Promise.all([
     ...PAGE_PROBES.map((p) => probePage(p.label, `${PRODUCTION_BASE}${p.path}`)),
     probeDonationUrl(),
     probeStripeStatus(),
   ]);
 
+  const durationMs = Date.now() - startMs;
   const failures = results.filter((r) => !r.ok);
 
+  const run: ProbeRun = {
+    timestamp: new Date().toISOString(),
+    durationMs,
+    passCount: results.length - failures.length,
+    failCount: failures.length,
+    results,
+  };
+  probeHistory.push(run);
+  if (probeHistory.length > HISTORY_CAP) probeHistory.shift();
+
   if (failures.length === 0) {
-    logger.info({ checks: results.length }, "Donation health probe passed — all checks OK");
+    logger.info({ checks: results.length, durationMs }, "Donation health probe passed — all checks OK");
     return;
   }
 
