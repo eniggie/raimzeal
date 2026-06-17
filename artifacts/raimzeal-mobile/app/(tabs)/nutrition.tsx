@@ -1701,6 +1701,7 @@ export default function NutritionScreen() {
   const mealSectionYsRef = useRef<Record<string, Record<string, number>>>({});
   const trendChartYRef = useRef<number>(0);
   const historyFilterBarYRef = useRef<number>(0);
+  const chartBarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [historyFilterPanelOpen, setHistoryFilterPanelOpen] = useState(false);
   const { height: windowHeight } = useWindowDimensions();
   const scrollYRef = useRef<number>(0);
@@ -4504,20 +4505,31 @@ export default function NutritionScreen() {
 
   function handleChartBarPress(date: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (chartBarTimerRef.current) {
+      clearTimeout(chartBarTimerRef.current);
+      chartBarTimerRef.current = null;
+    }
     setHighlightedDate((prev) => {
       if (prev === date) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: trendChartYRef.current, animated: true });
-        }, 50);
+        scrollToDateCard(date);
         return null;
       }
-      scrollToDateCard(date);
+      chartBarTimerRef.current = setTimeout(() => {
+        chartBarTimerRef.current = null;
+        scrollToDateCard(date);
+        setHighlightedDate(null);
+      }, 1500);
       return date;
     });
   }
 
   function handleChartPillPress(date: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (chartBarTimerRef.current) {
+      clearTimeout(chartBarTimerRef.current);
+      chartBarTimerRef.current = null;
+    }
+    setHighlightedDate(null);
     scrollToDateCard(date);
   }
 
@@ -4533,6 +4545,10 @@ export default function NutritionScreen() {
   }
 
   function handleClearHighlight() {
+    if (chartBarTimerRef.current) {
+      clearTimeout(chartBarTimerRef.current);
+      chartBarTimerRef.current = null;
+    }
     setHighlightedDate(null);
   }
 
