@@ -8248,6 +8248,47 @@ export default function NutritionScreen() {
                                     <Text style={[styles.breakdownBarTooltipText, { color: colors.background }]}>
                                       {`Protein ${protPct}%  ·  Carbs ${carbPct}%  ·  Fat ${fatPct}%`}
                                     </Text>
+                                    {(() => {
+                                      const leadingMacro: "protein" | "carbs" | "fat" =
+                                        protPct >= carbPct && protPct >= fatPct
+                                          ? "protein"
+                                          : carbPct >= fatPct
+                                          ? "carbs"
+                                          : "fat";
+                                      const sorted = [...entries].sort(
+                                        (a, b) => (b[leadingMacro] ?? 0) - (a[leadingMacro] ?? 0)
+                                      );
+                                      const top = sorted.slice(0, 3).filter((e) => (e[leadingMacro] ?? 0) > 0);
+                                      if (top.length === 0) return null;
+                                      return (
+                                        <>
+                                          <View
+                                            style={{
+                                              width: "100%",
+                                              height: 0.5,
+                                              backgroundColor: colors.background,
+                                              opacity: 0.3,
+                                              marginTop: 4,
+                                              marginBottom: 3,
+                                            }}
+                                          />
+                                          {top.map((e) => {
+                                            const raw = e.name ?? "";
+                                            const label = raw.length > 20 ? raw.slice(0, 18) + "…" : raw;
+                                            const g = Math.round(e[leadingMacro] ?? 0);
+                                            return (
+                                              <Text
+                                                key={e.id}
+                                                style={[styles.breakdownBarTooltipFood, { color: colors.background }]}
+                                                numberOfLines={1}
+                                              >
+                                                {label}{"  "}{g}g
+                                              </Text>
+                                            );
+                                          })}
+                                        </>
+                                      );
+                                    })()}
                                     <View style={[styles.breakdownBarTooltipArrow, { borderTopColor: colors.foreground }]} />
                                   </Animated.View>
                                 )}
@@ -12011,6 +12052,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_500Medium",
     letterSpacing: 0.1,
+  },
+  breakdownBarTooltipFood: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    opacity: 0.8,
+    textAlign: "center",
+    marginTop: 1,
   },
   breakdownBarTooltipArrow: {
     position: "absolute",
