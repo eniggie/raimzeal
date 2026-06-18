@@ -2643,8 +2643,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           action === "save" || action === "share" || action === "copy"
             ? "lock-closed-outline"
             : undefined;
+        const permMessage =
+          action === "save"
+            ? "Camera access blocked — tap to open Settings"
+            : "Storage access blocked — tap to open Settings";
         showConfirmation(
-          "Photo access blocked — tap to open Settings",
+          permMessage,
           "error",
           permIcon,
           undefined,
@@ -2980,7 +2984,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         if (now - lastPermissionToastShownAtRef.current < 30_000) return;
         lastPermissionToastShownAtRef.current = now;
         showConfirmation(
-          "Photo access blocked — tap to open Settings",
+          "Storage access blocked — tap to open Settings",
           "error",
           "images-outline",
           undefined,
