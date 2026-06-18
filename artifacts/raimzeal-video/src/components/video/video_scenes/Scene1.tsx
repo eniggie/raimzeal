@@ -7,77 +7,63 @@ export function Scene1() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 600),
+      setTimeout(() => setPhase(2), 500),
       setTimeout(() => setPhase(3), 1200),
-      setTimeout(() => setPhase(4), 2200), // Exit drift
+      setTimeout(() => setPhase(4), 3000), // Exit phase
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div 
-      className="absolute inset-0 flex items-center justify-center z-10"
-      initial={{ scale: 1.2, filter: 'blur(20px)', opacity: 0 }}
+      className="absolute inset-0 flex flex-col items-center justify-center z-20"
+      initial={{ scale: 1.1, filter: 'blur(20px)', opacity: 0 }}
       animate={{ scale: 1, filter: 'blur(0px)', opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0, filter: 'blur(10px)' }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      exit={{ scale: 0.9, filter: 'blur(10px)', opacity: 0 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      
-      {/* Transformation visual overlay */}
       <motion.img 
         src={`${import.meta.env.BASE_URL}images/transformation.png`}
-        className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen mix-blend-color-dodge"
-        initial={{ rotate: -5, scale: 1.1 }}
-        animate={{ rotate: 0, scale: 1 }}
-        transition={{ duration: 3, ease: 'easeOut' }}
+        className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen"
+        initial={{ scale: 1.2, rotate: -2 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ duration: 4, ease: 'easeOut' }}
       />
-
-      <div className="relative text-center">
+      
+      <div className="relative text-center px-[5vw]">
         <motion.div
-          className="text-[#FF6B35] font-body font-bold tracking-[0.3em] uppercase text-[1.5vw] mb-4"
-          initial={{ y: 20, opacity: 0 }}
-          animate={phase >= 1 ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
-          transition={{ duration: 0.4 }}
+          className="text-[#00FF7F] font-body font-bold tracking-[0.4em] uppercase text-[1.5vw] mb-4 shadow-black drop-shadow-md"
+          initial={{ y: -20, opacity: 0 }}
+          animate={phase >= 1 ? { y: 0, opacity: 1 } : { y: -20, opacity: 0 }}
+          transition={{ duration: 0.6 }}
         >
-          Stop scrolling.
+          Your Journey
         </motion.div>
 
-        <h1 className="font-display font-bold text-[#F5F0E8] leading-[0.8] text-[12vw] uppercase flex flex-col items-center">
+        <h1 className="font-display font-bold text-[#F5F5F5] leading-[0.85] text-[12vw] uppercase flex flex-col items-center drop-shadow-2xl">
           <motion.div className="overflow-hidden">
             <motion.span 
               className="block"
-              initial={{ y: '100%', rotateZ: 10 }}
-              animate={phase >= 2 ? { y: '0%', rotateZ: 0 } : { y: '100%', rotateZ: 10 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            >
-              YOUR
-            </motion.span>
-          </motion.div>
-          
-          <motion.div className="overflow-hidden bg-[#2E8B57] px-[2vw]">
-            <motion.span 
-              className="block text-[#0D1117]"
-              initial={{ x: '-100%' }}
-              animate={phase >= 3 ? { x: '0%' } : { x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              initial={{ y: '100%', rotateZ: 5 }}
+              animate={phase >= 2 ? { y: '0%', rotateZ: 0 } : { y: '100%', rotateZ: 5 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             >
               TRANSFORMATION
             </motion.span>
           </motion.div>
           
-          <motion.div className="overflow-hidden">
+          <motion.div className="overflow-hidden bg-[#00FF7F] px-[2vw] mt-[1vw]">
             <motion.span 
-              className="block"
-              initial={{ y: '-100%', opacity: 0 }}
-              animate={phase >= 3 ? { y: '0%', opacity: 1 } : { y: '-100%', opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 250, damping: 25, delay: 0.1 }}
+              className="block text-[#080C10]"
+              initial={{ x: '-100%' }}
+              animate={phase >= 3 ? { x: '0%' } : { x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 250, damping: 20 }}
             >
               STARTS NOW
             </motion.span>
           </motion.div>
         </h1>
       </div>
-
     </motion.div>
   );
 }

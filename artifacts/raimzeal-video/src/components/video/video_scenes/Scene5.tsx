@@ -6,11 +6,9 @@ export function Scene5() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2000),
-      setTimeout(() => setPhase(4), 2500),
-      setTimeout(() => setPhase(5), 4000), // Hold before exit
+      setTimeout(() => setPhase(1), 300),
+      setTimeout(() => setPhase(2), 1500),
+      setTimeout(() => setPhase(3), 3500), // exit hold
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -18,53 +16,36 @@ export function Scene5() {
   return (
     <motion.div 
       className="absolute inset-0 flex flex-col items-center justify-center z-20"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.1 }}
-      transition={{ duration: 0.5 }}
+      initial={{ scale: 1.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div 
-        className="text-[12vw] font-display font-bold text-[#F5F0E8] tracking-widest leading-none drop-shadow-2xl"
-        initial={{ scale: 2, y: 50, opacity: 0 }}
-        animate={phase >= 1 ? { scale: 1, y: 0, opacity: 1 } : { scale: 2, y: 50, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 150, damping: 15 }}
-      >
-        RAIMZEAL
-      </motion.div>
-
-      <motion.div
-        className="overflow-hidden mt-[2vw]"
-      >
-        <motion.div 
-          className="bg-[#FF6B35] px-[4vw] py-[1vw] rounded-full"
-          initial={{ y: '100%' }}
-          animate={phase >= 2 ? { y: '0%' } : { y: '100%' }}
-          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        >
-          <span className="font-display text-[#0D1117] text-[4vw] leading-none block">
-            FREE TO START
-          </span>
-        </motion.div>
-      </motion.div>
-
-      <motion.p
-        className="font-body text-[#F5F0E8] text-[2.5vw] mt-[4vw] font-bold"
-        initial={{ opacity: 0 }}
-        animate={phase >= 3 ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        raimzeal.com
-      </motion.p>
+        className="absolute w-[40vw] h-[40vw] rounded-full border-[2vw] border-[#00FF7F] mix-blend-screen opacity-50"
+        initial={{ rotate: -90, scale: 0 }}
+        animate={phase >= 1 ? { rotate: 0, scale: 1 } : { rotate: -90, scale: 0 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+      />
       
-      <motion.div
-        className="absolute bottom-[5vh] text-[#F5F0E8]/50 font-body text-[1vw]"
-        initial={{ opacity: 0 }}
-        animate={phase >= 4 ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 1 }}
-      >
-        Available on iOS & Android
-      </motion.div>
-
+      <div className="relative text-center z-10 mix-blend-plus-lighter">
+        <motion.h3 
+          className="font-display text-[10vw] text-[#F5F5F5] leading-none drop-shadow-2xl"
+          initial={{ opacity: 0, y: 40 }}
+          animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          WORKOUTS
+        </motion.h3>
+        <motion.h3 
+          className="font-display text-[10vw] text-[#00FF7F] leading-none drop-shadow-[0_0_15px_rgba(0,255,127,0.5)]"
+          initial={{ opacity: 0, y: 40 }}
+          animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          & PROGRESS
+        </motion.h3>
+      </div>
     </motion.div>
   );
 }

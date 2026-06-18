@@ -6,12 +6,14 @@ import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
+import { Scene6 } from './video_scenes/Scene6';
 
 export const SCENE_DURATIONS = {
-  hook: 3000,
+  hook: 4000,
   problem: 4000,
-  solutionAI: 5000,
-  solutionPlatform: 5000,
+  solutionAI: 6000,
+  solutionPlatform: 6000,
+  solutionProgress: 5000,
   cta: 5000,
 };
 
@@ -20,24 +22,9 @@ const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
   problem: Scene2,
   solutionAI: Scene3,
   solutionPlatform: Scene4,
-  cta: Scene5,
+  solutionProgress: Scene5,
+  cta: Scene6,
 };
-
-const bgColors = [
-  '#0D1117',
-  '#0A0D12',
-  '#111620',
-  '#0F151E',
-  '#2E8B57',
-];
-
-const accentPath = [
-  { x: '-10vw', y: '110vh', scale: 0.5, rotate: 0, opacity: 0 },
-  { x: '80vw', y: '80vh', scale: 1.5, rotate: 45, opacity: 0.3 },
-  { x: '10vw', y: '20vh', scale: 2, rotate: 90, opacity: 0.5 },
-  { x: '50vw', y: '50vh', scale: 1, rotate: 180, opacity: 0.8 },
-  { x: '50vw', y: '50vh', scale: 20, rotate: 360, opacity: 1 },
-];
 
 const SCENE_START_SEC: Record<string, number> = (() => {
   const out: Record<string, number> = {};
@@ -86,9 +73,10 @@ export default function VideoTemplate({
 
   return (
     <>
-      <div className="relative w-full h-screen overflow-hidden bg-[#0D1117]">
-
-        <div className="absolute inset-0 opacity-20 mix-blend-screen">
+      <div className="relative w-full h-screen overflow-hidden bg-[#080C10]">
+        
+        {/* Persistent Video Background */}
+        <div className="absolute inset-0 opacity-20 mix-blend-screen pointer-events-none">
           <video
             src={`${import.meta.env.BASE_URL}videos/fitness-bg.mp4`}
             autoPlay
@@ -99,32 +87,61 @@ export default function VideoTemplate({
           />
         </div>
 
+        {/* Dynamic Color Overlay depending on Scene */}
         <motion.div
-          className="absolute inset-0 z-0"
-          animate={{ backgroundColor: bgColors[sceneIndex] }}
+          className="absolute inset-0 z-0 pointer-events-none"
+          animate={{
+            backgroundColor: [
+              'rgba(8, 12, 16, 0.8)',   // hook
+              'rgba(191, 0, 255, 0.15)', // problem
+              'rgba(0, 255, 127, 0.15)', // solutionAI
+              'rgba(255, 184, 0, 0.15)', // solutionPlatform
+              'rgba(8, 12, 16, 0.7)',   // solutionProgress
+              'rgba(0, 255, 127, 0.2)'  // cta
+            ][sceneIndex] || 'rgba(8, 12, 16, 0.8)'
+          }}
           transition={{ duration: 1.5, ease: 'easeInOut' }}
         />
 
+        {/* Persistent Floating Particles/Shapes */}
         <motion.div
-          className="absolute w-[40vw] h-[40vw] rounded-full border-[8vw] border-[#2E8B57] z-0 blur-[2px] mix-blend-screen"
-          animate={accentPath[sceneIndex]}
-          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
-        />
-
-        <motion.div
-          className="absolute w-[2px] bg-[#FF6B35] z-0"
+          className="absolute w-[60vw] h-[60vw] rounded-full mix-blend-screen opacity-10 blur-[8vw] pointer-events-none"
+          style={{ background: 'radial-gradient(circle, #00FF7F, transparent)' }}
           animate={{
-            left: ['0%', '20%', '80%', '40%', '50%'][sceneIndex],
-            top: '0%',
-            height: ['0%', '100%', '100%', '100%', '0%'][sceneIndex],
-            opacity: [0, 0.6, 0.8, 0.4, 0][sceneIndex],
+            x: ['-20vw', '50vw', '10vw', '80vw', '-10vw', '30vw'][sceneIndex] || '0vw',
+            y: ['-20vh', '10vh', '60vh', '20vh', '80vh', '50vh'][sceneIndex] || '0vh',
+            scale: [1, 1.2, 0.8, 1.5, 1, 1.3][sceneIndex] || 1
           }}
-          transition={{ duration: 1.2, ease: 'easeInOut' }}
+          transition={{ duration: 2, ease: [0.25, 1, 0.5, 1] }}
+        />
+        
+        <motion.div
+          className="absolute w-[50vw] h-[50vw] rounded-full mix-blend-screen opacity-10 blur-[6vw] pointer-events-none"
+          style={{ background: 'radial-gradient(circle, #BF00FF, transparent)' }}
+          animate={{
+            x: ['80vw', '10vw', '50vw', '-10vw', '60vw', '20vw'][sceneIndex] || '0vw',
+            y: ['60vh', '80vh', '10vh', '50vh', '-20vh', '30vh'][sceneIndex] || '0vh',
+          }}
+          transition={{ duration: 2.5, ease: [0.25, 1, 0.5, 1] }}
         />
 
+        {/* Persistent Accent Line */}
+        <motion.div
+          className="absolute h-[2px] bg-[#00FF7F] z-10 pointer-events-none shadow-[0_0_15px_rgba(0,255,127,0.8)]"
+          animate={{
+            left: ['0%', '10%', '60%', '20%', '15%', '0%'][sceneIndex] || '0%',
+            top: ['50%', '80%', '20%', '90%', '10%', '50%'][sceneIndex] || '50%',
+            width: ['0%', '80%', '30%', '60%', '40%', '100%'][sceneIndex] || '0%',
+            opacity: [0, 0.6, 0.8, 0.5, 0.7, 0][sceneIndex] || 0,
+          }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+        />
+
+        {/* Scene rendering */}
         <AnimatePresence mode="popLayout">
           {SceneComponent && <SceneComponent key={currentSceneKey} />}
         </AnimatePresence>
+
       </div>
 
       <audio
@@ -133,6 +150,7 @@ export default function VideoTemplate({
         preload="auto"
         autoPlay
         muted={muted}
+        loop
       />
     </>
   );
