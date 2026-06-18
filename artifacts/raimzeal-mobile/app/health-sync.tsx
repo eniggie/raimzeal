@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useHealthSync } from "@/hooks/useHealthSync";
+import ConfirmSheet from "@/components/ConfirmSheet";
 
 const PLATFORM_NAME = Platform.OS === "ios" ? "Apple Health" : "Google Health Connect";
 const PLATFORM_ICON = Platform.OS === "ios" ? "heart" : "pulse";
@@ -73,6 +73,7 @@ export default function HealthSyncScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [showDisconnectSheet, setShowDisconnectSheet] = useState(false);
   const {
     healthData,
     status,
@@ -91,14 +92,7 @@ export default function HealthSyncScreen() {
   }, [isAuthorized, healthData.lastSynced, syncNow]);
 
   function confirmDisconnect() {
-    Alert.alert(
-      `Disconnect ${PLATFORM_NAME}`,
-      "This will remove your synced health data from RAIMZEAL. Your data in the Health app stays untouched.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Disconnect", style: "destructive", onPress: disconnect },
-      ]
-    );
+    setShowDisconnectSheet(true);
   }
 
   const lastSyncText = healthData.lastSynced
@@ -376,6 +370,16 @@ export default function HealthSyncScreen() {
           </Pressable>
         </>
       )}
+      <ConfirmSheet
+        visible={showDisconnectSheet}
+        title={`Disconnect ${PLATFORM_NAME}`}
+        message="This will remove your synced health data from RAIMZEAL. Your data in the Health app stays untouched."
+        confirmLabel="Disconnect"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={() => { setShowDisconnectSheet(false); disconnect(); }}
+        onCancel={() => setShowDisconnectSheet(false)}
+      />
     </ScrollView>
   );
 }

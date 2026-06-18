@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ConfirmSheet from "@/components/ConfirmSheet";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -96,6 +97,7 @@ export default function LegacyScreen() {
   // ── Certificate state ─────────────────────────────────────────────────────
   const [cert, setCert] = useState<Certificate | null>(null);
   const [certLoading, setCertLoading] = useState(false);
+  const [showEndPartnerSheet, setShowEndPartnerSheet] = useState(false);
 
   // Load data when tab changes
   useEffect(() => {
@@ -183,16 +185,14 @@ export default function LegacyScreen() {
     finally { setRequesting(false); }
   }
 
-  async function handleEndPartnership() {
-    Alert.alert("End Partnership", "Are you sure you want to end this accountability partnership?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "End", style: "destructive", onPress: async () => {
-          await legacyFetch("/legacy/partner/end", { method: "POST" });
-          await loadPartner();
-        },
-      },
-    ]);
+  function handleEndPartnership() {
+    setShowEndPartnerSheet(true);
+  }
+
+  async function confirmEndPartnership() {
+    setShowEndPartnerSheet(false);
+    await legacyFetch("/legacy/partner/end", { method: "POST" });
+    await loadPartner();
   }
 
   async function loadCertificate() {
@@ -459,6 +459,17 @@ export default function LegacyScreen() {
         )}
 
       </ScrollView>
+
+      <ConfirmSheet
+        visible={showEndPartnerSheet}
+        title="End Partnership"
+        message="Are you sure you want to end this accountability partnership?"
+        confirmLabel="End Partnership"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={confirmEndPartnership}
+        onCancel={() => setShowEndPartnerSheet(false)}
+      />
     </View>
   );
 }

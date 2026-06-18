@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
+import ConfirmSheet from "@/components/ConfirmSheet";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -88,6 +88,7 @@ export default function OutdoorWorkoutScreen() {
 
   const [activity, setActivity] = useState<ActivityType>("run");
   const [phase, setPhase]       = useState<WorkoutPhase>("picker");
+  const [showFinishSheet, setShowFinishSheet] = useState(false);
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const [distanceKm, setDistanceKm]   = useState(0);
   const [locationErr, setLocationErr] = useState<string | null>(null);
@@ -237,14 +238,7 @@ export default function OutdoorWorkoutScreen() {
 
   const confirmFinish = useCallback(() => {
     if (phase === "active") {
-      Alert.alert(
-        "Finish Workout?",
-        "This will stop tracking and show your summary.",
-        [
-          { text: "Keep Going", style: "cancel" },
-          { text: "Finish", style: "destructive", onPress: handleFinish },
-        ]
-      );
+      setShowFinishSheet(true);
     } else {
       handleFinish();
     }
@@ -544,6 +538,17 @@ export default function OutdoorWorkoutScreen() {
           </>
         )}
       </View>
+
+      <ConfirmSheet
+        visible={showFinishSheet}
+        title="Finish Workout?"
+        message="This will stop tracking and show your summary."
+        confirmLabel="Finish"
+        cancelLabel="Keep Going"
+        destructive
+        onConfirm={() => { setShowFinishSheet(false); handleFinish(); }}
+        onCancel={() => setShowFinishSheet(false)}
+      />
     </View>
   );
 }

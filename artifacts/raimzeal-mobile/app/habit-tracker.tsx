@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { getApiBase, getAccessToken } from "@/lib/db";
+import ConfirmSheet from "@/components/ConfirmSheet";
 
 const STORAGE_KEY_CONFIG = "@raimzeal_habits_config_v1";
 const STORAGE_KEY_LOG_PREFIX = "@raimzeal_habits_log_";
@@ -73,6 +73,7 @@ export default function HabitTrackerScreen() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCachedAt, setAiCachedAt] = useState<string | null>(null);
+  const [deleteHabitId, setDeleteHabitId] = useState<string | null>(null);
 
   const activeHabits = habits.filter((h) => h.enabled);
   const completedCount = completedToday.size;
@@ -249,20 +250,17 @@ export default function HabitTrackerScreen() {
   }, [aiLoading, activeHabits, weekData, completedCount, totalCount]);
 
   function deleteHabit(id: string) {
-    Alert.alert("Delete Habit", "Remove this habit permanently?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          setHabits((prev) => {
-            const next = prev.filter((h) => h.id !== id);
-            saveConfig(next);
-            return next;
-          });
-        },
-      },
-    ]);
+    setDeleteHabitId(id);
+  }
+
+  function confirmDeleteHabit() {
+    if (!deleteHabitId) return;
+    setHabits((prev) => {
+      const next = prev.filter((h) => h.id !== deleteHabitId);
+      saveConfig(next);
+      return next;
+    });
+    setDeleteHabitId(null);
   }
 
   const weekDays = weekDayLabels();
@@ -698,6 +696,17 @@ export default function HabitTrackerScreen() {
           </>
         )}
       </ScrollView>
+
+      <ConfirmSheet
+        visible={deleteHabitId !== null}
+        title="Delete Habit"
+        message="Remove this habit permanently? Your streak data will be lost."
+        confirmLabel="Delete"
+        cancelLabel="Keep It"
+        destructive
+        onConfirm={confirmDeleteHabit}
+        onCancel={() => setDeleteHabitId(null)}
+      />
     </View>
   );
 }
