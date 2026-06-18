@@ -311,7 +311,7 @@ export default function OutdoorWorkoutScreen() {
 
           {locationErr && (
             <View style={[styles.warnBanner, { backgroundColor: "#ef444418", borderColor: "#ef444440" }]}>
-              <Ionicons name="alert-circle-outline" size={16} color="#ef4444" />
+              <Ionicons name="location-outline" size={16} color="#ef4444" />
               <Text style={[styles.warnText, { color: colors.mutedForeground }]}>{locationErr}</Text>
             </View>
           )}

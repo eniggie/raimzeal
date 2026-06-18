@@ -663,7 +663,7 @@ export function QuickFoodsEditorSheet({
               ]}
             >
               <Ionicons
-                name="alert-circle-outline"
+                name="add-circle-outline"
                 size={15}
                 color={colors.destructive ?? "#ef4444"}
               />

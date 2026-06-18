@@ -198,7 +198,7 @@ export default function HealthSyncScreen() {
       {/* Error banner */}
       {error && (
         <View style={[styles.errorBox, { backgroundColor: colors.destructive + "12", borderColor: colors.destructive + "30" }]}>
-          <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} />
+          <Ionicons name="sync-outline" size={16} color={colors.destructive} />
           <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
         </View>
       )}
