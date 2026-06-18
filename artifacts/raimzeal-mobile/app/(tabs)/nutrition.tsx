@@ -8223,14 +8223,10 @@ export default function NutritionScreen() {
                               <Text style={[styles.breakdownFoodCal, { color: colors.primary }]}>
                                 {Math.round(log.calories)} kcal
                               </Text>
-                              <TouchableOpacity
+                              <ReAddButton
                                 onPress={() => { handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, amountGrams: log.amountGrams, nutrients100g: log.nutrients100g, servingLabel: log.servingLabel }, { forceServings: 1, forceMealType: log.mealType, showLoggedToast: true }); setBreakdownReAddCount((c) => c + 1); }}
-                                activeOpacity={0.7}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                style={[styles.breakdownReAddBtn, { backgroundColor: colors.primary + "1A", borderColor: colors.primary + "40" }]}
-                              >
-                                <Ionicons name="add" size={16} color={colors.primary} />
-                              </TouchableOpacity>
+                                primaryColor={colors.primary}
+                              />
                             </View>
                           );
                             });
@@ -10585,6 +10581,32 @@ function GoalsMetBadge({ seen }: { seen: boolean }) {
         <Text style={[styles.allGoalsMetText, { color: colors.success }]}>All goals met</Text>
       </TouchableOpacity>
     </Animated.View>
+  );
+}
+
+function ReAddButton({ onPress, primaryColor }: { onPress: () => void; primaryColor: string }) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  function handlePress() {
+    scale.value = withSequence(
+      withSpring(0.92, { damping: 15, stiffness: 400 }),
+      withSpring(1, { damping: 12, stiffness: 200 })
+    );
+    onPress();
+  }
+  return (
+    <Reanimated.View style={animatedStyle}>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={[styles.breakdownReAddBtn, { backgroundColor: primaryColor + "1A", borderColor: primaryColor + "40" }]}
+      >
+        <Ionicons name="add" size={16} color={primaryColor} />
+      </TouchableOpacity>
+    </Reanimated.View>
   );
 }
 
