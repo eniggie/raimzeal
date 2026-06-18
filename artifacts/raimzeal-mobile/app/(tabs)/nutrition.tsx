@@ -1432,6 +1432,10 @@ export default function NutritionScreen() {
   const badgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: badgeScaleAnim.value }],
   }));
+  const breakdownReAddBadgeScaleAnim = useSharedValue(1);
+  const breakdownReAddBadgeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: breakdownReAddBadgeScaleAnim.value }],
+  }));
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualMacrosPrefilledFor, setManualMacrosPrefilledFor] = useState<string | null>(null);
   const [showMacroDefaultsSheet, setShowMacroDefaultsSheet] = useState(false);
@@ -1746,6 +1750,15 @@ export default function NutritionScreen() {
     }
     prevScanCountRef.current = recentScanCount;
   }, [recentScanCount]);
+
+  useEffect(() => {
+    if (breakdownReAddCount > 0) {
+      breakdownReAddBadgeScaleAnim.value = withSequence(
+        withSpring(1.25, { damping: 4, stiffness: 300 }),
+        withSpring(1, { damping: 10, stiffness: 200 })
+      );
+    }
+  }, [breakdownReAddCount]);
 
   useEffect(() => {
     Animated.timing(searchLoadingDimAnim, {
@@ -8053,11 +8066,11 @@ export default function NutritionScreen() {
                         {dayLabel}
                       </Text>
                       {breakdownReAddCount > 0 && (
-                        <View style={[styles.breakdownReAddBadge, { backgroundColor: colors.primary }]}>
+                        <Reanimated.View style={[styles.breakdownReAddBadge, { backgroundColor: colors.primary }, breakdownReAddBadgeAnimatedStyle]}>
                           <Text style={[styles.breakdownReAddBadgeText, { color: colors.primaryForeground }]}>
                             +{breakdownReAddCount}
                           </Text>
-                        </View>
+                        </Reanimated.View>
                       )}
                     </View>
                     {dayData && (
