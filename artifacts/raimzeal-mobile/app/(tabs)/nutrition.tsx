@@ -6565,21 +6565,7 @@ export default function NutritionScreen() {
                               </>
                             )}
                             {allGoalsMet && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                  Alert.alert(
-                                    "🌟 Perfect Day!",
-                                    "You hit every macro goal and stayed within your calorie target. Amazing work — keep it up!",
-                                  );
-                                }}
-                                activeOpacity={0.75}
-                                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                                style={[styles.allGoalsMetBadge, { backgroundColor: colors.success + "20", borderColor: colors.success + "50" }]}
-                              >
-                                <Ionicons name="star" size={10} color={colors.success} />
-                                <Text style={[styles.allGoalsMetText, { color: colors.success }]}>All goals met</Text>
-                              </TouchableOpacity>
+                              <GoalsMetBadge seen={seenDatesRef.current.has(date)} />
                             )}
                           </View>
                           <View style={styles.historyDayHeaderRight}>
@@ -10547,6 +10533,47 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function GoalsMetBadge({ seen }: { seen: boolean }) {
+  const colors = useColors();
+  const anim = useRef(new Animated.Value(seen ? 1 : 0)).current;
+  const triggered = useRef(seen);
+
+  useEffect(() => {
+    if (seen && !triggered.current) {
+      triggered.current = true;
+      Animated.spring(anim, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 12,
+        stiffness: 220,
+        mass: 0.7,
+      }).start();
+    }
+  }, [seen, anim]);
+
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] });
+
+  return (
+    <Animated.View style={{ opacity: anim, transform: [{ scale }] }}>
+      <TouchableOpacity
+        onPress={() => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert(
+            "🌟 Perfect Day!",
+            "You hit every macro goal and stayed within your calorie target. Amazing work — keep it up!",
+          );
+        }}
+        activeOpacity={0.75}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        style={[styles.allGoalsMetBadge, { backgroundColor: colors.success + "20", borderColor: colors.success + "50" }]}
+      >
+        <Ionicons name="star" size={10} color={colors.success} />
+        <Text style={[styles.allGoalsMetText, { color: colors.success }]}>All goals met</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 function HistoryMacroChip({
   label,
