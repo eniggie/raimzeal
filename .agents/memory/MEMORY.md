@@ -1,3 +1,4 @@
 - [EAS Store Submission](eas-store-submission.md) — build/submit commands, credentials, Apple Team ID, Replit git-block workaround
 - [OSA MODE](osa-mode.md) — full-audit QA convention: one confirmed fix at a time, all four typechecks after every change
 - [Phase 2 Audit Results](phase2-audit.md) — June 6 2026 scan: all SAST HIGH = false positives, zero npm CVEs, 3 dead code items fixed
+- [Android Permission Repair](android-permission-repair.md) — June 2026 Play Store prep: blocked 6 excess perms, added RECORD_AUDIO+ACTIVITY_RECOGNITION, targetSdk→35
