@@ -1827,7 +1827,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [confirmActionFn, setConfirmActionFn] = useState<(() => void) | null>(null);
   const [confirmActionLabel, setConfirmActionLabel] = useState<string | null>(null);
   const confirmOpacity = useRef(new Animated.Value(0)).current;
-  const confirmTranslateY = useRef(new Animated.Value(8)).current;
+  const confirmTranslateY = useRef(new Animated.Value(16)).current;
   const confirmSwipeY = useRef(new Animated.Value(0)).current;
   const confirmProgressAnim = useRef(new Animated.Value(1)).current;
   const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
@@ -1864,7 +1864,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     confirmSwipeY.stopAnimation();
     confirmProgressAnim.stopAnimation();
     confirmOpacity.setValue(0);
-    confirmTranslateY.setValue(8);
+    confirmTranslateY.setValue(16);
     confirmSwipeY.setValue(0);
     confirmProgressAnim.setValue(1);
     setConfirmHasCountdown(false);
@@ -1894,7 +1894,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       Animated.timing(confirmSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
     ]).start(() => {
       confirmOpacity.setValue(0);
-      confirmTranslateY.setValue(8);
+      confirmTranslateY.setValue(16);
       confirmSwipeY.setValue(0);
       confirmProgressAnim.setValue(1);
       setConfirmHasCountdown(false);
@@ -2015,7 +2015,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
     confirmOpacity.setValue(0);
-    confirmTranslateY.setValue(8);
+    confirmTranslateY.setValue(16);
     confirmSwipeY.setValue(0);
     confirmProgressAnim.stopAnimation();
     confirmProgressAnim.setValue(1);
@@ -2033,7 +2033,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         confirmDismissTimerRef.current = setTimeout(() => {
           confirmDismissTimerRef.current = null;
           confirmOpacity.setValue(0);
-          confirmTranslateY.setValue(8);
+          confirmTranslateY.setValue(16);
           confirmProgressAnim.setValue(1);
           setConfirmHasCountdown(false);
           setConfirmMessage(null);
@@ -2060,7 +2060,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.delay(holdDuration),
         Animated.parallel([
           Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-          Animated.timing(confirmTranslateY, { toValue: 8, duration: 400, useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: 16, duration: 400, useNativeDriver: true }),
         ]),
       ]);
       confirmAnimRef.current = seq;
