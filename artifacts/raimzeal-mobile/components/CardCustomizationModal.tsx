@@ -45,6 +45,7 @@ import { useFitness } from "@/contexts/FitnessContext";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
+import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import ShareProgressCard, {
   CARD_THEMES,
@@ -110,7 +111,6 @@ const STORAGE_KEY_ACTIVE_PRESET = "@raimzeal_active_preset_id";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
-const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
 const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
 const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
@@ -1834,10 +1834,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  // Swipe-to-dismiss hint (shown once on the first toast the user ever sees)
-  const [toastSwipeHintSeen, setToastSwipeHintSeen] = useState(true);
-  const swipeHintOpacity = useRef(new Animated.Value(0)).current;
-  const swipeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Swipe-to-dismiss hint (shown once on the first toast the user ever sees, shared across the app)
+  const {
+    hintSeen: toastSwipeHintSeen,
+    swipeHintOpacity,
+    triggerToastSwipeHint,
+    dismissToastSwipeHint,
+    clearToastSwipeHintInstant,
+  } = useToastSwipeHint();
 
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
@@ -1859,6 +1863,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       confirmAnimRef.current.stop();
       confirmAnimRef.current = null;
     }
+    clearToastSwipeHintInstant();
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -1885,14 +1890,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       confirmAnimRef.current.stop();
       confirmAnimRef.current = null;
     }
-    if (swipeHintTimerRef.current !== null) {
-      clearTimeout(swipeHintTimerRef.current);
-      swipeHintTimerRef.current = null;
-    }
-    swipeHintOpacity.stopAnimation();
-    Animated.timing(swipeHintOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
-      swipeHintOpacity.setValue(0);
-    });
+    dismissToastSwipeHint();
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -2142,7 +2140,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, toastSwipeHintSeenRaw, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -2155,7 +2153,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           AsyncStorage.getItem(STORAGE_KEY_LONGPRESS_AND_RUN),
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
           AsyncStorage.getItem(STORAGE_KEY_ACTIVE_PRESET),
-          AsyncStorage.getItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_CHIP_DISMISS_COUNT),
           AsyncStorage.getItem(STORAGE_KEY_TAP_GENERATE_HINT_SEEN),
@@ -2253,9 +2250,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         } else {
           setShowLongPressHint(false);
         }
-
-        // Swipe-to-dismiss toast hint: show once, forever
-        setToastSwipeHintSeen(toastSwipeHintSeenRaw === "1");
 
         // Disabled-button long-press hint: persisted dismissed state
         if (disabledBtnLpHintSeenRaw === "1") {
@@ -3405,14 +3399,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
-    if (swipeHintTimerRef.current !== null) {
-      clearTimeout(swipeHintTimerRef.current);
-      swipeHintTimerRef.current = null;
-    }
-    swipeHintOpacity.stopAnimation();
-    Animated.timing(swipeHintOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
-      swipeHintOpacity.setValue(0);
-    });
+    dismissToastSwipeHint();
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
@@ -3457,24 +3444,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoTimerRef.current = null;
       dismissUndoToast();
     }, remaining);
-  }
-
-  function triggerToastSwipeHint() {
-    if (swipeHintTimerRef.current !== null) {
-      clearTimeout(swipeHintTimerRef.current);
-      swipeHintTimerRef.current = null;
-    }
-    swipeHintOpacity.stopAnimation();
-    swipeHintOpacity.setValue(0);
-    Animated.timing(swipeHintOpacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
-    swipeHintTimerRef.current = setTimeout(() => {
-      swipeHintTimerRef.current = null;
-      Animated.timing(swipeHintOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
-        swipeHintOpacity.setValue(0);
-      });
-    }, 1000);
-    setToastSwipeHintSeen(true);
-    AsyncStorage.setItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN, "1").catch(() => {});
   }
 
   function showUndoToast(preset: CardPreset, index: number) {

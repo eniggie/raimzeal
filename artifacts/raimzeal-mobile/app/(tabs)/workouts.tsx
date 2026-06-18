@@ -5,6 +5,7 @@ import {
   Animated,
   FlatList,
   LayoutAnimation,
+  PanResponder,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
 import { useFitness, type WorkoutLog } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
@@ -432,6 +434,51 @@ export default function WorkoutsScreen() {
   const pendingDeleteRef = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(12)).current;
+  const undoSwipeY = useRef(new Animated.Value(0)).current;
+
+  const {
+    hintSeen: toastSwipeHintSeen,
+    swipeHintOpacity,
+    triggerToastSwipeHint,
+    dismissToastSwipeHint,
+    clearToastSwipeHintInstant,
+  } = useToastSwipeHint();
+
+  const undoToastPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gestureState) =>
+        gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+      onPanResponderMove: (_evt, gestureState) => {
+        if (gestureState.dy < 0) {
+          undoSwipeY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          dismissUndoToastBySwipe();
+        } else {
+          Animated.spring(undoSwipeY, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(undoSwipeY, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
+        }).start();
+      },
+    })
+  ).current;
 
   // ── Library search / filter ──────────────────────────────────────────────
   const [librarySearch, setLibrarySearch] = useState("");
@@ -552,12 +599,17 @@ export default function WorkoutsScreen() {
 
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
+    undoSwipeY.stopAnimation();
     undoOpacity.setValue(0);
     undoTranslateY.setValue(12);
+    undoSwipeY.setValue(0);
     Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
       Animated.timing(undoTranslateY, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start();
+    if (!toastSwipeHintSeen) {
+      triggerToastSwipeHint();
+    }
   }
 
   function handleUndo() {
@@ -566,10 +618,33 @@ export default function WorkoutsScreen() {
     clearTimeout(pd.timer);
     pendingDeleteRef.current = null;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    clearToastSwipeHintInstant();
     Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(undoTranslateY, { toValue: 12, duration: 180, useNativeDriver: true }),
     ]).start(() => {
+      undoSwipeY.setValue(0);
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setPendingDelete(null);
+    });
+  }
+
+  function dismissUndoToastBySwipe() {
+    const pd = pendingDeleteRef.current;
+    if (pd) {
+      clearTimeout(pd.timer);
+      pendingDeleteRef.current = null;
+      startSync();
+      removeWorkoutLog(pd.id, finishSync);
+    }
+    dismissToastSwipeHint();
+    Animated.parallel([
+      Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(undoSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
+    ]).start(() => {
+      undoOpacity.setValue(0);
+      undoTranslateY.setValue(12);
+      undoSwipeY.setValue(0);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPendingDelete(null);
     });
@@ -1417,23 +1492,39 @@ export default function WorkoutsScreen() {
       {pendingDelete !== null && (
         <Animated.View
           style={[
-            styles.undoToast,
+            styles.undoToastWrap,
             {
               bottom: insets.bottom + 72,
-              backgroundColor: colors.card,
-              borderColor: colors.border,
               opacity: undoOpacity,
-              transform: [{ translateY: undoTranslateY }],
+              transform: [{ translateY: Animated.add(undoTranslateY, undoSwipeY) }],
             },
           ]}
+          {...undoToastPanResponder.panHandlers}
         >
-          <Ionicons name="trash-outline" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
-            "{pendingDelete.workoutName}" deleted
-          </Text>
-          <TouchableOpacity onPress={handleUndo} style={styles.undoBtn} hitSlop={8}>
-            <Text style={[styles.undoBtnText, { color: colors.primary }]}>Undo</Text>
-          </TouchableOpacity>
+          <Animated.View
+            style={[styles.undoSwipeHint, { opacity: swipeHintOpacity }]}
+            pointerEvents="none"
+          >
+            <Ionicons name="chevron-up" size={10} color="#fff" />
+            <Text style={styles.undoSwipeHintText}>swipe to dismiss</Text>
+          </Animated.View>
+          <View
+            style={[
+              styles.undoToast,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.undoToastText, { color: colors.foreground }]} numberOfLines={1}>
+              "{pendingDelete.workoutName}" deleted
+            </Text>
+            <TouchableOpacity onPress={handleUndo} style={styles.undoBtn} hitSlop={8}>
+              <Text style={[styles.undoBtnText, { color: colors.primary }]}>Undo</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       )}
       <SyncIndicator status={syncStatus} />
@@ -1679,10 +1770,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   historyToggleLabel: { fontSize: 13 },
-  undoToast: {
+  undoToastWrap: {
     position: "absolute",
     left: 16,
     right: 16,
+    alignItems: "center",
+  },
+  undoSwipeHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginBottom: 4,
+  },
+  undoSwipeHintText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: "#fff",
+    opacity: 0.7,
+    letterSpacing: 0.2,
+  },
+  undoToast: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -1690,6 +1797,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
+    width: "100%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
