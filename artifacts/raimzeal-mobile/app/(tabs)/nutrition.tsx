@@ -1700,6 +1700,8 @@ export default function NutritionScreen() {
   const [tooltipMountedMeal, setTooltipMountedMeal] = useState<string | null>(null);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
   const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const breakdownRowFadeAnim = useRef(new Animated.Value(0)).current;
+  const breakdownAnimGenRef = useRef(0);
 
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
@@ -4174,8 +4176,26 @@ export default function NutritionScreen() {
   function handleBreakdownSegmentTap(macro: "protein" | "carbs" | "fat") {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (breakdownHighlightTimer.current) clearTimeout(breakdownHighlightTimer.current);
+    breakdownRowFadeAnim.stopAnimation();
+    const gen = ++breakdownAnimGenRef.current;
     setBreakdownHighlightMacro(macro);
-    breakdownHighlightTimer.current = setTimeout(() => setBreakdownHighlightMacro(null), 1500);
+    Animated.timing(breakdownRowFadeAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    breakdownHighlightTimer.current = setTimeout(() => {
+      if (gen !== breakdownAnimGenRef.current) return;
+      Animated.timing(breakdownRowFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished && gen === breakdownAnimGenRef.current) {
+          setBreakdownHighlightMacro(null);
+        }
+      });
+    }, 1500);
   }
 
   async function handleAddFood(food: Omit<MealLog, "id" | "date">, opts?: { forceServings?: number; forceMealType?: MealType; showLoggedToast?: boolean; source?: "quick" | "fav" | "recent" }) {
@@ -8052,7 +8072,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -8080,7 +8100,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -8213,7 +8233,27 @@ export default function NutritionScreen() {
                                 : 0;
                               const dimmed = macroKey && share === 0;
                               return (
-                            <View key={log.id} style={[styles.breakdownFoodRow, { borderTopColor: colors.border, backgroundColor: highlightColor && share > 0 ? highlightColor + Math.round(bgOpacity * 255).toString(16).padStart(2, "0") : "transparent", opacity: dimmed ? 0.4 : 1 }]}>
+                            <Animated.View
+                              key={log.id}
+                              style={[
+                                styles.breakdownFoodRow,
+                                { borderTopColor: colors.border },
+                                dimmed
+                                  ? { opacity: breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.4] }) }
+                                  : undefined,
+                              ]}
+                            >
+                              {highlightColor && share > 0 && (
+                                <Animated.View
+                                  style={[
+                                    StyleSheet.absoluteFillObject,
+                                    {
+                                      backgroundColor: highlightColor + Math.round(bgOpacity * 255).toString(16).padStart(2, "0"),
+                                      opacity: breakdownRowFadeAnim,
+                                    },
+                                  ]}
+                                />
+                              )}
                               <Text style={[styles.breakdownFoodName, { color: colors.foreground }]} numberOfLines={1}>
                                 {log.name}
                               </Text>
@@ -8227,7 +8267,7 @@ export default function NutritionScreen() {
                                 onPress={() => { handleAddFood({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, amountGrams: log.amountGrams, nutrients100g: log.nutrients100g, servingLabel: log.servingLabel }, { forceServings: 1, forceMealType: log.mealType, showLoggedToast: true }); setBreakdownReAddCount((c) => c + 1); }}
                                 primaryColor={colors.primary}
                               />
-                            </View>
+                            </Animated.View>
                           );
                             });
                           })()}
@@ -8250,7 +8290,7 @@ export default function NutritionScreen() {
                 )}
 
                 <TouchableOpacity
-                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setTooltipMountedMeal(null); }}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
