@@ -7,23 +7,35 @@ import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
 import { Scene6 } from './video_scenes/Scene6';
+import { Scene7 } from './video_scenes/Scene7';
+import { Scene8 } from './video_scenes/Scene8';
+import { Scene9 } from './video_scenes/Scene9';
+import { Scene10 } from './video_scenes/Scene10';
 
 export const SCENE_DURATIONS = {
-  hook: 4000,
-  problem: 4000,
-  solutionAI: 6000,
-  solutionPlatform: 6000,
-  solutionProgress: 5000,
-  cta: 5000,
+  s1_hook: 4500,
+  s2_problem: 4000,
+  s3_ovia: 5000,
+  s4_workouts: 4500,
+  s5_food: 5000,
+  s6_macros: 4000,
+  s7_progress: 5000,
+  s8_community: 4000,
+  s9_health: 4500,
+  s10_cta: 5000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
-  hook: Scene1,
-  problem: Scene2,
-  solutionAI: Scene3,
-  solutionPlatform: Scene4,
-  solutionProgress: Scene5,
-  cta: Scene6,
+  s1_hook: Scene1,
+  s2_problem: Scene2,
+  s3_ovia: Scene3,
+  s4_workouts: Scene4,
+  s5_food: Scene5,
+  s6_macros: Scene6,
+  s7_progress: Scene7,
+  s8_community: Scene8,
+  s9_health: Scene9,
+  s10_cta: Scene10,
 };
 
 const SCENE_START_SEC: Record<string, number> = (() => {
@@ -75,66 +87,51 @@ export default function VideoTemplate({
     <>
       <div className="relative w-full h-screen overflow-hidden bg-[#080C10]">
         
-        {/* Persistent Video Background */}
-        <div className="absolute inset-0 opacity-20 mix-blend-screen pointer-events-none">
-          <video
-            src={`${import.meta.env.BASE_URL}videos/fitness-bg.mp4`}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        </div>
-
-        {/* Dynamic Color Overlay depending on Scene */}
+        {/* Persistent background gradient that shifts hue per scene (green -> amber -> purple -> green) */}
         <motion.div
           className="absolute inset-0 z-0 pointer-events-none"
           animate={{
             backgroundColor: [
-              'rgba(8, 12, 16, 0.8)',   // hook
-              'rgba(191, 0, 255, 0.15)', // problem
-              'rgba(0, 255, 127, 0.15)', // solutionAI
-              'rgba(255, 184, 0, 0.15)', // solutionPlatform
-              'rgba(8, 12, 16, 0.7)',   // solutionProgress
-              'rgba(0, 255, 127, 0.2)'  // cta
-            ][sceneIndex] || 'rgba(8, 12, 16, 0.8)'
+              'rgba(0, 255, 127, 0.15)',  // s1 green
+              'rgba(255, 184, 0, 0.15)',  // s2 amber
+              'rgba(191, 0, 255, 0.15)',  // s3 purple
+              'rgba(0, 255, 127, 0.15)',  // s4 green
+              'rgba(255, 184, 0, 0.15)',  // s5 amber
+              'rgba(191, 0, 255, 0.15)',  // s6 purple
+              'rgba(0, 255, 127, 0.15)',  // s7 green
+              'rgba(255, 184, 0, 0.15)',  // s8 amber
+              'rgba(191, 0, 255, 0.15)',  // s9 purple
+              'rgba(0, 255, 127, 0.2)'    // s10 green
+            ][sceneIndex] || 'rgba(0, 255, 127, 0.15)'
           }}
           transition={{ duration: 1.5, ease: 'easeInOut' }}
         />
 
-        {/* Persistent Floating Particles/Shapes */}
-        <motion.div
-          className="absolute w-[60vw] h-[60vw] rounded-full mix-blend-screen opacity-10 blur-[8vw] pointer-events-none"
-          style={{ background: 'radial-gradient(circle, #00FF7F, transparent)' }}
-          animate={{
-            x: ['-20vw', '50vw', '10vw', '80vw', '-10vw', '30vw'][sceneIndex] || '0vw',
-            y: ['-20vh', '10vh', '60vh', '20vh', '80vh', '50vh'][sceneIndex] || '0vh',
-            scale: [1, 1.2, 0.8, 1.5, 1, 1.3][sceneIndex] || 1
-          }}
-          transition={{ duration: 2, ease: [0.25, 1, 0.5, 1] }}
-        />
-        
-        <motion.div
-          className="absolute w-[50vw] h-[50vw] rounded-full mix-blend-screen opacity-10 blur-[6vw] pointer-events-none"
-          style={{ background: 'radial-gradient(circle, #BF00FF, transparent)' }}
-          animate={{
-            x: ['80vw', '10vw', '50vw', '-10vw', '60vw', '20vw'][sceneIndex] || '0vw',
-            y: ['60vh', '80vh', '10vh', '50vh', '-20vh', '30vh'][sceneIndex] || '0vh',
-          }}
-          transition={{ duration: 2.5, ease: [0.25, 1, 0.5, 1] }}
-        />
+        {/* 8-12 Floating particles */}
+        {[...Array(10)].map((_, i) => (
+          <motion.div
+            key={i}
+            className={`absolute w-[${2 + (i%3)}vw] h-[${2 + (i%3)}vw] ${i%2===0 ? 'rounded-full' : 'rounded-sm'} mix-blend-screen opacity-30 pointer-events-none`}
+            style={{ backgroundColor: ['#00FF7F', '#FFB800', '#BF00FF'][i%3] }}
+            animate={{
+              x: Array.from({length: 10}).map((_, sceneIdx) => `${Math.random() * 80 + 10}vw`)[sceneIndex] || '50vw',
+              y: Array.from({length: 10}).map((_, sceneIdx) => `${Math.random() * 80 + 10}vh`)[sceneIndex] || '50vh',
+              scale: Array.from({length: 10}).map((_, sceneIdx) => Math.random() * 0.8 + 0.6)[sceneIndex] || 1,
+              rotate: Array.from({length: 10}).map((_, sceneIdx) => Math.random() * 180)[sceneIndex] || 0
+            }}
+            transition={{ duration: 2.5, ease: [0.25, 1, 0.5, 1] }}
+          />
+        ))}
 
-        {/* Persistent Accent Line */}
+        {/* Persistent vertical traveling horizontal accent line */}
         <motion.div
-          className="absolute h-[2px] bg-[#00FF7F] z-10 pointer-events-none shadow-[0_0_15px_rgba(0,255,127,0.8)]"
+          className="absolute left-0 right-0 h-[3px] bg-[#00FF7F] z-10 pointer-events-none shadow-[0_0_20px_rgba(0,255,127,0.8)]"
           animate={{
-            left: ['0%', '10%', '60%', '20%', '15%', '0%'][sceneIndex] || '0%',
-            top: ['50%', '80%', '20%', '90%', '10%', '50%'][sceneIndex] || '50%',
-            width: ['0%', '80%', '30%', '60%', '40%', '100%'][sceneIndex] || '0%',
-            opacity: [0, 0.6, 0.8, 0.5, 0.7, 0][sceneIndex] || 0,
+            top: ['10%', '30%', '50%', '70%', '90%', '80%', '60%', '40%', '20%', '10%'][sceneIndex] || '10%',
+            opacity: [0.6, 0.4, 0.8, 0.5, 0.7, 0.6, 0.5, 0.7, 0.4, 0.8][sceneIndex] || 0.6,
+            backgroundColor: ['#00FF7F', '#FFB800', '#BF00FF', '#00FF7F', '#FFB800', '#BF00FF', '#00FF7F', '#FFB800', '#BF00FF', '#00FF7F'][sceneIndex] || '#00FF7F'
           }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
         />
 
         {/* Scene rendering */}

@@ -6,61 +6,48 @@ export function Scene6() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
+      setTimeout(() => setPhase(1), 200),
       setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2000),
-      setTimeout(() => setPhase(4), 2800),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div 
-      className="absolute inset-0 flex flex-col items-center justify-center z-30"
-      initial={{ opacity: 0, backgroundColor: 'rgba(8,12,16,0)' }}
-      animate={{ opacity: 1, backgroundColor: 'rgba(8,12,16,1)' }}
-      exit={{ opacity: 0, scale: 1.1 }}
-      transition={{ duration: 0.8 }}
+      className="absolute inset-0 flex flex-col items-center justify-center px-[5vw] z-20 text-center bg-black/70"
+      initial={{ opacity: 0, scale: 1.1 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+      transition={{ duration: 0.6 }}
     >
-      <motion.div 
-        className="text-[14vw] font-display font-bold text-[#F5F5F5] tracking-widest leading-none drop-shadow-[0_0_25px_rgba(0,255,127,0.3)]"
-        initial={{ scale: 2, y: 50, opacity: 0 }}
-        animate={phase >= 1 ? { scale: 1, y: 0, opacity: 1 } : { scale: 2, y: 50, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-      >
-        RAIMZEAL
-      </motion.div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#FFB800]/20 via-transparent to-transparent pointer-events-none" />
 
-      <motion.div className="overflow-hidden mt-[3vw]">
-        <motion.div 
-          className="bg-[#00FF7F] px-[5vw] py-[1.5vw] rounded-full shadow-[0_0_30px_rgba(0,255,127,0.6)]"
-          initial={{ y: '100%' }}
-          animate={phase >= 2 ? { y: '0%' } : { y: '100%' }}
-          transition={{ type: 'spring', stiffness: 250, damping: 20 }}
-        >
-          <span className="font-display text-[#080C10] text-[5vw] leading-none block">
-            FREE TO START
-          </span>
-        </motion.div>
-      </motion.div>
-
-      <motion.p
-        className="font-body text-[#F5F5F5] text-[3vw] mt-[5vw] font-bold tracking-widest drop-shadow-lg"
-        initial={{ opacity: 0, y: 20 }}
-        animate={phase >= 3 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-        transition={{ duration: 0.6 }}
+      <motion.h2 
+        className="text-[8vw] font-display text-[#FFB800] leading-[0.9] uppercase drop-shadow-2xl mb-[3vw]"
+        initial={{ opacity: 0, y: 50 }}
+        animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       >
-        raimzeal.com
-      </motion.p>
+        Evidence-based<br/><span className="text-[#F5F5F5]">food therapy.</span>
+      </motion.h2>
       
-      <motion.div
-        className="absolute bottom-[8vh] text-[#9CA3AF] font-body text-[1.5vw] tracking-wider uppercase"
-        initial={{ opacity: 0 }}
-        animate={phase >= 4 ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 1 }}
+      <motion.div 
+        className="relative"
+        initial={{ opacity: 0, width: 0 }}
+        animate={phase >= 2 ? { opacity: 1, width: '60vw' } : { opacity: 0, width: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
       >
-        Available on iOS & Android
+        <div className="h-[2px] bg-[#FFB800] w-full mb-[3vw]" />
       </motion.div>
+
+      <motion.p 
+        className="text-[3.5vw] font-display text-[#9CA3AF] uppercase tracking-wide"
+        initial={{ opacity: 0, filter: 'blur(10px)' }}
+        animate={phase >= 2 ? { opacity: 1, filter: 'blur(0px)' } : { opacity: 0, filter: 'blur(10px)' }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+      >
+        Not just calories.<br/>Healing through food.
+      </motion.p>
     </motion.div>
   );
 }

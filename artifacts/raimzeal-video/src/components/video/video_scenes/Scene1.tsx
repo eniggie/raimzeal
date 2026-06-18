@@ -6,62 +6,59 @@ export function Scene1() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 500),
-      setTimeout(() => setPhase(3), 1200),
-      setTimeout(() => setPhase(4), 3000), // Exit phase
+      setTimeout(() => setPhase(1), 300),
+      setTimeout(() => setPhase(2), 1800),
+      setTimeout(() => setPhase(3), 3500),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
+  const text1 = "STOP SCROLLING.";
+  const text2 = "Your best body starts here.";
+
   return (
     <motion.div 
       className="absolute inset-0 flex flex-col items-center justify-center z-20"
-      initial={{ scale: 1.1, filter: 'blur(20px)', opacity: 0 }}
-      animate={{ scale: 1, filter: 'blur(0px)', opacity: 1 }}
-      exit={{ scale: 0.9, filter: 'blur(10px)', opacity: 0 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+      transition={{ duration: 0.5 }}
     >
-      <motion.img 
-        src={`${import.meta.env.BASE_URL}images/transformation.png`}
-        className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen"
-        initial={{ scale: 1.2, rotate: -2 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ duration: 4, ease: 'easeOut' }}
+      <video
+        src={`${import.meta.env.BASE_URL}videos/s1-athlete-run.mp4`}
+        autoPlay
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-50"
       />
+      <div className="absolute inset-0 bg-black/40" />
       
-      <div className="relative text-center px-[5vw]">
-        <motion.div
-          className="text-[#00FF7F] font-body font-bold tracking-[0.4em] uppercase text-[1.5vw] mb-4 shadow-black drop-shadow-md"
-          initial={{ y: -20, opacity: 0 }}
-          animate={phase >= 1 ? { y: 0, opacity: 1 } : { y: -20, opacity: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          Your Journey
-        </motion.div>
-
-        <h1 className="font-display font-bold text-[#F5F5F5] leading-[0.85] text-[12vw] uppercase flex flex-col items-center drop-shadow-2xl">
-          <motion.div className="overflow-hidden">
-            <motion.span 
-              className="block"
-              initial={{ y: '100%', rotateZ: 5 }}
-              animate={phase >= 2 ? { y: '0%', rotateZ: 0 } : { y: '100%', rotateZ: 5 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            >
-              TRANSFORMATION
-            </motion.span>
-          </motion.div>
-          
-          <motion.div className="overflow-hidden bg-[#00FF7F] px-[2vw] mt-[1vw]">
-            <motion.span 
-              className="block text-[#080C10]"
-              initial={{ x: '-100%' }}
-              animate={phase >= 3 ? { x: '0%' } : { x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 250, damping: 20 }}
-            >
-              STARTS NOW
-            </motion.span>
-          </motion.div>
+      <div className="relative text-center px-[5vw] z-10 w-full">
+        <h1 className="font-display font-bold leading-[0.9] text-[10vw] uppercase drop-shadow-2xl">
+          <div className="mb-[2vw] text-[#F5F5F5]">
+            {text1.split('').map((char, i) => (
+              <motion.span key={i} style={{ display: 'inline-block' }}
+                initial={{ opacity: 0, y: 50, scale: 0.5, rotateX: 90 }}
+                animate={phase >= 1 ? { opacity: 1, y: 0, scale: 1, rotateX: 0 } : { opacity: 0, y: 50, scale: 0.5, rotateX: 90 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20, delay: phase >= 1 ? i * 0.05 : 0 }}
+                className={char === ' ' ? 'w-[2vw]' : ''}
+              >
+                {char}
+              </motion.span>
+            ))}
+          </div>
+          <div className="text-[#00FF7F] text-[6vw]">
+            {text2.split('').map((char, i) => (
+              <motion.span key={`t2-${i}`} style={{ display: 'inline-block' }}
+                initial={{ opacity: 0, filter: 'blur(10px)', x: -20 }}
+                animate={phase >= 2 ? { opacity: 1, filter: 'blur(0px)', x: 0 } : { opacity: 0, filter: 'blur(10px)', x: -20 }}
+                transition={{ duration: 0.4, delay: phase >= 2 ? i * 0.03 : 0 }}
+                className={char === ' ' ? 'w-[1.5vw]' : ''}
+              >
+                {char}
+              </motion.span>
+            ))}
+          </div>
         </h1>
       </div>
     </motion.div>

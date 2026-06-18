@@ -162,6 +162,36 @@ uri = "file://artifacts/raimzeal-video/public/images/community.png"
 type = "image"
 title = "community workout"
 
+[[generated]]
+id = "jVlvG2tCbQF4pW19C9VfQ"
+uri = "file://artifacts/raimzeal-video/public/images/s2-problem.png"
+type = "image"
+title = "Frustrated user with phone"
+
+[[generated]]
+id = "nTMt2QZJz8SCJeYufIVRi"
+uri = "file://artifacts/raimzeal-video/public/images/s4-workout.png"
+type = "image"
+title = "Outdoor running runner"
+
+[[generated]]
+id = "YuWJm58k_slnda5f7sDWj"
+uri = "file://artifacts/raimzeal-video/public/images/s6-macros.png"
+type = "image"
+title = "Macro nutrition abstract"
+
+[[generated]]
+id = "0DhMAP2vEcBoDKNXQdxqM"
+uri = "file://artifacts/raimzeal-video/public/images/s4-workout-ai.png"
+type = "image"
+title = "Workout with weights"
+
+[[generated]]
+id = "UO3K3zGyhqK1X1_6eiUii"
+uri = "file://artifacts/raimzeal-video/public/images/s5-barcode-scan.png"
+type = "image"
+title = "Phone barcode scan"
+
 [[outputs]]
 id = "e9rtH3laM1R1AkqFKs0NN"
 uri = "file://AUDIT_REPORT.md"

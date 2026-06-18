@@ -7,85 +7,63 @@ export function Scene4() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 200),
-      setTimeout(() => setPhase(2), 1500),
-      setTimeout(() => setPhase(3), 4500), // exit
+      setTimeout(() => setPhase(2), 1000),
+      setTimeout(() => setPhase(3), 1800),
+      setTimeout(() => setPhase(4), 2600),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div 
-      className="absolute inset-0 flex items-center justify-center z-20"
-      initial={{ opacity: 0, filter: 'blur(20px)' }}
-      animate={{ opacity: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: '-10vh' }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      className="absolute inset-0 z-20 flex bg-black"
+      initial={{ opacity: 0, scale: 1.1 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+      transition={{ duration: 0.6 }}
     >
-      <div className="w-full h-full flex">
-        {/* Panel 1: Food Therapy */}
-        <motion.div 
-          className="w-1/2 h-full bg-[#080C10] relative overflow-hidden"
-          initial={{ y: '100%' }}
-          animate={phase >= 1 ? { y: '0%' } : { y: '100%' }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        >
-          <img src={`${import.meta.env.BASE_URL}images/food-therapy.png`} className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen" />
-          <div className="absolute bottom-[15vh] left-[5vw]">
-            <motion.div 
-              className="text-[#FFB800] text-[2vw] font-body tracking-[0.2em] uppercase font-bold mb-[1vw]"
-              initial={{ opacity: 0, y: 20 }}
-              animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              Nutrition
-            </motion.div>
-            <motion.h3 
-              className="font-display text-[6vw] text-[#F5F5F5] leading-[0.8] drop-shadow-2xl"
-              initial={{ opacity: 0, x: -30 }}
-              animate={phase >= 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: -30 }}
-              transition={{ type: 'spring', stiffness: 250, damping: 20, delay: 0.3 }}
-            >
-              FOOD<br/>THERAPY
-            </motion.h3>
-          </div>
-        </motion.div>
-        
-        {/* Panel 2: Community */}
-        <motion.div 
-          className="w-1/2 h-full bg-[#080C10] relative overflow-hidden"
-          initial={{ y: '-100%' }}
-          animate={phase >= 1 ? { y: '0%' } : { y: '-100%' }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25, delay: 0.1 }}
-        >
-          <img src={`${import.meta.env.BASE_URL}images/community.png`} className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen" />
-          <div className="absolute top-[15vh] right-[5vw] text-right">
-            <motion.div 
-              className="text-[#BF00FF] text-[2vw] font-body tracking-[0.2em] uppercase font-bold mb-[1vw]"
-              initial={{ opacity: 0, y: -20 }}
-              animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-            >
-              Motivation
-            </motion.div>
-            <motion.h3 
-              className="font-display text-[6vw] text-[#F5F5F5] leading-[0.8] drop-shadow-2xl"
-              initial={{ opacity: 0, x: 30 }}
-              animate={phase >= 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
-              transition={{ type: 'spring', stiffness: 250, damping: 20, delay: 0.5 }}
-            >
-              COMMUNITY<br/>SUPPORT
-            </motion.h3>
-          </div>
-        </motion.div>
-      </div>
-      
-      {/* Center Dividing Line */}
       <motion.div 
-        className="absolute top-0 bottom-0 w-[4px] bg-[#00FF7F] z-30 shadow-[0_0_20px_rgba(0,255,127,1)]"
-        initial={{ scaleY: 0 }}
-        animate={phase >= 2 ? { scaleY: 1 } : { scaleY: 0 }}
-        transition={{ duration: 0.8, ease: 'easeInOut' }}
-      />
+        className="w-1/2 h-full relative overflow-hidden"
+      >
+        <motion.img 
+          src={`${import.meta.env.BASE_URL}images/s4-workout-ai.png`} 
+          className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90"
+          initial={{ scale: 1.2, filter: 'blur(5px)' }}
+          animate={{ scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 1.5, ease: 'easeOut' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
+      </motion.div>
+      
+      <div className="absolute left-[5vw] top-[20vh] max-w-[60vw] z-10 flex flex-col justify-center">
+        <motion.h3 
+          className="font-display text-[8vw] text-[#F5F5F5] leading-[0.9] drop-shadow-2xl uppercase mb-[3vw]"
+          initial={{ opacity: 0, x: -40 }}
+          animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: -40 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        >
+          Every workout<br/>
+          <span className="text-[#FFB800]">tracked.</span>
+        </motion.h3>
+
+        <div className="space-y-[1.5vw] ml-[2vw]">
+          {[
+            "Outdoor GPS",
+            "Rep counting",
+            "Strength logging"
+          ].map((item, i) => (
+            <motion.div key={i}
+              className="flex items-center gap-[1.5vw]"
+              initial={{ opacity: 0, x: -20 }}
+              animate={phase >= 2 + i ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              <div className="w-[4vw] h-[4px] bg-[#FFB800]" />
+              <h4 className="font-display text-[4vw] text-[#F5F5F5] leading-none uppercase">{item}</h4>
+            </motion.div>
+          ))}
+        </div>
+      </div>
     </motion.div>
   );
 }
