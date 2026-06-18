@@ -1885,6 +1885,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       confirmAnimRef.current.stop();
       confirmAnimRef.current = null;
     }
+    if (swipeHintTimerRef.current !== null) {
+      clearTimeout(swipeHintTimerRef.current);
+      swipeHintTimerRef.current = null;
+    }
+    swipeHintOpacity.stopAnimation();
+    Animated.timing(swipeHintOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+      swipeHintOpacity.setValue(0);
+    });
     confirmOpacity.stopAnimation();
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
@@ -3397,6 +3405,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
+    if (swipeHintTimerRef.current !== null) {
+      clearTimeout(swipeHintTimerRef.current);
+      swipeHintTimerRef.current = null;
+    }
+    swipeHintOpacity.stopAnimation();
+    Animated.timing(swipeHintOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+      swipeHintOpacity.setValue(0);
+    });
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
