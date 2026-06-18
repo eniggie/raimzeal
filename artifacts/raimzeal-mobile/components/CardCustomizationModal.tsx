@@ -2058,10 +2058,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
         ]),
         Animated.delay(holdDuration),
-        Animated.parallel([
-          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
-          Animated.timing(confirmTranslateY, { toValue: 16, duration: 400, useNativeDriver: true }),
-        ]),
+        Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
       ]);
       confirmAnimRef.current = seq;
       seq.start(({ finished }) => {
