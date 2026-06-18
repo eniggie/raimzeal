@@ -1697,10 +1697,12 @@ export default function NutritionScreen() {
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
   const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
+  const [breakdownHighlightMeal, setBreakdownHighlightMeal] = useState<string | null>(null);
   const [tooltipMountedMeal, setTooltipMountedMeal] = useState<string | null>(null);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
   const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const breakdownRowFadeAnim = useRef(new Animated.Value(0)).current;
+  const breakdownChipAnim = useRef(new Animated.Value(0)).current;
   const breakdownAnimGenRef = useRef(0);
 
   const favoritesYRef = useRef<number>(0);
@@ -4173,26 +4175,71 @@ export default function NutritionScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }
 
-  function handleBreakdownSegmentTap(macro: "protein" | "carbs" | "fat") {
+  function clearBreakdownHighlight() {
+    if (breakdownHighlightTimer.current) {
+      clearTimeout(breakdownHighlightTimer.current);
+      breakdownHighlightTimer.current = null;
+    }
+    ++breakdownAnimGenRef.current;
+    breakdownRowFadeAnim.stopAnimation();
+    breakdownChipAnim.stopAnimation();
+    Animated.parallel([
+      Animated.timing(breakdownRowFadeAnim, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(breakdownChipAnim, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setBreakdownHighlightMacro(null);
+        setBreakdownHighlightMeal(null);
+      }
+    });
+  }
+
+  function handleBreakdownSegmentTap(macro: "protein" | "carbs" | "fat", meal: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (breakdownHighlightTimer.current) clearTimeout(breakdownHighlightTimer.current);
     breakdownRowFadeAnim.stopAnimation();
+    breakdownChipAnim.stopAnimation();
     const gen = ++breakdownAnimGenRef.current;
     setBreakdownHighlightMacro(macro);
-    Animated.timing(breakdownRowFadeAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-    breakdownHighlightTimer.current = setTimeout(() => {
-      if (gen !== breakdownAnimGenRef.current) return;
+    setBreakdownHighlightMeal(meal);
+    Animated.parallel([
       Animated.timing(breakdownRowFadeAnim, {
-        toValue: 0,
+        toValue: 1,
         duration: 200,
         useNativeDriver: true,
-      }).start(({ finished }) => {
+      }),
+      Animated.spring(breakdownChipAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 14,
+        stiffness: 220,
+      }),
+    ]).start();
+    breakdownHighlightTimer.current = setTimeout(() => {
+      if (gen !== breakdownAnimGenRef.current) return;
+      Animated.parallel([
+        Animated.timing(breakdownRowFadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breakdownChipAnim, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
         if (finished && gen === breakdownAnimGenRef.current) {
           setBreakdownHighlightMacro(null);
+          setBreakdownHighlightMeal(null);
         }
       });
     }, 1500);
@@ -8072,7 +8119,7 @@ export default function NutritionScreen() {
             visible={dayBreakdownDate !== null}
             transparent
             animationType="slide"
-            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
+            onRequestClose={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownHighlightMeal(null); breakdownRowFadeAnim.setValue(0); breakdownChipAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
           >
             <View style={styles.modalOverlay}>
               <GlassCard
@@ -8100,7 +8147,7 @@ export default function NutritionScreen() {
                     )}
                   </View>
                   <TouchableOpacity
-                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
+                    onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownHighlightMeal(null); breakdownRowFadeAnim.setValue(0); breakdownChipAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
                   >
@@ -8113,7 +8160,9 @@ export default function NutritionScreen() {
                     showsVerticalScrollIndicator={false}
                     style={styles.breakdownScrollView}
                     contentContainerStyle={styles.breakdownScrollContent}
+                    onScrollBeginDrag={() => clearBreakdownHighlight()}
                   >
+                    <Pressable onPress={() => clearBreakdownHighlight()} style={{ flex: 1 }}>
                     {MEALS.map((meal) => {
                       const entries = dayData.logs.filter((m) => m.mealType === meal);
                       if (entries.length === 0) return null;
@@ -8202,11 +8251,49 @@ export default function NutritionScreen() {
                                     <View style={[styles.breakdownBarTooltipArrow, { borderTopColor: colors.foreground }]} />
                                   </Animated.View>
                                 )}
+                                {breakdownHighlightMacro && breakdownHighlightMeal === meal && (
+                                  <Animated.View
+                                    style={[
+                                      styles.breakdownMacroChip,
+                                      {
+                                        backgroundColor:
+                                          breakdownHighlightMacro === "protein"
+                                            ? colors.secondary
+                                            : breakdownHighlightMacro === "carbs"
+                                            ? colors.warning
+                                            : colors.accent,
+                                        opacity: breakdownChipAnim,
+                                        transform: [
+                                          {
+                                            scale: breakdownChipAnim.interpolate({
+                                              inputRange: [0, 1],
+                                              outputRange: [0.75, 1],
+                                            }),
+                                          },
+                                          {
+                                            translateY: breakdownChipAnim.interpolate({
+                                              inputRange: [0, 1],
+                                              outputRange: [4, 0],
+                                            }),
+                                          },
+                                        ],
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={styles.breakdownMacroChipText}>
+                                      {breakdownHighlightMacro === "protein"
+                                        ? "Protein ▲"
+                                        : breakdownHighlightMacro === "carbs"
+                                        ? "Carbs ▲"
+                                        : "Fat ▲"}
+                                    </Text>
+                                  </Animated.View>
+                                )}
                                 <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
                                   <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat")} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
                                   </View>
                                   <View style={{ flex: 1 - calShare }} />
                                 </View>
@@ -8286,11 +8373,12 @@ export default function NutritionScreen() {
                         </Text>
                       </View>
                     </View>
+                    </Pressable>
                   </ScrollView>
                 )}
 
                 <TouchableOpacity
-                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); breakdownRowFadeAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
+                  onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownHighlightMeal(null); breakdownRowFadeAnim.setValue(0); breakdownChipAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
@@ -11884,6 +11972,19 @@ const styles = StyleSheet.create({
   breakdownMacroLabel: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  breakdownMacroChip: {
+    alignSelf: "center",
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    marginBottom: 5,
+  },
+  breakdownMacroChipText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ffffff",
+    letterSpacing: 0.2,
   },
   breakdownMiniBarTrack: {
     flexDirection: "row",
