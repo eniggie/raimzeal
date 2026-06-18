@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
+import { usePermissionToast } from "@/hooks/usePermissionToast";
 import ConfirmSheet from "@/components/ConfirmSheet";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ export default function OutdoorWorkoutScreen() {
     return unit === "lbs" ? w * 0.453592 : w;
   })();
 
+  const { showPermissionToast, permissionToastElement } = usePermissionToast();
+
   const [activity, setActivity] = useState<ActivityType>("run");
   const [phase, setPhase]       = useState<WorkoutPhase>("picker");
   const [showFinishSheet, setShowFinishSheet] = useState(false);
@@ -140,8 +143,9 @@ export default function OutdoorWorkoutScreen() {
         const Location = await import("expo-location");
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          setLocationErr(
-            "Location access is needed to track distance and pace. Please enable it in Settings."
+          showPermissionToast(
+            "Location access blocked — tap to open Settings",
+            "location-outline"
           );
           setLocationGranted(false);
           return;
@@ -363,6 +367,7 @@ export default function OutdoorWorkoutScreen() {
             <Text style={styles.startBtnText}>Start {selectedActivity.label}</Text>
           </TouchableOpacity>
         </ScrollView>
+        {permissionToastElement}
       </View>
     );
   }
@@ -420,6 +425,7 @@ export default function OutdoorWorkoutScreen() {
             <Text style={[styles.discardText, { color: colors.mutedForeground }]}>Discard & Exit</Text>
           </TouchableOpacity>
         </ScrollView>
+        {permissionToastElement}
       </View>
     );
   }
@@ -549,6 +555,7 @@ export default function OutdoorWorkoutScreen() {
         onConfirm={() => { setShowFinishSheet(false); handleFinish(); }}
         onCancel={() => setShowFinishSheet(false)}
       />
+      {permissionToastElement}
     </View>
   );
 }
