@@ -207,6 +207,7 @@ export default function ProfileScreen() {
 
   const profileScrollRef = useRef<ScrollView>(null);
   const settingsCardYRef = useRef<number>(0);
+  const photoRestrictedAlertLastShownRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
   const countdownHighlightAnim = useRef(new Animated.Value(0)).current;
   const cardModalRef = useRef<CardCustomizationModalHandle>(null);
@@ -563,6 +564,9 @@ export default function ProfileScreen() {
     if (cameraRollStatus === "granted") {
       Alert.alert("Photo Library Access", "Access is active. RAIMZEAL can save progress cards to your photo library.");
     } else if (cameraRollStatus === "restricted") {
+      const now = Date.now();
+      if (now - photoRestrictedAlertLastShownRef.current < 30_000) return;
+      photoRestrictedAlertLastShownRef.current = now;
       Alert.alert(
         "Access Restricted",
         "Photo library access has been restricted by a device or organisational policy. Contact your administrator to change this setting."
