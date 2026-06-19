@@ -314,22 +314,55 @@ export default function ProgressPhotosScreen() {
     }
   }
 
-  async function handleAddPhoto() {
-    if (Platform.OS !== "web") {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        showPermissionToast("Photo access blocked — tap to open Settings");
-        return;
-      }
-    }
-
+  async function pickFromLibrary() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [3, 4],
       quality: 0.8,
     });
+    if (result.canceled || !result.assets[0]) return;
+    await addPhotoFromAsset(result.assets[0].uri);
+  }
 
+  async function handleAddPhoto() {
+    if (Platform.OS !== "web") {
+      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        if (canAskAgain) {
+          Alert.alert(
+            "Photo Library Access",
+            "RAIMZEAL needs access to your photo library to add progress photos and track your transformation over time.",
+            [
+              {
+                text: "Allow Access",
+                onPress: async () => {
+                  const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (retryStatus === "granted") {
+                    await pickFromLibrary();
+                  } else if (!retryCanAskAgain) {
+                    showPermissionToast("Photo access blocked — tap to open Settings");
+                  }
+                },
+              },
+              { text: "Not Now", style: "cancel" },
+            ],
+          );
+        } else {
+          showPermissionToast("Photo access blocked — tap to open Settings");
+        }
+        return;
+      }
+    }
+    await pickFromLibrary();
+  }
+
+  async function takeWithCamera() {
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+    });
     if (result.canceled || !result.assets[0]) return;
     await addPhotoFromAsset(result.assets[0].uri);
   }
@@ -340,20 +373,33 @@ export default function ProgressPhotosScreen() {
       return;
     }
 
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      showPermissionToast("Camera access blocked — tap to open Settings");
+      if (canAskAgain) {
+        Alert.alert(
+          "Camera Access",
+          "RAIMZEAL needs access to your camera to take progress photos directly in the app.",
+          [
+            {
+              text: "Allow Access",
+              onPress: async () => {
+                const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+                if (retryStatus === "granted") {
+                  await takeWithCamera();
+                } else if (!retryCanAskAgain) {
+                  showPermissionToast("Camera access blocked — tap to open Settings");
+                }
+              },
+            },
+            { text: "Not Now", style: "cancel" },
+          ],
+        );
+      } else {
+        showPermissionToast("Camera access blocked — tap to open Settings");
+      }
       return;
     }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets[0]) return;
-    await addPhotoFromAsset(result.assets[0].uri);
+    await takeWithCamera();
   }
 
   function pickCategory(): Promise<ProgressPhoto["category"] | null> {

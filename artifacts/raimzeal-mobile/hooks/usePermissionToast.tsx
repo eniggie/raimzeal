@@ -10,6 +10,21 @@ const COOLDOWN_MS = 30_000;
  * Returns `showPermissionToast(message?, actionIcon?)` to trigger the toast and
  * `permissionToastElement` — the JSX to render inside your screen's root View.
  *
+ * ## When to use this vs. an in-app rationale Alert
+ *
+ * Expo's permission APIs return a `canAskAgain` flag alongside the status.
+ * Use the two-step flow at call sites to maximise grant rates:
+ *
+ *  1. Call `request*PermissionsAsync()`.
+ *  2. If denied **and `canAskAgain === true`** — show an `Alert.alert` that
+ *     explains why access is needed ("Allow Access" / "Not Now"). If the user
+ *     taps "Allow Access", call the same `request*PermissionsAsync()` inline.
+ *     The OS will show its prompt again because the system hasn't permanently
+ *     blocked it yet.
+ *  3. If denied **and `canAskAgain === false`** (permanently blocked by the OS)
+ *     — call `showPermissionToast` here. The toast taps through to Settings,
+ *     which is the only remaining path to re-enable the permission.
+ *
  * Pass an optional `actionIcon` to show a small action-specific icon alongside
  * the lock icon (e.g. "camera-outline" for a save-to-camera-roll error), matching
  * the pattern used by CardCustomizationModal for permission errors.

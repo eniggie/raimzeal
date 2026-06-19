@@ -2977,36 +2977,73 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
+  async function pickBackgroundFromLibrary() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets.length > 0) {
+      const uri = result.assets[0].uri;
+      setPendingCropUri(uri);
+      setShowCropModal(true);
+    }
+  }
+
   async function handlePickBackgroundPhoto() {
     if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        const now = Date.now();
-        if (now - lastPermissionToastShownAtRef.current < 30_000) return;
-        lastPermissionToastShownAtRef.current = now;
-        showConfirmation(
-          "Storage access blocked — tap to open Settings",
-          "error",
-          "images-outline",
-          undefined,
-          () => Linking.openSettings(),
-          "Settings",
-          undefined,
-          "lock-closed-outline",
-        );
+        if (canAskAgain) {
+          Alert.alert(
+            "Photo Library Access",
+            "RAIMZEAL needs access to your photo library to set a background image for your card.",
+            [
+              {
+                text: "Allow Access",
+                onPress: async () => {
+                  const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (retryStatus === "granted") {
+                    await pickBackgroundFromLibrary();
+                  } else if (!retryCanAskAgain) {
+                    const now = Date.now();
+                    if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+                    lastPermissionToastShownAtRef.current = now;
+                    showConfirmation(
+                      "Storage access blocked — tap to open Settings",
+                      "error",
+                      "images-outline",
+                      undefined,
+                      () => Linking.openSettings(),
+                      "Settings",
+                      undefined,
+                      "lock-closed-outline",
+                    );
+                  }
+                },
+              },
+              { text: "Not Now", style: "cancel" },
+            ],
+          );
+        } else {
+          const now = Date.now();
+          if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+          lastPermissionToastShownAtRef.current = now;
+          showConfirmation(
+            "Storage access blocked — tap to open Settings",
+            "error",
+            "images-outline",
+            undefined,
+            () => Linking.openSettings(),
+            "Settings",
+            undefined,
+            "lock-closed-outline",
+          );
+        }
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.9,
-      });
-      if (!result.canceled && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        setPendingCropUri(uri);
-        setShowCropModal(true);
-      }
+      await pickBackgroundFromLibrary();
     } catch {
       // ignore picker errors
     }
