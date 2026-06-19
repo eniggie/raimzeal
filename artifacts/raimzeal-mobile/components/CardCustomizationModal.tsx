@@ -1850,6 +1850,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
   const undoSwipeY = useRef(new Animated.Value(0)).current;
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const undoRemainingMsRef = useRef<number>(0);
   const undoSegmentStartRef = useRef<number>(0);
   const undoTransitionIdRef = useRef<number>(0);
@@ -2109,11 +2110,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
-      // Dismiss any in-progress undo-delete toast so the timer doesn't fire
-      // against unmounted/invisible state after the modal closes.
+      // Dismiss any in-progress undo-delete toast so the timer and animation
+      // don't fire against unmounted/invisible state after the modal closes.
       if (undoTimerRef.current !== null) {
         clearTimeout(undoTimerRef.current);
         undoTimerRef.current = null;
+      }
+      if (undoAnimRef.current !== null) {
+        undoAnimRef.current.stop();
+        undoAnimRef.current = null;
       }
       setUndoDeleteState(null);
       // Flush any pending badge-dismissed persist immediately so the
@@ -3409,6 +3414,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
@@ -3436,6 +3445,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
     dismissToastSwipeHint();
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
@@ -3460,6 +3473,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
     undoProgressAnim.stopAnimation();
   }
 
@@ -3471,11 +3488,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
     undoSegmentStartRef.current = Date.now();
     if (!reduceMotionRef.current) {
-      Animated.timing(undoProgressAnim, {
+      const progressAnim = Animated.timing(undoProgressAnim, {
         toValue: 0,
         duration: remaining,
         useNativeDriver: false,
-      }).start();
+      });
+      undoAnimRef.current = progressAnim;
+      progressAnim.start(({ finished }) => {
+        if (finished) undoAnimRef.current = null;
+      });
     }
     undoTimerRef.current = setTimeout(() => {
       undoTimerRef.current = null;
@@ -3488,6 +3509,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     if (undoTimerRef.current !== null) {
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
+    }
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
     }
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
@@ -3527,13 +3552,19 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         undoOpacity.setValue(1);
         undoTranslateY.setValue(0);
       } else {
-        Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-        Animated.timing(undoTranslateY, { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }).start();
-        Animated.timing(undoProgressAnim, {
-          toValue: 0,
-          duration: undoMs,
-          useNativeDriver: false,
-        }).start();
+        const enterAnim = Animated.parallel([
+          Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.timing(undoTranslateY, { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }),
+          Animated.timing(undoProgressAnim, {
+            toValue: 0,
+            duration: undoMs,
+            useNativeDriver: false,
+          }),
+        ]);
+        undoAnimRef.current = enterAnim;
+        enterAnim.start(({ finished }) => {
+          if (finished) undoAnimRef.current = null;
+        });
       }
       undoTimerRef.current = setTimeout(() => {
         undoTimerRef.current = null;
