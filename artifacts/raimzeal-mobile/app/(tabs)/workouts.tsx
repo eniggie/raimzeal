@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
 import { useFitness, type WorkoutLog } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
@@ -435,10 +436,14 @@ export default function WorkoutsScreen() {
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(12)).current;
   const undoSwipeY = useRef(new Animated.Value(0)).current;
+  const reduceMotionForHint = useReduceMotion();
+  const reduceMotionForHintRef = useRef(reduceMotionForHint);
+  useEffect(() => { reduceMotionForHintRef.current = reduceMotionForHint; }, [reduceMotionForHint]);
 
   const {
     hintSeen: toastSwipeHintSeen,
     swipeHintOpacity,
+    swipeHintSlideAnim,
     triggerToastSwipeHint,
     dismissToastSwipeHint,
     clearToastSwipeHintInstant,
@@ -608,7 +613,7 @@ export default function WorkoutsScreen() {
       Animated.timing(undoTranslateY, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start();
     if (!toastSwipeHintSeen) {
-      triggerToastSwipeHint();
+      triggerToastSwipeHint(reduceMotionForHintRef.current);
     }
   }
 
@@ -1502,7 +1507,7 @@ export default function WorkoutsScreen() {
           {...undoToastPanResponder.panHandlers}
         >
           <Animated.View
-            style={[styles.undoSwipeHint, { opacity: swipeHintOpacity }]}
+            style={[styles.undoSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
             pointerEvents="none"
           >
             <Ionicons name="chevron-up" size={10} color="#fff" />

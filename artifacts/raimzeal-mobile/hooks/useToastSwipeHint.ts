@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Animated } from "react-native";
+import { Animated, Easing } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_seen";
@@ -12,7 +12,7 @@ export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_see
  * AsyncStorage key so the "seen" flag is global.
  *
  * Usage:
- *   const { hintSeen, swipeHintOpacity, triggerToastSwipeHint, dismissToastSwipeHint } = useToastSwipeHint();
+ *   const { hintSeen, swipeHintOpacity, swipeHintSlideAnim, triggerToastSwipeHint, dismissToastSwipeHint } = useToastSwipeHint();
  *
  *   // When showing a toast:
  *   if (!hintSeen) triggerToastSwipeHint();
@@ -21,7 +21,7 @@ export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_see
  *   dismissToastSwipeHint();
  *
  *   // In JSX (above the toast, pointerEvents="none"):
- *   <Animated.View style={{ opacity: swipeHintOpacity }} pointerEvents="none">
+ *   <Animated.View style={{ opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }} pointerEvents="none">
  *     <Ionicons name="chevron-up" size={10} color="#fff" />
  *     <Text>swipe to dismiss</Text>
  *   </Animated.View>
@@ -34,6 +34,7 @@ export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_see
 export function useToastSwipeHint() {
   const [hintSeen, setHintSeen] = useState(false);
   const swipeHintOpacity = useRef(new Animated.Value(0)).current;
+  const swipeHintSlideAnim = useRef(new Animated.Value(6)).current;
   const swipeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isStorageLoadedRef = useRef(false);
 
@@ -56,22 +57,44 @@ export function useToastSwipeHint() {
         swipeHintTimerRef.current = null;
       }
       swipeHintOpacity.stopAnimation();
+      swipeHintSlideAnim.stopAnimation();
     };
-  }, [swipeHintOpacity]);
+  }, [swipeHintOpacity, swipeHintSlideAnim]);
 
-  function triggerToastSwipeHint() {
+  function triggerToastSwipeHint(reduceMotion?: boolean) {
     if (!isStorageLoadedRef.current) return;
     if (swipeHintTimerRef.current !== null) {
       clearTimeout(swipeHintTimerRef.current);
       swipeHintTimerRef.current = null;
     }
     swipeHintOpacity.stopAnimation();
-    swipeHintOpacity.setValue(0);
-    Animated.timing(swipeHintOpacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+    swipeHintSlideAnim.stopAnimation();
+    if (reduceMotion) {
+      swipeHintOpacity.setValue(1);
+      swipeHintSlideAnim.setValue(0);
+    } else {
+      swipeHintOpacity.setValue(0);
+      swipeHintSlideAnim.setValue(6);
+      Animated.parallel([
+        Animated.timing(swipeHintOpacity, {
+          toValue: 1,
+          duration: 320,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(swipeHintSlideAnim, {
+          toValue: 0,
+          duration: 320,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
     swipeHintTimerRef.current = setTimeout(() => {
       swipeHintTimerRef.current = null;
       Animated.timing(swipeHintOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
         swipeHintOpacity.setValue(0);
+        swipeHintSlideAnim.setValue(6);
       });
     }, 1000);
     setHintSeen(true);
@@ -84,8 +107,10 @@ export function useToastSwipeHint() {
       swipeHintTimerRef.current = null;
     }
     swipeHintOpacity.stopAnimation();
+    swipeHintSlideAnim.stopAnimation();
     Animated.timing(swipeHintOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
       swipeHintOpacity.setValue(0);
+      swipeHintSlideAnim.setValue(6);
     });
   }
 
@@ -95,12 +120,15 @@ export function useToastSwipeHint() {
       swipeHintTimerRef.current = null;
     }
     swipeHintOpacity.stopAnimation();
+    swipeHintSlideAnim.stopAnimation();
     swipeHintOpacity.setValue(0);
+    swipeHintSlideAnim.setValue(6);
   }
 
   return {
     hintSeen,
     swipeHintOpacity,
+    swipeHintSlideAnim,
     triggerToastSwipeHint,
     dismissToastSwipeHint,
     clearToastSwipeHintInstant,

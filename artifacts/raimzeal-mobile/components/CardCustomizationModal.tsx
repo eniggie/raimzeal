@@ -1968,6 +1968,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const {
     hintSeen: toastSwipeHintSeen,
     swipeHintOpacity,
+    swipeHintSlideAnim,
     triggerToastSwipeHint,
     dismissToastSwipeHint,
     clearToastSwipeHintInstant,
@@ -2187,7 +2188,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     confirmProgressAnim.stopAnimation();
     confirmProgressAnim.setValue(1);
     if (!toastSwipeHintSeen) {
-      triggerToastSwipeHint();
+      triggerToastSwipeHint(reduceMotionRef.current);
     }
     const holdDuration = holdDurationOverrideMs ?? (retryFn ? 4500 : variant === "error" ? 2200 : 1600);
     const noAutoDismiss = (!holdDurationOverrideMs && !!actionFn) || !!keepOpen;
@@ -3771,7 +3772,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoSwipeY.setValue(0);
       setUndoDeleteState({ preset, index });
       if (!toastSwipeHintSeen) {
-        triggerToastSwipeHint();
+        triggerToastSwipeHint(reduceMotionRef.current);
       }
       undoRemainingMsRef.current = undoMs;
       undoSegmentStartRef.current = Date.now();
@@ -5949,7 +5950,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               {...confirmToastPanResponder.panHandlers}
             >
               <Animated.View
-                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity }]}
+                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
                 pointerEvents="none"
               >
                 <Ionicons name="chevron-up" size={10} color="#fff" />
@@ -6070,7 +6071,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           {undoDeleteState && (
             <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: Animated.add(undoTranslateY, undoSwipeY) }] }]} {...undoToastPanResponder.panHandlers}>
               <Animated.View
-                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity }]}
+                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
                 pointerEvents="none"
               >
                 <Ionicons name="chevron-up" size={10} color="#fff" />
