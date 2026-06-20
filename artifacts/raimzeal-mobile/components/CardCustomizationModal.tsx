@@ -3497,11 +3497,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       progressAnim.start(({ finished }) => {
         if (finished) undoAnimRef.current = null;
       });
+      undoTimerRef.current = setTimeout(() => {
+        undoTimerRef.current = null;
+        dismissUndoToast();
+      }, remaining);
     }
-    undoTimerRef.current = setTimeout(() => {
-      undoTimerRef.current = null;
-      dismissUndoToast();
-    }, remaining);
+    // Reduce-motion: no animation and no auto-dismiss timer — toast stays
+    // until the user explicitly taps Undo or swipes to dismiss.
   }
 
   function showUndoToast(preset: CardPreset, index: number) {
@@ -3551,6 +3553,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (reduceMotionRef.current) {
         undoOpacity.setValue(1);
         undoTranslateY.setValue(0);
+        // Reduce-motion: no auto-dismiss timer — toast stays until the user
+        // explicitly taps Undo or swipes away (same safety guarantee as the
+        // confirm toast's reduce-motion path).
       } else {
         const enterAnim = Animated.parallel([
           Animated.timing(undoOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
@@ -3565,11 +3570,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         enterAnim.start(({ finished }) => {
           if (finished) undoAnimRef.current = null;
         });
+        undoTimerRef.current = setTimeout(() => {
+          undoTimerRef.current = null;
+          dismissUndoToast();
+        }, undoMs);
       }
-      undoTimerRef.current = setTimeout(() => {
-        undoTimerRef.current = null;
-        dismissUndoToast();
-      }, undoMs);
     };
 
     if (previousToastVisible && !reduceMotionRef.current) {
