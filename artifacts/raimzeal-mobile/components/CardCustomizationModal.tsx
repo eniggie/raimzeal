@@ -3561,10 +3561,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     let updatedPresets: CardPreset[];
 
     let isRename = false;
+    let oldPresetName: string | undefined;
     if (activePresetId) {
       // Overwrite existing preset
       const existingPreset = presets.find((p) => p.id === activePresetId);
       if (existingPreset) {
+        oldPresetName = existingPreset.name;
         const trimmedMessage = customMessage.trim();
         const nameChanged = existingPreset.name !== name;
         const statsChanged = JSON.stringify(existingPreset.visibleStats) !== JSON.stringify(visibleStats);
@@ -3625,7 +3627,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
-    showConfirmation(activePresetId ? (isRename ? `Renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success");
+    showConfirmation(activePresetId ? (isRename ? `"${oldPresetName}" renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success");
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
