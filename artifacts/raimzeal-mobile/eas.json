@@ -36,6 +36,9 @@
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
         "track": "internal"
+      },
+      "ios": {
+        "language": "en-US"
       }
     }
   }
