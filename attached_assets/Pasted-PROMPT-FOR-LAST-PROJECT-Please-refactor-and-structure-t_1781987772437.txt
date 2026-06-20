@@ -1,0 +1,35 @@
+PROMPT FOR LAST PROJECT
+
+
+Please refactor and structure the project for long-term maintainability and clarity:
+1. Naming Consistency: Rename all files, functions, and variables with clear, descriptive names that reflect their exact purpose.
+2. Modular Structure: Organize the codebase into logical directories:
+    * frontend/ for all UI components and pages.
+    * backend/ for business logic and server-side code.
+    * api/ for all API route handlers.
+    * integrations/ for external services like Stripe, OpenAI, etc.
+    * config/ for environment variables (keys, endpoints).
+    * docs/ for all project documentation.
+3. Docstrings and Comments: Add a docstring to every function explaining:
+    * What the function does.
+    * Its parameters and types.
+    * What it returns.
+    * Where it fits in the larger flow.
+4. Modular Code Comments: At the top of each module (file or component), add a brief overview of what that module is responsible for.
+5. README & Setup Guide: Create a detailed README that explains:
+    * The overall project architecture.
+    * Steps to set up the environment.
+    * How to run the app (locally and in production).
+    * How the API routes and integrations work.
+    * Key architectural decisions.
+6. Error Handling & Logging: Ensure every major logic flow has error handling and log messages that provide clear, actionable information.
+7. API Documentation: Document all API routes, including:
+    * Endpoint paths.
+    * HTTP methods.
+    * Expected input parameters.
+    * Response structure.
+    * Example requests and responses.
+8. Developer Notes: Add a CONTRIBUTING guide that outlines coding standards, project structure, and how to submit future changes.
+9. Environment Config: Ensure all sensitive keys (like API keys, endpoints) are kept in environment variables, with a .env.example file showing required keys.
+10. Source Code Package: Once complete, generate the entire source code package (ZIP) so I can easily download it, share it, and import it into other environments.
+By following this structure, the project will be easy for any developer, AI assistant, or future contributor to navigate, maintain, and debug. Every function, module, and integration will have a purpose, a clear name, and documentation that ensures everyone knows what each piece does.”
