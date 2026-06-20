@@ -4458,37 +4458,73 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const closePresetPreviewRef = useRef(closePresetPreview);
   closePresetPreviewRef.current = closePresetPreview;
 
+  const navigatePresetPreviewRef = useRef<(dir: 1 | -1) => void>(navigatePresetPreview);
+  navigatePresetPreviewRef.current = navigatePresetPreview;
+
+  // Tracks whether the current PanResponder gesture was locked to horizontal
+  // or vertical so that a single drag stays on one axis.
+  const presetPreviewGestureDir = useRef<'h' | 'v' | null>(null);
+
+  const snapBackSpring = {
+    damping: 50,
+    stiffness: 400,
+    mass: 0.6,
+    overshootClamping: true,
+    useNativeDriver: true,
+  } as const;
+
   const presetPreviewSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) =>
-        gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5,
+      onMoveShouldSetPanResponder: (_, gs) => {
+        const absDx = Math.abs(gs.dx);
+        const absDy = Math.abs(gs.dy);
+        if (absDx > 8 && absDx > absDy * 1.5) return true;
+        if (absDy > 12 && absDy > absDx * 1.5) return true;
+        return false;
+      },
+      onPanResponderGrant: () => {
+        presetPreviewGestureDir.current = null;
+      },
       onPanResponderMove: (_, gs) => {
-        presetPreviewSwipeDragY.setValue(Math.max(0, gs.dy));
+        const absDx = Math.abs(gs.dx);
+        const absDy = Math.abs(gs.dy);
+        if (!presetPreviewGestureDir.current) {
+          if (absDx > absDy * 1.5) presetPreviewGestureDir.current = 'h';
+          else if (absDy > absDx * 1.5) presetPreviewGestureDir.current = 'v';
+        }
+        if (presetPreviewGestureDir.current === 'h') {
+          presetCardTranslateX.setValue(gs.dx);
+        } else {
+          presetPreviewSwipeDragY.setValue(Math.max(0, gs.dy));
+        }
       },
       onPanResponderRelease: (_, gs) => {
-        if (gs.dy > 80 || gs.vy > 0.5) {
-          closePresetPreviewRef.current(gs.vy);
+        if (presetPreviewGestureDir.current === 'h') {
+          const absDx = Math.abs(gs.dx);
+          const absVx = Math.abs(gs.vx);
+          if (absDx > 80 || absVx > 0.5) {
+            const dir: 1 | -1 = gs.dx < 0 ? 1 : -1;
+            const newIdx = presetPreviewIndexRef.current + dir;
+            if (newIdx >= 0 && newIdx < presetPreviewPresetsRef.current.length) {
+              navigatePresetPreviewRef.current(dir);
+            } else {
+              Animated.spring(presetCardTranslateX, { toValue: 0, ...snapBackSpring }).start();
+            }
+          } else {
+            Animated.spring(presetCardTranslateX, { toValue: 0, ...snapBackSpring }).start();
+          }
         } else {
-          Animated.spring(presetPreviewSwipeDragY, {
-            toValue: 0,
-            damping: 50,
-            stiffness: 400,
-            mass: 0.6,
-            overshootClamping: true,
-            useNativeDriver: true,
-          }).start();
+          if (gs.dy > 80 || gs.vy > 0.5) {
+            closePresetPreviewRef.current(gs.vy);
+          } else {
+            Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...snapBackSpring }).start();
+          }
         }
       },
       onPanResponderTerminate: () => {
-        Animated.spring(presetPreviewSwipeDragY, {
-          toValue: 0,
-          damping: 50,
-          stiffness: 400,
-          mass: 0.6,
-          overshootClamping: true,
-          useNativeDriver: true,
-        }).start();
+        Animated.spring(presetCardTranslateX, { toValue: 0, ...snapBackSpring }).start();
+        Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...snapBackSpring }).start();
       },
     })
   ).current;
