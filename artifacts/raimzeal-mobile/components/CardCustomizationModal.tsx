@@ -667,6 +667,26 @@ function ZoomableCard({
       const raw = savedScale.value * e.scale;
       const clamped = Math.min(4, Math.max(1, raw));
       scale.value = clamped;
+      // Apply rubber-band damping (20%) to the translate values when the
+      // pinch-driven scale change pushes them past the new boundaries —
+      // mirrors the same over-travel logic used in panGesture.onUpdate so
+      // the whole zoom-and-pan interaction feels consistently elastic.
+      const maxX = Math.max(0, (cardWidth * clamped - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * clamped - screenHeight) / 2);
+      const tx = translateX.value;
+      const ty = translateY.value;
+      translateX.value =
+        tx > maxX
+          ? maxX + (tx - maxX) * 0.2
+          : tx < -maxX
+          ? -maxX + (tx + maxX) * 0.2
+          : tx;
+      translateY.value =
+        ty > maxY
+          ? maxY + (ty - maxY) * 0.2
+          : ty < -maxY
+          ? -maxY + (ty + maxY) * 0.2
+          : ty;
       if (clamped <= 1) {
         if (atBoundary.value !== 1) {
           atBoundary.value = 1;
