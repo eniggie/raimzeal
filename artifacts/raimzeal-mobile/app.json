@@ -93,6 +93,7 @@
         }
       ],
       "expo-apple-authentication",
+      ["@react-native-google-signin/google-signin", { "iosUrlScheme": "" }],
       [
         "react-native-health",
         {
@@ -135,6 +136,8 @@
     "extra": {
       "privacyPolicyUrl": "https://www.raimzeal.com/privacy",
       "termsOfServiceUrl": "https://www.raimzeal.com/terms",
+      "googleWebClientId": "",
+      "googleIosClientId": "",
       "eas": {
         "projectId": "352f4ec9-8d51-4d18-8c68-97a1b3be0387"
       }

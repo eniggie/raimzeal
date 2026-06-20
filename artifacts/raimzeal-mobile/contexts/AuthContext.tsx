@@ -9,6 +9,13 @@ import type { Session, User } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
+import Constants from "expo-constants";
+import {
+  GoogleSignin,
+  statusCodes,
+  isSuccessResponse,
+  isErrorWithCode,
+} from "@react-native-google-signin/google-signin";
 
 async function triggerWelcomeEmail(email: string, name: string, accessToken?: string): Promise<void> {
   try {
@@ -46,6 +53,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithApple: () => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
@@ -78,6 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+    if (extra.googleWebClientId) {
+      GoogleSignin.configure({
+        webClientId: extra.googleWebClientId,
+        iosClientId: extra.googleIosClientId,
+      });
+    }
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
@@ -149,6 +167,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    if (!isSupabaseConfigured) return { error: "Supabase not configured" };
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) return { error: null };
+      const idToken = response.data.idToken;
+      if (!idToken) return { error: "Google did not return an identity token" };
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: idToken,
+      });
+      return { error: error?.message ?? null };
+    } catch (e: unknown) {
+      if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { error: null };
+      }
+      return { error: e instanceof Error ? e.message : "Google sign-in failed" };
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
@@ -196,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn,
         signInWithApple,
+        signInWithGoogle,
         signOut,
         sendPhoneOtp,
         verifyPhoneOtp,

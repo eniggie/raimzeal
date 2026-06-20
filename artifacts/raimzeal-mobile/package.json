@@ -61,7 +61,9 @@
   },
   "dependencies": {
     "@expo-google-fonts/space-grotesk": "^0.4.1",
+    "@react-native-google-signin/google-signin": "^16.1.2",
     "@supabase/supabase-js": "^2.105.4",
+    "expo": "~54.0.35",
     "expo-apple-authentication": "^8.0.8",
     "expo-av": "^16.0.8",
     "expo-build-properties": "~1.0.10",
@@ -75,14 +77,13 @@
     "expo-sensors": "^15.0.8",
     "expo-sharing": "^14.0.8",
     "expo-speech": "^14.0.8",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
     "react-native-health": "^1.19.0",
     "react-native-health-connect": "^3.5.3",
     "react-native-purchases": "^10.2.0",
     "react-native-url-polyfill": "^3.0.0",
-    "react-native-view-shot": "~4.0.3",
-    "expo": "~54.0.35",
-    "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native-view-shot": "~4.0.3"
   },
   "expo": {
     "doctor": {

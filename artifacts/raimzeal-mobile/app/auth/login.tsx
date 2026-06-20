@@ -34,13 +34,14 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signIn, signInWithApple, resetPassword } = useAuth();
+  const { signIn, signInWithApple, signInWithGoogle, resetPassword } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState<string | null>(null);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
@@ -117,6 +118,13 @@ export default function LoginScreen() {
     const { error } = await signInWithApple();
     setAppleLoading(false);
     if (error) Alert.alert("Apple sign-in failed", error);
+  }
+
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (error) Alert.alert("Google sign-in failed", error);
   }
 
   async function handleBiometricLogin() {
@@ -313,6 +321,29 @@ export default function LoginScreen() {
               )}
             </>
           )}
+
+          {/* Sign in with Google — iOS + Android */}
+          {Platform.OS !== "ios" && (
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            </View>
+          )}
+          {googleLoading ? (
+            <View style={styles.appleLoadingWrap}>
+              <ActivityIndicator size="small" color={colors.foreground} />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-google" size={18} color="#1f1f1f" />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View
@@ -431,6 +462,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#dadce0",
+    marginTop: 12,
+  },
+  googleButtonText: { fontSize: 16, fontWeight: "600", color: "#1f1f1f" },
   termsBox: {
     flexDirection: "row",
     gap: 8,
