@@ -736,17 +736,24 @@ function ZoomableCard({
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
       const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
-      // Snap back to the clamped boundary with a spring (or instantly when
-      // reduce-motion is on), matching the guard pattern in pinchGesture.onEnd().
+      // When scale is back to 1 the card must be centred — snap to origin so
+      // no leftover pan offset remains after zooming out. Spring config matches
+      // doubleTapGesture (damping 15, stiffness 200) for a consistent feel.
+      const targetX = scale.value === 1 ? 0 : clampedX;
+      const targetY = scale.value === 1 ? 0 : clampedY;
       if (reduceMotionShared.value) {
-        translateX.value = clampedX;
-        translateY.value = clampedY;
+        translateX.value = targetX;
+        translateY.value = targetY;
       } else {
-        translateX.value = withSpring(clampedX, { damping: 22, stiffness: 280 });
-        translateY.value = withSpring(clampedY, { damping: 22, stiffness: 280 });
+        const springCfg =
+          scale.value === 1
+            ? { damping: 15, stiffness: 200 }
+            : { damping: 22, stiffness: 280 };
+        translateX.value = withSpring(targetX, springCfg);
+        translateY.value = withSpring(targetY, springCfg);
       }
-      savedTranslateX.value = clampedX;
-      savedTranslateY.value = clampedY;
+      savedTranslateX.value = targetX;
+      savedTranslateY.value = targetY;
 
       // Swipe-down dismiss — fires from inside RNGH so it works even when
       // the inner gesture handler has claimed the touch (e.g. when zoomed in).
