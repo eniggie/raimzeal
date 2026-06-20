@@ -1831,6 +1831,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const confirmSwipeY = useRef(new Animated.Value(0)).current;
   const confirmProgressAnim = useRef(new Animated.Value(1)).current;
   const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
+  const [confirmKeepOpen, setConfirmKeepOpen] = useState(false);
   const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const confirmSwipingRef = useRef(false);
@@ -1897,6 +1898,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     confirmSwipeY.setValue(0);
     confirmProgressAnim.setValue(1);
     setConfirmHasCountdown(false);
+    setConfirmKeepOpen(false);
     setConfirmMessage(null);
     setConfirmIcon(null);
     setConfirmSecondaryIcon(null);
@@ -1928,6 +1930,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       confirmSwipeY.setValue(0);
       confirmProgressAnim.setValue(1);
       setConfirmHasCountdown(false);
+      setConfirmKeepOpen(false);
       setConfirmMessage(null);
       setConfirmRetryFn(null);
       setConfirmActionFn(null);
@@ -2069,6 +2072,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmRetryFn(retryFn ? () => retryFn : null);
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
+    setConfirmKeepOpen(!!keepOpen);
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(16);
     confirmSwipeY.setValue(0);
@@ -5458,6 +5462,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   >
                     {confirmMessage}
                   </Text>
+                  {confirmKeepOpen && (
+                    reduceMotion
+                      ? <Text style={{ fontSize: 12, color: colors.primary, marginLeft: 2, letterSpacing: 1 }}>···</Text>
+                      : <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} />
+                  )}
                   {confirmActionFn && confirmActionLabel && (
                     <TouchableOpacity
                       onPress={() => {
