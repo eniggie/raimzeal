@@ -1704,13 +1704,38 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     pointerEvents: inlineSaveHeight.value > 0 ? "auto" : "none",
   }));
 
-  // Collapse the inline save panel when the keyboard is dismissed via system
-  // gesture or hardware button, so the UI does not stay stuck in a half-open state.
+  // Timer used to debounce the keyboard-hide → collapse so focus transitions
+  // between inputs (keyboard hides briefly then re-appears) don't flicker the panel.
+  const inlineSaveCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Collapse the inline save panel when the keyboard is truly dismissed (system
+  // gesture, hardware back, or "Done"). When the user moves focus to another
+  // input the keyboard will re-appear quickly; keyboardDidShow cancels the
+  // pending close so the panel stays open during those focus transitions.
   useEffect(() => {
-    const sub = Keyboard.addListener("keyboardDidHide", () => {
-      setShowInlineSave(false);
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      if (inlineSaveCloseTimerRef.current !== null) {
+        clearTimeout(inlineSaveCloseTimerRef.current);
+      }
+      inlineSaveCloseTimerRef.current = setTimeout(() => {
+        inlineSaveCloseTimerRef.current = null;
+        setShowInlineSave(false);
+      }, 150);
     });
-    return () => sub.remove();
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      if (inlineSaveCloseTimerRef.current !== null) {
+        clearTimeout(inlineSaveCloseTimerRef.current);
+        inlineSaveCloseTimerRef.current = null;
+      }
+    });
+    return () => {
+      hideSub.remove();
+      showSub.remove();
+      if (inlineSaveCloseTimerRef.current !== null) {
+        clearTimeout(inlineSaveCloseTimerRef.current);
+        inlineSaveCloseTimerRef.current = null;
+      }
+    };
   }, []);
 
   // Preset thumbnail preview
