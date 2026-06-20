@@ -32,6 +32,7 @@ import Reanimated, {
   withDelay,
   runOnJS,
   SharedValue,
+  useReducedMotion,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -3723,6 +3724,31 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   const anyStatEnabled = Object.values(visibleStats).some(Boolean);
 
+  // Reduce-motion preference (used to suppress lock-icon shake animation)
+  const prefersReducedMotion = useReducedMotion();
+
+  // Per-button lock-icon shake animations (one Animated.Value per action)
+  const lockShakeAnims = useRef({
+    share: new Animated.Value(0),
+    save: new Animated.Value(0),
+    copy: new Animated.Value(0),
+    both: new Animated.Value(0),
+  }).current;
+
+  const triggerLockShake = useCallback((action: CardAction) => {
+    if (prefersReducedMotion) return;
+    const anim = lockShakeAnims[action];
+    anim.setValue(0);
+    Animated.sequence([
+      Animated.timing(anim, { toValue:  6, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(anim, { toValue: -6, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(anim, { toValue:  5, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(anim, { toValue: -5, duration: 50, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(anim, { toValue:  3, duration: 40, useNativeDriver: true, easing: Easing.linear }),
+      Animated.timing(anim, { toValue:  0, duration: 40, useNativeDriver: true, easing: Easing.linear }),
+    ]).start();
+  }, [prefersReducedMotion, lockShakeAnims]);
+
   // Locked-button hint fade animation
   const [lockedHintMounted, setLockedHintMounted] = useState(!anyStatEnabled);
   const lockedHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
@@ -5121,6 +5147,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           thirdPulseTimerRef.current = null;
                         }
                         if (!anyStatEnabled) {
+                          triggerLockShake(action);
                           showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
                           return;
                         }
@@ -5159,11 +5186,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                     >
                       <View style={styles.actionBtnInner}>
                         <View style={styles.actionBtnTop}>
-                          <Ionicons
-                            name={(!anyStatEnabled || isPhotoBlocked) ? "lock-closed-outline" : icon}
-                            size={17}
-                            color={isEnabled ? colors.primaryForeground : colors.mutedForeground}
-                          />
+                          <Animated.View
+                            style={(!anyStatEnabled || isPhotoBlocked) ? { transform: [{ translateX: lockShakeAnims[action] }] } : undefined}
+                          >
+                            <Ionicons
+                              name={(!anyStatEnabled || isPhotoBlocked) ? "lock-closed-outline" : icon}
+                              size={17}
+                              color={isEnabled ? colors.primaryForeground : colors.mutedForeground}
+                            />
+                          </Animated.View>
                           <Text
                             style={[
                               styles.actionBtnText,
