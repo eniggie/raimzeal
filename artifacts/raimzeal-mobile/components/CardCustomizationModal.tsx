@@ -5276,12 +5276,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       onPress={() => {
                         setAutoTriggerDelay(val);
                         const delayStr = val === 0 ? "off" : String(val);
-                        AsyncStorage.setItem(
-                          STORAGE_KEY_AUTO_TRIGGER_DELAY,
-                          delayStr
-                        ).catch(() => {});
                         if (onAutoTriggerDelayChange) {
                           onAutoTriggerDelayChange(delayStr);
+                        } else {
+                          AsyncStorage.setItem(
+                            STORAGE_KEY_AUTO_TRIGGER_DELAY,
+                            delayStr
+                          ).catch(() => {});
                         }
                         // If the countdown is active (running or paused while app was
                         // backgrounded), sync it to the new duration immediately so the
