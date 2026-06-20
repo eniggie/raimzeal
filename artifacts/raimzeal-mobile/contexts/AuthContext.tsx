@@ -9,13 +9,6 @@ import type { Session, User } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
-import Constants from "expo-constants";
-import {
-  GoogleSignin,
-  statusCodes,
-  isSuccessResponse,
-  isErrorWithCode,
-} from "@react-native-google-signin/google-signin";
 
 async function triggerWelcomeEmail(email: string, name: string, accessToken?: string): Promise<void> {
   try {
@@ -25,15 +18,12 @@ async function triggerWelcomeEmail(email: string, name: string, accessToken?: st
       ? { ...jsonHeaders, "Authorization": `Bearer ${accessToken}` }
       : jsonHeaders;
 
-    // Always send the branded welcome email via the unauthenticated endpoint
-    // so it fires even when Supabase email confirmation is required (session is null).
     await fetch(`${base}/auth/welcome-email`, {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify({ email, name }),
     });
 
-    // Subscribe to digest — only possible once we have a session token
     if (accessToken) {
       await fetch(`${base}/email/digest/subscribe`, {
         method: "POST",
@@ -53,7 +43,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithApple: () => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithGoogleToken: (idToken: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
@@ -88,16 +78,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
-    if (extra.googleWebClientId) {
-      GoogleSignin.configure({
-        webClientId: extra.googleWebClientId,
-        iosClientId: extra.googleIosClientId,
-      });
-    }
-  }, []);
-
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
     const { data, error } = await supabase.auth.signUp({
@@ -106,9 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: { data: { name } },
     });
     if (!error) {
-      // Always fire the branded RAIMZEAL welcome email (non-blocking, non-fatal).
-      // The welcome endpoint is unauthenticated so it works even when email
-      // confirmation is required and data.session is null.
       triggerWelcomeEmail(email, name, data.session?.access_token ?? undefined);
     }
     return { error: error?.message ?? null };
@@ -167,25 +144,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogleToken = useCallback(async (idToken: string) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const response = await GoogleSignin.signIn();
-      if (!isSuccessResponse(response)) return { error: null };
-      const idToken = response.data.idToken;
-      if (!idToken) return { error: "Google did not return an identity token" };
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: idToken,
-      });
-      return { error: error?.message ?? null };
-    } catch (e: unknown) {
-      if (isErrorWithCode(e) && e.code === statusCodes.SIGN_IN_CANCELLED) {
-        return { error: null };
-      }
-      return { error: e instanceof Error ? e.message : "Google sign-in failed" };
-    }
+    const { error } = await supabase.auth.signInWithIdToken({
+      provider: "google",
+      token: idToken,
+    });
+    return { error: error?.message ?? null };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -235,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn,
         signInWithApple,
-        signInWithGoogle,
+        signInWithGoogleToken,
         signOut,
         sendPhoneOtp,
         verifyPhoneOtp,

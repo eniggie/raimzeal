@@ -83,6 +83,9 @@
           "android": {
             "minSdkVersion": 26,
             "targetSdkVersion": 35
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
           }
         }
       ],
@@ -93,12 +96,6 @@
         }
       ],
       "expo-apple-authentication",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.398551642-rgcdpv3f18hht5ls7jpo2v3djf9h7dei"
-        }
-      ],
       [
         "react-native-health",
         {

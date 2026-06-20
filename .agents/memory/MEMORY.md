@@ -3,3 +3,4 @@
 - [Phase 2 Audit Results](phase2-audit.md) — June 6 2026 scan: all SAST HIGH = false positives, zero npm CVEs, 3 dead code items fixed
 - [Android Permission Repair](android-permission-repair.md) — June 2026 Play Store prep: blocked 6 excess perms, added RECORD_AUDIO+ACTIVITY_RECOGNITION, targetSdk→35
 - [iOS Bundle ID Decision](ios-bundle-id.md) — iOS must stay app.replit.raimzeal; Android stays com.econteur.raimzeal. Do NOT change either.
+- [Expo Google Sign-In Pod Failures](expo-google-signin-pods.md) — never use @react-native-google-signin in Expo managed; use expo-auth-session/providers/google instead

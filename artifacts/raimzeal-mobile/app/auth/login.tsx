@@ -19,6 +19,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import Constants from "expo-constants";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const BIOMETRIC_EMAIL_KEY = "raimzeal_bio_email";
 const BIOMETRIC_PW_KEY = "raimzeal_bio_pw";
@@ -34,7 +39,14 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signIn, signInWithApple, signInWithGoogle, resetPassword } = useAuth();
+  const { signIn, signInWithApple, signInWithGoogleToken, resetPassword } = useAuth();
+
+  const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+  const [request, , promptAsync] = Google.useAuthRequest({
+    webClientId: extra.googleWebClientId,
+    iosClientId: extra.googleIosClientId,
+    scopes: ["openid", "profile", "email"],
+  });
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -121,10 +133,22 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleLogin() {
+    if (!request) return;
     setGoogleLoading(true);
-    const { error } = await signInWithGoogle();
-    setGoogleLoading(false);
-    if (error) Alert.alert("Google sign-in failed", error);
+    try {
+      const result = await promptAsync();
+      if (result.type === "success") {
+        const idToken = result.authentication?.idToken;
+        if (!idToken) throw new Error("Google did not return an identity token");
+        const { error } = await signInWithGoogleToken(idToken);
+        if (error) Alert.alert("Google sign-in failed", error);
+      }
+      // type "cancel" or "dismiss" = user backed out, no error
+    } catch (e) {
+      Alert.alert("Google sign-in failed", e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   async function handleBiometricLogin() {
