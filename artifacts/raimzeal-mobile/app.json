@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.econteur.raimzeal",
+      "bundleIdentifier": "app.replit.raimzeal",
       "buildNumber": "6",
       "associatedDomains": [
         "applinks:raimzeal.com"
