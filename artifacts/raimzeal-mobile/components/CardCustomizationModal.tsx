@@ -1833,6 +1833,29 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
   const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const confirmSwipingRef = useRef(false);
+  const pendingConfirmationArgsRef = useRef<null | [
+    msg: string,
+    variant?: "success" | "error",
+    icon?: keyof typeof Ionicons.glyphMap,
+    retryFn?: () => void,
+    actionFn?: () => void,
+    actionLabel?: string,
+    holdDurationOverrideMs?: number,
+    secondaryIcon?: keyof typeof Ionicons.glyphMap,
+    keepOpen?: boolean,
+  ]>(null);
+  const showConfirmationRef = useRef<((...args: [
+    msg: string,
+    variant?: "success" | "error",
+    icon?: keyof typeof Ionicons.glyphMap,
+    retryFn?: () => void,
+    actionFn?: () => void,
+    actionLabel?: string,
+    holdDurationOverrideMs?: number,
+    secondaryIcon?: keyof typeof Ionicons.glyphMap,
+    keepOpen?: boolean,
+  ]) => void) | null>(null);
 
   // Swipe-to-dismiss hint (shown once on the first toast the user ever sees, shared across the app)
   const {
@@ -1882,7 +1905,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmActionLabel(null);
   }
 
-  function dismissConfirmToastAnimated() {
+  function dismissConfirmToastAnimated(onComplete?: () => void) {
     if (confirmDismissTimerRef.current !== null) {
       clearTimeout(confirmDismissTimerRef.current);
       confirmDismissTimerRef.current = null;
@@ -1899,7 +1922,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     Animated.parallel([
       Animated.timing(confirmOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(confirmSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
-    ]).start(() => {
+    ]).start(({ finished }) => {
       confirmOpacity.setValue(0);
       confirmTranslateY.setValue(16);
       confirmSwipeY.setValue(0);
@@ -1909,6 +1932,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setConfirmRetryFn(null);
       setConfirmActionFn(null);
       setConfirmActionLabel(null);
+      if (finished) onComplete?.();
     });
   }
 
@@ -1916,6 +1940,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     PanResponder.create({
       onMoveShouldSetPanResponder: (_evt, gestureState) =>
         gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+      onPanResponderGrant: () => {
+        confirmSwipingRef.current = true;
+      },
       onPanResponderMove: (_evt, gestureState) => {
         if (gestureState.dy < 0) {
           confirmSwipeY.setValue(gestureState.dy);
@@ -1923,10 +1950,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       },
       onPanResponderRelease: (_evt, gestureState) => {
         if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          confirmSwipingRef.current = false;
+          const pending = pendingConfirmationArgsRef.current;
+          pendingConfirmationArgsRef.current = null;
           if (reduceMotionRef.current) {
             dismissConfirmToast();
+            if (pending) showConfirmationRef.current?.(...pending);
           } else {
-            dismissConfirmToastAnimated();
+            dismissConfirmToastAnimated(() => {
+              if (pending) showConfirmationRef.current?.(...pending);
+            });
           }
         } else {
           Animated.spring(confirmSwipeY, {
@@ -1936,7 +1969,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             stiffness: 400,
             mass: 0.6,
             overshootClamping: true,
-          }).start();
+          }).start(() => {
+            confirmSwipingRef.current = false;
+            const pending = pendingConfirmationArgsRef.current;
+            pendingConfirmationArgsRef.current = null;
+            if (pending) showConfirmationRef.current?.(...pending);
+          });
         }
       },
       onPanResponderTerminate: () => {
@@ -1947,7 +1985,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           stiffness: 400,
           mass: 0.6,
           overshootClamping: true,
-        }).start();
+        }).start(() => {
+          confirmSwipingRef.current = false;
+          const pending = pendingConfirmationArgsRef.current;
+          pendingConfirmationArgsRef.current = null;
+          if (pending) showConfirmationRef.current?.(...pending);
+        });
       },
     })
   ).current;
@@ -2003,6 +2046,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
     keepOpen?: boolean,
   ) {
+    showConfirmationRef.current = showConfirmation;
+    if (confirmSwipingRef.current) {
+      pendingConfirmationArgsRef.current = [msg, variant, icon, retryFn, actionFn, actionLabel, holdDurationOverrideMs, secondaryIcon, keepOpen];
+      return;
+    }
     if (confirmDismissTimerRef.current !== null) {
       clearTimeout(confirmDismissTimerRef.current);
       confirmDismissTimerRef.current = null;
@@ -2110,6 +2158,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
+      // Clear any mid-swipe gesture state on the confirm toast so stale
+      // swipe flags and queued toasts don't persist into the next open.
+      confirmSwipingRef.current = false;
+      pendingConfirmationArgsRef.current = null;
       // Dismiss any in-progress undo-delete toast so the timer and animation
       // don't fire against unmounted/invisible state after the modal closes.
       if (undoTimerRef.current !== null) {
