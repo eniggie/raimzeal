@@ -315,6 +315,32 @@ export default function LoginScreen() {
           )}
         </View>
 
+        <View
+          style={[
+            styles.termsBox,
+            { backgroundColor: colors.muted, borderColor: colors.border },
+          ]}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={15}
+            color={colors.primary}
+            style={{ marginTop: 1 }}
+          />
+          <Text style={[styles.termsText, { color: colors.mutedForeground }]}>
+            By signing in, you agree to the RAIMZEAL{" "}
+            <Text
+              style={{ color: colors.primary }}
+              onPress={() => router.push("/terms" as never)}
+            >
+              Terms
+            </Text>
+            . RAIMZEAL has no tolerance for objectionable community content or
+            abusive users, and content may be filtered, reported, blocked,
+            removed, and escalated to moderation.
+          </Text>
+        </View>
+
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
             Don't have an account?{" "}
@@ -404,6 +430,21 @@ const styles = StyleSheet.create({
     height: 52,
     alignItems: "center",
     justifyContent: "center",
+  },
+  termsBox: {
+    flexDirection: "row",
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+    alignItems: "flex-start",
+  },
+  termsText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+    lineHeight: 18,
   },
   footer: {
     flexDirection: "row",

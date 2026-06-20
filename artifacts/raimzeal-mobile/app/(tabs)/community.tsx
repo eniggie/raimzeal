@@ -235,6 +235,52 @@ export default function CommunityScreen() {
     }
   }
 
+  async function handleBlockUser(targetUserId: string, targetUserName: string) {
+    if (!userId) {
+      Alert.alert("Sign in required", "Please sign in to block users.");
+      return;
+    }
+    Alert.alert(
+      `Block @${targetUserName}?`,
+      "They will no longer be able to interact with your posts, and their posts will be hidden from your feed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { data } = await supabase.auth.getSession();
+              const token = data.session?.access_token;
+              if (!token) return;
+              await fetch(`${getApiBase()}/community/users/${targetUserId}/block`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              });
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              setPosts((prev) => prev.filter((p) => p.userId !== targetUserId));
+              Alert.alert("User blocked", `@${targetUserName} has been blocked and their posts removed from your feed.`);
+            } catch {
+              Alert.alert("Error", "Could not block user. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function handlePostOptions(postId: string, authorId: string, authorName: string) {
+    Alert.alert(
+      "Post options",
+      undefined,
+      [
+        { text: "Report post", onPress: () => handleReport(postId) },
+        { text: `Block @${authorName}`, style: "destructive", onPress: () => handleBlockUser(authorId, authorName) },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
   async function handleExpandComments(postId: string) {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
@@ -562,10 +608,10 @@ export default function CommunityScreen() {
 
           {userId && item.userId !== userId && (
             <TouchableOpacity
-              onPress={() => handleReport(item.id)}
+              onPress={() => handlePostOptions(item.id, item.userId, item.userName)}
               style={[styles.actionBtn, { marginLeft: "auto" }]}
             >
-              <Ionicons name="flag-outline" size={16} color={colors.mutedForeground} />
+              <Ionicons name="ellipsis-horizontal" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
           )}
         </View>
