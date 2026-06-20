@@ -93,7 +93,6 @@
         }
       ],
       "expo-apple-authentication",
-      ["@react-native-google-signin/google-signin", { "iosUrlScheme": "" }],
       [
         "react-native-health",
         {
