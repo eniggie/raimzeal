@@ -1,0 +1,80 @@
+~/workspace$ cd artifacts/raimzeal-mobile
+
+# Build
+EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build \
+  --platform ios --profile production --non-interactive
+
+# After build finishes (~15-20 min), submit:
+EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas submit \
+  --platform ios --profile production --non-interactive
+★ eas-cli@20.3.0 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+Using EAS CLI without version control system is not recommended, use this mode only if you know what you are doing.
+
+⚠️ Detected that your app uses Expo Go for development, this is not recommended when building production apps.
+Learn more: https://expo.fyi/why-not-build-expo-go-for-production
+To suppress this warning, set EAS_BUILD_NO_EXPO_GO_WARNING=true.
+
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+Environment variables with visibility "Plain text" and "Sensitive" loaded from the "production" environment on EAS: EXPO_PUBLIC_API_BASE, EXPO_PUBLIC_SUPABASE_ANON_KEY, EXPO_PUBLIC_SUPABASE_URL.
+
+
+You've used 100% of your included build credits for this month.
+Additional usage beyond your limit will be charged at pay-as-you-go rates. See usage in billing.: https://expo.dev/accounts/econteur/settings/billing
+
+✔ Using remote iOS credentials (Expo server)
+
+Distribution Certificate is not validated for non-interactive builds.
+Using App Store Connect API Key from EAS credentials service.
+✔ Fetched Apple provisioning profiles
+
+Project Credentials Configuration
+
+Project                   @econteur/raimzeal
+Bundle Identifier         app.replit.raimzeal
+                          
+App Store Configuration   
+                          
+Distribution Certificate  
+Serial Number             2BFEBE7CA774314E82D8BEB51E4389E3
+Expiration Date           Tue, 01 Jun 2027 15:25:49 UTC
+Apple Team                W842SR649M (EPHRAIM OSAGIE OVIAWE (Individual))
+Updated                   19 days ago
+                          
+Provisioning Profile      
+Developer Portal ID       59R38YCKYR
+Status                    active
+Expiration                Tue, 01 Jun 2027 15:25:49 UTC
+Apple Team                W842SR649M (EPHRAIM OSAGIE OVIAWE (Individual))
+Updated                   19 days ago
+                          
+All credentials are ready to build @econteur/raimzeal (app.replit.raimzeal)
+
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+✔ Compressed project files 36s (377 MB)
+Your project archive is 377 MB. You can reduce its size and the time it takes to upload by excluding files that are unnecessary for the build process in .easignore file. Learn more: https://expo.fyi/eas-build-archive
+✔ Uploaded to EAS 4s
+✔ Computed project fingerprint
+
+See logs: https://expo.dev/accounts/econteur/projects/raimzeal/builds/f025ff5e-5fce-402f-9eb9-7bb345e3a56d
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+✖ Build failed
+
+🍏 iOS build failed:
+Unknown error. See logs of the Install pods build phase for more information.
+★ eas-cli@20.3.0 is now available.
+To upgrade, run:
+npm install -g eas-cli
+Proceeding with outdated version.
+
+Using EAS CLI without version control system is not recommended, use this mode only if you know what you are doing.
+
+You need to specify the archive source when running in non-interactive mode 
+Submission failed
+    Error: submit command failed.
+~/.../artifacts/raimzeal-mobile$ 
