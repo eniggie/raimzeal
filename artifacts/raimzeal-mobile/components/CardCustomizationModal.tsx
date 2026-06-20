@@ -3819,6 +3819,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setPresets(updatedPresets);
     if (renameTargetPreset.id === activePresetId) {
       setPresetSavedAt(Date.now());
+      AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, renameTargetPreset.id).catch(() => {});
     }
     setRenamingPreset(false);
     setRenameTargetPreset(null);
