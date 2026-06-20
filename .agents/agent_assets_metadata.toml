@@ -473,3 +473,15 @@ id = "oQB__tOjOT6B_AkYo8aln"
 uri = "file://screenshots/applewatch/ultra3_05_community.png"
 type = "image"
 title = "Ultra 3 — Community"
+
+[[outputs]]
+id = "rqIifR30r9J7OqyWKjcGD"
+uri = "file://.local/outputs/RAIMZEAL-Investor-Presentation.pdf"
+type = "pdf"
+title = "RAIMZEAL Investor Presentation.pdf"
+
+[[outputs]]
+id = "d24owO4n9t0-iPEKEZCSA"
+uri = "file://.local/outputs/RAIMZEAL-Investor-Presentation.pptx"
+type = "slides"
+title = "RAIMZEAL Investor Presentation.pptx"
