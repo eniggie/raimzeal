@@ -625,6 +625,7 @@ function ZoomableCard({
   onSwipeRight,
   onSwipeDown,
   onSwipeDownProgress,
+  onDismiss,
 }: {
   children: React.ReactNode;
   cardWidth: number;
@@ -641,6 +642,7 @@ function ZoomableCard({
   onSwipeRight?: () => void;
   onSwipeDown?: (velocityY: number) => void;
   onSwipeDownProgress?: (dy: number) => void;
+  onDismiss?: () => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
@@ -805,6 +807,12 @@ function ZoomableCard({
     .onEnd(() => {
       "worklet";
       runOnJS(Haptics.selectionAsync)();
+      if (scale.value <= 1 && onDismiss) {
+        // Already at scale 1 — second double-tap dismisses the overlay entirely.
+        runOnJS(onDismiss)();
+        return;
+      }
+      // Zoomed in — first double-tap resets scale back to 1.
       if (reduceMotionShared.value) {
         scale.value = 1;
         translateX.value = 0;
@@ -4269,6 +4277,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     closeZoomRef.current(velocityY);
   }, []);
 
+  const handleZoomDismiss = useCallback(() => {
+    closeZoomRef.current(0);
+  }, []);
+
   const swipeBackSpringConfig = {
     damping: 50,
     stiffness: 400,
@@ -4368,6 +4380,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // the outer PanResponder when the card is pinch-zoomed, so we need both paths.
   const handlePresetPreviewSwipeDown = useCallback((velocityY: number) => {
     closePresetPreviewRef.current(velocityY);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePresetPreviewDismiss = useCallback(() => {
+    closePresetPreviewRef.current(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -5835,6 +5852,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               onFirstGesture={dismissPinchHintEarly}
               onSwipeDown={handleZoomSwipeDown}
               onSwipeDownProgress={handleZoomSwipeDownProgress}
+              onDismiss={handleZoomDismiss}
             >
               {zoomIsOneToOne ? (
                 // True 1:1 render — no scaling transform applied.
@@ -6012,6 +6030,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   onSwipeRight={() => navigatePresetPreview(-1)}
                   onSwipeDown={handlePresetPreviewSwipeDown}
                   onSwipeDownProgress={handlePresetPreviewSwipeDownProgress}
+                  onDismiss={handlePresetPreviewDismiss}
                 >
                   {zoomIsOneToOne ? (
                     <ShareProgressCard
