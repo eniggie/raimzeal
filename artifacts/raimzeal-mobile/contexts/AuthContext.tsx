@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { Platform } from "react-native";
+import * as Crypto from "expo-crypto";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 
@@ -109,16 +110,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const AppleAuthentication = await import("expo-apple-authentication");
       const available = await AppleAuthentication.isAvailableAsync();
       if (!available) return { error: "Apple sign-in is not available on this device" };
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
       if (!credential.identityToken) return { error: "Apple did not return an identity token" };
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "apple",
         token: credential.identityToken,
+        nonce: rawNonce,
       });
       if (!error && credential.fullName) {
         const first = credential.fullName.givenName ?? "";

@@ -825,6 +825,40 @@ export async function unenrollProgram(): Promise<void> {
   } catch { /* non-fatal */ }
 }
 
+// ─── Community moderation ─────────────────────────────────────────────────
+
+export async function reportPost(postId: string, reason = "inappropriate"): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const token = await getAccessToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${getApiBase()}/community/posts/${encodeURIComponent(postId)}/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reason }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function blockUser(targetUserId: string, postId?: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const token = await getAccessToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(`${getApiBase()}/community/users/${encodeURIComponent(targetUserId)}/block`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ reason: "abusive_user", ...(postId ? { postId } : {}) }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Full User Data Wipe ─────────────────────────────────────────────────────
 
 /**
