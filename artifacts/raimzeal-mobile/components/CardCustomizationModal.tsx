@@ -1846,6 +1846,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const confirmProgressAnim = useRef(new Animated.Value(1)).current;
   const [confirmHasCountdown, setConfirmHasCountdown] = useState(false);
   const [confirmKeepOpen, setConfirmKeepOpen] = useState(false);
+  const [confirmOnPressFn, setConfirmOnPressFn] = useState<(() => void) | null>(null);
   const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const confirmSwipingRef = useRef(false);
@@ -1859,6 +1860,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     holdDurationOverrideMs?: number,
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
     keepOpen?: boolean,
+    onPressFn?: () => void,
   ]>(null);
   const showConfirmationRef = useRef<((...args: [
     msg: string,
@@ -1870,6 +1872,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     holdDurationOverrideMs?: number,
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
     keepOpen?: boolean,
+    onPressFn?: () => void,
   ]) => void) | null>(null);
 
   // Swipe-to-dismiss hint (shown once on the first toast the user ever sees, shared across the app)
@@ -2062,10 +2065,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     holdDurationOverrideMs?: number,
     secondaryIcon?: keyof typeof Ionicons.glyphMap,
     keepOpen?: boolean,
+    onPressFn?: () => void,
   ) {
     showConfirmationRef.current = showConfirmation;
     if (confirmSwipingRef.current) {
-      pendingConfirmationArgsRef.current = [msg, variant, icon, retryFn, actionFn, actionLabel, holdDurationOverrideMs, secondaryIcon, keepOpen];
+      pendingConfirmationArgsRef.current = [msg, variant, icon, retryFn, actionFn, actionLabel, holdDurationOverrideMs, secondaryIcon, keepOpen, onPressFn];
       return;
     }
     if (confirmDismissTimerRef.current !== null) {
@@ -2087,6 +2091,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmActionFn(actionFn ? () => actionFn : null);
     setConfirmActionLabel(actionLabel ?? null);
     setConfirmKeepOpen(!!keepOpen);
+    setConfirmOnPressFn(onPressFn ? () => onPressFn : null);
     confirmOpacity.setValue(0);
     confirmTranslateY.setValue(16);
     confirmSwipeY.setValue(0);
@@ -5250,7 +5255,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         }
                         if (!anyStatEnabled) {
                           triggerLockShake(action);
-                          showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline");
+                          showConfirmation("Enable a stat above to unlock", "error", "information-circle-outline", undefined, undefined, undefined, undefined, undefined, undefined, scrollToStatToggles);
                           return;
                         }
                         if (isPhotoBlocked) {
@@ -5598,7 +5603,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   },
                 ]}
               >
-                <View
+                <TouchableOpacity
+                  disabled={!confirmOnPressFn}
+                  onPress={confirmOnPressFn ? () => { dismissConfirmToast(); confirmOnPressFn(); } : undefined}
+                  activeOpacity={confirmOnPressFn ? 0.7 : 1}
                   style={
                     confirmHasCountdown
                       ? { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 7, gap: 6 }
@@ -5674,7 +5682,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       <Text style={styles.confirmRetryText}>Retry</Text>
                     </TouchableOpacity>
                   )}
-                </View>
+                </TouchableOpacity>
                 {confirmHasCountdown && (
                   <Animated.View
                     style={{
