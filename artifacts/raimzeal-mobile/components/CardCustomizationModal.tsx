@@ -4901,11 +4901,41 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             </Reanimated.View>
 
             {activePreset && !reorderMode && (
-              <Reanimated.View style={[styles.activePresetBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }, activePresetBannerAnimStyle]}>
-                <Ionicons name="bookmark" size={12} color={colors.primary} />
-                <Text style={[styles.activePresetBannerText, { color: colors.primary }]}>
-                  Viewing "{activePreset.name}" — edit below to update it
+              <Reanimated.View style={[
+                styles.activePresetBanner,
+                {
+                  backgroundColor: activePresetModified ? colors.primary + "1a" : colors.primary + "12",
+                  borderColor: activePresetModified ? colors.primary + "55" : colors.primary + "30",
+                  borderStyle: activePresetModified ? "dashed" : "solid",
+                },
+                activePresetBannerAnimStyle,
+              ]}>
+                <Ionicons
+                  name={activePresetModified ? "pencil-outline" : "bookmark"}
+                  size={12}
+                  color={activePresetModified ? colors.primary + "aa" : colors.primary}
+                />
+                <Text style={[styles.activePresetBannerText, { color: activePresetModified ? colors.primary + "aa" : colors.primary }]}>
+                  {activePresetModified
+                    ? `"${activePreset.name}" modified`
+                    : `Viewing "${activePreset.name}" — edit below to update it`}
                 </Text>
+                {activePresetModified && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                      loadPreset(activePreset);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[
+                      styles.revertButton,
+                      { backgroundColor: colors.primary + "20", borderColor: colors.primary + "45" },
+                    ]}
+                  >
+                    <Ionicons name="arrow-undo-outline" size={11} color={colors.primary} />
+                    <Text style={[styles.revertButtonText, { color: colors.primary }]}>Revert</Text>
+                  </TouchableOpacity>
+                )}
               </Reanimated.View>
             )}
 
@@ -6767,6 +6797,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     flex: 1,
+  },
+  revertButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  revertButtonText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
   // Card preview
   previewSectionHeader: {
