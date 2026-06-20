@@ -7638,6 +7638,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 3,
     marginBottom: 4,
+    zIndex: 2,
   },
   toastSwipeHintText: {
     fontSize: 10,
