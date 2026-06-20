@@ -53,3 +53,6 @@ Thumbs.db
 # Never commit service account keys or sensitive JSON
 attached_assets/*.json
 attached_assets/*.pdf
+
+# Auto-generated large files — do not track in git/LFS
+generated/
