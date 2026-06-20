@@ -773,12 +773,12 @@ function ZoomableCard({
         translateX.value = targetX;
         translateY.value = targetY;
       } else {
-        const springCfg =
+        const springBase =
           scale.value === 1
             ? { damping: 15, stiffness: 200 }
             : { damping: 22, stiffness: 280 };
-        translateX.value = withSpring(targetX, springCfg);
-        translateY.value = withSpring(targetY, springCfg);
+        translateX.value = withSpring(targetX, { ...springBase, velocity: e.velocityX });
+        translateY.value = withSpring(targetY, { ...springBase, velocity: e.velocityY });
       }
       savedTranslateX.value = targetX;
       savedTranslateY.value = targetY;
