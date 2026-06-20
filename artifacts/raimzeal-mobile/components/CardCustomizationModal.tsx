@@ -2007,6 +2007,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [confirmOnPressFn, setConfirmOnPressFn] = useState<(() => void) | null>(null);
   const confirmDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const confirmActionFnRef = useRef<(() => void) | null>(null);
+  const confirmHasCountdownRef = useRef(false);
   const confirmSwipingRef = useRef(false);
   const pendingConfirmationArgsRef = useRef<null | [
     msg: string,
@@ -2074,12 +2076,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     confirmSwipeY.setValue(0);
     confirmProgressAnim.setValue(1);
     setConfirmHasCountdown(false);
+    confirmHasCountdownRef.current = false;
     setConfirmKeepOpen(false);
     setConfirmMessage(null);
     setConfirmIcon(null);
     setConfirmSecondaryIcon(null);
     setConfirmRetryFn(null);
     setConfirmActionFn(null);
+    confirmActionFnRef.current = null;
     setConfirmActionLabel(null);
   }
 
@@ -2106,10 +2110,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       confirmSwipeY.setValue(0);
       confirmProgressAnim.setValue(1);
       setConfirmHasCountdown(false);
+      confirmHasCountdownRef.current = false;
       setConfirmKeepOpen(false);
       setConfirmMessage(null);
       setConfirmRetryFn(null);
       setConfirmActionFn(null);
+      confirmActionFnRef.current = null;
       setConfirmActionLabel(null);
       if (finished) onComplete?.();
     });
@@ -2132,11 +2138,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           confirmSwipingRef.current = false;
           const pending = pendingConfirmationArgsRef.current;
           pendingConfirmationArgsRef.current = null;
+          const actionFn = confirmHasCountdownRef.current ? confirmActionFnRef.current : null;
           if (reduceMotionRef.current) {
             dismissConfirmToast();
+            actionFn?.();
             if (pending) showConfirmationRef.current?.(...pending);
           } else {
             dismissConfirmToastAnimated(() => {
+              actionFn?.();
               if (pending) showConfirmationRef.current?.(...pending);
             });
           }
@@ -2248,6 +2257,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmSecondaryIcon(secondaryIcon ?? null);
     setConfirmRetryFn(retryFn ? () => retryFn : null);
     setConfirmActionFn(actionFn ? () => actionFn : null);
+    confirmActionFnRef.current = actionFn ?? null;
     setConfirmActionLabel(actionLabel ?? null);
     setConfirmKeepOpen(!!keepOpen);
     setConfirmOnPressFn(onPressFn ? () => onPressFn : null);
@@ -2263,6 +2273,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     const noAutoDismiss = (!holdDurationOverrideMs && !!actionFn) || !!keepOpen;
     const showProgress = !!holdDurationOverrideMs && !reduceMotionRef.current;
     setConfirmHasCountdown(!!holdDurationOverrideMs);
+    confirmHasCountdownRef.current = !!holdDurationOverrideMs;
     if (reduceMotionRef.current) {
       confirmOpacity.setValue(1);
       confirmTranslateY.setValue(0);
@@ -2273,6 +2284,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           confirmTranslateY.setValue(16);
           confirmProgressAnim.setValue(1);
           setConfirmHasCountdown(false);
+          confirmHasCountdownRef.current = false;
           setConfirmMessage(null);
         }, holdDuration);
       }
@@ -2303,6 +2315,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         if (finished) {
           confirmProgressAnim.setValue(1);
           setConfirmHasCountdown(false);
+          confirmHasCountdownRef.current = false;
           setConfirmMessage(null);
         }
       });
