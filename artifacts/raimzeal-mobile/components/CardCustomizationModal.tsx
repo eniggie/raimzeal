@@ -2191,6 +2191,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setThemeHasOverflow(false);
     themeContainerWidth.current = 0;
     themeContentWidth.current = 0;
+    // Hide the hint immediately so stale state from a previous session never
+    // flickers while the async storage read is in flight. loadSaved() will
+    // re-show it only after confirming the flag is not set in storage.
+    setShowLongPressHint(false);
 
     // Cancellation flag: prevents async loadSaved from acting after the modal closes
     let cancelled = false;
