@@ -39,6 +39,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [biometricLabel, setBiometricLabel] = useState<string | null>(null);
@@ -64,6 +65,10 @@ export default function LoginScreen() {
   }
 
   async function handleLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in.");
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please enter your email and password.");
       return;
@@ -113,6 +118,10 @@ export default function LoginScreen() {
   }
 
   async function handleAppleLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before continuing with Apple.");
+      return;
+    }
     setAppleLoading(true);
     const { error } = await signInWithApple();
     setAppleLoading(false);
@@ -121,6 +130,10 @@ export default function LoginScreen() {
 
   async function handleBiometricLogin() {
     if (!biometricLabel) return;
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in.");
+      return;
+    }
     setBiometricLoading(true);
     try {
       const result = await LocalAuthentication.authenticateAsync({
@@ -250,11 +263,34 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
+          <View style={[styles.termsBox, { backgroundColor: colors.muted, borderColor: termsAccepted ? colors.primary : colors.border }]}>
+            <TouchableOpacity
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: termsAccepted }}
+              accessibilityLabel="Accept Terms of Use and Community Guidelines"
+              onPress={() => setTermsAccepted((value) => !value)}
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: termsAccepted ? colors.primary : "transparent",
+                  borderColor: termsAccepted ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {termsAccepted && <Ionicons name="checkmark" size={14} color={colors.primaryForeground} />}
+            </TouchableOpacity>
+            <Text style={[styles.termsText, { color: colors.foreground }]}>
+              I agree to the{" "}
+              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }} onPress={() => router.push("/terms")}>Terms of Use</Text>
+              {" "}and Community Guidelines, including zero tolerance for objectionable content and abusive behavior.
+            </Text>
+          </View>
+
           <TouchableOpacity
             activeOpacity={0.85}
             style={[styles.submitBtn, { backgroundColor: loading ? colors.primary + "80" : colors.primary }]}
             onPress={handleLogin}
-            disabled={loading}
+            disabled={loading || !termsAccepted}
           >
             {loading ? (
               <ActivityIndicator color={colors.primaryForeground} />
@@ -373,6 +409,23 @@ const styles = StyleSheet.create({
   eyeBtn: { padding: 4 },
   forgotBtn: { alignSelf: "flex-end" },
   forgotText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  termsBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1.5,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  termsText: { flex: 1, fontSize: 12, lineHeight: 18, fontFamily: "Inter_400Regular" },
   submitBtn: {
     height: 54,
     borderRadius: 14,

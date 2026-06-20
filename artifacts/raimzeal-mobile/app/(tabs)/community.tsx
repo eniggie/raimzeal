@@ -37,6 +37,8 @@ import {
   checkUserLikes,
   getApiBase,
   getImageUploadUrl,
+  reportPost,
+  blockUser,
 } from "@/lib/db";
 
 import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
@@ -212,27 +214,38 @@ export default function CommunityScreen() {
     }
   }
 
-  async function handleReport(postId: string) {
-    if (!userId) {
-      Alert.alert("Sign in required", "Please sign in to report posts.");
-      return;
-    }
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) return;
-      const res = await fetch(`${getApiBase()}/community/posts/${postId}/report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ reason: "other" }),
-      });
-      if (res.ok) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Reported", "Thank you — our team will review this post.");
-      }
-    } catch {
-      Alert.alert("Error", "Could not submit report. Please try again.");
-    }
+  function openModerationMenu(item: PostState) {
+    Alert.alert(`Post by ${item.userName}`, "Choose a safety action.", [
+      {
+        text: "Report objectionable content",
+        style: "destructive",
+        onPress: async () => {
+          const ok = await reportPost(item.id);
+          if (!ok) {
+            Alert.alert("Report failed", "Please check your connection and try again.");
+            return;
+          }
+          setPosts((current) => current.filter((post) => post.id !== item.id));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert("Post reported", "The post is hidden and our moderation team will review it within 24 hours.");
+        },
+      },
+      {
+        text: "Block abusive user",
+        style: "destructive",
+        onPress: async () => {
+          const ok = await blockUser(item.userId, item.id);
+          if (!ok) {
+            Alert.alert("Block failed", "Please check your connection and try again.");
+            return;
+          }
+          setPosts((current) => current.filter((post) => post.userId !== item.userId));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert("User blocked", `You will no longer see posts from ${item.userName}.`);
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   }
 
   async function handleExpandComments(postId: string) {
@@ -562,10 +575,13 @@ export default function CommunityScreen() {
 
           {userId && item.userId !== userId && (
             <TouchableOpacity
-              onPress={() => handleReport(item.id)}
+              onPress={() => openModerationMenu(item)}
               style={[styles.actionBtn, { marginLeft: "auto" }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Safety options for post by ${item.userName}`}
             >
-              <Ionicons name="flag-outline" size={16} color={colors.mutedForeground} />
+              <Ionicons name="ellipsis-horizontal" size={18} color={colors.mutedForeground} />
+              <Text style={[styles.actionText, { color: colors.mutedForeground }]}>Safety</Text>
             </TouchableOpacity>
           )}
         </View>

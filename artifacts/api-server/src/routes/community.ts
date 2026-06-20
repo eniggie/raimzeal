@@ -473,13 +473,25 @@ communityRouter.post(
 
     try {
       const supabase = getAdminClient();
+      const { data: post, error: postError } = await supabase
+        .from("community_posts")
+        .select("user_id")
+        .eq("id", postId)
+        .maybeSingle();
+
+      if (postError || !post) {
+        res.status(404).json({ error: "Post not found." });
+        return;
+      }
+
       const { error } = await supabase.from("community_reports").insert({
+        reporter_user_id: userId,
+        reported_user_id: post.user_id,
         post_id: postId,
-        user_id: userId,
         reason,
+        status: "open",
       });
-      // unique constraint violation = already reported → treat as success
-      if (error && !error.message.includes("uniq_report_per_user_post") && !error.code?.startsWith("23")) {
+      if (error) {
         req.log.error({ err: error, userId, postId }, "POST /community/posts/:postId/report error");
         res.status(500).json({ error: "Could not submit report." });
         return;
@@ -502,6 +514,7 @@ communityRouter.post(
   async (req, res) => {
     const blockerId = (req as { userId?: string }).userId ?? "";
     const { targetUserId } = req.params;
+    const { postId } = req.body as { postId?: string };
 
     if (!targetUserId || targetUserId === blockerId) {
       res.status(400).json({ error: "Invalid target user." });
@@ -511,8 +524,13 @@ communityRouter.post(
     try {
       const supabase = getAdminClient();
       const { error } = await supabase.from("community_blocks").upsert(
-        { blocker_id: blockerId, blocked_id: targetUserId },
-        { onConflict: "blocker_id,blocked_id" },
+        {
+          blocker_user_id: blockerId,
+          blocked_user_id: targetUserId,
+          post_id: postId ?? null,
+          reason: "abusive_user",
+        },
+        { onConflict: "blocker_user_id,blocked_user_id" },
       );
 
       if (error && !error.code?.startsWith("23")) {
@@ -531,4 +549,3 @@ communityRouter.post(
 );
 
 export default communityRouter;
-

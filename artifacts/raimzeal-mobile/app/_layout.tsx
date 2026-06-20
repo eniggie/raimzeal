@@ -74,9 +74,10 @@ function AuthGate() {
     if (!isSupabaseConfigured) return; // no-op: let app run without auth
 
     const inAuthGroup = segments[0] === "auth";
+    const inHealthOnboarding = segments.join("/") === "auth/health-onboarding";
     if (!session && !inAuthGroup) {
       router.replace("/auth/welcome");
-    } else if (session && inAuthGroup && segments[1] !== "health-onboarding") {
+    } else if (session && inAuthGroup && !inHealthOnboarding) {
       // Wait for AsyncStorage to hydrate before checking onboarding status
       if (!stateHydrated) return;
       if (!isOnboarded) {
