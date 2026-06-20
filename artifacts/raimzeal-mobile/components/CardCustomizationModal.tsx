@@ -116,6 +116,7 @@ const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_se
 const DISABLED_BTN_LP_HINT_MAX_SHOWS = 2;
 const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
 const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
+const STORAGE_KEY_STATS_NUDGE_SEEN = "@raimzeal_stats_nudge_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
 const LONGPRESS_HINT_MAX_OPENS = 3;
@@ -2218,7 +2219,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw, statsNudgeSeenRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -2234,6 +2235,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           AsyncStorage.getItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_CHIP_DISMISS_COUNT),
           AsyncStorage.getItem(STORAGE_KEY_TAP_GENERATE_HINT_SEEN),
+          AsyncStorage.getItem(STORAGE_KEY_STATS_NUDGE_SEEN),
         ]);
 
         if (cancelled) return;
@@ -2338,6 +2340,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             disabledBtnLpHintFadeAnim.setValue(0);
             setDisabledBtnLpHintMounted(false);
           }
+        }
+
+        // Stats nudge: show once to first-time users so they know stats can be customised.
+        // Set both state (to re-trigger the effect that may have already run) and the ref
+        // (for the async timeout callback guard that reads it via closure).
+        if (statsNudgeSeenRaw !== "1") {
+          statsNudgeEligibleRef.current = true;
+          setStatsNudgeEligible(true);
         }
 
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
@@ -3846,6 +3856,68 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
+  // Stats-section nudge: first-launch coach mark near the action buttons, shown once to guide
+  // new users to the VISIBLE STATS section even when all stats start enabled by default.
+  //
+  // Two-track eligibility: `statsNudgeEligible` (state) causes the effect to re-fire once
+  // loadSaved() resolves and marks the user eligible — solving the async race where the effect
+  // first runs (visible=true) before storage has been read.  `statsNudgeEligibleRef` (ref)
+  // is used for guarding inside the 1.5 s timeout callback where stale closures would make
+  // reading state unreliable.
+  const [statsNudgeEligible, setStatsNudgeEligible] = useState(false);
+  const statsNudgeEligibleRef = useRef(false);
+  const [statsNudgeMounted, setStatsNudgeMounted] = useState(false);
+  const statsNudgeFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) {
+      // Reset so the nudge doesn't linger or skip its intro delay on next open
+      statsNudgeFadeAnim.setValue(0);
+      setStatsNudgeMounted(false);
+      return;
+    }
+    // Guard via ref — safe inside the async callback below
+    if (!statsNudgeEligibleRef.current) return;
+    // Delay so other UI settles first, then fade in
+    const timer = setTimeout(() => {
+      if (!statsNudgeEligibleRef.current) return;
+      // Persist the seen flag immediately on display so the nudge never shows again,
+      // even if the user never taps it.
+      AsyncStorage.setItem(STORAGE_KEY_STATS_NUDGE_SEEN, "1").catch(() => {});
+      statsNudgeEligibleRef.current = false;
+      setStatsNudgeMounted(true);
+      if (reduceMotionRef.current) {
+        statsNudgeFadeAnim.setValue(1);
+      } else {
+        statsNudgeFadeAnim.setValue(0);
+        Animated.timing(statsNudgeFadeAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }).start();
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, statsNudgeEligible]);
+
+  function dismissStatsNudge() {
+    statsNudgeEligibleRef.current = false;
+    AsyncStorage.setItem(STORAGE_KEY_STATS_NUDGE_SEEN, "1").catch(() => {});
+    if (reduceMotionRef.current) {
+      statsNudgeFadeAnim.setValue(0);
+      setStatsNudgeMounted(false);
+    } else {
+      Animated.timing(statsNudgeFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setStatsNudgeMounted(false);
+      });
+    }
+  }
+
   // Disabled-button long-press hint: shown below action row when all stats off, dismissable & persisted
   const [disabledBtnLpHintDismissed, setDisabledBtnLpHintDismissed] = useState(false);
   // Tracks how many times the hint has been dismissed (stored as string count in AsyncStorage).
@@ -5266,6 +5338,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
                 {"Tap Generate ↑ to create your card"}
               </Text>
+            </Animated.View>
+          )}
+          {statsNudgeMounted && (
+            <Animated.View style={{ opacity: statsNudgeFadeAnim }}>
+              <TouchableOpacity
+                onPress={() => { scrollToStatToggles(); dismissStatsNudge(); }}
+                activeOpacity={0.6}
+                accessibilityRole="button"
+                accessibilityLabel="Show me the stats section"
+              >
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                  {"Stats on your card can be customised · Tap to see"}
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
           {lockedHintMounted && (
