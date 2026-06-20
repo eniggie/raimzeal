@@ -1756,13 +1756,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             duration: 300,
             useNativeDriver: true,
           }),
-          Animated.spring(longPressHintSlideAnim, {
+          Animated.timing(longPressHintSlideAnim, {
             toValue: 0,
+            duration: 380,
+            easing: Easing.out(Easing.back(1.2)),
             useNativeDriver: true,
-            damping: 50,
-            stiffness: 400,
-            mass: 0.6,
-            overshootClamping: true,
           }),
         ]).start();
       }
