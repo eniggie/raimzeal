@@ -1502,6 +1502,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
   const longPressHintSlideAnim = useRef(new Animated.Value(6)).current;
+  const longPressHintIsFirstRender = useRef(true);
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
   // User-chosen auto-trigger delay (0 = off, 1/3/5 = seconds)
@@ -1670,6 +1671,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [visible, restoredFromStorage, badgeDismissed, reduceMotion]);
 
   useEffect(() => {
+    if (longPressHintIsFirstRender.current) {
+      longPressHintIsFirstRender.current = false;
+      if (showLongPressHint) {
+        // Already visible on mount — snap straight to final state, no animation
+        longPressHintFadeAnim.setValue(1);
+        longPressHintSlideAnim.setValue(0);
+      }
+      // If false on mount, initial values (0 / 6) are already the hidden state
+      return;
+    }
     if (showLongPressHint) {
       longPressHintFadeAnim.setValue(0);
       longPressHintSlideAnim.setValue(6);
