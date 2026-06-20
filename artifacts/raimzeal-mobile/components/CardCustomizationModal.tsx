@@ -287,6 +287,7 @@ interface SortablePresetItemProps {
   reduceMotionShared: SharedValue<boolean>;
   snapFromIdx: SharedValue<number>;
   snapTargetIdx: SharedValue<number>;
+  isDragging: SharedValue<boolean>;
   isActive: boolean;
   onLoadPreset: (p: CardPreset) => void;
   onDeletePreset: (id: string) => void;
@@ -304,6 +305,7 @@ function SortablePresetItem({
   reduceMotionShared,
   snapFromIdx,
   snapTargetIdx,
+  isDragging,
   isActive,
   onLoadPreset,
   onDeletePreset,
@@ -362,6 +364,8 @@ function SortablePresetItem({
   const pan = Gesture.Pan()
     .onStart(() => {
       "worklet";
+      if (isDragging.value) return;
+      isDragging.value = true;
       draggingIdx.value = itemIndex;
       hoveredIdx.value = itemIndex;
       dragTranslateY.value = 0;
@@ -531,6 +535,7 @@ function SortablePresetList({
   const hoveredIdx = useSharedValue(-1);
   const snapFromIdx = useSharedValue(-1);
   const snapTargetIdx = useSharedValue(-1);
+  const isDragging = useSharedValue(false);
 
   useEffect(() => {
     snapFromIdx.value = -1;
@@ -538,6 +543,7 @@ function SortablePresetList({
   }, [items]);
 
   function handlePanEnd(fromIdx: number, toIdx: number) {
+    isDragging.value = false;
     if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
     setItems((prev) => {
       if (fromIdx >= prev.length || toIdx >= prev.length) return prev;
@@ -572,6 +578,7 @@ function SortablePresetList({
             reduceMotionShared={reduceMotionShared}
             snapFromIdx={snapFromIdx}
             snapTargetIdx={snapTargetIdx}
+            isDragging={isDragging}
             isActive={preset.id === activePresetId}
             onLoadPreset={(p) => { onLoadPreset(p); onDone(); }}
             onDeletePreset={onDeletePreset}
