@@ -2837,9 +2837,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     actionLongPressedRef.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
-    // Dismiss the long-press hint permanently once the user has discovered the gesture
+    // Dismiss the long-press hint permanently once the user has discovered the gesture.
+    // Wait 300 ms first so the confirmation toast has time to appear before the hint fades,
+    // avoiding the jarring effect of two things changing at once.
     if (showLongPressHint) {
-      dismissLongPressHint();
+      setTimeout(() => dismissLongPressHint(), 300);
     }
 
     const isAlreadyDefault = defaultAction === action;
