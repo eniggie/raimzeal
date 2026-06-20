@@ -3267,6 +3267,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     setRestoredFromStorage(false);
     AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO).catch(() => {});
+    dismissCardChip();
     if (!reduceMotionRef.current) {
       previewOpacity.stopAnimation();
       Animated.sequence([
