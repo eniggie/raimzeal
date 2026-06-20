@@ -1737,7 +1737,7 @@ export default function ProfileScreen() {
               onPress={handlePickUndoWindow}
             />
             <SettingPickerRow
-              icon="refresh-outline"
+              icon="repeat-outline"
               label="Reorder hint frequency"
               sublabel="'Hold to reorder favorites' reminder"
               value={
@@ -1812,7 +1812,7 @@ export default function ProfileScreen() {
             )}
             {hasSeenRationale && cameraRollStatus === "undetermined" && (
               <ActionRow
-                icon="refresh-outline"
+                icon="arrow-undo-outline"
                 label="Reset photo access prompt"
                 sublabel="Re-show the explanation on next save attempt"
                 color={colors.accent}
@@ -2067,7 +2067,7 @@ export default function ProfileScreen() {
               onPress={() => router.push("/menopause-tracker")}
             />
             <ActionRow
-              icon="rose-outline"
+              icon="sync-outline"
               label="Cycle-Phase Sync"
               sublabel="Workout & nutrition by cycle phase · Rise+"
               color="#ec4899"
@@ -2087,7 +2087,7 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Health</Text>
           <GlassCard style={styles.actionsCard}>
             <ActionRow
-              icon="water-outline"
+              icon="id-card-outline"
               label="Health Profile & Food Guide"
               sublabel={
                 user?.bloodType || user?.genotype
@@ -2314,7 +2314,7 @@ export default function ProfileScreen() {
               onPress={() => router.push("/privacy")}
             />
             <ActionRow
-              icon="document-text-outline"
+              icon="reader-outline"
               label="Terms of Service"
               sublabel="Rules governing use of RAIMZEAL"
               color={colors.mutedForeground}
