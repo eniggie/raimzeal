@@ -1318,6 +1318,7 @@ const PresetChipItem = memo(function PresetChipItem({
       activeOpacity={0.75}
       style={styles.presetChip}
     >
+      <Animated.View style={{ transform: [{ scale: pulseScale }], alignItems: "center", gap: 5 }}>
       <Animated.View
         style={[
           styles.presetThumbnailFrame,
@@ -1329,7 +1330,6 @@ const PresetChipItem = memo(function PresetChipItem({
               : colors.border,
             borderWidth: isActive ? 2 : 1.5,
             borderStyle: isActive && isModified ? "dashed" : "solid",
-            transform: [{ scale: pulseScale }],
           },
         ]}
       >
@@ -1394,6 +1394,7 @@ const PresetChipItem = memo(function PresetChipItem({
       >
         {preset.name}
       </Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 });
