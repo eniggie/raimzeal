@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/raimzeal-pitch/"
+title = "RAIMZEAL Investor Presentation"
+version = "1.0.0"
+id = "artifacts/raimzeal-pitch"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/raimzeal-pitch/" ]
+localPort = 19917
+
+[services.development]
+run = "pnpm --filter @workspace/raimzeal-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/raimzeal-pitch", "run", "build" ]
+publicDir = "artifacts/raimzeal-pitch/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19917"
+BASE_PATH = "/raimzeal-pitch/"

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/raimzeal-docs/"
+title = "RAIMZEAL Documentation Suite"
+version = "1.0.0"
+id = "artifacts/raimzeal-docs"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/raimzeal-docs/" ]
+localPort = 18137
+
+[services.development]
+run = "pnpm --filter @workspace/raimzeal-docs run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/raimzeal-docs", "run", "build" ]
+publicDir = "artifacts/raimzeal-docs/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18137"
+BASE_PATH = "/raimzeal-docs/"

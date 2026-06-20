@@ -1,0 +1,98 @@
+[
+  {
+    "id": "a1b2c3d4-0001-4000-8000-000000000001",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide01Title.tsx",
+    "title": "RAIMZEAL — Title",
+    "description": "Title slide: RAIMZEAL Free AI-Powered Healthcare for Every Human, ECONTEUR LLC / Dr. Ephraim Oviawe, June 2026",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0002-4000-8000-000000000002",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide02Executive.tsx",
+    "title": "Executive Summary",
+    "description": "RAIMZEAL delivers free, personalized healthcare to anyone with a smartphone — five key points",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0003-4000-8000-000000000003",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide03Problem.tsx",
+    "title": "The Problem",
+    "description": "5.4 billion people lack access to personalized, affordable preventive healthcare",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0004-4000-8000-000000000004",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide04Platform.tsx",
+    "title": "Platform Overview",
+    "description": "Six health disciplines — fitness, food therapy, mental wellness, community, sleep, preventive care",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0005-4000-8000-000000000005",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide05Technology.tsx",
+    "title": "Technology Stack",
+    "description": "Expo SDK 54, Supabase, Express 5, OpenAI — ~$57/month total infrastructure",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0006-4000-8000-000000000006",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide06Model.tsx",
+    "title": "Non-Profit Business Model",
+    "description": "501(c)(3) pathway, grant funding, institutional partnerships — free forever",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0007-4000-8000-000000000007",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide07Market.tsx",
+    "title": "Market Opportunity",
+    "description": "TAM 8B, SAM 4.5B, Year 1 target 10M users — no comparable free multi-discipline platform",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0008-4000-8000-000000000008",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide08Financials.tsx",
+    "title": "Financial Overview",
+    "description": "$51/month operating cost — $500K grant funds 8+ years of full operations",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0009-4000-8000-000000000009",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide09Team.tsx",
+    "title": "Leadership",
+    "description": "Dr. Ephraim Oviawe — physician, founder, ECONTEUR LLC",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0010-4000-8000-000000000010",
+    "position": 10,
+    "filepath": "src/pages/slides/Slide10Governance.tsx",
+    "title": "Governance & Equity",
+    "description": "Mission-first equity: 85% founder, 15% advisor pool — free-access prohibition in all agreements",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0011-4000-8000-000000000011",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide11Roadmap.tsx",
+    "title": "2026–2027 Roadmap",
+    "description": "Q2 iOS launch, Q3 Android + 501(c)(3), Q4 first grant, H1 2027 WHO application",
+    "speakerNotes": ""
+  },
+  {
+    "id": "a1b2c3d4-0012-4000-8000-000000000012",
+    "position": 12,
+    "filepath": "src/pages/slides/Slide12Closing.tsx",
+    "title": "Closing",
+    "description": "Health is a right, not a privilege — grant partnerships, advisory relationships, in-kind contributions",
+    "speakerNotes": ""
+  }
+]
