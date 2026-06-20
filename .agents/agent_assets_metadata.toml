@@ -521,3 +521,27 @@ id = "hY_QK6Sdgwbxjt_GEGYR6"
 uri = "file://scripts/.local/outputs/RAIMZEAL-Operations-Guide.pdf"
 type = "pdf"
 title = "RAIMZEAL Operations Guide (PDF)"
+
+[[outputs]]
+id = "8n_8CvlsRSe4REajnWTiz"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Script-1-User-Guide.pdf"
+type = "pdf"
+title = "Script 1 — User Guide (9 segments, ~136s)"
+
+[[outputs]]
+id = "b6rkvTeuM33ssAad_kH8e"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Script-2-Developer-Guide.pdf"
+type = "pdf"
+title = "Script 2 — Developer Guide (8 segments, ~117s)"
+
+[[outputs]]
+id = "WtGdG8Fe-uNCLpBRZUv7U"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Script-3-Operations-Guide.pdf"
+type = "pdf"
+title = "Script 3 — Operations Guide (9 segments, ~142s)"
+
+[[outputs]]
+id = "kZBZLEFQ79c9w_vC27-on"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Script-4-Investor-Presentation.pdf"
+type = "pdf"
+title = "Script 4 — Investor Presentation (10 segments, ~158s)"
