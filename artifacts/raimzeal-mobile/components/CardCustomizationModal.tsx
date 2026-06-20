@@ -1638,6 +1638,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const inlineSaveAnimatingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const open = showInlineSave && !reorderMode;
+    // Banner should be hidden whenever the inline-save panel is open OR
+    // reorder mode is active — both states displace it from the layout.
+    const bannerHidden = showInlineSave || reorderMode;
     if (!open && inlineSaveOpen.current) {
       // Blur the input so the keyboard dismisses when the field collapses
       presetNameRef.current?.blur();
@@ -1651,16 +1654,26 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
       inlineSaveOpacity.value = open ? 1 : 0;
       inlineSaveTranslateY.value = 0;
-      activePresetBannerOpacity.value = open ? 0 : 1;
+      activePresetBannerOpacity.value = bannerHidden ? 0 : 1;
       activePresetBannerTranslateY.value = 0;
     } else if (open) {
+      // Inline-save panel opens → slide banner up and out
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
       inlineSaveOpacity.value = withTiming(1, { duration: 180 });
       inlineSaveTranslateY.value = -10;
       inlineSaveTranslateY.value = withSpring(0, { damping: 18, stiffness: 220, mass: 0.6 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
+    } else if (bannerHidden) {
+      // Reorder mode turned on (inline-save panel is closed) → slide banner
+      // up and out with the same motion as the inline-save open path.
+      inlineSaveHeight.value = withTiming(0, { duration: 160 });
+      inlineSaveOpacity.value = withTiming(0, { duration: 120 });
+      inlineSaveTranslateY.value = 0;
+      activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
+      activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
     } else {
+      // Everything closed (including reorder mode off) → slide banner back in
       // Lock the toggle button for the duration of the close animation only
       // when transitioning from open to closed — prevents a double-tap from
       // reopening the panel while it is still sliding away.
