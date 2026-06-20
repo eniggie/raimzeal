@@ -484,4 +484,22 @@ title = "RAIMZEAL Investor Presentation.pdf"
 id = "d24owO4n9t0-iPEKEZCSA"
 uri = "file://.local/outputs/RAIMZEAL-Investor-Presentation.pptx"
 type = "slides"
-title = "RAIMZEAL Investor Presentation.pptx"
+title = "RAIMZEAL Investor Presentation (PPTX)"
+
+[[outputs]]
+id = "ocsxyjfP7cXT1Fzy8O8Oz"
+uri = "file://scripts/.local/outputs/RAIMZEAL-User-Guide.pptx"
+type = "slides"
+title = "RAIMZEAL User Guide (PPTX)"
+
+[[outputs]]
+id = "clGFlKvnNHDR19i70AxWx"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Developer-Guide.pptx"
+type = "slides"
+title = "RAIMZEAL Developer Guide (PPTX)"
+
+[[outputs]]
+id = "yccgRFk873UrhgcbGCDjs"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Operations-Guide.pptx"
+type = "slides"
+title = "RAIMZEAL Operations Guide (PPTX)"

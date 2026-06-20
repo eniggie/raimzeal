@@ -12,6 +12,7 @@
     "fix-stripe-webhook": "tsx ./src/fix-stripe-webhook.ts",
     "seed-revenuecat": "tsx ./src/seedRevenueCat.ts",
     "sync-github": "tsx ./src/sync-github.ts",
+    "generate-docs-pptx": "tsx ./src/generate-docs-pptx.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.20.0",
+    "pptxgenjs": "^4.0.1",
     "tsx": "catalog:"
   }
 }
