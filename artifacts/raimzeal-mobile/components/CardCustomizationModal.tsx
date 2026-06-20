@@ -1628,6 +1628,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const INLINE_SAVE_EXPANDED_H = 118;
   const inlineSaveHeight = useSharedValue(0);
   const inlineSaveOpacity = useSharedValue(0);
+  const inlineSaveTranslateY = useSharedValue(0);
   const activePresetBannerOpacity = useSharedValue(1);
   const activePresetBannerTranslateY = useSharedValue(0);
   const inlineSaveOpen = useRef(false);
@@ -1649,11 +1650,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     if (reduceMotion) {
       inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
       inlineSaveOpacity.value = open ? 1 : 0;
+      inlineSaveTranslateY.value = 0;
       activePresetBannerOpacity.value = open ? 0 : 1;
       activePresetBannerTranslateY.value = 0;
     } else if (open) {
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
       inlineSaveOpacity.value = withTiming(1, { duration: 180 });
+      inlineSaveTranslateY.value = -10;
+      inlineSaveTranslateY.value = withSpring(0, { damping: 18, stiffness: 220, mass: 0.6 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
     } else {
@@ -1670,6 +1674,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
+      inlineSaveTranslateY.value = 0;
       activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
       activePresetBannerOpacity.value = withDelay(60, withTiming(1, { duration: 220 }));
     }
@@ -1682,6 +1687,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     height: inlineSaveHeight.value,
     opacity: inlineSaveOpacity.value,
     overflow: "hidden",
+    transform: [{ translateY: inlineSaveTranslateY.value }],
     pointerEvents: inlineSaveHeight.value > 0 ? "auto" : "none",
   }));
 
