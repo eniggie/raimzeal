@@ -3414,6 +3414,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setBackgroundPhotoBlurRadius(preset.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
     resetZoomPosition();
     dismissCardChip();
+    dismissSwipeHintEarly();
   }
 
   function openPresetPreview(preset: CardPreset, originRect?: PresetOriginRect) {
