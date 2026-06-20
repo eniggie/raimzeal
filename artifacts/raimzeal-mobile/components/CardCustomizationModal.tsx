@@ -1726,6 +1726,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [visible, restoredFromStorage, badgeDismissed, reduceMotion]);
 
   useEffect(() => {
+    if (!visible) {
+      longPressHintFadeAnim.stopAnimation();
+      longPressHintSlideAnim.stopAnimation();
+      longPressHintFadeAnim.setValue(0);
+      longPressHintSlideAnim.setValue(6);
+      return;
+    }
     if (longPressHintIsFirstRender.current) {
       longPressHintIsFirstRender.current = false;
       if (showLongPressHint) {
@@ -1763,7 +1770,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       longPressHintFadeAnim.setValue(0);
       longPressHintSlideAnim.setValue(6);
     }
-  }, [showLongPressHint]);
+  }, [showLongPressHint, visible]);
 
   function dismissLongPressHint() {
     AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
@@ -1795,6 +1802,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     cardChipFadeAnim.stopAnimation();
     cardChipSlideAnim.stopAnimation();
 
+    if (!visible) {
+      cardChipFadeAnim.setValue(0);
+      cardChipSlideAnim.setValue(6);
+      setShowCardChip(false);
+      return;
+    }
     if (!restoredFromStorage) {
       return;
     }
@@ -1862,7 +1875,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         cardChipTimerRef.current = null;
       }
     };
-  }, [restoredFromStorage, reduceMotion]);
+  }, [restoredFromStorage, reduceMotion, visible]);
 
   function dismissCardChip() {
     if (cardChipTimerRef.current !== null) {
@@ -2228,7 +2241,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         clearTimeout(thirdPulseTimerRef.current);
         thirdPulseTimerRef.current = null;
       }
-      defaultActionPulseAnim.setValue(1);
       // Clean up any pending auto-trigger when the modal closes
       if (autoTriggerIntervalRef.current !== null) {
         clearInterval(autoTriggerIntervalRef.current);
@@ -2239,8 +2251,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       autoTriggerIsPausedRef.current = false;
       // Bump session ID so any in-flight banner fade callback becomes a no-op
       autoTriggerSessionIdRef.current += 1;
-      autoTriggerBannerAnim.stopAnimation();
-      autoTriggerBannerAnim.setValue(0);
       setAutoTriggerBannerVisible(false);
       autoTriggerGeneratingRef.current = false;
       setAutoTriggerGenerating(false);
@@ -2453,10 +2463,24 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     return () => { cancelled = true; };
   }, [visible]);
 
+  // Reset the auto-trigger banner animation value on close so the next open
+  // always starts from a clean hidden state rather than a stale in-flight value.
+  useEffect(() => {
+    if (!visible) {
+      autoTriggerBannerAnim.stopAnimation();
+      autoTriggerBannerAnim.setValue(0);
+    }
+  }, [visible]);
+
   // Pulse the default action button once when the modal opens with a saved default.
   // A softer follow-up pulse (1 → 1.03 → 1) fires ~1.5 s later if the user hasn't tapped yet.
   useEffect(() => {
-    if (!visible || defaultAction === null) return;
+    if (!visible) {
+      defaultActionPulseAnim.stopAnimation();
+      defaultActionPulseAnim.setValue(1);
+      return;
+    }
+    if (defaultAction === null) return;
     if (hasPulsedDefaultRef.current) return;
     hasPulsedDefaultRef.current = true;
     if (reduceMotionRef.current) return;
