@@ -3486,7 +3486,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
-  function closePresetPreview(releaseVelocity = 0) {
+  function closePresetPreview() {
     // Scrolls the horizontal chip row so the active chip is visible.
     // Uses the ref so the callback always reads the post-render settled value.
     const scrollChipsToActive = (animated: boolean) => {
@@ -3518,13 +3518,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const originCenterY = y + height / 2;
       const previewCardW = CARD_WIDTH * zoomScale;
       const targetScale = width > 0 ? width / previewCardW : 0.85;
-      const springConfig = { damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true as const };
+      const CLOSE_DURATION = 180;
+      const closeEasing = Easing.out(Easing.cubic);
+      const timingConfig = { duration: CLOSE_DURATION, easing: closeEasing, useNativeDriver: true as const };
       Animated.parallel([
-        Animated.spring(presetPreviewAnim, { toValue: 0, ...springConfig }),
-        Animated.spring(presetPreviewTranslateX, { toValue: width > 0 ? originCenterX - screenW / 2 : 0, ...springConfig }),
-        Animated.spring(presetPreviewTranslateY, { toValue: height > 0 ? originCenterY - screenH / 2 : 0, velocity: releaseVelocity, ...springConfig }),
-        Animated.spring(presetPreviewOriginScale, { toValue: targetScale, ...springConfig }),
-        Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...springConfig }),
+        Animated.timing(presetPreviewAnim, { toValue: 0, ...timingConfig }),
+        Animated.timing(presetPreviewTranslateX, { toValue: width > 0 ? originCenterX - screenW / 2 : 0, ...timingConfig }),
+        Animated.timing(presetPreviewTranslateY, { toValue: height > 0 ? originCenterY - screenH / 2 : 0, ...timingConfig }),
+        Animated.timing(presetPreviewOriginScale, { toValue: targetScale, ...timingConfig }),
+        Animated.timing(presetPreviewSwipeDragY, { toValue: 0, ...timingConfig }),
       ]).start(({ finished }) => {
         if (finished) {
           setPresetPreviewVisible(false);
@@ -3533,7 +3535,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           presetPreviewTranslateY.setValue(0);
           presetPreviewOriginScale.setValue(1);
           presetPreviewSwipeDragY.setValue(0);
-          // By the time the spring animation finishes React has re-rendered
+          // By the time the timing animation finishes React has re-rendered
           // and activePresetIdRef.current holds the settled active preset ID.
           scrollChipsToActive(true);
         }
@@ -4748,7 +4750,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           }
         } else {
           if (gs.dy > 80 || gs.vy > 0.5) {
-            closePresetPreviewRef.current(gs.vy);
+            closePresetPreviewRef.current();
           } else {
             Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...snapBackSpring }).start();
           }
@@ -4764,13 +4766,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Stable handlers for preset preview ZoomableCard's onSwipeDown/onSwipeDownProgress.
   // Required for the same reason as the zoom view: RNGH can take gesture priority over
   // the outer PanResponder when the card is pinch-zoomed, so we need both paths.
-  const handlePresetPreviewSwipeDown = useCallback((velocityY: number) => {
-    closePresetPreviewRef.current(velocityY);
+  const handlePresetPreviewSwipeDown = useCallback((_velocityY: number) => {
+    closePresetPreviewRef.current();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePresetPreviewDismiss = useCallback(() => {
-    closePresetPreviewRef.current(0);
+    closePresetPreviewRef.current();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
