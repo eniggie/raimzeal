@@ -4059,6 +4059,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   const [showPinchHint, setShowPinchHint] = useState(false);
   const pinchHintAnim = useRef(new Animated.Value(0)).current;
+  const pinchDismissAnim = useRef(new Animated.Value(0)).current;
+  const pinchDismissOpacity = useMemo(
+    () => pinchDismissAnim.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, 1, 1] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const pinchDismissScale = useMemo(
+    () => pinchDismissAnim.interpolate({ inputRange: [0, 0.45, 0.72, 1], outputRange: [1, 1, 1.08, 1] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const swipeHintAnim = useRef(new Animated.Value(0)).current;
@@ -4105,16 +4116,24 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setShowPinchHint(true);
     if (reduceMotionRef.current) {
       pinchHintAnim.setValue(1);
+      pinchDismissAnim.setValue(1);
       setTimeout(() => {
         setShowPinchHint(false);
         AsyncStorage.setItem(STORAGE_KEY_PINCH_HINT_SEEN, "1").catch(() => {});
       }, 2000);
     } else {
       pinchHintAnim.setValue(0);
-      Animated.sequence([
-        Animated.timing(pinchHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.delay(1800),
-        Animated.timing(pinchHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      pinchDismissAnim.setValue(0);
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pinchHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.delay(1800),
+          Animated.timing(pinchHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.delay(600),
+          Animated.timing(pinchDismissAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
       ]).start(({ finished }) => {
         if (finished) {
           setShowPinchHint(false);
@@ -5915,7 +5934,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   </View>
                   <Text style={styles.pinchHintTitle}>Pinch to zoom</Text>
                   <Text style={styles.pinchHintSub}>Double-tap to reset</Text>
-                  <Text style={styles.pinchHintDismiss}>Tap to dismiss</Text>
+                  <Animated.Text
+                    style={[
+                      styles.pinchHintDismiss,
+                      {
+                        opacity: pinchDismissOpacity,
+                        transform: [{ scale: pinchDismissScale }],
+                      },
+                    ]}
+                  >
+                    Tap to dismiss
+                  </Animated.Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
