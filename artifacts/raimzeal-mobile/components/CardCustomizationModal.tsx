@@ -1778,11 +1778,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setShowLongPressHint(false);
       return;
     }
-    Animated.timing(longPressHintFadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.spring(longPressHintFadeAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 18,
+        stiffness: 220,
+        mass: 0.8,
+      }),
+      Animated.spring(longPressHintSlideAnim, {
+        toValue: 10,
+        useNativeDriver: true,
+        damping: 14,
+        stiffness: 180,
+        mass: 0.8,
+      }),
+    ]).start(() => {
       setShowLongPressHint(false);
     });
   }
