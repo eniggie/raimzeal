@@ -120,6 +120,7 @@ const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
 const STORAGE_KEY_STATS_NUDGE_SEEN = "@raimzeal_stats_nudge_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
 export const STORAGE_KEY_LONGPRESS_AND_RUN = "@raimzeal_card_longpress_and_run";
+const STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN = "@raimzeal_modified_chip_hint_seen";
 const LONGPRESS_HINT_MAX_OPENS = 3;
 const DEFAULT_AUTO_TRIGGER_DELAY = 3;
 
@@ -4165,6 +4166,45 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     []
   );
 
+  const [showModifiedChipHint, setShowModifiedChipHint] = useState(false);
+  const modifiedChipHintAnim = useRef(new Animated.Value(0)).current;
+  const modifiedChipHintShownThisSession = useRef(false);
+
+  function triggerModifiedChipHint() {
+    if (modifiedChipHintShownThisSession.current) return;
+    modifiedChipHintShownThisSession.current = true;
+    AsyncStorage.setItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN, "1").catch(() => {});
+    setShowModifiedChipHint(true);
+    if (reduceMotionRef.current) {
+      modifiedChipHintAnim.setValue(1);
+      setTimeout(() => {
+        setShowModifiedChipHint(false);
+        modifiedChipHintAnim.setValue(0);
+        AsyncStorage.setItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN, "1").catch(() => {});
+      }, 3000);
+    } else {
+      modifiedChipHintAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(modifiedChipHintAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(2800),
+        Animated.timing(modifiedChipHintAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setShowModifiedChipHint(false);
+          AsyncStorage.setItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN, "1").catch(() => {});
+        }
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (!activePresetModified) return;
+    AsyncStorage.getItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN).then((val) => {
+      if (!val) triggerModifiedChipHint();
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePresetModified]);
+
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const swipeHintAnim = useRef(new Animated.Value(0)).current;
 
@@ -4842,6 +4882,31 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   />
                 )}
                 </View>
+                {showModifiedChipHint && (
+                  <Animated.View
+                    style={[
+                      styles.modifiedChipHint,
+                      {
+                        backgroundColor: colors.primary + "15",
+                        borderColor: colors.primary + "40",
+                        opacity: modifiedChipHintAnim,
+                        transform: [
+                          {
+                            translateY: modifiedChipHintAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [-6, 0],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Ionicons name="information-circle-outline" size={13} color={colors.primary + "cc"} />
+                    <Text style={[styles.modifiedChipHintText, { color: colors.primary + "cc" }]}>
+                      You've changed settings from this preset — it's still saved
+                    </Text>
+                  </Animated.View>
+                )}
                 {presets.length > 1 && settings.reorderHintFrequency !== "never" && (
                   <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
                     Long-press to rename · Manage to reorder
@@ -6782,6 +6847,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: -6,
     marginBottom: 10,
+  },
+  modifiedChipHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  modifiedChipHintText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+    lineHeight: 15,
   },
   activePresetBanner: {
     flexDirection: "row",
