@@ -1818,11 +1818,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.timing(cardChipFadeAnim, {
           toValue: 1,
           duration: 350,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(cardChipSlideAnim, {
           toValue: 0,
           duration: 350,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
