@@ -331,6 +331,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   // two concurrent reads both see the old value and one write clobbers the other.
   const pendingSettingsPatchRef = useRef<NonNullable<import("@/lib/db").UserPreferences["appSettings"]>>({});
   const settingsDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Map of per-day-key debounce timers for water intake. Keyed by date string
+  // ("YYYY-MM-DD") so rapid taps on the same day collapse into one write while
+  // taps spanning a date boundary (e.g. around midnight) are independent.
+  const waterDebounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const hintsDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -794,6 +799,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const updateWaterIntake = useCallback(
     (glasses: number) => {
       const today = todayStr();
+      // Update local state immediately so the UI responds without lag.
       setState((prev) => {
         const existing = prev.waterIntake.find((w) => w.date === today);
         const waterIntake = existing
@@ -801,13 +807,26 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           : [{ date: today, glasses }, ...prev.waterIntake];
         const next = { ...prev, waterIntake };
         persist(next);
-        if (isSupabaseConfigured) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.user) upsertWaterIntake(session.user.id, today, glasses).then(() => setLastSyncedAt(new Date())).catch(() => {});
-          });
-        }
         return next;
       });
+      if (!isSupabaseConfigured) return;
+      // Snapshot the user identity synchronously so that if auth changes
+      // within the 600 ms debounce window the write still goes to the
+      // correct account (the user who actually tapped).
+      const userId = prevUserIdRef.current;
+      if (!userId) return;
+      // Debounce per day-key: rapid taps on the same day collapse into one
+      // cloud write; taps that span a date boundary (e.g. around midnight)
+      // are tracked independently and never cancel each other.
+      const existingTimer = waterDebounceTimersRef.current.get(today);
+      if (existingTimer !== undefined) clearTimeout(existingTimer);
+      const timer = setTimeout(() => {
+        waterDebounceTimersRef.current.delete(today);
+        upsertWaterIntake(userId, today, glasses)
+          .then(() => setLastSyncedAt(new Date()))
+          .catch(() => {});
+      }, 600);
+      waterDebounceTimersRef.current.set(today, timer);
     },
     [persist]
   );
@@ -1036,24 +1055,35 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetHints = useCallback(() => {
+    // Update local state immediately.
     setState((prev) => {
       const next = { ...prev, dismissedHints: [] };
       persist(next);
       return next;
     });
     if (!isSupabaseConfigured) return;
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) return;
-      fetchUserPreferences(session.user.id)
-        .then((existing) =>
-          upsertUserPreferences(session.user.id, {
-            ...existing,
-            appSettings: { ...(existing?.appSettings ?? {}), dismissedHints: [] },
-          })
-        )
-        .then(() => setLastSyncedAt(new Date()))
-        .catch(() => {});
-    });
+    // Debounce the fetch+upsert cloud write so that rapid reset calls (e.g.
+    // user switches accounts quickly) collapse into a single round-trip,
+    // avoiding the read-before-write race where two concurrent fetches both
+    // see stale data and one write clobbers the other.
+    if (hintsDebounceTimerRef.current !== null) {
+      clearTimeout(hintsDebounceTimerRef.current);
+    }
+    hintsDebounceTimerRef.current = setTimeout(() => {
+      hintsDebounceTimerRef.current = null;
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) return;
+        fetchUserPreferences(session.user.id)
+          .then((existing) =>
+            upsertUserPreferences(session.user.id, {
+              ...existing,
+              appSettings: { ...(existing?.appSettings ?? {}), dismissedHints: [] },
+            })
+          )
+          .then(() => setLastSyncedAt(new Date()))
+          .catch(() => {});
+      });
+    }, 600);
   }, [persist]);
 
   // Reset hints when a different user signs in on the same device.
