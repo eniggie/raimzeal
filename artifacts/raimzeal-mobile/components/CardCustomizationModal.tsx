@@ -3414,8 +3414,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function confirmLoadPreset(preset: CardPreset) {
-    closePresetPreview();
-    loadPreset(preset);
+    const chipNode = presetChipRefsMap.current.get(preset.id);
+    if (chipNode) {
+      chipNode.measureInWindow((x: number, y: number, width: number, height: number) => {
+        presetPreviewOriginRect.current = { x, y, width, height };
+        closePresetPreview();
+        loadPreset(preset);
+      });
+    } else {
+      closePresetPreview();
+      loadPreset(preset);
+    }
   }
 
   function openInlineSave() {
