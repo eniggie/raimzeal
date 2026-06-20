@@ -111,6 +111,7 @@ export const STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED = "@raimzeal_countdown_cu
 const STORAGE_KEY_ACTIVE_PRESET = "@raimzeal_active_preset_id";
 const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
+const STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN = "@raimzeal_zoom_swipe_down_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
 const DISABLED_BTN_LP_HINT_MAX_SHOWS = 2;
@@ -4178,6 +4179,70 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     });
   }
 
+  const [showZoomSwipeDownHint, setShowZoomSwipeDownHint] = useState(false);
+  const zoomSwipeDownHintAnim = useRef(new Animated.Value(0)).current;
+  const zoomSwipeDownArrowAnim = useRef(new Animated.Value(0)).current;
+  const zoomSwipeDownHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function triggerZoomSwipeDownHint() {
+    zoomSwipeDownHintTimerRef.current = null;
+    if (reduceMotionRef.current) {
+      AsyncStorage.setItem(STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN, "1").catch(() => {});
+      return;
+    }
+    setShowZoomSwipeDownHint(true);
+    {
+      zoomSwipeDownHintAnim.setValue(0);
+      zoomSwipeDownArrowAnim.setValue(0);
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(zoomSwipeDownHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.delay(1800),
+          Animated.timing(zoomSwipeDownHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(400),
+            Animated.timing(zoomSwipeDownArrowAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+            Animated.timing(zoomSwipeDownArrowAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+          ]),
+          { iterations: 3 }
+        ),
+      ]).start(({ finished }) => {
+        if (finished) {
+          setShowZoomSwipeDownHint(false);
+          AsyncStorage.setItem(STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN, "1").catch(() => {});
+        }
+      });
+    }
+  }
+
+  function dismissZoomSwipeDownHintEarly() {
+    if (!showZoomSwipeDownHint) return;
+    zoomSwipeDownHintAnim.stopAnimation();
+    zoomSwipeDownArrowAnim.stopAnimation();
+    Animated.timing(zoomSwipeDownHintAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setShowZoomSwipeDownHint(false);
+        AsyncStorage.setItem(STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN, "1").catch(() => {});
+      }
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (zoomSwipeDownHintTimerRef.current !== null) {
+        clearTimeout(zoomSwipeDownHintTimerRef.current);
+        zoomSwipeDownHintTimerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function openZoom() {
     setZoomVisible(true);
     if (reduceMotionRef.current) {
@@ -4234,9 +4299,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     } catch {
       // ignore
     }
+    try {
+      const seen = await AsyncStorage.getItem(STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN);
+      if (!seen) {
+        zoomSwipeDownHintTimerRef.current = setTimeout(triggerZoomSwipeDownHint, 600);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function closeZoom(releaseVelocity = 0) {
+    if (zoomSwipeDownHintTimerRef.current !== null) {
+      clearTimeout(zoomSwipeDownHintTimerRef.current);
+      zoomSwipeDownHintTimerRef.current = null;
+    }
+    dismissZoomSwipeDownHintEarly();
     if (reduceMotionRef.current) {
       zoomAnim.setValue(0);
       zoomTranslateX.setValue(0);
@@ -5979,6 +6057,40 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               </TouchableOpacity>
             </Animated.View>
           )}
+
+          {showZoomSwipeDownHint && (
+            <Animated.View
+              pointerEvents="box-none"
+              style={[
+                StyleSheet.absoluteFillObject,
+                styles.zoomSwipeDownHintOverlay,
+                { opacity: zoomSwipeDownHintAnim },
+              ]}
+            >
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={dismissZoomSwipeDownHintEarly}
+                style={styles.zoomSwipeDownHintCard}
+              >
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        translateY: zoomSwipeDownArrowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 6],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.9)" />
+                </Animated.View>
+                <Text style={styles.zoomSwipeDownHintTitle}>Swipe down to close</Text>
+                <Text style={styles.zoomSwipeDownHintSub}>Tap to dismiss</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </Animated.View>
       </Modal>
 
@@ -7027,6 +7139,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.6)",
+  },
+  zoomSwipeDownHintOverlay: {
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 60,
+  },
+  zoomSwipeDownHintCard: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  zoomSwipeDownHintTitle: {
+    fontSize: 17,
+    fontFamily: "SpaceGrotesk_700Bold",
+    color: "#fff",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  zoomSwipeDownHintSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.45)",
   },
   // Inline save preset form
   inlineSaveWrap: {
