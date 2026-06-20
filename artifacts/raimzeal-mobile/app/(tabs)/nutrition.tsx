@@ -2351,8 +2351,10 @@ export default function NutritionScreen() {
           Animated.spring(historyChipSlideAnims[i], {
             toValue: 0,
             useNativeDriver: true,
-            tension: 160,
-            friction: 14,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
           }),
         ])
       )
@@ -2381,8 +2383,10 @@ export default function NutritionScreen() {
             Animated.spring(historyChipSlideAnims[i], {
               toValue: 0,
               useNativeDriver: true,
-              tension: 160,
-              friction: 14,
+              damping: 50,
+              stiffness: 400,
+              mass: 0.6,
+              overshootClamping: true,
             }),
           ])
         )
@@ -2423,12 +2427,12 @@ export default function NutritionScreen() {
       historyDividerSlideAnim.setValue(-8);
       Animated.parallel([
         Animated.timing(historyDividerFadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-        Animated.spring(historyDividerSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+        Animated.spring(historyDividerSlideAnim, { toValue: 0, useNativeDriver: true, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true }),
         Animated.sequence([
           Animated.delay(50),
           Animated.parallel([
             Animated.timing(historyResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-            Animated.spring(historyResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+            Animated.spring(historyResetSlideAnim, { toValue: 0, useNativeDriver: true, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true }),
           ]),
         ]),
       ]).start();
@@ -3915,7 +3919,7 @@ export default function NutritionScreen() {
       todayResetSlideAnim.setValue(16);
       Animated.parallel([
         Animated.timing(todayResetFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(todayResetSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+        Animated.spring(todayResetSlideAnim, { toValue: 0, useNativeDriver: true, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true }),
       ]).start();
     } else {
       Animated.parallel([
@@ -3930,7 +3934,7 @@ export default function NutritionScreen() {
       todayClearSlideAnim.setValue(16);
       Animated.parallel([
         Animated.timing(todayClearFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(todayClearSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+        Animated.spring(todayClearSlideAnim, { toValue: 0, useNativeDriver: true, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true }),
       ]).start();
     } else {
       Animated.parallel([
@@ -3945,7 +3949,7 @@ export default function NutritionScreen() {
       todaySaveSlideAnim.setValue(16);
       Animated.parallel([
         Animated.timing(todaySaveFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(todaySaveSlideAnim, { toValue: 0, useNativeDriver: true, tension: 120, friction: 10 }),
+        Animated.spring(todaySaveSlideAnim, { toValue: 0, useNativeDriver: true, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true }),
       ]).start();
     } else {
       Animated.parallel([

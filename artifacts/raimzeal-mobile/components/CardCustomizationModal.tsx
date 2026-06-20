@@ -1700,9 +1700,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           Animated.spring(longPressHintSlideAnim, {
             toValue: 0,
             useNativeDriver: true,
-            damping: 14,
-            stiffness: 180,
-            mass: 0.8,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
           }),
         ]).start();
       }
@@ -2120,7 +2121,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     } else if (noAutoDismiss) {
       Animated.parallel([
         Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
+        Animated.spring(confirmTranslateY, { toValue: 0, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true }),
       ]).start();
     } else {
       if (showProgress) {
@@ -2133,7 +2134,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const seq = Animated.sequence([
         Animated.parallel([
           Animated.timing(confirmOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-          Animated.spring(confirmTranslateY, { toValue: 0, damping: 14, stiffness: 300, mass: 0.5, useNativeDriver: true }),
+          Animated.spring(confirmTranslateY, { toValue: 0, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true }),
         ]),
         Animated.delay(holdDuration),
         Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
@@ -2550,16 +2551,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       } else {
         Animated.spring(knobAnims[key], {
           toValue,
-          damping: 20,
-          stiffness: 300,
-          mass: 0.8,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
           useNativeDriver: true,
         }).start();
         Animated.spring(pillColorAnims[key], {
           toValue: colorToValue,
-          damping: 20,
-          stiffness: 300,
-          mass: 0.8,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
           useNativeDriver: false,
         }).start();
       }
@@ -3384,8 +3387,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         presetCardTranslateX.setValue(slideInX);
         Animated.spring(presetCardTranslateX, {
           toValue: 0,
-          tension: 180,
-          friction: 14,
+          damping: 50,
+          stiffness: 400,
+          mass: 0.6,
+          overshootClamping: true,
           useNativeDriver: true,
         }).start();
       });

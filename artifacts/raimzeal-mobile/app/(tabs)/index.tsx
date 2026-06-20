@@ -963,8 +963,10 @@ function WeeklyCalorieTrend({
           return Animated.spring(pressScalesRef.current[i], {
             toValue: 1,
             useNativeDriver: false,
-            bounciness: 10,
-            speed: 20,
+            damping: 50,
+            stiffness: 400,
+            mass: 0.6,
+            overshootClamping: true,
           });
         }
         const base = i === todayIdx ? 1 : d.calories === 0 ? 0.25 : 0.75;
@@ -987,7 +989,7 @@ function WeeklyCalorieTrend({
     const date = data[idx]?.date;
     const resetAnims = data.map((d, i) => {
       if (i === idx) {
-        return Animated.spring(pressScalesRef.current[i], { toValue: 1, useNativeDriver: false, bounciness: 10, speed: 20 });
+        return Animated.spring(pressScalesRef.current[i], { toValue: 1, useNativeDriver: false, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true });
       }
       const base = i === todayIdx ? 1 : d.calories === 0 ? 0.25 : 0.75;
       return Animated.timing(barOpacityRef.current[i], { toValue: base, duration: 150, useNativeDriver: false });

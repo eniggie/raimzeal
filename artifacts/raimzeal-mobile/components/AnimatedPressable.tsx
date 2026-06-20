@@ -48,12 +48,14 @@ export function AnimatedPressable({
 
   function handlePressOut() {
     if (reduceMotion) return;
-    // Liquid spring rebound — gentle overshoot on release
+    // Clamped spring rebound — snaps cleanly back without overshooting
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: USE_NATIVE_DRIVER,
-      speed: 28,
-      bounciness: 7,
+      damping: 50,
+      stiffness: 400,
+      mass: 0.6,
+      overshootClamping: true,
     }).start();
   }
 
