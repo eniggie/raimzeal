@@ -113,6 +113,7 @@ const STORAGE_KEY_PINCH_HINT_SEEN = "@raimzeal_pinch_hint_seen";
 const STORAGE_KEY_PRESET_SWIPE_HINT_SEEN = "@raimzeal_preset_swipe_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
+const DISABLED_BTN_LP_HINT_MAX_SHOWS = 2;
 const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
 const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
 const STORAGE_KEY_LONGPRESS_HINT_OPENS = "@raimzeal_longpress_hint_opens";
@@ -2328,11 +2329,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           setShowLongPressHint(false);
         }
 
-        // Disabled-button long-press hint: persisted dismissed state
-        if (disabledBtnLpHintSeenRaw === "1") {
-          setDisabledBtnLpHintDismissed(true);
-          disabledBtnLpHintFadeAnim.setValue(0);
-          setDisabledBtnLpHintMounted(false);
+        // Disabled-button long-press hint: persisted dismiss count (backward-compat: "1" → count of 1)
+        if (disabledBtnLpHintSeenRaw !== null) {
+          const count = parseInt(disabledBtnLpHintSeenRaw, 10);
+          if (!isNaN(count) && count > 0) {
+            disabledBtnLpHintShowCountRef.current = Math.min(count, DISABLED_BTN_LP_HINT_MAX_SHOWS);
+            setDisabledBtnLpHintDismissed(true);
+            disabledBtnLpHintFadeAnim.setValue(0);
+            setDisabledBtnLpHintMounted(false);
+          }
         }
 
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
@@ -3843,14 +3848,37 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   // Disabled-button long-press hint: shown below action row when all stats off, dismissable & persisted
   const [disabledBtnLpHintDismissed, setDisabledBtnLpHintDismissed] = useState(false);
+  // Tracks how many times the hint has been dismissed (stored as string count in AsyncStorage).
+  // Max DISABLED_BTN_LP_HINT_MAX_SHOWS — once reached the hint is permanently suppressed.
+  const disabledBtnLpHintShowCountRef = useRef(0);
   const [disabledBtnLpHintMounted, setDisabledBtnLpHintMounted] = useState(!anyStatEnabled);
   const disabledBtnLpHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
   const disabledBtnLpHintIsFirstRender = useRef(true);
+  // Tracks the previous anyStatEnabled value to detect ≥1 → 0 transitions.
+  const disabledBtnLpHintPrevAnyStatEnabled = useRef(anyStatEnabled);
   useEffect(() => {
     if (disabledBtnLpHintIsFirstRender.current) {
       disabledBtnLpHintIsFirstRender.current = false;
+      disabledBtnLpHintPrevAnyStatEnabled.current = anyStatEnabled;
       return;
     }
+
+    const prevEnabled = disabledBtnLpHintPrevAnyStatEnabled.current;
+    disabledBtnLpHintPrevAnyStatEnabled.current = anyStatEnabled;
+
+    // When the user goes from having ≥1 stat enabled to 0 stats, and has previously dismissed
+    // the hint but hasn't yet reached the max show count, reset the dismissed state so the hint
+    // resurfaces once more (helping rediscovery without being indefinitely repetitive).
+    if (
+      !anyStatEnabled &&
+      prevEnabled &&
+      disabledBtnLpHintDismissed &&
+      disabledBtnLpHintShowCountRef.current < DISABLED_BTN_LP_HINT_MAX_SHOWS
+    ) {
+      setDisabledBtnLpHintDismissed(false);
+      return;
+    }
+
     if (!anyStatEnabled && !disabledBtnLpHintDismissed) {
       setDisabledBtnLpHintMounted(true);
       if (reduceMotionRef.current) {
@@ -3880,7 +3908,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [anyStatEnabled, disabledBtnLpHintDismissed]);
 
   function dismissDisabledBtnLpHint() {
-    AsyncStorage.setItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN, "1").catch(() => {});
+    const newCount = disabledBtnLpHintShowCountRef.current + 1;
+    disabledBtnLpHintShowCountRef.current = newCount;
+    AsyncStorage.setItem(STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN, String(newCount)).catch(() => {});
     setDisabledBtnLpHintDismissed(true);
     if (reduceMotionRef.current) {
       disabledBtnLpHintFadeAnim.setValue(0);
