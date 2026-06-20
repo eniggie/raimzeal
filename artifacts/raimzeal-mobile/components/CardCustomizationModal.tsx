@@ -3776,6 +3776,35 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     });
   }
 
+  // Called only when the countdown timer fires on its own (natural expiry).
+  // Slides the toast upward and fades it out over ~200 ms, mirroring the
+  // polished entry animation, before unmounting it.
+  function dismissUndoToastOnExpiry() {
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
+    undoOpacity.stopAnimation();
+    undoTranslateY.stopAnimation();
+    undoProgressAnim.stopAnimation();
+    undoSwipeY.stopAnimation();
+    if (reduceMotionRef.current) {
+      undoOpacity.setValue(0);
+      undoTranslateY.setValue(8);
+      undoSwipeY.setValue(0);
+      setUndoDeleteState(null);
+    } else {
+      Animated.parallel([
+        Animated.timing(undoOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(undoTranslateY, { toValue: -12, duration: 200, useNativeDriver: true }),
+      ]).start(() => {
+        undoSwipeY.setValue(0);
+        undoTranslateY.setValue(8);
+        setUndoDeleteState(null);
+      });
+    }
+  }
+
   function pauseUndoToast() {
     const elapsed = Date.now() - undoSegmentStartRef.current;
     undoRemainingMsRef.current = Math.max(0, undoRemainingMsRef.current - elapsed);
@@ -3809,7 +3838,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       });
       undoTimerRef.current = setTimeout(() => {
         undoTimerRef.current = null;
-        dismissUndoToast();
+        dismissUndoToastOnExpiry();
       }, remaining);
     }
     // Reduce-motion: no animation and no auto-dismiss timer — toast stays
@@ -3882,7 +3911,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         });
         undoTimerRef.current = setTimeout(() => {
           undoTimerRef.current = null;
-          dismissUndoToast();
+          dismissUndoToastOnExpiry();
         }, undoMs);
       }
     };
