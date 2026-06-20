@@ -1610,11 +1610,19 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const renameInputRef = useRef<TextInput>(null);
   const inlineSaveRef = useRef<View>(null);
 
-  // When the active preset changes, clear any stale draft so the next
-  // openInlineSave() pre-fills with the newly active preset's name.
+  // When the active preset changes:
+  // - If the inline-save field is already open, update it in-place to the new
+  //   preset's name so the user never has to close and reopen it.
+  // - Otherwise clear any stale draft so the next openInlineSave() pre-fills
+  //   with the newly active preset's name.
   useEffect(() => {
-    setPresetNameInput("");
-  }, [activePresetId]);
+    if (showInlineSave) {
+      const newPreset = presets.find((p) => p.id === activePresetId);
+      setPresetNameInput(newPreset ? newPreset.name : "");
+    } else {
+      setPresetNameInput("");
+    }
+  }, [activePresetId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inline-save expand/collapse animation
   const INLINE_SAVE_EXPANDED_H = 118;
