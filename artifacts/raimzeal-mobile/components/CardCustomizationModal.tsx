@@ -1564,6 +1564,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Presets
   const [presets, setPresets] = useState<CardPreset[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  // Mirror activePresetId in a ref so animation callbacks (which close over a
+  // potentially-stale value) can always read the latest settled ID.
+  const activePresetIdRef = useRef<string | null>(null);
+  activePresetIdRef.current = activePresetId;
   const [activePresetModified, setActivePresetModified] = useState(false);
   const [presetSavedAt, setPresetSavedAt] = useState<number>(0);
   const [showInlineSave, setShowInlineSave] = useState(false);
@@ -1648,6 +1652,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Map from preset id → the chip's native TouchableOpacity node, used to
   // re-measure origin rect when the user navigates between presets in the preview.
   const presetChipRefsMap = useRef<Map<string, React.ElementRef<typeof TouchableOpacity> | null>>(new Map());
+  // Ref for the horizontal preset chips ScrollView so we can scroll it to
+  // bring the active chip into view when the preview closes.
+  const presetChipsScrollRef = useRef<ScrollView>(null);
   const presetCardOpacity = useRef(new Animated.Value(1)).current;
   const presetCardTranslateX = useRef(new Animated.Value(0)).current;
 
@@ -3319,6 +3326,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function closePresetPreview(releaseVelocity = 0) {
+    // Scrolls the horizontal chip row so the active chip is visible.
+    // Uses the ref so the callback always reads the post-render settled value.
+    const scrollChipsToActive = (animated: boolean) => {
+      const id = activePresetIdRef.current;
+      if (!id) return;
+      const idx = presets.findIndex((p) => p.id === id);
+      if (idx < 0) return;
+      const offset = idx * (PRESET_CHIP_WIDTH + PRESET_CHIP_GAP);
+      presetChipsScrollRef.current?.scrollTo({ x: offset, animated });
+    };
+
     if (reduceMotionRef.current) {
       presetPreviewAnim.setValue(0);
       presetPreviewTranslateX.setValue(0);
@@ -3327,6 +3345,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       presetPreviewSwipeDragY.setValue(0);
       setPresetPreviewVisible(false);
       setPresetPreviewTarget(null);
+      // Defer one tick so any batched state updates (e.g. from confirmLoadPreset
+      // calling loadPreset immediately after) are committed before we read the ref.
+      setTimeout(() => scrollChipsToActive(false), 0);
     } else {
       const win = Dimensions.get("window");
       const screenW = win.width;
@@ -3351,6 +3372,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           presetPreviewTranslateY.setValue(0);
           presetPreviewOriginScale.setValue(1);
           presetPreviewSwipeDragY.setValue(0);
+          // By the time the spring animation finishes React has re-rendered
+          // and activePresetIdRef.current holds the settled active preset ID.
+          scrollChipsToActive(true);
         }
       });
     }
@@ -4692,6 +4716,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   }}
                 >
                 <ScrollView
+                  ref={presetChipsScrollRef}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   decelerationRate="fast"
