@@ -478,7 +478,7 @@ title = "Ultra 3 — Community"
 id = "rqIifR30r9J7OqyWKjcGD"
 uri = "file://.local/outputs/RAIMZEAL-Investor-Presentation.pdf"
 type = "pdf"
-title = "RAIMZEAL Investor Presentation.pdf"
+title = "RAIMZEAL Investor Presentation (PDF)"
 
 [[outputs]]
 id = "d24owO4n9t0-iPEKEZCSA"
@@ -503,3 +503,21 @@ id = "yccgRFk873UrhgcbGCDjs"
 uri = "file://scripts/.local/outputs/RAIMZEAL-Operations-Guide.pptx"
 type = "slides"
 title = "RAIMZEAL Operations Guide (PPTX)"
+
+[[outputs]]
+id = "v8L5nVKuxY9EcuqM73K8H"
+uri = "file://scripts/.local/outputs/RAIMZEAL-User-Guide.pdf"
+type = "pdf"
+title = "RAIMZEAL User Guide (PDF)"
+
+[[outputs]]
+id = "uSMlSAaWp9_VXf85a9GGw"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Developer-Guide.pdf"
+type = "pdf"
+title = "RAIMZEAL Developer Guide (PDF)"
+
+[[outputs]]
+id = "hY_QK6Sdgwbxjt_GEGYR6"
+uri = "file://scripts/.local/outputs/RAIMZEAL-Operations-Guide.pdf"
+type = "pdf"
+title = "RAIMZEAL Operations Guide (PDF)"

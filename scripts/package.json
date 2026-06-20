@@ -13,6 +13,7 @@
     "seed-revenuecat": "tsx ./src/seedRevenueCat.ts",
     "sync-github": "tsx ./src/sync-github.ts",
     "generate-docs-pptx": "tsx ./src/generate-docs-pptx.ts",
+    "generate-docs-pdf": "tsx ./src/generate-docs-pdf.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
