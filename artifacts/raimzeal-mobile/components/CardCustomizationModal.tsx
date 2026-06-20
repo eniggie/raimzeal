@@ -1631,12 +1631,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const activePresetBannerOpacity = useSharedValue(1);
   const activePresetBannerTranslateY = useSharedValue(0);
   const inlineSaveOpen = useRef(false);
+  // Tracks whether the close animation is still in flight so rapid re-taps
+  // cannot reopen the panel before it finishes sliding away (~160 ms).
+  const inlineSaveAnimating = useRef(false);
+  const inlineSaveAnimatingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const open = showInlineSave && !reorderMode;
     if (!open && inlineSaveOpen.current) {
       // Blur the input so the keyboard dismisses when the field collapses
       presetNameRef.current?.blur();
     }
+    // Lock the toggle button only on a true open→closed transition so that
+    // initial-mount and dependency changes while already closed don't create
+    // spurious tap suppression.
+    const wasOpen = inlineSaveOpen.current;
     inlineSaveOpen.current = open;
     if (reduceMotion) {
       inlineSaveHeight.value = open ? INLINE_SAVE_EXPANDED_H : 0;
@@ -1649,6 +1657,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
     } else {
+      // Lock the toggle button for the duration of the close animation only
+      // when transitioning from open to closed — prevents a double-tap from
+      // reopening the panel while it is still sliding away.
+      if (wasOpen) {
+        if (inlineSaveAnimatingTimer.current) clearTimeout(inlineSaveAnimatingTimer.current);
+        inlineSaveAnimating.current = true;
+        inlineSaveAnimatingTimer.current = setTimeout(() => {
+          inlineSaveAnimating.current = false;
+          inlineSaveAnimatingTimer.current = null;
+        }, 160);
+      }
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
       activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
@@ -4831,6 +4850,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       setShowInlineSave(false);
                       setPresetNameInput("");
                     } else {
+                      // Guard: ignore taps while the close animation is still running
+                      // to prevent a double-tap from reopening the panel mid-slide.
+                      if (inlineSaveAnimating.current) return;
                       openInlineSave();
                     }
                   }}
