@@ -3727,12 +3727,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [lockedHintMounted, setLockedHintMounted] = useState(!anyStatEnabled);
   const lockedHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
   const lockedHintIsFirstRender = useRef(true);
+
+  // actionButtonsReady gates the extra UI that appears only when stats are enabled
+  // (quick-generate button, long-press hint, setting rows). It lags anyStatEnabled
+  // by the hint's 200 ms fade-out so those elements don't jump in while the hint
+  // is still visible. It snaps to false immediately when all stats are disabled.
+  const [actionButtonsReady, setActionButtonsReady] = useState(anyStatEnabled);
+
   useEffect(() => {
     if (lockedHintIsFirstRender.current) {
       lockedHintIsFirstRender.current = false;
       return;
     }
     if (!anyStatEnabled) {
+      setActionButtonsReady(false);
       setLockedHintMounted(true);
       if (reduceMotionRef.current) {
         lockedHintFadeAnim.setValue(1);
@@ -3748,13 +3756,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (reduceMotionRef.current) {
         lockedHintFadeAnim.setValue(0);
         setLockedHintMounted(false);
+        setActionButtonsReady(true);
       } else {
         Animated.timing(lockedHintFadeAnim, {
           toValue: 0,
           duration: 200,
           useNativeDriver: true,
         }).start(({ finished }) => {
-          if (finished) setLockedHintMounted(false);
+          if (finished) {
+            setLockedHintMounted(false);
+            setActionButtonsReady(true);
+          }
         });
       }
     }
@@ -5056,7 +5068,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 </TouchableOpacity>
               )}
               {/* Quick-generate button: visible when a selection is pre-loaded and no countdown is running */}
-              {anyStatEnabled && selectedAction && autoTriggerCountdown === null && (() => {
+              {actionButtonsReady && selectedAction && autoTriggerCountdown === null && (() => {
                 const requiresPhotoAccess = selectedAction === "save" || selectedAction === "both";
                 const isPhotoBlocked = requiresPhotoAccess && cameraRollStatus === "denied";
                 if (isPhotoBlocked) return null;
@@ -5223,7 +5235,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               </TouchableOpacity>
             </Animated.View>
           )}
-          {anyStatEnabled && showLongPressHint && (
+          {actionButtonsReady && showLongPressHint && (
             <Animated.View style={{ opacity: longPressHintFadeAnim, transform: [{ translateY: longPressHintSlideAnim }] }}>
               <TouchableOpacity
                 onPress={dismissLongPressHint}
@@ -5239,7 +5251,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               </TouchableOpacity>
             </Animated.View>
           )}
-          {anyStatEnabled && (
+          {actionButtonsReady && (
             <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
               <View style={styles.longPressSettingText}>
                 <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
@@ -5266,7 +5278,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               />
             </View>
           )}
-          {anyStatEnabled && defaultAction && (
+          {actionButtonsReady && defaultAction && (
             <View style={[styles.longPressSettingRow, { borderTopColor: colors.border }]}>
               <View style={styles.longPressSettingText}>
                 <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
