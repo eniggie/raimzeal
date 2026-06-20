@@ -1,0 +1,70 @@
+Hello,
+
+The issues we previously identified still need your attention.
+
+If you have any questions, we are here to help. Reply to this message in App Store Connect and let us know.
+
+Review Environment
+Submission ID: d848710b-8180-4844-bade-d6d330cb1619
+Review date: June 18, 2026
+Review Device: iPad Air 11-inch (M3)
+Version reviewed: 1.3.0 (22)
+
+Guideline 2.1(a) - Performance - App Completeness
+Issue Description
+
+The app exhibited one or more bugs that would negatively impact users.
+
+Bug description: 
+
+- error on Sign in with Apple
+
+Review device details:
+
+- Device type: iPad Air 11-inch (M3) 
+- OS version: iPadOS 26.5
+- Internet Connection: Active
+
+Next Steps
+
+Test the app on supported devices to identify and resolve bugs and stability issues before submitting for review.
+
+If the bug cannot be reproduced, try the following:
+
+- For new apps, uninstall all previous versions of the app from a device, then install and follow the steps to reproduce.
+- For app updates, install the new version as an update to the previous version, then follow the steps to reproduce.
+
+Note that users expect apps they download to function on all the devices where they are available. For example, apps that may be downloaded onto iPad devices should function as expected for iPad users. 
+
+Resources
+
+- For information about testing apps and preparing them for review, see Testing a Release Build.
+- To learn about troubleshooting networking issues, see Networking Overview.
+
+
+Guideline 1.2 - Safety - User-Generated Content
+
+Issue Description
+
+We found in our review that the app includes user-generated content but does not have all the required precautions. Apps with user-generated content must take specific steps to moderate content and prevent abusive behavior.
+
+Next Steps
+
+To resolve this issue, revise the app to implement the following precautions: 
+
+- The EULA or terms of use agreement presented to users before registering or logging in
+- The mechanism for users to flag objectionable content
+- The mechanism for users to block abusive users
+
+Once the required precautions have been implemented, or if they are already in place, reply to this message with a screen recording captured on a physical device that demonstrates:
+
+- The EULA or terms of use agreement presented to users before registering or logging in
+- The mechanism for users to flag objectionable content
+- The mechanism for users to block abusive users
+
+Include the recording in the Notes field of the App Review Information section in App Store Connect for future submissions.
+
+Resources
+
+Learn more about our policies for user-generated content in guideline 1.2.
+Guideline 2.1 - Information Needed
