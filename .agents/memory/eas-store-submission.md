@@ -51,3 +51,20 @@ cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 ASC_APP_ID=<id> eas submit --platfo
 
 ## EAS CLI version
 - Upgraded from 19.0.1 → 20.2.0 (June 17 2026)
+
+## EAS Build from Replit bash tool — archive size limitation
+
+`EAS_NO_VCS=1` causes pnpm symlinks in `artifacts/raimzeal-mobile/node_modules/`
+to be followed into the workspace-root `.pnpm` store, inflating the archive to
+~376 MB. The bash tool has a 120s max timeout; uploading 376 MB takes 3-4 min.
+
+**Workaround**: Run the build from the Replit shell directly (not via the agent
+bash tool):
+```bash
+cd artifacts/raimzeal-mobile
+EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --platform ios --profile production --non-interactive
+EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas submit --platform ios --profile production --non-interactive
+```
+
+Background approaches (nohup) fail because pnpm is a Nix store binary not in
+PATH of non-interactive shells.

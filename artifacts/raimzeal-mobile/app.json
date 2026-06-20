@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "9",
+      "buildNumber": "10",
       "associatedDomains": [
         "applinks:raimzeal.com"
       ],
@@ -94,9 +94,15 @@
       ],
       "expo-apple-authentication",
       [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.398551642-rgcdpv3f18hht5ls7jpo2v3djf9h7dei"
+        }
+      ],
+      [
         "react-native-health",
         {
-          "healthSharePermission": "RAIMZEAL reads your Apple Health data — steps, sleep, heart rate and weight — to keep your fitness stats accurate and up to date.",
+          "healthSharePermission": "RAIMZEAL reads your Apple Health data \u2014 steps, sleep, heart rate and weight \u2014 to keep your fitness stats accurate and up to date.",
           "healthUpdatePermission": "RAIMZEAL writes your workout and activity data back to Apple Health so all your apps stay in sync."
         }
       ],
@@ -136,7 +142,7 @@
       "privacyPolicyUrl": "https://www.raimzeal.com/privacy",
       "termsOfServiceUrl": "https://www.raimzeal.com/terms",
       "googleWebClientId": "398551642-v5fe375j2mtj3ikesksn80iofsbvog1t.apps.googleusercontent.com",
-      "googleIosClientId": "",
+      "googleIosClientId": "398551642-rgcdpv3f18hht5ls7jpo2v3djf9h7dei.apps.googleusercontent.com",
       "eas": {
         "projectId": "352f4ec9-8d51-4d18-8c68-97a1b3be0387"
       }
