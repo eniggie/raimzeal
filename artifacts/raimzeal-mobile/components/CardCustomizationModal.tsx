@@ -1805,6 +1805,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       cardChipTimerRef.current = setTimeout(() => {
         cardChipFadeAnim.setValue(0);
         cardChipTimerRef.current = null;
+        setChipDismissCount((prev) => {
+          const next = prev + 1;
+          AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(next)).catch(() => {});
+          return next;
+        });
       }, 2500);
     } else {
       cardChipFadeAnim.setValue(0);
@@ -1824,6 +1829,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         if (!finished) return;
         cardChipTimerRef.current = setTimeout(() => {
           cardChipTimerRef.current = null;
+          setChipDismissCount((prev) => {
+            const next = prev + 1;
+            AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(next)).catch(() => {});
+            return next;
+          });
           Animated.parallel([
             Animated.timing(cardChipFadeAnim, {
               toValue: 0,
