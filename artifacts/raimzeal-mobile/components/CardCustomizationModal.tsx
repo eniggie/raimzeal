@@ -1295,6 +1295,7 @@ interface PresetChipItemProps {
   onLongPress: (preset: CardPreset) => void;
   onDelete: (id: string) => void;
   chipRefSetter?: (el: React.ElementRef<typeof TouchableOpacity> | null) => void;
+  onLayout?: (x: number) => void;
 }
 
 const PresetChipItem = memo(function PresetChipItem({
@@ -1308,6 +1309,7 @@ const PresetChipItem = memo(function PresetChipItem({
   onLongPress,
   onDelete,
   chipRefSetter,
+  onLayout,
 }: PresetChipItemProps) {
   const theme = CARD_THEMES.find((t) => t.id === preset.themeId) ?? CARD_THEMES[0];
   const chipRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
@@ -1348,6 +1350,7 @@ const PresetChipItem = memo(function PresetChipItem({
       delayLongPress={350}
       activeOpacity={0.75}
       style={styles.presetChip}
+      onLayout={(e) => onLayout?.(e.nativeEvent.layout.x)}
     >
       <Animated.View style={{ transform: [{ scale: pulseScale }], alignItems: "center", gap: 5 }}>
       <Animated.View
@@ -1786,6 +1789,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Ref for the horizontal preset chips ScrollView so we can scroll it to
   // bring the active chip into view when the preview closes.
   const presetChipsScrollRef = useRef<ScrollView>(null);
+  // Per-chip measured x-offsets (chip index → x within the scroll content).
+  // Updated via onLayout on each PresetChipItem; drives snapToOffsets so every
+  // chip snaps cleanly regardless of padding or list length.
+  const chipXOffsetsRef = useRef<number[]>([]);
+  const [chipSnapOffsets, setChipSnapOffsets] = useState<number[]>([]);
   const presetCardOpacity = useRef(new Animated.Value(1)).current;
   const presetCardTranslateX = useRef(new Animated.Value(0)).current;
 
@@ -3525,7 +3533,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (!id) return;
       const idx = presets.findIndex((p) => p.id === id);
       if (idx < 0) return;
-      const offset = idx * (PRESET_CHIP_WIDTH + PRESET_CHIP_GAP);
+      const offset = chipXOffsetsRef.current[idx] ?? idx * (PRESET_CHIP_WIDTH + PRESET_CHIP_GAP);
       presetChipsScrollRef.current?.scrollTo({ x: offset, animated });
     };
 
@@ -5061,8 +5069,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   decelerationRate="fast"
-                  snapToInterval={PRESET_CHIP_WIDTH + PRESET_CHIP_GAP}
-                  snapToAlignment="start"
+                  snapToOffsets={chipSnapOffsets.length > 0 ? chipSnapOffsets : undefined}
                   contentContainerStyle={styles.presetsScroll}
                   onContentSizeChange={(w) => {
                     if (presets.length <= 1) return;
@@ -5076,7 +5083,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   }}
                   scrollEventThrottle={16}
                 >
-                  {presets.map((preset) => (
+                  {presets.map((preset, chipIndex) => (
                     <PresetChipItem
                       key={preset.id}
                       preset={preset}
@@ -5089,6 +5096,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       onLongPress={stableOnPresetLongPress}
                       onDelete={stableHandleDeletePreset}
                       chipRefSetter={(el) => presetChipRefsMap.current.set(preset.id, el)}
+                      onLayout={(x) => {
+                        chipXOffsetsRef.current[chipIndex] = x;
+                        setChipSnapOffsets((prev) => {
+                          const next = [...chipXOffsetsRef.current];
+                          if (next.length === prev.length && next.every((v, i) => v === prev[i])) return prev;
+                          return next;
+                        });
+                      }}
                     />
                   ))}
                   {presets.length < MAX_PRESETS && (
