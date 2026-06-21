@@ -1652,6 +1652,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [autoTriggerBannerVisible, setAutoTriggerBannerVisible] = useState(false);
   const [autoTriggerGenerating, setAutoTriggerGenerating] = useState(false);
   const [autoTriggerIsPaused, setAutoTriggerIsPaused] = useState(false);
+  const [timerResetFlashVisible, setTimerResetFlashVisible] = useState(false);
+  const timerResetFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTriggerGeneratingRef = useRef(false);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
@@ -3213,6 +3215,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     const action = autoTriggerActiveActionRef.current;
     const delay = autoTriggerActiveDelayRef.current;
     if (!action || delay <= 0) return;
+    // Brief "Timer reset" flash in the banner (skip for reduce-motion users)
+    if (!reduceMotionRef.current) {
+      if (timerResetFlashTimerRef.current !== null) {
+        clearTimeout(timerResetFlashTimerRef.current);
+      }
+      setTimerResetFlashVisible(true);
+      timerResetFlashTimerRef.current = setTimeout(() => {
+        timerResetFlashTimerRef.current = null;
+        setTimerResetFlashVisible(false);
+      }, 350);
+    }
     startAutoTrigger(action, delay);
   }
 
@@ -5890,6 +5903,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
                     {autoTriggerIsPaused
                       ? `Paused · ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s`
+                      : timerResetFlashVisible
+                      ? "↺ Timer reset"
                       : `Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
                   </Text>
                   <TouchableOpacity
