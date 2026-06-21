@@ -630,8 +630,9 @@ function ZoomableCard({
   savedTranslateY,
   reduceMotionShared,
   onFirstGesture,
-  onSwipeLeft,
-  onSwipeRight,
+  onPresetDragX,
+  onPresetNavigateDir,
+  onPresetSnapBack,
   onSwipeDown,
   onSwipeDownProgress,
   onDismiss,
@@ -647,8 +648,9 @@ function ZoomableCard({
   savedTranslateY: SharedValue<number>;
   reduceMotionShared: SharedValue<boolean>;
   onFirstGesture?: () => void;
-  onSwipeLeft?: () => void;
-  onSwipeRight?: () => void;
+  onPresetDragX?: (dx: number) => void;
+  onPresetNavigateDir?: (dir: 1 | -1) => void;
+  onPresetSnapBack?: () => void;
   onSwipeDown?: (velocityY: number) => void;
   onSwipeDownProgress?: (dy: number) => void;
   onDismiss?: () => void;
@@ -657,6 +659,8 @@ function ZoomableCard({
   const screenHeight = Dimensions.get("window").height;
 
   const atBoundary = useSharedValue(0);
+  // 0 = undecided, 1 = horizontal (preset nav), -1 = vertical
+  const gestureAxisLocked = useSharedValue(0);
 
   const pinchGesture = Gesture.Pinch()
     .onBegin(() => {
@@ -724,10 +728,28 @@ function ZoomableCard({
     .averageTouches(true)
     .onBegin(() => {
       "worklet";
+      gestureAxisLocked.value = 0;
       if (onFirstGesture) runOnJS(onFirstGesture)();
     })
     .onUpdate((e) => {
       "worklet";
+      // At scale 1, lock to horizontal or vertical on the first decisive move.
+      if (scale.value === 1 && gestureAxisLocked.value === 0) {
+        const absDx = Math.abs(e.translationX);
+        const absDy = Math.abs(e.translationY);
+        if (absDx > 8 && absDx > absDy * 1.5) gestureAxisLocked.value = 1;
+        else if (absDy > 12 && absDy > absDx * 1.5) gestureAxisLocked.value = -1;
+      }
+
+      // Horizontal drag at scale 1 → finger-follow for preset navigation.
+      // Drive the outer Animated.Value directly via JS callback so the card
+      // tracks the finger with zero rubber-banding on the pinch translate.
+      if (scale.value === 1 && gestureAxisLocked.value === 1) {
+        if (onPresetDragX) runOnJS(onPresetDragX)(e.translationX);
+        return;
+      }
+
+      // Normal pan/zoom translate logic (zoomed, or vertical at scale 1).
       const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       const rawX = savedTranslateX.value + e.translationX;
@@ -761,6 +783,22 @@ function ZoomableCard({
     })
     .onEnd((e) => {
       "worklet";
+      // Horizontal drag at scale 1 → commit or snap back for preset navigation.
+      if (scale.value === 1 && gestureAxisLocked.value === 1) {
+        const absDx = Math.abs(e.translationX);
+        const absVx = Math.abs(e.velocityX);
+        if (absDx > 60 || absVx > 0.5) {
+          const dir: 1 | -1 = e.translationX < 0 ? 1 : -1;
+          if (onPresetNavigateDir) {
+            runOnJS(Haptics.selectionAsync)();
+            runOnJS(onPresetNavigateDir)(dir);
+          }
+        } else {
+          if (onPresetSnapBack) runOnJS(onPresetSnapBack)();
+        }
+        return;
+      }
+
       const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
@@ -809,28 +847,15 @@ function ZoomableCard({
       if (onSwipeDownProgress) {
         runOnJS(onSwipeDownProgress)(0);
       }
-
-      if (
-        scale.value === 1 &&
-        Math.abs(e.translationX) > 60 &&
-        Math.abs(e.translationX) > Math.abs(e.translationY) * 1.5
-      ) {
-        if (e.translationX < 0 && onSwipeLeft) {
-          runOnJS(Haptics.selectionAsync)();
-          runOnJS(onSwipeLeft)();
-        }
-        if (e.translationX > 0 && onSwipeRight) {
-          runOnJS(Haptics.selectionAsync)();
-          runOnJS(onSwipeRight)();
-        }
-      }
     })
     .onFinalize((_e, success) => {
       "worklet";
-      // If the gesture was cancelled or failed mid-swipe, reset the drag
-      // animation so the overlay doesn't stay in a partially-dragged state.
-      if (!success && onSwipeDownProgress) {
-        runOnJS(onSwipeDownProgress)(0);
+      // If the gesture was cancelled or failed mid-swipe, reset everything.
+      if (!success) {
+        if (gestureAxisLocked.value === 1 && onPresetSnapBack) {
+          runOnJS(onPresetSnapBack)();
+        }
+        if (onSwipeDownProgress) runOnJS(onSwipeDownProgress)(0);
       }
     });
 
@@ -4695,6 +4720,29 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const navigatePresetPreviewRef = useRef<(dir: 1 | -1) => void>(navigatePresetPreview);
   navigatePresetPreviewRef.current = navigatePresetPreview;
 
+  // Stable callbacks for ZoomableCard's drag-follow preset navigation.
+  // Called from the RNGH worklet via runOnJS, so they must be stable references.
+  const handlePresetDragX = useCallback((dx: number) => {
+    presetCardTranslateX.setValue(dx);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePresetNavigateDir = useCallback((dir: 1 | -1) => {
+    navigatePresetPreviewRef.current(dir);
+  }, []);
+
+  const handlePresetSnapBack = useCallback(() => {
+    Animated.spring(presetCardTranslateX, {
+      toValue: 0,
+      damping: 50,
+      stiffness: 400,
+      mass: 0.6,
+      overshootClamping: true,
+      useNativeDriver: true,
+    }).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Tracks whether the current PanResponder gesture was locked to horizontal
   // or vertical so that a single drag stays on one axis.
   const presetPreviewGestureDir = useRef<'h' | 'v' | null>(null);
@@ -6507,8 +6555,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   savedTranslateX={pinchSavedTranslateX}
                   savedTranslateY={pinchSavedTranslateY}
                   reduceMotionShared={reduceMotionShared}
-                  onSwipeLeft={() => navigatePresetPreview(1)}
-                  onSwipeRight={() => navigatePresetPreview(-1)}
+                  onPresetDragX={handlePresetDragX}
+                  onPresetNavigateDir={handlePresetNavigateDir}
+                  onPresetSnapBack={handlePresetSnapBack}
                   onSwipeDown={handlePresetPreviewSwipeDown}
                   onSwipeDownProgress={handlePresetPreviewSwipeDownProgress}
                   onDismiss={handlePresetPreviewDismiss}
