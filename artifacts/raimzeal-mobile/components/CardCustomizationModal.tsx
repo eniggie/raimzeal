@@ -1651,6 +1651,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [autoTriggerAction, setAutoTriggerAction] = useState<CardAction | null>(null);
   const [autoTriggerBannerVisible, setAutoTriggerBannerVisible] = useState(false);
   const [autoTriggerGenerating, setAutoTriggerGenerating] = useState(false);
+  const [autoTriggerIsPaused, setAutoTriggerIsPaused] = useState(false);
   const autoTriggerGeneratingRef = useRef(false);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
@@ -2762,6 +2763,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         // Resume the countdown from where it was paused
         if (autoTriggerIsPausedRef.current) {
           autoTriggerIsPausedRef.current = false;
+          setAutoTriggerIsPaused(false);
           const remaining = autoTriggerRemainingRef.current;
           const action = autoTriggerActiveActionRef.current;
           const delay = autoTriggerActiveDelayRef.current;
@@ -2962,6 +2964,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     autoTriggerProgressAnim.current = null;
     autoTriggerProgress.setValue(1);
     autoTriggerIsPausedRef.current = false;
+    setAutoTriggerIsPaused(false);
     // When generation has already started from the auto-trigger, the banner is
     // being kept visible in "generating" mode — let the useEffect watching the
     // `generating` prop handle the fade-out instead of hiding it here.
@@ -2970,6 +2973,55 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
     });
+  }
+
+  function pauseAutoTrigger() {
+    if (autoTriggerIntervalRef.current === null) return;
+    clearInterval(autoTriggerIntervalRef.current);
+    autoTriggerIntervalRef.current = null;
+    autoTriggerProgressAnim.current?.stop();
+    autoTriggerProgressAnim.current = null;
+    autoTriggerIsPausedRef.current = true;
+    setAutoTriggerIsPaused(true);
+  }
+
+  function resumeAutoTrigger() {
+    if (!autoTriggerIsPausedRef.current) return;
+    autoTriggerIsPausedRef.current = false;
+    setAutoTriggerIsPaused(false);
+    const remaining = autoTriggerRemainingRef.current;
+    const action = autoTriggerActiveActionRef.current;
+    const delay = autoTriggerActiveDelayRef.current;
+    if (!action || delay <= 0 || remaining <= 0) return;
+    if (!reduceMotionRef.current) {
+      const progressFrom = remaining / delay;
+      autoTriggerProgress.setValue(progressFrom);
+      autoTriggerProgressAnim.current = Animated.timing(autoTriggerProgress, {
+        toValue: 0,
+        duration: remaining * 1000,
+        useNativeDriver: true,
+      });
+      autoTriggerProgressAnim.current.start();
+    }
+    let rem = remaining;
+    autoTriggerIntervalRef.current = setInterval(() => {
+      rem -= 1;
+      autoTriggerRemainingRef.current = rem;
+      const effectiveAction = selectedActionRef.current ?? action;
+      if (rem <= 0) {
+        clearInterval(autoTriggerIntervalRef.current!);
+        autoTriggerIntervalRef.current = null;
+        setAutoTriggerCountdown(null);
+        autoTriggerGeneratingRef.current = true;
+        setAutoTriggerGenerating(true);
+        if (visibleRef.current) {
+          handleGenerateRef.current?.(effectiveAction);
+        }
+      } else {
+        setAutoTriggerCountdown(rem);
+        setAutoTriggerAction(effectiveAction);
+      }
+    }, 1000);
   }
 
   async function handleGenerate(action: CardAction) {
@@ -3092,6 +3144,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     autoTriggerActiveActionRef.current = action;
     autoTriggerActiveDelayRef.current = delay;
     autoTriggerIsPausedRef.current = false;
+    setAutoTriggerIsPaused(false);
 
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
@@ -3155,6 +3208,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // (scroll, touch, etc.), preventing accidental triggers while they are still deciding.
   // Calling this when no countdown is active is a safe no-op.
   function resetAutoTriggerOnInteraction() {
+    if (autoTriggerIsPausedRef.current) return;
     if (autoTriggerIntervalRef.current === null) return;
     const action = autoTriggerActiveActionRef.current;
     const delay = autoTriggerActiveDelayRef.current;
@@ -5832,10 +5886,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 </>
               ) : (
                 <>
-                  <Ionicons name="flash" size={14} color={colors.primary} />
+                  <Ionicons name={autoTriggerIsPaused ? "pause-circle-outline" : "flash"} size={14} color={colors.primary} />
                   <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
-                    {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
+                    {autoTriggerIsPaused
+                      ? `Paused · ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s`
+                      : `Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"} in ${autoTriggerCountdown}s…`}
                   </Text>
+                  <TouchableOpacity
+                    onPress={autoTriggerIsPaused ? resumeAutoTrigger : pauseAutoTrigger}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={autoTriggerIsPaused ? "Resume countdown" : "Pause countdown"}
+                  >
+                    <Ionicons name={autoTriggerIsPaused ? "play" : "pause"} size={14} color={colors.primary} />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
                       cancelAutoTrigger();
