@@ -3114,6 +3114,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           autoTriggerProgressAnim.current?.stop();
           autoTriggerProgressAnim.current = null;
           autoTriggerIsPausedRef.current = true;
+          // Update React state so the banner immediately switches to the
+          // "Paused · X in Ys" UI while the app is in the background.
+          setAutoTriggerIsPaused(true);
         }
       }
     });
