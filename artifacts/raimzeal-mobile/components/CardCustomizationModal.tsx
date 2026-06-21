@@ -3439,12 +3439,26 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     applyDimLevel(level);
     setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   function handleBlurRadiusChange(radius: number) {
     setBackgroundPhotoBlurRadius(radius);
     setActivePresetModified(true);
     AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
   }
 
   function handleRemoveBackgroundPhoto() {
