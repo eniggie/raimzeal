@@ -6666,6 +6666,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                     <TouchableOpacity
                       key={val}
                       onPress={() => {
+                        if (val === autoTriggerDelay) return;
                         setAutoTriggerDelay(val);
                         const delayStr = val === 0 ? "off" : String(val);
                         if (onAutoTriggerDelayChange) {
