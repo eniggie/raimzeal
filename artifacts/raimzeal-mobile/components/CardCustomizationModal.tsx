@@ -448,11 +448,37 @@ function SortablePresetItem({
           </View>
         </GestureDetector>
         {preset.backgroundPhotoUri ? (
-          <Image
-            source={{ uri: preset.backgroundPhotoUri }}
-            style={[styles.presetRowPhoto, { borderColor: theme.accent }]}
-            resizeMode="cover"
-          />
+          <View
+            style={[
+              styles.presetRowPhoto,
+              { borderColor: theme.accent, overflow: "hidden" },
+            ]}
+          >
+            <Image
+              source={{ uri: preset.backgroundPhotoUri }}
+              style={[
+                StyleSheet.absoluteFillObject,
+                preset.backgroundPhotoCrop
+                  ? {
+                      transform: [
+                        { scale: preset.backgroundPhotoCrop.scale },
+                        {
+                          translateX:
+                            preset.backgroundPhotoCrop.panX *
+                            (28 / CARD_WIDTH),
+                        },
+                        {
+                          translateY:
+                            preset.backgroundPhotoCrop.panY *
+                            (28 / CARD_WIDTH),
+                        },
+                      ],
+                    }
+                  : undefined,
+              ]}
+              resizeMode="cover"
+            />
+          </View>
         ) : (
           <View style={[styles.presetDot, { backgroundColor: theme.accent }]} />
         )}
