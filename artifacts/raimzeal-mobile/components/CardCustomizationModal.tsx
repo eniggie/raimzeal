@@ -6827,9 +6827,25 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               return (
                 <>
                   <View style={styles.longPressSettingText}>
-                    <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
-                      Preferred action
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={[styles.longPressSettingLabel, { color: colors.foreground }]}>
+                        Preferred action
+                      </Text>
+                      {defaultAction && (
+                        <View
+                          style={{
+                            backgroundColor: colors.primary + "28",
+                            borderRadius: 4,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <Text style={{ color: colors.primary, fontSize: 11, fontFamily: "Inter_500Medium" }}>
+                            {defaultAction === "share" ? "Share" : defaultAction === "save" ? "Save" : defaultAction === "copy" ? "Copy" : "Both"} ✓
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <Text
                       style={[
                         styles.longPressSettingDesc,
