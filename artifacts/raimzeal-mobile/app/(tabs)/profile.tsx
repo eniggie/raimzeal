@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AccessibilityInfo,
   ActivityIndicator,
   Alert,
   Animated,
@@ -58,6 +57,7 @@ import { getApiBase, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_MESSAGE, STORAGE_KEY_PRESETS, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 import { useCardPreferences } from "@/hooks/useCardPreferences";
+import { useHighlightRow } from "@/hooks/useHighlightRow";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -211,7 +211,8 @@ export default function ProfileScreen() {
   const settingsCardYRef = useRef<number>(0);
   const photoRestrictedAlertLastShownRef = useRef<number>(0);
   const countdownRowYRef = useRef<number>(0);
-  const countdownHighlightAnim = useRef(new Animated.Value(0)).current;
+  const [countdownActive, setCountdownActive] = useState(false);
+  const { animatedStyle: countdownHighlightStyle } = useHighlightRow(countdownActive);
   const cardModalRef = useRef<CardCustomizationModalHandle>(null);
   const { scrollTo, openCard } = useLocalSearchParams<{ scrollTo?: string; openCard?: string }>();
 
@@ -260,24 +261,14 @@ export default function ProfileScreen() {
         });
       }, 350);
       const highlightTimeout = setTimeout(() => {
-        countdownHighlightAnim.setValue(0);
-        AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-          if (reduceMotion) {
-            countdownHighlightAnim.setValue(1);
-            setTimeout(() => countdownHighlightAnim.setValue(0), 1200);
-          } else {
-            Animated.sequence([
-              Animated.timing(countdownHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
-              Animated.timing(countdownHighlightAnim, { toValue: 0, duration: 800, useNativeDriver: false }),
-            ]).start();
-          }
-        });
+        setCountdownActive(true);
+        setTimeout(() => setCountdownActive(false), 1100);
       }, 650);
       return () => {
         clearTimeout(scrollTimeout);
         clearTimeout(highlightTimeout);
       };
-    }, [scrollTo, countdownHighlightAnim])
+    }, [scrollTo])
   );
 
   // When the Profile screen mounts while signed in, check whether a previous
@@ -1781,13 +1772,7 @@ export default function ProfileScreen() {
             />
             <Animated.View
               onLayout={(e) => { countdownRowYRef.current = e.nativeEvent.layout.y; }}
-              style={{
-                backgroundColor: countdownHighlightAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["rgba(99,179,237,0)", "rgba(99,179,237,0.22)"],
-                }),
-                borderRadius: 10,
-              }}
+              style={countdownHighlightStyle}
             >
               <SettingPickerRow
                 icon="hourglass-outline"
