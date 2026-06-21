@@ -44,7 +44,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFitness } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getApiBase, syncPresetsToCloud, fetchPresetsFromCloud } from "@/lib/db";
+import { getApiBase, syncPresetsToCloud, fetchPresetsFromCloud, type StoredCardPreset } from "@/lib/db";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
@@ -107,7 +107,7 @@ function estimateThumbnailHeight(
   return Math.max(44, Math.min(130, base + THUMB_SIZE_OFFSETS[size]));
 }
 
-const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
+export const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
 const STORAGE_KEY_PENDING_PRESET_SYNC = "@raimzeal_pending_preset_sync";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
@@ -3868,6 +3868,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       );
       setPresets(updatedPresets);
       savePresets(updatedPresets).catch(() => {});
+      updateSettings({ cardPresets: updatedPresets as unknown as StoredCardPreset[] });
       if (swapPresetId === activePresetId) {
         setBackgroundPhotoUri(uri);
         setBackgroundPhotoCrop(crop);
@@ -4272,6 +4273,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     const wasUpdate = !!activePresetId;
     await savePresets(updatedPresets);
+    updateSettings({ cardPresets: updatedPresets as unknown as StoredCardPreset[] });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
     setActivePresetModified(false);
@@ -4288,6 +4290,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   async function handleReorderPresets(newOrder: CardPreset[]) {
     setPresets(newOrder);
     await savePresets(newOrder);
+    updateSettings({ cardPresets: newOrder as unknown as StoredCardPreset[] });
   }
 
   function dismissUndoToast(cb?: () => void) {
@@ -4508,6 +4511,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const restored = [...presets];
       restored.splice(index, 0, preset);
       await savePresets(restored);
+      updateSettings({ cardPresets: restored as unknown as StoredCardPreset[] });
       setPresets(restored);
     });
   }
@@ -4518,6 +4522,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     const preset = presets[index];
     const updated = presets.filter((p) => p.id !== presetId);
     await savePresets(updated);
+    updateSettings({ cardPresets: updated as unknown as StoredCardPreset[] });
     setPresets(updated);
     if (activePresetId === presetId) {
       setActivePresetId(null);
@@ -4535,6 +4540,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       p.id === renameTargetPreset.id ? { ...p, name } : p
     );
     await savePresets(updatedPresets);
+    updateSettings({ cardPresets: updatedPresets as unknown as StoredCardPreset[] });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setPresets(updatedPresets);
     if (renameTargetPreset.id === activePresetId) {

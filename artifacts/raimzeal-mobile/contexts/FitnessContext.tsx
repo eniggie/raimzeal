@@ -42,6 +42,7 @@ import {
   getApiBase,
   advanceEnrolledProgram,
   type UserPreferences,
+  type StoredCardPreset,
 } from "@/lib/db";
 
 /** Matches web app store.ts WorkoutLog exactly */
@@ -192,6 +193,8 @@ export interface AppState {
     cardBgPhotoStoragePath?: string;
     /** Custom caption/message shown on the progress card — synced cross-device. */
     cardCustomMessage?: string;
+    /** Saved stat-combination presets for the progress card — synced cross-device. */
+    cardPresets?: StoredCardPreset[];
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -480,6 +483,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.cardVisibleStats != null ? { cardVisibleStats: remoteSettings.cardVisibleStats } : {}),
                     ...(remoteSettings.cardBgPhotoStoragePath != null ? { cardBgPhotoStoragePath: remoteSettings.cardBgPhotoStoragePath } : {}),
                     ...(remoteSettings.cardCustomMessage != null ? { cardCustomMessage: remoteSettings.cardCustomMessage } : {}),
+                    ...(Array.isArray(remoteSettings.cardPresets) ? { cardPresets: remoteSettings.cardPresets } : {}),
                   }
                 : {}),
             },
@@ -1174,6 +1178,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("cardVisibleStats" in updates) appSettings.cardVisibleStats = updates.cardVisibleStats;
       if ("cardBgPhotoStoragePath" in updates) appSettings.cardBgPhotoStoragePath = updates.cardBgPhotoStoragePath;
       if ("cardCustomMessage" in updates) appSettings.cardCustomMessage = updates.cardCustomMessage;
+      if ("cardPresets" in updates) appSettings.cardPresets = updates.cardPresets;
       if (Object.keys(appSettings).length === 0) return;
 
       // Accumulate all changes from this burst into the pending patch ref.
