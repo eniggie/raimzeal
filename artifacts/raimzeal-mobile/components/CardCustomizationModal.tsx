@@ -60,6 +60,8 @@ import ShareProgressCard, {
   ShareProgressCardProps,
 } from "@/components/ShareProgressCard";
 
+const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
+
 export const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
 const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
@@ -5970,10 +5972,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   inputRange: [0, 1],
                   outputRange: [colors.muted, colors.primary + "20"],
                 });
-                const iconOnOpacity = pillColorAnims[item.key];
-                const iconOffOpacity = pillColorAnims[item.key].interpolate({
+                const iconColor = pillColorAnims[item.key].interpolate({
                   inputRange: [0, 1],
-                  outputRange: [1, 0],
+                  outputRange: [colors.mutedForeground, colors.primary],
                 });
                 const labelColor = pillColorAnims[item.key].interpolate({
                   inputRange: [0, 1],
@@ -6009,20 +6010,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         { backgroundColor: iconWrapBg },
                       ]}
                     >
-                      <Animated.View style={{ opacity: iconOffOpacity, position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons
-                          name={item.icon}
-                          size={17}
-                          color={colors.mutedForeground}
-                        />
-                      </Animated.View>
-                      <Animated.View style={{ opacity: iconOnOpacity }}>
-                        <Ionicons
-                          name={item.icon}
-                          size={17}
-                          color={colors.primary}
-                        />
-                      </Animated.View>
+                      <AnimatedIonicons
+                        name={item.icon}
+                        size={17}
+                        color={iconColor as unknown as string}
+                      />
                     </Animated.View>
                     <View style={styles.toggleTextWrap}>
                       <Animated.Text style={[styles.toggleLabel, { color: labelColor }]}>
