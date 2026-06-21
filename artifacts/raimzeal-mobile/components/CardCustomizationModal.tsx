@@ -571,6 +571,7 @@ function SortablePresetItem({
         <Reanimated.View style={trashAnimStyle}>
           <TouchableOpacity
             onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
               if (reduceMotion) {
                 onDeletePreset(preset.id);
                 return;
