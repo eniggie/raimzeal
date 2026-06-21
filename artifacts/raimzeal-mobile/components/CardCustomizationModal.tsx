@@ -1514,19 +1514,36 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [thumbnailSize, setThumbnailSize] = useThumbnailSize();
   const sizeLabelOpacity = useSharedValue(thumbnailSize !== "m" ? 1 : 0);
   const sizeLabelHeight = useSharedValue(thumbnailSize !== "m" ? 24 : 0);
+  const sizeLabelTranslateY = useSharedValue(0);
   const labelNaturalHeightRef = useRef<number>(24);
   const sizeLabelAnimatedStyle = useAnimatedStyle(() => ({
     opacity: sizeLabelOpacity.value,
     height: sizeLabelHeight.value,
     overflow: "hidden",
+    transform: [{ translateY: sizeLabelTranslateY.value }],
   }));
   useEffect(() => {
     const visible = thumbnailSize !== "m";
+    const rm = reduceMotionRef.current;
+    if (rm) {
+      sizeLabelOpacity.value = visible ? 1 : 0;
+      sizeLabelHeight.value = visible ? labelNaturalHeightRef.current : 0;
+      sizeLabelTranslateY.value = 0;
+      return;
+    }
     sizeLabelOpacity.value = withTiming(visible ? 1 : 0, { duration: 200 });
     sizeLabelHeight.value = withTiming(
       visible ? labelNaturalHeightRef.current : 0,
       { duration: 200 }
     );
+    if (visible) {
+      // Reset to start position, then spring in with a subtle overshoot
+      sizeLabelTranslateY.value = 8;
+      sizeLabelTranslateY.value = withSpring(0, { damping: 18, stiffness: 280 });
+    } else {
+      // Exit: slide down cleanly with timing so the hide feels crisp
+      sizeLabelTranslateY.value = withTiming(8, { duration: 200 });
+    }
   }, [thumbnailSize]);
 
   // Thumbnail row crossfade + scale animation on size change
