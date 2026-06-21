@@ -6871,6 +6871,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           key={key}
                           onPress={() => {
                             if (active) {
+                              Haptics.selectionAsync().catch(() => {});
                               setDefaultAction(null);
                               AsyncStorage.removeItem(STORAGE_KEY_ACTION).catch(() => {});
                               updateSettings({ defaultCardAction: undefined });
@@ -6879,6 +6880,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                               setShowLongPressHint(true);
                               showConfirmation("Preference cleared", "success");
                             } else {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                               setDefaultAction(key);
                               setSelectedAction(key);
                               AsyncStorage.setItem(STORAGE_KEY_ACTION, key).catch(() => {});
