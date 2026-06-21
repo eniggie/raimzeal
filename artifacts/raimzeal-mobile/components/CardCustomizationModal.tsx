@@ -1704,6 +1704,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       ])
     )
   ).current;
+  const rowBgAnims = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(
+      STAT_TOGGLES.map((t) => [
+        t.key,
+        new Animated.Value(DEFAULT_VISIBLE_STATS[t.key as keyof typeof DEFAULT_VISIBLE_STATS] ? 1 : 0),
+      ])
+    )
+  ).current;
   const actionLongPressedRef = useRef(false);
   const modalScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const statTogglesYOffsetRef = useRef(0);
@@ -3016,6 +3024,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     STAT_TOGGLES.forEach(({ key }) => {
       knobAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 20 : 0);
       pillColorAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 1 : 0);
+      rowBgAnims[key].setValue(stats[key as keyof CardVisibleStats] ? 1 : 0);
     });
   }
 
@@ -3029,6 +3038,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (reduceMotionRef.current) {
         knobAnims[key].setValue(toValue);
         pillColorAnims[key].setValue(colorToValue);
+        rowBgAnims[key].setValue(next[key] ? 1 : 0);
       } else {
         Animated.spring(knobAnims[key], {
           toValue,
@@ -3046,6 +3056,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           overshootClamping: true,
           useNativeDriver: false,
         }).start();
+        if (next[key]) {
+          Animated.sequence([
+            Animated.timing(rowBgAnims[key], { toValue: 2, duration: 80, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
+            Animated.timing(rowBgAnims[key], { toValue: 1, duration: 280, useNativeDriver: false, easing: Easing.out(Easing.quad) }),
+          ]).start();
+        } else {
+          Animated.timing(rowBgAnims[key], { toValue: 0, duration: 200, useNativeDriver: false, easing: Easing.out(Easing.quad) }).start();
+        }
       }
       return next;
     });
@@ -5984,9 +6002,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   inputRange: [0, 1],
                   outputRange: [colors.mutedForeground + "70", colors.mutedForeground],
                 });
-                const rowBg = pillColorAnims[item.key].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["transparent", colors.primary + "08"],
+                const rowBg = rowBgAnims[item.key].interpolate({
+                  inputRange: [0, 1, 2],
+                  outputRange: ["transparent", colors.primary + "08", colors.primary + "20"],
+                  extrapolate: "clamp",
                 });
                 const dividerColor = pillColorAnims[item.key].interpolate({
                   inputRange: [0, 1],
