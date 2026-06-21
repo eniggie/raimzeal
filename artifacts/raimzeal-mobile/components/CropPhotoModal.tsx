@@ -283,14 +283,26 @@ export default function CropPhotoModal({
             <TouchableOpacity
               onPress={handleToggleOverlay}
               activeOpacity={0.75}
-              style={styles.overlayToggleBtn}
+              style={[
+                styles.overlayToggleBtn,
+                !showCardOverlay && styles.overlayToggleBtnActive,
+              ]}
             >
               <Ionicons
                 name={showCardOverlay ? "eye-off-outline" : "eye-outline"}
                 size={17}
-                color="rgba(255,255,255,0.70)"
+                color={
+                  showCardOverlay
+                    ? "rgba(255,255,255,0.70)"
+                    : "rgba(255,255,255,0.92)"
+                }
               />
-              <Text style={styles.overlayToggleText}>
+              <Text
+                style={[
+                  styles.overlayToggleText,
+                  !showCardOverlay && styles.overlayToggleTextActive,
+                ]}
+              >
                 {showCardOverlay ? "Hide card overlay" : "Show card overlay"}
               </Text>
             </TouchableOpacity>
@@ -377,6 +389,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.60)",
+  },
+  overlayToggleBtnActive: {
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.28)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  overlayToggleTextActive: {
+    color: "rgba(255,255,255,0.85)",
   },
   cardOverlayWrap: {
     opacity: 0.72,
