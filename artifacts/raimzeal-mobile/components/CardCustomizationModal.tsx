@@ -744,8 +744,9 @@ function ZoomableCard({
       // Horizontal drag at scale 1 → finger-follow for preset navigation.
       // Drive the outer Animated.Value directly via JS callback so the card
       // tracks the finger with zero rubber-banding on the pinch translate.
+      // Skip entirely in reduced-motion: tap-only navigation is the intended path.
       if (scale.value === 1 && gestureAxisLocked.value === 1) {
-        if (onPresetDragX) runOnJS(onPresetDragX)(e.translationX);
+        if (onPresetDragX && !reduceMotionShared.value) runOnJS(onPresetDragX)(e.translationX);
         return;
       }
 
@@ -784,17 +785,21 @@ function ZoomableCard({
     .onEnd((e) => {
       "worklet";
       // Horizontal drag at scale 1 → commit or snap back for preset navigation.
+      // In reduced-motion the card was never moved (onPresetDragX was skipped),
+      // so there is nothing to snap back — just return and let tap controls handle it.
       if (scale.value === 1 && gestureAxisLocked.value === 1) {
-        const absDx = Math.abs(e.translationX);
-        const absVx = Math.abs(e.velocityX);
-        if (absDx > 60 || absVx > 0.5) {
-          const dir: 1 | -1 = e.translationX < 0 ? 1 : -1;
-          if (onPresetNavigateDir) {
-            runOnJS(Haptics.selectionAsync)();
-            runOnJS(onPresetNavigateDir)(dir);
+        if (!reduceMotionShared.value) {
+          const absDx = Math.abs(e.translationX);
+          const absVx = Math.abs(e.velocityX);
+          if (absDx > 60 || absVx > 0.5) {
+            const dir: 1 | -1 = e.translationX < 0 ? 1 : -1;
+            if (onPresetNavigateDir) {
+              runOnJS(Haptics.selectionAsync)();
+              runOnJS(onPresetNavigateDir)(dir);
+            }
+          } else {
+            if (onPresetSnapBack) runOnJS(onPresetSnapBack)();
           }
-        } else {
-          if (onPresetSnapBack) runOnJS(onPresetSnapBack)();
         }
         return;
       }
@@ -852,7 +857,7 @@ function ZoomableCard({
       "worklet";
       // If the gesture was cancelled or failed mid-swipe, reset everything.
       if (!success) {
-        if (gestureAxisLocked.value === 1 && onPresetSnapBack) {
+        if (gestureAxisLocked.value === 1 && onPresetSnapBack && !reduceMotionShared.value) {
           runOnJS(onPresetSnapBack)();
         }
         if (onSwipeDownProgress) runOnJS(onSwipeDownProgress)(0);
