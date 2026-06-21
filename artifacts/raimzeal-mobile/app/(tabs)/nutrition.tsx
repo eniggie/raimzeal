@@ -9377,6 +9377,8 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
         <TouchableOpacity
           activeOpacity={0.75}
           onPress={openEditSheet}
+          onLongPress={openEditSheet}
+          delayLongPress={350}
           style={[styles.historyFoodRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
         >
           <View style={styles.historyFoodInfo}>
@@ -10236,6 +10238,8 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
         <View style={[styles.nutritionRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
           <TouchableOpacity
             onPress={openEditSheet}
+            onLongPress={openEditSheet}
+            delayLongPress={350}
             activeOpacity={0.7}
             style={styles.nutritionRowMain}
           >
