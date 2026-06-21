@@ -8,6 +8,7 @@ const MACRO_GOALS_KEY = "raimzeal_macro_goals";
 const RATIONALE_DISMISSED_KEY = "camera_roll_rationale_dismissed";
 const CARD_ACTION_KEY = "@raimzeal_card_action";
 const CARD_DELAY_KEY = "@raimzeal_card_auto_trigger_delay";
+const LAST_TAB_KEY = "@raimzeal_last_tab";
 
 const VALID_THUMB_SIZES: ThumbnailSize[] = ["s", "m", "l"];
 const DEFAULT_THUMB_SIZE: ThumbnailSize = "m";
@@ -16,6 +17,15 @@ const VALID_CARD_ACTIONS = ["share", "save", "both", "copy"] as const;
 const VALID_CARD_DELAYS = ["off", "1", "3", "5"] as const;
 const DEFAULT_CARD_DELAY = "3";
 
+export type TabName =
+  | "index"
+  | "workouts"
+  | "ovia"
+  | "nutrition"
+  | "progress"
+  | "community"
+  | "profile";
+
 export interface BootPreferences {
   thumbnailSize: ThumbnailSize;
   defaultPer100g: boolean;
@@ -23,6 +33,7 @@ export interface BootPreferences {
   cameraRollRationaleDismissed: boolean;
   cardAction: string | null;
   cardAutoTriggerDelay: string;
+  lastTab: TabName;
 }
 
 /**
@@ -39,6 +50,7 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
     RATIONALE_DISMISSED_KEY,
     CARD_ACTION_KEY,
     CARD_DELAY_KEY,
+    LAST_TAB_KEY,
   ] as const;
 
   let results: readonly [string, string | null][];
@@ -52,6 +64,7 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
       cameraRollRationaleDismissed: false,
       cardAction: null,
       cardAutoTriggerDelay: DEFAULT_CARD_DELAY,
+      lastTab: "index",
     };
   }
 
@@ -110,6 +123,16 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
     }
   }
 
+  // --- last active tab ---
+  const VALID_TABS: TabName[] = [
+    "index", "workouts", "ovia", "nutrition", "progress", "community", "profile",
+  ];
+  const rawTab = map[LAST_TAB_KEY];
+  const lastTab: TabName =
+    rawTab && VALID_TABS.includes(rawTab as TabName)
+      ? (rawTab as TabName)
+      : "index";
+
   return {
     thumbnailSize,
     defaultPer100g,
@@ -117,5 +140,6 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
     cameraRollRationaleDismissed,
     cardAction,
     cardAutoTriggerDelay,
+    lastTab,
   };
 }

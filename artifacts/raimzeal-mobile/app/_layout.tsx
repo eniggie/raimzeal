@@ -190,7 +190,7 @@ export default function RootLayout() {
     );
   }, [appReady, splashFadeAnim]);
 
-  if (!appReady) return <BootSplash />;
+  if (!appReady) return <BootSplash tab={bootPrefs?.lastTab} />;
 
   return (
     <SafeAreaProvider>
@@ -225,7 +225,7 @@ export default function RootLayout() {
           pointerEvents="none"
           style={[styles.splashOverlay, { opacity: splashFadeAnim }]}
         >
-          <BootSplash />
+          <BootSplash tab={bootPrefs.lastTab} />
         </Animated.View>
       )}
     </SafeAreaProvider>

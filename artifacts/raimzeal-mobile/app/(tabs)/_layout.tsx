@@ -1,12 +1,25 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
-import { Tabs } from "expo-router";
+import { Tabs, useSegments } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect } from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
+
+const LAST_TAB_KEY = "@raimzeal_last_tab";
+
+function TabTracker() {
+  const segments = useSegments();
+  useEffect(() => {
+    if (segments[0] !== "(tabs)") return;
+    const tab = (segments[1] as string | undefined) ?? "index";
+    AsyncStorage.setItem(LAST_TAB_KEY, tab).catch(() => {});
+  }, [segments]);
+  return null;
+}
 
 function NativeTabLayout() {
   return (
@@ -176,8 +189,11 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  const layout = isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />;
+  return (
+    <>
+      {layout}
+      <TabTracker />
+    </>
+  );
 }
