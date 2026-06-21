@@ -5978,7 +5978,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           scrollToStatToggles();
                           return;
                         }
-                        if (!isPhotoBlocked) handleSetDefault(action);
+                        if (isPhotoBlocked) {
+                          showConfirmation(
+                            `Enable photo access to use ${label} as a default`,
+                            "error",
+                            "lock-closed-outline",
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            undefined,
+                            () => Linking.openSettings()
+                          );
+                          return;
+                        }
+                        handleSetDefault(action);
                       }}
                       delayLongPress={500}
                       activeOpacity={0.85}
