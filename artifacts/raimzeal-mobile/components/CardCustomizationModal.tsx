@@ -1613,21 +1613,36 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const statTogglesPulseAnim = useRef(new Animated.Value(0)).current;
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [badgeDismissed, setBadgeDismissed] = useState(false);
-  const [defaultAction, setDefaultAction] = useState<CardAction | null>(null);
+  // Seed from the boot-preloaded prop so the very first render shows the
+  // correct saved action. loadSaved() will confirm/update from AsyncStorage.
+  const [defaultAction, setDefaultAction] = useState<CardAction | null>(
+    initialDefaultAction !== undefined ? initialDefaultAction : null,
+  );
   const defaultActionPulseAnim = useRef(new Animated.Value(1)).current;
   const hasPulsedDefaultRef = useRef(false);
   const hasUserTappedRef = useRef(false);
   const secondPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thirdPulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedAction, setSelectedAction] = useState<CardAction | null>(null);
+  const [selectedAction, setSelectedAction] = useState<CardAction | null>(
+    initialDefaultAction !== undefined ? initialDefaultAction : null,
+  );
   const [showLongPressHint, setShowLongPressHint] = useState(false);
   const longPressHintFadeAnim = useRef(new Animated.Value(0)).current;
   const longPressHintSlideAnim = useRef(new Animated.Value(6)).current;
   const longPressHintIsFirstRender = useRef(true);
   const [longPressAndRun, setLongPressAndRun] = useState(true);
 
-  // User-chosen auto-trigger delay (0 = off, 1/3/5 = seconds)
-  const [autoTriggerDelay, setAutoTriggerDelay] = useState(DEFAULT_AUTO_TRIGGER_DELAY);
+  // User-chosen auto-trigger delay (0 = off, 1/3/5 = seconds).
+  // Seed from the boot-preloaded prop so the first render shows the correct
+  // delay. loadSaved() will confirm/update from AsyncStorage on open.
+  const [autoTriggerDelay, setAutoTriggerDelay] = useState<number>(() => {
+    if (initialAutoTriggerDelay !== undefined && initialAutoTriggerDelay !== null) {
+      if (initialAutoTriggerDelay === "off") return 0;
+      const p = parseInt(initialAutoTriggerDelay, 10);
+      if (!isNaN(p) && p > 0) return p;
+    }
+    return DEFAULT_AUTO_TRIGGER_DELAY;
+  });
 
   // Auto-trigger state: counts down from delay then fires the default action
   const [autoTriggerCountdown, setAutoTriggerCountdown] = useState<number | null>(null);
