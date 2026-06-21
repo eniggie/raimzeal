@@ -4728,7 +4728,21 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, []);
 
   const handlePresetNavigateDir = useCallback((dir: 1 | -1) => {
-    navigatePresetPreviewRef.current(dir);
+    const newIdx = presetPreviewIndexRef.current + dir;
+    if (newIdx >= 0 && newIdx < presetPreviewPresetsRef.current.length) {
+      navigatePresetPreviewRef.current(dir);
+    } else {
+      // Out of bounds — spring back to center so the card is never left stranded.
+      Animated.spring(presetCardTranslateX, {
+        toValue: 0,
+        damping: 50,
+        stiffness: 400,
+        mass: 0.6,
+        overshootClamping: true,
+        useNativeDriver: true,
+      }).start();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePresetSnapBack = useCallback(() => {

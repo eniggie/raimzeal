@@ -154,3 +154,6 @@ EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY = "goog_XcvKCtyHZbYzuJkAyUGenMVZdKT"
 
 [nix]
 channel = "stable-25_05"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-336a28fd-1160-4f07-96a3-828aebc82dae"
