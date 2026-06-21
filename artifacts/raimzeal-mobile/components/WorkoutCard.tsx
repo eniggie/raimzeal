@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -9,7 +9,7 @@ interface WorkoutCardProps {
   onPress?: () => void;
 }
 
-export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
+export const WorkoutCard = memo(function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
   const colors = useColors();
   const exerciseNames = (workout.exercises ?? []).map((e) => e.name);
 
@@ -50,7 +50,7 @@ export function WorkoutCard({ workout, onPress }: WorkoutCardProps) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

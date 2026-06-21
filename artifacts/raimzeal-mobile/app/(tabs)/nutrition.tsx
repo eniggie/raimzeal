@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import React, { memo, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import {
   ActivityIndicator,
@@ -341,7 +341,7 @@ interface DraggableFavItemProps {
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }
 
-function DraggableFavItem({
+const DraggableFavItem = memo(function DraggableFavItem({
   food,
   indexRef,
   listRef,
@@ -453,7 +453,17 @@ function DraggableFavItem({
       <Text style={[styles.foodCal, { color: colors.primary }]}>{food.calories}</Text>
     </Reanimated.View>
   );
-}
+}, (prev, next) =>
+  prev.food.name === next.food.name &&
+  prev.food.calories === next.food.calories &&
+  prev.food.protein === next.food.protein &&
+  prev.food.carbs === next.food.carbs &&
+  prev.food.fat === next.food.fat &&
+  prev.food.servingLabel === next.food.servingLabel &&
+  prev.isActive === next.isActive &&
+  prev.isHover === next.isHover &&
+  prev.displacement === next.displacement &&
+  prev.colors === next.colors);
 
 interface DraggablePresetItemProps {
   preset: CustomFilterPreset;
@@ -596,7 +606,7 @@ interface HorizontalDraggablePresetChipProps {
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }
 
-function HorizontalDraggablePresetChip({
+const HorizontalDraggablePresetChip = memo(function HorizontalDraggablePresetChip({
   preset,
   indexRef,
   listRef,
@@ -717,7 +727,13 @@ function HorizontalDraggablePresetChip({
       </TouchableOpacity>
     </Reanimated.View>
   );
-}
+}, (prev, next) =>
+  prev.preset.id === next.preset.id &&
+  prev.preset.name === next.preset.name &&
+  prev.isActive === next.isActive &&
+  prev.isHover === next.isHover &&
+  prev.displacement === next.displacement &&
+  prev.colors === next.colors);
 
 function formatRecentDate(dateStr: string): string {
   const now = new Date();
@@ -8993,7 +9009,7 @@ function MacroBar({
   );
 }
 
-function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
+const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog, syncMealName } = useFitness();
   const { syncStatus: histSyncStatus, startSync: histStartSync, finishSync: histFinishSync } = useSyncIndicator();
@@ -9852,9 +9868,19 @@ function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved
       <SyncIndicator status={histSyncStatus} />
     </>
   );
-}
+}, (prev, next) =>
+  prev.log.id === next.log.id &&
+  prev.log.name === next.log.name &&
+  prev.log.calories === next.log.calories &&
+  prev.log.protein === next.log.protein &&
+  prev.log.carbs === next.log.carbs &&
+  prev.log.fat === next.log.fat &&
+  prev.log.mealType === next.log.mealType &&
+  prev.log.date === next.log.date &&
+  prev.log.amountGrams === next.log.amountGrams &&
+  prev.isFirst === next.isFirst);
 
-function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
+const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
   const colors = useColors();
   const { updateMealLog, syncMealName, favoriteFoods } = useFitness();
   const { syncStatus: rowSyncStatus, startSync: rowStartSync, finishSync: rowFinishSync } = useSyncIndicator();
@@ -10711,7 +10737,17 @@ function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: 
       <SyncIndicator status={rowSyncStatus} />
     </>
   );
-}
+}, (prev, next) =>
+  prev.log.id === next.log.id &&
+  prev.log.name === next.log.name &&
+  prev.log.calories === next.log.calories &&
+  prev.log.protein === next.log.protein &&
+  prev.log.carbs === next.log.carbs &&
+  prev.log.fat === next.log.fat &&
+  prev.log.mealType === next.log.mealType &&
+  prev.log.date === next.log.date &&
+  prev.log.amountGrams === next.log.amountGrams &&
+  prev.isFirst === next.isFirst);
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
