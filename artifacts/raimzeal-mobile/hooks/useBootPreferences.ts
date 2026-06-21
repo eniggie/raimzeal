@@ -6,15 +6,23 @@ const THUMB_SIZE_KEY = "@raimzeal_card_thumb_size";
 const PER100G_KEY = "@raimzeal_default_per100g";
 const MACRO_GOALS_KEY = "raimzeal_macro_goals";
 const RATIONALE_DISMISSED_KEY = "camera_roll_rationale_dismissed";
+const CARD_ACTION_KEY = "@raimzeal_card_action";
+const CARD_DELAY_KEY = "@raimzeal_card_auto_trigger_delay";
 
 const VALID_THUMB_SIZES: ThumbnailSize[] = ["s", "m", "l"];
 const DEFAULT_THUMB_SIZE: ThumbnailSize = "m";
+
+const VALID_CARD_ACTIONS = ["share", "save", "both", "copy"] as const;
+const VALID_CARD_DELAYS = ["off", "1", "3", "5"] as const;
+const DEFAULT_CARD_DELAY = "3";
 
 export interface BootPreferences {
   thumbnailSize: ThumbnailSize;
   defaultPer100g: boolean;
   macroGoals: MacroGoals;
   cameraRollRationaleDismissed: boolean;
+  cardAction: string | null;
+  cardAutoTriggerDelay: string;
 }
 
 /**
@@ -29,6 +37,8 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
     PER100G_KEY,
     MACRO_GOALS_KEY,
     RATIONALE_DISMISSED_KEY,
+    CARD_ACTION_KEY,
+    CARD_DELAY_KEY,
   ] as const;
 
   let results: readonly [string, string | null][];
@@ -40,6 +50,8 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
       defaultPer100g: false,
       macroGoals: DEFAULT_MACRO_GOALS,
       cameraRollRationaleDismissed: false,
+      cardAction: null,
+      cardAutoTriggerDelay: DEFAULT_CARD_DELAY,
     };
   }
 
@@ -76,10 +88,34 @@ export async function loadBootPreferences(): Promise<BootPreferences> {
   const cameraRollRationaleDismissed =
     map[RATIONALE_DISMISSED_KEY] === "true";
 
+  // --- card action ---
+  const rawAction = map[CARD_ACTION_KEY];
+  const cardAction: string | null =
+    rawAction && VALID_CARD_ACTIONS.includes(rawAction as typeof VALID_CARD_ACTIONS[number])
+      ? rawAction
+      : null;
+
+  // --- card auto-trigger delay ---
+  // Migrate legacy "2" (removed from picker) → "1" and write back so the
+  // migration is persisted without waiting for profile.tsx to mount.
+  const rawDelay = map[CARD_DELAY_KEY];
+  let cardAutoTriggerDelay = DEFAULT_CARD_DELAY;
+  if (rawDelay !== null && rawDelay !== undefined) {
+    const migrated = rawDelay === "2" ? "1" : rawDelay;
+    if (VALID_CARD_DELAYS.includes(migrated as typeof VALID_CARD_DELAYS[number])) {
+      cardAutoTriggerDelay = migrated;
+      if (migrated !== rawDelay) {
+        AsyncStorage.setItem(CARD_DELAY_KEY, migrated).catch(() => {});
+      }
+    }
+  }
+
   return {
     thumbnailSize,
     defaultPer100g,
     macroGoals,
     cameraRollRationaleDismissed,
+    cardAction,
+    cardAutoTriggerDelay,
   };
 }

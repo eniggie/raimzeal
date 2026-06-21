@@ -30,6 +30,7 @@ import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsConte
 import { ThumbnailSizeProvider } from "@/hooks/useThumbnailSize";
 import { Per100gDefaultProvider } from "@/hooks/usePer100gDefault";
 import { BootPreferences, loadBootPreferences } from "@/hooks/useBootPreferences";
+import { CardPreferencesProvider } from "@/hooks/useCardPreferences";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   loadReminderSettings,
@@ -188,7 +189,12 @@ export default function RootLayout() {
                     <PermissionsProvider initialRationaleDismissed={bootPrefs.cameraRollRationaleDismissed}>
                       <ThumbnailSizeProvider initialSize={bootPrefs.thumbnailSize}>
                         <Per100gDefaultProvider initialValue={bootPrefs.defaultPer100g}>
-                          <AuthGate />
+                          <CardPreferencesProvider
+                            initialAction={bootPrefs.cardAction}
+                            initialDelay={bootPrefs.cardAutoTriggerDelay}
+                          >
+                            <AuthGate />
+                          </CardPreferencesProvider>
                         </Per100gDefaultProvider>
                       </ThumbnailSizeProvider>
                     </PermissionsProvider>

@@ -239,6 +239,13 @@ interface Props {
    */
   onAutoTriggerDelayChange?: (val: string) => void;
   /**
+   * Boot-time pre-loaded auto-trigger delay ("off" | "1" | "3" | "5").
+   * When provided it overrides the AsyncStorage value read on open, eliminating
+   * the flash from DEFAULT_AUTO_TRIGGER_DELAY to the stored preference.
+   * Pass undefined to fall back to the modal's own AsyncStorage read.
+   */
+  initialAutoTriggerDelay?: string | null;
+  /**
    * Whether the user has ever opened the countdown picker.
    * When true the banner shows "Xs · Change" instead of plain "Change",
    * reassuring power users that their chosen delay is still in effect.
@@ -1449,6 +1456,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   initialLongPressAndRun,
   onLongPressAndRunChange,
   onAutoTriggerDelayChange,
+  initialAutoTriggerDelay,
   hasCustomisedCountdown = false,
 }: Props, ref) {
   const colors = useColors();
@@ -2597,10 +2605,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         // Auto-trigger: if there's a default action and at least one stat enabled, start countdown
         const effectiveAnyStatEnabled = Object.values(effectiveStats).some(Boolean);
         let effectiveAutoTriggerDelay = DEFAULT_AUTO_TRIGGER_DELAY;
-        if (savedAutoTriggerDelay === "off") {
+        // Prefer the boot-preloaded value (passed as prop) so the countdown
+        // never flashes from DEFAULT_AUTO_TRIGGER_DELAY to the stored value.
+        const rawDelaySource = initialAutoTriggerDelay !== undefined ? initialAutoTriggerDelay : savedAutoTriggerDelay;
+        if (rawDelaySource === "off") {
           effectiveAutoTriggerDelay = 0;
-        } else if (savedAutoTriggerDelay !== null) {
-          const parsed = parseInt(savedAutoTriggerDelay, 10);
+        } else if (rawDelaySource !== null) {
+          const parsed = parseInt(rawDelaySource, 10);
           if (!isNaN(parsed) && parsed > 0) effectiveAutoTriggerDelay = parsed;
         }
         setAutoTriggerDelay(effectiveAutoTriggerDelay);

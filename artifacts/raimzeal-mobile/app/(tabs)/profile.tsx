@@ -57,6 +57,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import { useCardPreferences } from "@/hooks/useCardPreferences";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -178,8 +179,9 @@ export default function ProfileScreen() {
   const [cardThemeId, setCardThemeId] = useState<CardThemeId>(DEFAULT_THEME_ID);
   const [cardBgPhotoUri, setCardBgPhotoUri] = useState<string | undefined>(undefined);
   const [cardBgPhotoCrop, setCardBgPhotoCrop] = useState<BackgroundPhotoCrop | undefined>(undefined);
-  const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(null);
-  const [autoTriggerDelay, setAutoTriggerDelay] = useState<string>("3");
+  const { bootCardAction, bootAutoTriggerDelay } = useCardPreferences();
+  const [defaultCardAction, setDefaultCardAction] = useState<CardAction | null>(bootCardAction as CardAction | null);
+  const [autoTriggerDelay, setAutoTriggerDelay] = useState<string>(bootAutoTriggerDelay);
   const [hasCustomisedCountdown, setHasCustomisedCountdown] = useState(false);
 
   const [showUndoWindowModal, setShowUndoWindowModal] = useState(false);
@@ -302,10 +304,8 @@ export default function ProfileScreen() {
         const AsyncStorage = (
           await import("@react-native-async-storage/async-storage")
         ).default;
-        const [savedTheme, savedAction, savedDelay, savedBgPhoto, savedCountdownCustomised] = await Promise.all([
+        const [savedTheme, savedBgPhoto, savedCountdownCustomised] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_THEME),
-          AsyncStorage.getItem(STORAGE_KEY_ACTION),
-          AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY),
           AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO),
           AsyncStorage.getItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED),
         ]);
@@ -332,20 +332,9 @@ export default function ProfileScreen() {
           }
           const isValidTheme = savedTheme && CARD_THEMES.some((t) => t.id === savedTheme);
           if (isValidTheme) setCardThemeId(savedTheme as CardThemeId);
-          const validActions: CardAction[] = ["share", "save", "both", "copy"];
-          if (savedAction && validActions.includes(savedAction as CardAction)) {
-            setDefaultCardAction(savedAction as CardAction);
-          }
-          const validDelays = ["off", "1", "3", "5"];
-          // Migrate legacy "2" (previously offered by the picker but removed in
-          // favour of the "1s" chip that matches the modal UI) to "1".
-          const migratedDelay = savedDelay === "2" ? "1" : savedDelay;
-          if (migratedDelay && validDelays.includes(migratedDelay)) {
-            setAutoTriggerDelay(migratedDelay);
-            if (savedDelay !== migratedDelay) {
-              AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY, migratedDelay).catch(() => {});
-            }
-          }
+          // Action and delay are now pre-loaded from loadBootPreferences() and
+          // seeded into component state via useCardPreferences() — no AsyncStorage
+          // read needed here; those getItem calls have been moved to boot time.
           if (savedCountdownCustomised === "1") {
             setHasCustomisedCountdown(true);
           }
@@ -1313,11 +1302,12 @@ export default function ProfileScreen() {
         cardPreviewData={cardProps}
         onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
-        initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : undefined}
+        initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : (bootCardAction as CardAction | null)}
         onDefaultActionChange={(val) => updateSettings({ defaultCardAction: val ?? undefined })}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
         onAutoTriggerDelayChange={handleSetAutoTriggerDelay}
+        initialAutoTriggerDelay={bootAutoTriggerDelay}
         hasCustomisedCountdown={hasCustomisedCountdown}
       />
 
