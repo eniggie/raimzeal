@@ -1831,6 +1831,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [autoTriggerIsPaused, setAutoTriggerIsPaused] = useState(false);
   const [timerResetFlashVisible, setTimerResetFlashVisible] = useState(false);
   const timerResetFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Shows "✓ Done!" in the banner for ~800 ms after auto-generation finishes.
+  const [autoTriggerSuccessFlash, setAutoTriggerSuccessFlash] = useState(false);
+  const autoTriggerSuccessFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTriggerGeneratingRef = useRef(false);
   // Set to true when the user taps Cancel while generation is in progress so
   // the handleGenerate callback can discard the result without showing a toast.
@@ -2641,6 +2644,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setAutoTriggerBannerVisible(false);
       autoTriggerGeneratingRef.current = false;
       generateCancelledRef.current = false;
+      if (autoTriggerSuccessFlashTimerRef.current !== null) {
+        clearTimeout(autoTriggerSuccessFlashTimerRef.current);
+        autoTriggerSuccessFlashTimerRef.current = null;
+      }
+      setAutoTriggerSuccessFlash(false);
       setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
@@ -3451,14 +3459,23 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   selectedActionRef.current = selectedAction;
   hideAutoTriggerBannerRef.current = hideAutoTriggerBanner;
 
-  // When generation triggered by auto-trigger completes (or errors), fade the banner out
+  // When generation triggered by auto-trigger completes (or errors), show a
+  // brief "✓ Done!" flash for 800 ms then fade the banner out.
   useEffect(() => {
     if (!generating && autoTriggerGenerating) {
-      hideAutoTriggerBannerRef.current?.(() => {
-        autoTriggerGeneratingRef.current = false;
-        setAutoTriggerGenerating(false);
-        setAutoTriggerAction(null);
-      });
+      // Skip the flash if the user already manually cancelled — the banner is
+      // already being hidden by cancelGeneration().
+      if (generateCancelledRef.current) return;
+      setAutoTriggerSuccessFlash(true);
+      autoTriggerSuccessFlashTimerRef.current = setTimeout(() => {
+        autoTriggerSuccessFlashTimerRef.current = null;
+        setAutoTriggerSuccessFlash(false);
+        hideAutoTriggerBannerRef.current?.(() => {
+          autoTriggerGeneratingRef.current = false;
+          setAutoTriggerGenerating(false);
+          setAutoTriggerAction(null);
+        });
+      }, 800);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generating]);
@@ -6337,20 +6354,29 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               ]}
             >
               {autoTriggerGenerating ? (
-                <>
-                  <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 2 }} />
-                  <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
-                    {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"}…`}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={cancelGeneration}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Cancel generation"
-                  >
-                    <Ionicons name="close-circle" size={16} color={colors.primary} />
-                  </TouchableOpacity>
-                </>
+                autoTriggerSuccessFlash ? (
+                  <>
+                    <Ionicons name="checkmark-circle" size={15} color="#2D8C4E" />
+                    <Text style={[styles.autoTriggerText, { color: "#2D8C4E" }]}>
+                      Done!
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 2 }} />
+                    <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
+                      {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"}…`}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={cancelGeneration}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Cancel generation"
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </>
+                )
               ) : (
                 <>
                   <Ionicons name={autoTriggerIsPaused ? "pause-circle-outline" : "flash"} size={14} color={colors.primary} />
