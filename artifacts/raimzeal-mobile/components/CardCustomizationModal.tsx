@@ -3685,13 +3685,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     if (longPressAndRun) {
       // "Long-press and run" mode: set default immediately and generate in one gesture
       const isSwitching = defaultAction !== null && defaultAction !== action;
+      const oldLabel = defaultAction === "share" ? "Share" : defaultAction === "save" ? "Save" : defaultAction === "copy" ? "Copy" : defaultAction === "both" ? "Both" : null;
       setDefaultAction(action);
       setSelectedAction(action);
       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
       updateSettings({ defaultCardAction: action });
       onDefaultActionChange?.(action);
       showConfirmation(
-        isSwitching ? `Switched to ★ ${label} · generating…` : `★ ${label} set as default · generating…`,
+        isSwitching && oldLabel
+          ? `★ ${oldLabel} → ★ ${label} · generating…`
+          : `★ ${label} set as default · generating…`,
         "success", undefined, undefined, undefined, undefined, undefined, undefined, true
       );
       await handleGenerate(action);
