@@ -300,6 +300,7 @@ interface SortablePresetItemProps {
   isActive: boolean;
   onLoadPreset: (p: CardPreset) => void;
   onDeletePreset: (id: string) => void;
+  onRename: (preset: CardPreset) => void;
   onPanEnd: (fromIdx: number, toIdx: number) => void;
   colors: ReturnType<typeof useColors>;
 }
@@ -318,6 +319,7 @@ function SortablePresetItem({
   isActive,
   onLoadPreset,
   onDeletePreset,
+  onRename,
   onPanEnd,
   colors,
 }: SortablePresetItemProps) {
@@ -497,6 +499,20 @@ function SortablePresetItem({
         <TouchableOpacity
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            onRename(preset);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{ marginRight: 8 }}
+        >
+          <Ionicons
+            name="pencil-outline"
+            size={17}
+            color={colors.mutedForeground}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             onLoadPreset(preset);
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -541,6 +557,7 @@ interface SortablePresetListProps {
   activePresetId: string | null;
   onLoadPreset: (p: CardPreset) => void;
   onDeletePreset: (id: string) => void;
+  onRename: (preset: CardPreset) => void;
   colors: ReturnType<typeof useColors>;
 }
 
@@ -551,6 +568,7 @@ function SortablePresetList({
   activePresetId,
   onLoadPreset,
   onDeletePreset,
+  onRename,
   colors,
 }: SortablePresetListProps) {
   const [items, setItems] = useState<CardPreset[]>(presets);
@@ -617,6 +635,7 @@ function SortablePresetList({
             isActive={preset.id === activePresetId}
             onLoadPreset={(p) => { onLoadPreset(p); onDone(); }}
             onDeletePreset={onDeletePreset}
+            onRename={onRename}
             onPanEnd={handlePanEnd}
             colors={colors}
           />
@@ -5368,6 +5387,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   handleDeletePreset(id);
                   showConfirmation("Preset deleted");
                   if (presets.length <= 1) setReorderMode(false);
+                }}
+                onRename={(preset) => {
+                  setRenameTargetPreset(preset);
+                  setRenameInput(preset.name);
+                  setTimeout(() => renameInputRef.current?.focus(), 150);
                 }}
                 colors={colors}
               />
