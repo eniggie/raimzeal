@@ -772,6 +772,10 @@ function ZoomableCard({
   const screenHeight = Dimensions.get("window").height;
 
   const atBoundary = useSharedValue(0);
+  // -1 = left edge, 0 = none, 1 = right edge
+  const atPanBoundaryX = useSharedValue(0);
+  // -1 = top edge, 0 = none, 1 = bottom edge
+  const atPanBoundaryY = useSharedValue(0);
   // 0 = undecided, 1 = horizontal (preset nav), -1 = vertical
   const gestureAxisLocked = useSharedValue(0);
 
@@ -842,6 +846,8 @@ function ZoomableCard({
     .onBegin(() => {
       "worklet";
       gestureAxisLocked.value = 0;
+      atPanBoundaryX.value = 0;
+      atPanBoundaryY.value = 0;
       if (onFirstGesture) runOnJS(onFirstGesture)();
     })
     .onUpdate((e) => {
@@ -884,6 +890,39 @@ function ZoomableCard({
           : rawY;
       translateX.value = dampX;
       translateY.value = dampY;
+      // Fire a Light haptic once per axis when the finger reaches the pan boundary.
+      // Guard with maxX/maxY > 0 so we only buzz when the card is actually zoomed
+      // in (i.e. there is a real translation limit to bump against).
+      if (maxX > 0) {
+        if (rawX > maxX) {
+          if (atPanBoundaryX.value !== 1) {
+            atPanBoundaryX.value = 1;
+            runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+          }
+        } else if (rawX < -maxX) {
+          if (atPanBoundaryX.value !== -1) {
+            atPanBoundaryX.value = -1;
+            runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+          }
+        } else {
+          atPanBoundaryX.value = 0;
+        }
+      }
+      if (maxY > 0) {
+        if (rawY > maxY) {
+          if (atPanBoundaryY.value !== 1) {
+            atPanBoundaryY.value = 1;
+            runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+          }
+        } else if (rawY < -maxY) {
+          if (atPanBoundaryY.value !== -1) {
+            atPanBoundaryY.value = -1;
+            runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+          }
+        } else {
+          atPanBoundaryY.value = 0;
+        }
+      }
       // Feed swipe-down progress at scale 1 so the outer overlay can track
       // the drag and animate along with the gesture.
       if (
