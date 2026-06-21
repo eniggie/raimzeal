@@ -4053,7 +4053,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           existingCrop?.panX !== (backgroundPhotoCrop?.panX ?? null) ||
           existingCrop?.panY !== (backgroundPhotoCrop?.panY ?? null);
         const dimLevelChanged = (existingPreset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL) !== backgroundPhotoDimLevelRef.current;
-        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged && !cropChanged && !dimLevelChanged;
+        const blurLevelChanged = (existingPreset.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS) !== backgroundPhotoBlurRadius;
+        isRename = nameChanged && !statsChanged && !messageChanged && !themeChanged && !photoChanged && !cropChanged && !dimLevelChanged && !blurLevelChanged;
       }
       updatedPresets = presets.map((p) =>
         p.id === activePresetId
