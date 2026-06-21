@@ -245,33 +245,40 @@ export default function ProfileScreen() {
     return () => clearTimeout(timeout);
   }, [openCard]);
 
-  useEffect(() => {
-    if (scrollTo !== "countdown") return;
-    const scrollTimeout = setTimeout(() => {
-      profileScrollRef.current?.scrollTo({
-        y: settingsCardYRef.current + countdownRowYRef.current,
-        animated: true,
-      });
-    }, 350);
-    const highlightTimeout = setTimeout(() => {
-      countdownHighlightAnim.setValue(0);
-      AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
-        if (reduceMotion) {
-          countdownHighlightAnim.setValue(1);
-          setTimeout(() => countdownHighlightAnim.setValue(0), 1200);
-        } else {
-          Animated.sequence([
-            Animated.timing(countdownHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
-            Animated.timing(countdownHighlightAnim, { toValue: 0, duration: 800, useNativeDriver: false }),
-          ]).start();
-        }
-      });
-    }, 650);
-    return () => {
-      clearTimeout(scrollTimeout);
-      clearTimeout(highlightTimeout);
-    };
-  }, [scrollTo, countdownHighlightAnim]);
+  // Use useFocusEffect instead of useEffect so the scroll+highlight fires on
+  // every focus event — not only when the scrollTo param value first changes.
+  // This covers cold-launch (notification/widget opens the app), warm re-navigation
+  // to the already-active profile tab, and any future deep-link path that supplies
+  // scrollTo=countdown, regardless of how the navigation is triggered.
+  useFocusEffect(
+    useCallback(() => {
+      if (scrollTo !== "countdown") return;
+      const scrollTimeout = setTimeout(() => {
+        profileScrollRef.current?.scrollTo({
+          y: settingsCardYRef.current + countdownRowYRef.current,
+          animated: true,
+        });
+      }, 350);
+      const highlightTimeout = setTimeout(() => {
+        countdownHighlightAnim.setValue(0);
+        AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+          if (reduceMotion) {
+            countdownHighlightAnim.setValue(1);
+            setTimeout(() => countdownHighlightAnim.setValue(0), 1200);
+          } else {
+            Animated.sequence([
+              Animated.timing(countdownHighlightAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+              Animated.timing(countdownHighlightAnim, { toValue: 0, duration: 800, useNativeDriver: false }),
+            ]).start();
+          }
+        });
+      }, 650);
+      return () => {
+        clearTimeout(scrollTimeout);
+        clearTimeout(highlightTimeout);
+      };
+    }, [scrollTo, countdownHighlightAnim])
+  );
 
   // When the Profile screen mounts while signed in, check whether a previous
   // "Clear Everything" run left a pending cloud wipe (stored because the device
