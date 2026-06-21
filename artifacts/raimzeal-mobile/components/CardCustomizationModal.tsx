@@ -1832,6 +1832,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [timerResetFlashVisible, setTimerResetFlashVisible] = useState(false);
   const timerResetFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTriggerGeneratingRef = useRef(false);
+  // Set to true when the user taps Cancel while generation is in progress so
+  // the handleGenerate callback can discard the result without showing a toast.
+  const generateCancelledRef = useRef(false);
   const autoTriggerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Progress bar animation: goes from 1 → 0 over the full countdown window
   const autoTriggerProgress = useRef(new Animated.Value(1)).current;
@@ -2637,6 +2640,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       autoTriggerSessionIdRef.current += 1;
       setAutoTriggerBannerVisible(false);
       autoTriggerGeneratingRef.current = false;
+      generateCancelledRef.current = false;
       setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
@@ -3278,6 +3282,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     });
   }
 
+  // Called when the user taps ✕ during the "generating" state of the banner.
+  // Flags the in-flight handleGenerate to discard its result and immediately
+  // dismisses the banner without waiting for onGenerate to complete.
+  function cancelGeneration() {
+    generateCancelledRef.current = true;
+    autoTriggerGeneratingRef.current = false;
+    hideAutoTriggerBannerRef.current?.(() => {
+      setAutoTriggerGenerating(false);
+      setAutoTriggerAction(null);
+    });
+  }
+
   function pauseAutoTrigger() {
     if (autoTriggerIntervalRef.current === null) return;
     clearInterval(autoTriggerIntervalRef.current);
@@ -3328,6 +3344,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   async function handleGenerate(action: CardAction) {
+    // Each new invocation starts with a clean slate — a prior cancellation
+    // should not bleed into this run.
+    generateCancelledRef.current = false;
     cancelAutoTrigger();
     dismissTapGenerateHint();
     await saveToStorage(visibleStats, customMessage.trim(), selectedThemeId, backgroundPhotoUri, backgroundPhotoCrop, backgroundPhotoDimLevel, backgroundPhotoBlurRadius);
@@ -3340,6 +3359,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSelectedAction(action);
     try {
       await onGenerate({ visibleStats, customMessage: customMessage.trim(), themeId: selectedThemeId, action, backgroundPhotoUri: backgroundPhotoUri ?? undefined, backgroundPhotoCrop: backgroundPhotoCrop ?? undefined, backgroundPhotoDimLevel: backgroundPhotoUri ? backgroundPhotoDimLevel : undefined, backgroundPhotoBlurRadius: backgroundPhotoUri ? backgroundPhotoBlurRadius : undefined });
+      // User cancelled mid-generation — banner already dismissed; discard result silently.
+      if (generateCancelledRef.current) return;
       const msg =
         action === "save"
           ? "Saved to camera roll"
@@ -3358,6 +3379,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           : "layers-outline";
       showConfirmation(msg, "success", icon);
     } catch (err) {
+      // User cancelled while generation was in flight — banner already gone; swallow the error.
+      if (generateCancelledRef.current) return;
       // "PERMISSION_RESTRICTED" means a managed-device policy blocks access.
       // Show a non-actionable message — no "Open Settings" link.
       if (err instanceof Error && err.message === "PERMISSION_RESTRICTED") {
@@ -6319,6 +6342,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   <Text style={[styles.autoTriggerText, { color: colors.primary }]}>
                     {`Generating with ${autoTriggerAction === "share" ? "Share" : autoTriggerAction === "save" ? "Save" : autoTriggerAction === "copy" ? "Copy" : "Both"}…`}
                   </Text>
+                  <TouchableOpacity
+                    onPress={cancelGeneration}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel generation"
+                  >
+                    <Ionicons name="close-circle" size={16} color={colors.primary} />
+                  </TouchableOpacity>
                 </>
               ) : (
                 <>
