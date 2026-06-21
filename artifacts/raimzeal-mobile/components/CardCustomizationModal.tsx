@@ -1741,6 +1741,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const presetNameRef = useRef<TextInput>(null);
   const renameInputRef = useRef<TextInput>(null);
   const inlineSaveRef = useRef<View>(null);
+  const pendingPresetSwapIdRef = useRef<string | null>(null);
 
   // When the active preset changes:
   // - If the inline-save field is already open, update it in-place to the new
@@ -3482,6 +3483,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const uri = result.assets[0].uri;
       setPendingCropUri(uri);
       setShowCropModal(true);
+    } else {
+      pendingPresetSwapIdRef.current = null;
     }
   }
 
@@ -3544,11 +3547,73 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
+  async function handleSwapPresetPhoto(presetId: string) {
+    try {
+      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        if (canAskAgain) {
+          Alert.alert(
+            "Photo Library Access",
+            "RAIMZEAL needs access to your photo library to update this preset's background.",
+            [
+              {
+                text: "Allow Access",
+                onPress: async () => {
+                  const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (retryStatus === "granted") {
+                    pendingPresetSwapIdRef.current = presetId;
+                    await pickBackgroundFromLibrary();
+                  } else if (!retryCanAskAgain) {
+                    const now = Date.now();
+                    if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+                    lastPermissionToastShownAtRef.current = now;
+                    showConfirmation("Storage access blocked — tap to open Settings", "error", "images-outline", undefined, () => Linking.openSettings(), "Settings", undefined, "lock-closed-outline");
+                  }
+                },
+              },
+              { text: "Not Now", style: "cancel" },
+            ],
+          );
+        } else {
+          const now = Date.now();
+          if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+          lastPermissionToastShownAtRef.current = now;
+          showConfirmation("Storage access blocked — tap to open Settings", "error", "images-outline", undefined, () => Linking.openSettings(), "Settings", undefined, "lock-closed-outline");
+        }
+        return;
+      }
+      pendingPresetSwapIdRef.current = presetId;
+      await pickBackgroundFromLibrary();
+    } catch {
+      pendingPresetSwapIdRef.current = null;
+    }
+  }
+
   function handleCropConfirm(crop: CropData) {
     if (!pendingCropUri) return;
     setShowCropModal(false);
     const uri = pendingCropUri;
     setPendingCropUri(null);
+
+    const swapPresetId = pendingPresetSwapIdRef.current;
+    pendingPresetSwapIdRef.current = null;
+
+    if (swapPresetId) {
+      const updatedPresets = presets.map((p) =>
+        p.id === swapPresetId
+          ? { ...p, backgroundPhotoUri: uri, backgroundPhotoCrop: crop }
+          : p
+      );
+      setPresets(updatedPresets);
+      savePresets(updatedPresets).catch(() => {});
+      if (swapPresetId === activePresetId) {
+        setBackgroundPhotoUri(uri);
+        setBackgroundPhotoCrop(crop);
+        setActivePresetModified(false);
+      }
+      return;
+    }
+
     setBackgroundPhotoUri(uri);
     setBackgroundPhotoCrop(crop);
     setActivePresetModified(true);
@@ -3568,6 +3633,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   function handleCropCancel() {
     setShowCropModal(false);
     setPendingCropUri(null);
+    pendingPresetSwapIdRef.current = null;
   }
 
   function handleAdjustCrop() {
@@ -5113,11 +5179,30 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     []
   );
 
+  const handleSwapPresetPhotoRef = useRef<(presetId: string) => Promise<void>>(() => Promise.resolve());
+  handleSwapPresetPhotoRef.current = handleSwapPresetPhoto;
+
   const stableOnPresetLongPress = useCallback((preset: CardPreset) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setRenameTargetPreset(preset);
-    setRenameInput(preset.name);
-    setTimeout(() => renameInputRef.current?.focus(), 150);
+    Alert.alert(
+      preset.name,
+      undefined,
+      [
+        {
+          text: "Rename",
+          onPress: () => {
+            setRenameTargetPreset(preset);
+            setRenameInput(preset.name);
+            setTimeout(() => renameInputRef.current?.focus(), 150);
+          },
+        },
+        {
+          text: "Change Photo",
+          onPress: () => { handleSwapPresetPhotoRef.current(preset.id).catch(() => {}); },
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+    );
   }, []);
 
   const handleThemeChangeRef = useRef(handleThemeChange);
