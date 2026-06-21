@@ -1302,12 +1302,12 @@ export default function ProfileScreen() {
         cardPreviewData={cardProps}
         onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
-        initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : (bootCardAction as CardAction | null)}
+        initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : defaultCardAction}
         onDefaultActionChange={(val) => updateSettings({ defaultCardAction: val ?? undefined })}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
         onAutoTriggerDelayChange={handleSetAutoTriggerDelay}
-        initialAutoTriggerDelay={bootAutoTriggerDelay}
+        initialAutoTriggerDelay={autoTriggerDelay}
         hasCustomisedCountdown={hasCustomisedCountdown}
       />
 
