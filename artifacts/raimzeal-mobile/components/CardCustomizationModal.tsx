@@ -6643,6 +6643,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         {isDefault && !isPhotoBlocked && (
                           <Text style={[styles.preferredLabel, { opacity: isSelected ? 1 : 0.45 }]}>★ Default</Text>
                         )}
+                        {!isDefault && !isSelected && isEnabled && anyStatEnabled && (
+                          <TouchableOpacity
+                            onPress={() => handleSetDefault(action)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Set ${label} as preferred action`}
+                          >
+                            <Text style={[styles.preferredLabel, { opacity: 0.35 }]}>★ Set default</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </TouchableOpacity>
                     </Animated.View>
