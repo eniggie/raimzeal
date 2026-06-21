@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "10",
+      "buildNumber": "23",
       "associatedDomains": [
         "applinks:raimzeal.com"
       ],
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 24,
+      "versionCode": 25,
       "intentFilters": [
         {
           "action": "VIEW",
