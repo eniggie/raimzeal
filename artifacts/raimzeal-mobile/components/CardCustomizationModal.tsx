@@ -5099,7 +5099,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       onLayout={(x) => {
                         chipXOffsetsRef.current[chipIndex] = x;
                         setChipSnapOffsets((prev) => {
-                          const next = [...chipXOffsetsRef.current];
+                          // Slice to current preset count so deleted presets never
+                          // leave stale trailing snap points in the offsets array.
+                          const next = chipXOffsetsRef.current.slice(0, presets.length);
                           if (next.length === prev.length && next.every((v, i) => v === prev[i])) return prev;
                           return next;
                         });
