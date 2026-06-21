@@ -709,6 +709,12 @@ export interface UserPreferences {
      * Synced cross-device so presets survive reinstalls.
      */
     cardPresets?: StoredCardPreset[];
+    /**
+     * Supabase Storage path for the user's custom card background photo
+     * (e.g. "userId/card_bg_1234567890.jpg"). Synced cross-device so the
+     * background photo can be restored on a fresh install.
+     */
+    cardBgPhotoStoragePath?: string;
   };
 }
 

@@ -44,7 +44,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFitness } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { syncPresetsToCloud, fetchPresetsFromCloud } from "@/lib/db";
+import { getApiBase, syncPresetsToCloud, fetchPresetsFromCloud } from "@/lib/db";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
@@ -1597,6 +1597,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const backgroundPhotoDimLevelRef = useRef<number>(DEFAULT_DIM_LEVEL);
   const [backgroundPhotoBlurRadius, setBackgroundPhotoBlurRadius] = useState(DEFAULT_BLUR_RADIUS);
   const dimPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bgPhotoCloudUriRef = useRef<string | null>(null);
 
   function applyDimLevel(level: number) {
     backgroundPhotoDimLevelRef.current = level;
@@ -2886,6 +2887,53 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (dimPersistTimerRef.current) clearTimeout(dimPersistTimerRef.current);
     };
   }, [backgroundPhotoDimLevel, backgroundPhotoBlurRadius, backgroundPhotoUri, backgroundPhotoCrop]);
+
+  // Fire-and-forget background upload when the user picks a new local photo.
+  // Skips HTTPS URLs (already cloud-stored) and default bundled assets.
+  // On success, stores the storagePath in cloud preferences so the photo can
+  // be restored on a fresh device via the reconciliation effect in profile.tsx.
+  useEffect(() => {
+    if (!backgroundPhotoUri) return;
+    if (
+      !backgroundPhotoUri.startsWith("file://") &&
+      !backgroundPhotoUri.startsWith("ph://") &&
+      !backgroundPhotoUri.startsWith("content://")
+    ) return;
+    if (bgPhotoCloudUriRef.current === backgroundPhotoUri) return;
+    if (!isSupabaseConfigured) return;
+    const uriToUpload = backgroundPhotoUri;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const ext = uriToUpload.split(".").pop()?.toLowerCase() ?? "jpg";
+      const contentType =
+        ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const filename = `card_bg_${Date.now()}.${ext}`;
+      fetch(`${getApiBase()}/user/card-bg-photo/upload-url`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ filename, contentType }),
+      })
+        .then((r) => (r.ok ? (r.json() as Promise<{ uploadUrl: string; storagePath: string }>) : null))
+        .then(async (data) => {
+          if (!data) return;
+          if (backgroundPhotoUri !== uriToUpload) return;
+          const fileRes = await fetch(uriToUpload);
+          const blob = await fileRes.blob();
+          const putRes = await fetch(data.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": contentType },
+            body: blob,
+          });
+          if (!putRes.ok) return;
+          bgPhotoCloudUriRef.current = uriToUpload;
+          updateSettings({ cardBgPhotoStoragePath: data.storagePath });
+        })
+        .catch(() => {});
+    }).catch(() => {});
+  }, [backgroundPhotoUri]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!visible) return;

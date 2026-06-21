@@ -316,7 +316,7 @@ export default function ProfileScreen() {
           if (!savedBgPhoto) {
             const defaultUri = resolveDefaultCardBgUri();
             if (defaultUri) {
-              const payload = JSON.stringify({ uri: defaultUri, dimLevel: 0.62, blurRadius: 18 });
+              const payload = JSON.stringify({ uri: defaultUri, dimLevel: 0.62, blurRadius: 18, isDefault: true });
               AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
               setCardBgPhotoUri(defaultUri);
             }
@@ -480,6 +480,44 @@ export default function ProfileScreen() {
       })
       .catch(() => {});
   }, [settings.backgroundPhotoDimLevel, settings.backgroundPhotoBlurRadius]);
+
+  // Reconcile cloud-backed card background photo with STORAGE_KEY_BG_PHOTO.
+  // On a fresh install the key is either absent or holds the default bundled image
+  // (marked with isDefault: true). When Supabase hydration delivers a storagePath,
+  // fetch a fresh 7-day signed URL and restore the user's custom photo.
+  useEffect(() => {
+    const storagePath = settings.cardBgPhotoStoragePath;
+    if (!storagePath || !isSupabaseConfigured) return;
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.getItem(STORAGE_KEY_BG_PHOTO)
+          .then(async (raw) => {
+            if (raw) {
+              try {
+                const parsed = JSON.parse(raw) as Record<string, unknown>;
+                // Already has a user-set photo on this device — skip restore.
+                if (parsed.uri && !parsed.isDefault) return;
+              } catch {
+                // unparseable payload — proceed with restore
+              }
+            }
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+            const res = await fetch(
+              `${getApiBase()}/user/card-bg-photo/download-url?path=${encodeURIComponent(storagePath)}`,
+              { headers: { Authorization: `Bearer ${session.access_token}` } }
+            );
+            if (!res.ok) return;
+            const { downloadUrl } = await res.json() as { downloadUrl: string };
+            if (!downloadUrl) return;
+            const payload = JSON.stringify({ uri: downloadUrl, storagePath });
+            AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+            setCardBgPhotoUri(downloadUrl);
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.cardBgPhotoStoragePath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSetDefaultCardAction(action: CardAction) {
     setDefaultCardAction(action);
