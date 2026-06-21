@@ -6676,6 +6676,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                             delayStr
                           ).catch(() => {});
                         }
+                        // Mark the countdown as customised so the banner shows
+                        // "Xs · Change" the next time it appears.
+                        AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, "1").catch(() => {});
                         // If the countdown is active (running or paused while app was
                         // backgrounded), sync it to the new duration immediately so the
                         // bar drain rate stays proportional, or cancel it if "Off" was chosen.
