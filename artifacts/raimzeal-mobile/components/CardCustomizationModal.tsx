@@ -1356,6 +1356,7 @@ const PresetChipItem = memo(function PresetChipItem({
     chipRefSetterRef.current?.(el);
   }, []);
 
+  const reduceMotion = useReduceMotion();
   const pulseScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -1367,6 +1368,19 @@ const PresetChipItem = memo(function PresetChipItem({
       Animated.timing(pulseScale, { toValue: 1, duration: 150, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
     ]).start();
   }, [savedAt]);
+
+  const prevPhotoUri = useRef(preset.backgroundPhotoUri);
+  const photoFadeAnim = useSharedValue(1);
+  const photoAnimStyle = useAnimatedStyle(() => ({ opacity: photoFadeAnim.value }));
+
+  useEffect(() => {
+    const prev = prevPhotoUri.current;
+    prevPhotoUri.current = preset.backgroundPhotoUri;
+    if (preset.backgroundPhotoUri && preset.backgroundPhotoUri !== prev && !reduceMotion) {
+      photoFadeAnim.value = 0;
+      photoFadeAnim.value = withTiming(1, { duration: 220 });
+    }
+  }, [preset.backgroundPhotoUri]);
 
   return (
     <TouchableOpacity
@@ -1401,7 +1415,7 @@ const PresetChipItem = memo(function PresetChipItem({
           },
         ]}
       >
-        <View pointerEvents="none">
+        <Reanimated.View style={photoAnimStyle} pointerEvents="none">
           <ShareProgressCard
             {...cardPreviewData}
             visibleStats={preset.visibleStats}
@@ -1413,7 +1427,7 @@ const PresetChipItem = memo(function PresetChipItem({
             backgroundPhotoDimLevel={preset.backgroundPhotoDimLevel}
             backgroundPhotoBlurRadius={preset.backgroundPhotoBlurRadius}
           />
-        </View>
+        </Reanimated.View>
         {preset.backgroundPhotoUri ? (
           <Image
             source={{ uri: preset.backgroundPhotoUri }}
