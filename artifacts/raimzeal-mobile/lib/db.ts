@@ -617,6 +617,23 @@ export async function insertOviaMessage(
 
 // ─── User Preferences ──────────────────────────────────────────────────────
 
+/**
+ * Minimal card-preset shape stored in the cloud.
+ * Structurally compatible with CardPreset from CardCustomizationModal.
+ */
+export interface StoredCardPreset {
+  id: string;
+  name: string;
+  visibleStats: Record<string, boolean>;
+  customMessage: string;
+  themeId: string;
+  createdAt: number;
+  backgroundPhotoUri?: string;
+  backgroundPhotoDimLevel?: number;
+  backgroundPhotoBlurRadius?: number;
+  backgroundPhotoCrop?: { scale: number; panX: number; panY: number };
+}
+
 export interface UserPreferences {
   activeFilters?: string[];
   customPresets?: Array<{ id: string; name: string; filterKeys: string[] }>;
@@ -687,6 +704,11 @@ export interface UserPreferences {
       nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
       servingLabel?: string;
     }>;
+    /**
+     * User-created card presets (stat combinations, themes, messages).
+     * Synced cross-device so presets survive reinstalls.
+     */
+    cardPresets?: StoredCardPreset[];
   };
 }
 
@@ -717,6 +739,47 @@ export async function upsertUserPreferences(
       .from("profiles")
       .upsert({ id: userId, preferences: prefs, updated_at: new Date().toISOString() });
   } catch { /* non-fatal */ }
+}
+
+// ─── Card Preset Cloud Sync ──────────────────────────────────────────────────
+
+/**
+ * Reads the user's current cloud preferences, merges the given preset list into
+ * appSettings, and writes back. Returns true on success, false on any error.
+ * Uses a read-then-write pattern so other appSettings fields are never clobbered.
+ */
+export async function syncPresetsToCloud(
+  userId: string,
+  presets: StoredCardPreset[]
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const existing = (await fetchUserPreferences(userId)) ?? {};
+    await upsertUserPreferences(userId, {
+      ...existing,
+      appSettings: { ...(existing.appSettings ?? {}), cardPresets: presets },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the user's saved card presets from the cloud, or null when not
+ * configured, unauthenticated, or no presets have been stored yet.
+ */
+export async function fetchPresetsFromCloud(
+  userId: string
+): Promise<StoredCardPreset[] | null> {
+  if (!isSupabaseConfigured) return null;
+  try {
+    const prefs = await fetchUserPreferences(userId);
+    if (!Array.isArray(prefs?.appSettings?.cardPresets)) return null;
+    return prefs!.appSettings!.cardPresets!;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Program Enrollment ─────────────────────────────────────────────────────

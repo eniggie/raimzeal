@@ -43,6 +43,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFitness } from "@/contexts/FitnessContext";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { syncPresetsToCloud, fetchPresetsFromCloud } from "@/lib/db";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
 import { useThumbnailSize, ThumbnailSize } from "@/hooks/useThumbnailSize";
@@ -104,6 +106,7 @@ function estimateThumbnailHeight(
 }
 
 const STORAGE_KEY_PRESETS = "@raimzeal_card_presets";
+const STORAGE_KEY_PENDING_PRESET_SYNC = "@raimzeal_pending_preset_sync";
 export const STORAGE_KEY_ACTION = "@raimzeal_card_action";
 export const STORAGE_KEY_BADGE_DISMISSED = "@raimzeal_card_badge_dismissed";
 export const STORAGE_KEY_AUTO_TRIGGER_DELAY = "@raimzeal_card_auto_trigger_delay";
@@ -282,6 +285,30 @@ async function savePresets(presets: CardPreset[]): Promise<void> {
   } catch {
     // ignore
   }
+  // Fire-and-forget cloud sync for authenticated users.
+  // On failure the snapshot is queued in AsyncStorage for retry on next open.
+  if (!isSupabaseConfigured) return;
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session?.user) return;
+    const userId = session.user.id;
+    syncPresetsToCloud(userId, presets as unknown as import("@/lib/db").StoredCardPreset[])
+      .then((ok) => {
+        if (ok) {
+          AsyncStorage.removeItem(STORAGE_KEY_PENDING_PRESET_SYNC).catch(() => {});
+        } else {
+          AsyncStorage.setItem(
+            STORAGE_KEY_PENDING_PRESET_SYNC,
+            JSON.stringify({ userId, presets })
+          ).catch(() => {});
+        }
+      })
+      .catch(() => {
+        AsyncStorage.setItem(
+          STORAGE_KEY_PENDING_PRESET_SYNC,
+          JSON.stringify({ userId, presets })
+        ).catch(() => {});
+      });
+  }).catch(() => {});
 }
 
 const PRESET_ITEM_H = 56;
@@ -2578,6 +2605,56 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           ? savedActivePresetId
           : null;
         setActivePresetId(restoredActiveId);
+
+        // ── Background cloud merge (non-blocking) ──────────────────────────
+        // 1. Drain any pending offline sync that failed during a previous session.
+        // 2. Fetch cloud presets and merge: cloud wins for matching IDs,
+        //    local-only presets (offline additions) are appended and re-synced.
+        if (isSupabaseConfigured) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session?.user || cancelled) return;
+            const userId = session.user.id;
+
+            // Drain pending offline write
+            AsyncStorage.getItem(STORAGE_KEY_PENDING_PRESET_SYNC)
+              .then((pendingRaw) => {
+                if (!pendingRaw || cancelled) return;
+                try {
+                  const pending = JSON.parse(pendingRaw) as { userId: string; presets: CardPreset[] };
+                  if (pending.userId === userId) {
+                    syncPresetsToCloud(userId, pending.presets as unknown as import("@/lib/db").StoredCardPreset[])
+                      .then((ok) => {
+                        if (ok) AsyncStorage.removeItem(STORAGE_KEY_PENDING_PRESET_SYNC).catch(() => {});
+                      })
+                      .catch(() => {});
+                  }
+                } catch { /* corrupted queue entry — ignore */ }
+              })
+              .catch(() => {});
+
+            // Fetch and merge cloud presets
+            fetchPresetsFromCloud(userId)
+              .then((cloudPresets) => {
+                if (!cloudPresets || cloudPresets.length === 0 || cancelled) return;
+                setPresets((current) => {
+                  const cloudById = new Map(cloudPresets.map((p) => [p.id, p]));
+                  // Start from cloud list (cloud wins for any shared ID)
+                  const merged: CardPreset[] = [...cloudPresets as unknown as CardPreset[]];
+                  // Keep local-only presets (offline additions not yet in cloud)
+                  for (const local of current) {
+                    if (!cloudById.has(local.id)) merged.push(local);
+                  }
+                  merged.sort((a, b) => a.createdAt - b.createdAt);
+                  const capped = merged.slice(0, MAX_PRESETS);
+                  if (JSON.stringify(capped) === JSON.stringify(current)) return current;
+                  // Persist merged result — savePresets re-syncs local-only entries to cloud
+                  savePresets(capped).catch(() => {});
+                  return capped;
+                });
+              })
+              .catch(() => {});
+          }).catch(() => {});
+        }
 
         let effectiveStats = { ...DEFAULT_VISIBLE_STATS };
         if (savedStats) {
