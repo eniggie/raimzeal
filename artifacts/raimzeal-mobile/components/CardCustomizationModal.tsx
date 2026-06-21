@@ -1834,6 +1834,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Shows "✓ Done!" in the banner for ~800 ms after auto-generation finishes.
   const [autoTriggerSuccessFlash, setAutoTriggerSuccessFlash] = useState(false);
   const autoTriggerSuccessFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce timer for resuming the countdown on AppState "active" so rapid
+  // inactive→active flickers (notification banners, lock screen dismiss) do
+  // not restart the timer before the user has really returned to the app.
+  const resumeDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTriggerGeneratingRef = useRef(false);
   // Set to true when the user taps Cancel while generation is in progress so
   // the handleGenerate callback can discard the result without showing a toast.
@@ -2649,6 +2653,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         autoTriggerSuccessFlashTimerRef.current = null;
       }
       setAutoTriggerSuccessFlash(false);
+      if (resumeDebounceTimerRef.current !== null) {
+        clearTimeout(resumeDebounceTimerRef.current);
+        resumeDebounceTimerRef.current = null;
+      }
       setAutoTriggerGenerating(false);
       setAutoTriggerCountdown(null);
       setAutoTriggerAction(null);
@@ -3064,48 +3072,64 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           );
         }).catch(() => {});
 
-        // Resume the countdown from where it was paused
+        // Debounce the countdown resume by 300 ms so rapid inactive→active
+        // flickers (notification banners, lock screen preview) don't restart
+        // the timer before the user has truly returned to the app.
         if (autoTriggerIsPausedRef.current) {
-          autoTriggerIsPausedRef.current = false;
-          setAutoTriggerIsPaused(false);
-          const remaining = autoTriggerRemainingRef.current;
-          const action = autoTriggerActiveActionRef.current;
-          const delay = autoTriggerActiveDelayRef.current;
-          if (action && delay > 0 && remaining > 0) {
-            // Restart the progress bar animation from the paused position
-            if (!reduceMotionRef.current) {
-              const progressFrom = remaining / delay;
-              autoTriggerProgress.setValue(progressFrom);
-              autoTriggerProgressAnim.current = Animated.timing(autoTriggerProgress, {
-                toValue: 0,
-                duration: remaining * 1000,
-                useNativeDriver: true,
-              });
-              autoTriggerProgressAnim.current.start();
-            }
-            // Restart the interval for the remaining seconds
-            let rem = remaining;
-            autoTriggerIntervalRef.current = setInterval(() => {
-              rem -= 1;
-              autoTriggerRemainingRef.current = rem;
-              const effectiveAction = selectedActionRef.current ?? action;
-              if (rem <= 0) {
-                clearInterval(autoTriggerIntervalRef.current!);
-                autoTriggerIntervalRef.current = null;
-                setAutoTriggerCountdown(null);
-                autoTriggerGeneratingRef.current = true;
-                setAutoTriggerGenerating(true);
-                if (visibleRef.current) {
-                  handleGenerateRef.current?.(effectiveAction);
-                }
-              } else {
-                setAutoTriggerCountdown(rem);
-                setAutoTriggerAction(effectiveAction);
-              }
-            }, 1000);
+          if (resumeDebounceTimerRef.current !== null) {
+            clearTimeout(resumeDebounceTimerRef.current);
           }
+          resumeDebounceTimerRef.current = setTimeout(() => {
+            resumeDebounceTimerRef.current = null;
+            // Re-check: the app may have re-backgrounded during the debounce.
+            if (!autoTriggerIsPausedRef.current) return;
+            autoTriggerIsPausedRef.current = false;
+            setAutoTriggerIsPaused(false);
+            const remaining = autoTriggerRemainingRef.current;
+            const action = autoTriggerActiveActionRef.current;
+            const delay = autoTriggerActiveDelayRef.current;
+            if (action && delay > 0 && remaining > 0) {
+              // Restart the progress bar animation from the paused position
+              if (!reduceMotionRef.current) {
+                const progressFrom = remaining / delay;
+                autoTriggerProgress.setValue(progressFrom);
+                autoTriggerProgressAnim.current = Animated.timing(autoTriggerProgress, {
+                  toValue: 0,
+                  duration: remaining * 1000,
+                  useNativeDriver: true,
+                });
+                autoTriggerProgressAnim.current.start();
+              }
+              // Restart the interval for the remaining seconds
+              let rem = remaining;
+              autoTriggerIntervalRef.current = setInterval(() => {
+                rem -= 1;
+                autoTriggerRemainingRef.current = rem;
+                const effectiveAction = selectedActionRef.current ?? action;
+                if (rem <= 0) {
+                  clearInterval(autoTriggerIntervalRef.current!);
+                  autoTriggerIntervalRef.current = null;
+                  setAutoTriggerCountdown(null);
+                  autoTriggerGeneratingRef.current = true;
+                  setAutoTriggerGenerating(true);
+                  if (visibleRef.current) {
+                    handleGenerateRef.current?.(effectiveAction);
+                  }
+                } else {
+                  setAutoTriggerCountdown(rem);
+                  setAutoTriggerAction(effectiveAction);
+                }
+              }, 1000);
+            }
+          }, 300);
         }
       } else if (nextState === "background" || nextState === "inactive") {
+        // Cancel any pending resume debounce — the app went away again before
+        // the 300 ms elapsed, so do not restart the countdown.
+        if (resumeDebounceTimerRef.current !== null) {
+          clearTimeout(resumeDebounceTimerRef.current);
+          resumeDebounceTimerRef.current = null;
+        }
         // Pause the countdown while the app is not in the foreground so it
         // does not fire silently behind the user's back.
         if (autoTriggerIntervalRef.current !== null && !autoTriggerGeneratingRef.current) {
@@ -3120,7 +3144,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         }
       }
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      // Cancel any in-flight resume debounce so it doesn't fire after the
+      // effect is torn down (e.g. modal closed while app was backgrounded).
+      if (resumeDebounceTimerRef.current !== null) {
+        clearTimeout(resumeDebounceTimerRef.current);
+        resumeDebounceTimerRef.current = null;
+      }
+    };
   }, [visible]);
 
   function syncKnobsImmediate(stats: CardVisibleStats) {
