@@ -3085,6 +3085,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [generating]);
 
   function startAutoTrigger(action: CardAction, delay: number) {
+    // Never start the countdown for a photo-requiring action when permission is denied.
+    const requiresPhotoAccess = action === "save" || action === "both";
+    if (requiresPhotoAccess && cameraRollStatus === "denied") return;
     // Track the active countdown's parameters so resetAutoTriggerOnInteraction can restart it.
     autoTriggerActiveActionRef.current = action;
     autoTriggerActiveDelayRef.current = delay;
