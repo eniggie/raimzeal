@@ -3433,6 +3433,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     autoTriggerIsPausedRef.current = false;
     setAutoTriggerIsPaused(false);
 
+    // Cancel any pending nudge-pulse timers — the countdown banner is now drawing
+    // the user's attention, so the pulses are no longer needed and would clash.
+    if (secondPulseTimerRef.current !== null) {
+      clearTimeout(secondPulseTimerRef.current);
+      secondPulseTimerRef.current = null;
+    }
+    if (thirdPulseTimerRef.current !== null) {
+      clearTimeout(thirdPulseTimerRef.current);
+      thirdPulseTimerRef.current = null;
+    }
+
     if (autoTriggerIntervalRef.current !== null) {
       clearInterval(autoTriggerIntervalRef.current);
       autoTriggerIntervalRef.current = null;
