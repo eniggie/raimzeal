@@ -79,7 +79,7 @@ const PRODUCTION_ORIGINS = [
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return true; // server-to-server / mobile requests have no Origin
-  if (process.env.NODE_ENV !== "production") return true;
+  if (process.env.NODE_ENV === "development") return true;
   if (PRODUCTION_ORIGINS.includes(origin)) return true;
   // Allow Replit preview domains (*.replit.app, *.repl.co, *.replit.dev)
   if (/\.(replit\.app|repl\.co|replit\.dev)$/.test(origin)) return true;

@@ -13,7 +13,7 @@ export const communityPosts = pgTable("community_posts", {
   likesCount: integer("likes_count").notNull().default(0),
   commentsCount: integer("comments_count").notNull().default(0),
   isLegacyPost: boolean("is_legacy_post").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const communityComments = pgTable("community_comments", {
@@ -24,7 +24,7 @@ export const communityComments = pgTable("community_comments", {
   userId: varchar("user_id").notNull(),
   userName: text("user_name").notNull(),
   content: text("content").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const communityLikes = pgTable(
@@ -35,7 +35,7 @@ export const communityLikes = pgTable(
       .notNull()
       .references(() => communityPosts.id, { onDelete: "cascade" }),
     userId: varchar("user_id").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique("uniq_like_per_user").on(table.postId, table.userId)]
 );
