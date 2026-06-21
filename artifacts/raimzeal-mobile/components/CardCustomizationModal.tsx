@@ -359,6 +359,20 @@ function SortablePresetItem({
     transform: [{ translateX: trashShake.value }],
   }));
 
+  const reduceMotion = useReduceMotion();
+  const rowOpacity = useSharedValue(1);
+  const rowSlideX = useSharedValue(0);
+  const itemTopShared = useSharedValue(itemIndex * PRESET_ITEM_H);
+  useEffect(() => {
+    itemTopShared.value = reduceMotion
+      ? itemIndex * PRESET_ITEM_H
+      : withTiming(itemIndex * PRESET_ITEM_H, { duration: 180 });
+  }, [itemIndex]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: rowOpacity.value,
+    transform: [{ translateX: rowSlideX.value }],
+  }));
+
   const animatedStyle = useAnimatedStyle(() => {
     "worklet";
     const dIdx = draggingIdx.value;
@@ -370,7 +384,7 @@ function SortablePresetItem({
         snapFromIdx.value >= 0 &&
         snapFromIdx.value === itemIndex
           ? snapTargetIdx.value * PRESET_ITEM_H
-          : itemIndex * PRESET_ITEM_H;
+          : itemTopShared.value;
       return { top: snapTop, zIndex: 1, elevation: 1, shadowOpacity: 0 };
     }
 
@@ -453,19 +467,20 @@ function SortablePresetItem({
         animatedStyle,
       ]}
     >
-      <View
-        style={{
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          paddingRight: 12,
-          borderRadius: 12,
-          borderWidth: 1.5,
-          backgroundColor: isActive ? colors.primary + "18" : colors.card,
-          borderColor: isActive ? colors.primary : colors.border,
-          overflow: "hidden",
-        }}
-      >
+      <Reanimated.View style={[{ flex: 1 }, fadeStyle]}>
+        <View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingRight: 12,
+            borderRadius: 12,
+            borderWidth: 1.5,
+            backgroundColor: isActive ? colors.primary + "18" : colors.card,
+            borderColor: isActive ? colors.primary : colors.border,
+            overflow: "hidden",
+          }}
+        >
         <GestureDetector gesture={pan}>
           <View
             style={{
@@ -556,14 +571,28 @@ function SortablePresetItem({
         <Reanimated.View style={trashAnimStyle}>
           <TouchableOpacity
             onPress={() => {
+              if (reduceMotion) {
+                onDeletePreset(preset.id);
+                return;
+              }
               trashShake.value = withSequence(
                 withTiming(-5, { duration: 50 }),
                 withTiming(5, { duration: 50 }),
                 withTiming(-5, { duration: 50 }),
                 withTiming(5, { duration: 50 }),
-                withTiming(0, { duration: 50 }),
+                withTiming(0, { duration: 50 }, (finished) => {
+                  'worklet';
+                  if (finished) {
+                    rowOpacity.value = withTiming(0, { duration: 180 });
+                    rowSlideX.value = withTiming(30, { duration: 180 }, (done) => {
+                      'worklet';
+                      if (done) {
+                        runOnJS(onDeletePreset)(preset.id);
+                      }
+                    });
+                  }
+                }),
               );
-              onDeletePreset(preset.id);
             }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
@@ -574,7 +603,8 @@ function SortablePresetItem({
             />
           </TouchableOpacity>
         </Reanimated.View>
-      </View>
+        </View>
+      </Reanimated.View>
     </Reanimated.View>
   );
 }
