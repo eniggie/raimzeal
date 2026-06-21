@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Animated, Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -169,11 +169,26 @@ export default function RootLayout() {
 
   const appReady = (fontsLoaded || !!fontError) && bootPrefs !== null;
 
+  const splashFadeAnim = useRef(new Animated.Value(1)).current;
+  const [splashDone, setSplashDone] = useState(false);
+
   useEffect(() => {
-    if (appReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [appReady]);
+    if (!appReady) return;
+    SplashScreen.hideAsync().then(
+      () => {
+        Animated.timing(splashFadeAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setSplashDone(true);
+        });
+      },
+      () => {
+        setSplashDone(true);
+      },
+    );
+  }, [appReady, splashFadeAnim]);
 
   if (!appReady) return <BootSplash />;
 
@@ -205,6 +220,20 @@ export default function RootLayout() {
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
+      {!splashDone && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.splashOverlay, { opacity: splashFadeAnim }]}
+        >
+          <BootSplash />
+        </Animated.View>
+      )}
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+});
