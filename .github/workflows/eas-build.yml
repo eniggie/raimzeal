@@ -176,12 +176,12 @@ jobs:
           EXPO_ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
           EXPO_ASC_API_KEY: /tmp/asc/key.p8
         run: |
+          jq --arg id "$ASC_APP_ID" '.submit.production.ios.ascAppId = $id' eas.json > eas.tmp.json && mv eas.tmp.json eas.json
           eas submit \
             --platform ios \
             --profile production \
             --latest \
-            --non-interactive \
-            --asc-app-id "$ASC_APP_ID"
+            --non-interactive
 
       - name: Remove ASC API key
         if: always()
