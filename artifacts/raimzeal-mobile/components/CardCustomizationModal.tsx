@@ -2008,6 +2008,21 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     };
   }, []);
 
+  // When autoTriggerDelay changes while a countdown is active, immediately sync
+  // the running timer to the new duration. This effect covers every call-site
+  // (segmented chip, settings sheet, future surfaces) without each needing its
+  // own restart logic.
+  useEffect(() => {
+    if (autoTriggerIntervalRef.current === null && !autoTriggerIsPausedRef.current) return;
+    if (autoTriggerDelay === 0) {
+      cancelAutoTrigger();
+    } else {
+      const action = autoTriggerActiveActionRef.current;
+      if (action) startAutoTrigger(action, autoTriggerDelay);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTriggerDelay]);
+
   // Preset thumbnail preview
   const [presetPreviewTarget, setPresetPreviewTarget] = useState<CardPreset | null>(null);
   const [presetPreviewIndex, setPresetPreviewIndex] = useState(0);
@@ -6680,17 +6695,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         // Mark the countdown as customised so the banner shows
                         // "Xs · Change" the next time it appears.
                         AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, "1").catch(() => {});
-                        // If the countdown is active (running or paused while app was
-                        // backgrounded), sync it to the new duration immediately so the
-                        // bar drain rate stays proportional, or cancel it if "Off" was chosen.
-                        if (autoTriggerIntervalRef.current !== null || autoTriggerIsPausedRef.current) {
-                          if (val === 0) {
-                            cancelAutoTrigger();
-                          } else {
-                            const action = autoTriggerActiveActionRef.current;
-                            if (action) startAutoTrigger(action, val);
-                          }
-                        }
+                        // The useEffect watching autoTriggerDelay handles any
+                        // in-flight countdown restart/cancel automatically.
                       }}
                       style={[
                         styles.autoTriggerDelayChip,
