@@ -5984,9 +5984,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           )}
           {tapGenerateHintMounted && (
             <Animated.View style={{ opacity: tapGenerateHintFadeAnim }}>
-              <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-                {"Tap Generate ↑ to create your card"}
-              </Text>
+              <TouchableOpacity
+                onPress={dismissTapGenerateHint}
+                activeOpacity={0.6}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss hint"
+              >
+                <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+                  {"Tap Generate ↑ to create your card"}
+                </Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
           {statsNudgeMounted && (
