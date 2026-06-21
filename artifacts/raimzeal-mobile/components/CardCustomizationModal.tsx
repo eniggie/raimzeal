@@ -5988,6 +5988,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   inputRange: [0, 1],
                   outputRange: ["transparent", colors.primary + "08"],
                 });
+                const dividerColor = pillColorAnims[item.key].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [colors.border, colors.border + "30"],
+                });
                 return (
                   <TouchableOpacity
                     key={item.key}
@@ -5999,7 +6003,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       styles.toggleRow,
                       index < STAT_TOGGLES.length - 1 && {
                         borderBottomWidth: 1,
-                        borderBottomColor: colors.border,
+                        borderBottomColor: dividerColor,
                       },
                       { backgroundColor: rowBg },
                     ]}
