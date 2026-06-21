@@ -1553,6 +1553,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     opacity: thumbRowOpacity.value,
     transform: [{ scale: thumbRowScale.value }],
   }));
+  const presetsRowOpacity = useSharedValue(1);
+  const presetsRowScale = useSharedValue(1);
+  const presetsRowAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: presetsRowOpacity.value,
+    transform: [{ scale: presetsRowScale.value }],
+  }));
   const prevThumbnailSizeRef = useRef<ThumbnailSize>(thumbnailSize);
   useEffect(() => {
     if (prevThumbnailSizeRef.current === thumbnailSize) return;
@@ -1563,6 +1569,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       withTiming(1, { duration: 180 })
     );
     thumbRowScale.value = withSequence(
+      withTiming(0.97, { duration: 90 }),
+      withTiming(1, { duration: 180 })
+    );
+    presetsRowOpacity.value = withSequence(
+      withTiming(0, { duration: 90 }),
+      withTiming(1, { duration: 180 })
+    );
+    presetsRowScale.value = withSequence(
       withTiming(0.97, { duration: 90 }),
       withTiming(1, { duration: 180 })
     );
@@ -5072,8 +5086,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               />
             ) : (
               <>
-                <View
-                  style={styles.presetsThumbnailsWrapper}
+                <Reanimated.View
+                  style={[styles.presetsThumbnailsWrapper, presetsRowAnimatedStyle]}
                   onLayout={(e) => {
                     if (presets.length <= 1) return;
                     const w = e.nativeEvent.layout.width;
@@ -5140,7 +5154,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                     pointerEvents="none"
                   />
                 )}
-                </View>
+                </Reanimated.View>
                 {showModifiedChipHint && (
                   <Animated.View
                     style={[
