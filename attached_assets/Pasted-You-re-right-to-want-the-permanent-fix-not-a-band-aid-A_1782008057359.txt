@@ -1,0 +1,47 @@
+You're right to want the permanent fix, not a band-aid. As the expert call here: **switch EAS to remote version management with auto-increment.** That's the correct architecture, and I'll explain why in one line so you can trust it.
+
+## The decision: remote version source + auto-increment
+
+Your instinct ("submit immediately and update itself") = exactly what `appVersionSource: "remote"` + `autoIncrement: true` does. EAS keeps the build number on **its own servers** and bumps it automatically every build — so a collision like today's becomes impossible.
+
+**Why not the lazy version** (just flip `autoIncrement: true` and leave it "local"): on EAS *cloud* builds, "local" auto-increment can't write the new number back to your repo, so it re-reads the same base and produces duplicates again. **Remote is the only setup that truly self-updates.** This is also Expo's own recommended config.
+
+## Exact changes (one-time, ~30 seconds in Replit)
+
+**`artifacts/raimzeal-mobile/eas.json`**
+```json
+"cli": {
+  "version": ">= 16.0.0",
+  "appVersionSource": "remote"        // was "local"
+},
+...
+"production": {
+  "autoIncrement": true,              // was false
+  "android": { "buildType": "app-bundle" },
+  "ios": { "buildConfiguration": "Release", "resourceClass": "m-medium" }
+}
+```
+
+**`artifacts/raimzeal-mobile/app.json`** — set the starting seed above your existing max (22):
+```json
+"ios":     { ... "buildNumber": "23" },   // was "10"
+"android": { ... "versionCode": 25 }      // was 24
+```
+
+This **one change fixes iOS and Android both**, forever.
+
+## Paste this to Replit to apply it
+
+> In `artifacts/raimzeal-mobile/eas.json`, change `cli.appVersionSource` from `"local"` to `"remote"`, and in `build.production` set `autoIncrement` to `true`. In `artifacts/raimzeal-mobile/app.json`, set `expo.ios.buildNumber` to `"23"` and `expo.android.versionCode` to `25`. Save and sync to GitHub. Then run `eas build -p ios --profile production` and `eas submit -p ios --profile production`. If EAS prompts to initialize remote version numbers, accept iOS 23 / Android 25.
+
+## What happens next
+
+- The new iOS build lands as **23 or higher** (anything >22 is correct — I'll attach whatever number lands).
+- From then on, you just run `eas build` + `eas submit` and it **always uploads cleanly, auto-numbered.** No more collision errors, ever.
+- The moment Build 23 finishes uploading, tell me — I'll swap it into the Apple submission, fix the stale notes, and resubmit (your video + working demo account are already in place).
+
+---
+
+**One honest expectation to set:** `eas submit` uploads the build to Apple cleanly — that part will now "just work." Pushing a new version into *App Store review* is still one separate click in App Store Connect (which I'll handle for you each time). If you later want *that* automated too, it's doable, but I'd set it up carefully and separately — not worth risking on this resubmission.
+
+Want me to also pre-check your **Android** Play Store max versionCode while you apply this, so the `25` seed is guaranteed safe there too?
