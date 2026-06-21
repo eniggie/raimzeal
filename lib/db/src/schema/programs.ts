@@ -27,7 +27,9 @@ export const enrolledPrograms = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     userId: varchar("user_id").notNull(),
-    programId: varchar("program_id").notNull(),
+    programId: varchar("program_id")
+      .notNull()
+      .references(() => programs.id, { onDelete: "cascade" }),
     programName: text("program_name").notNull(),
     programData: jsonb("program_data").notNull(),
     startedAt: timestamp("started_at").notNull().defaultNow(),

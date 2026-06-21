@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import nodemailer from "nodemailer";
 import { z } from "zod";
@@ -8,6 +9,23 @@ import { requireAuth } from "../middleware/auth";
 
 
 const emailRouter = Router();
+
+// ─── Unsubscribe HMAC helpers ──────────────────────────────────────────────────
+// Signs the email address so one-click unsubscribe links can't be weaponised to
+// unsubscribe arbitrary addresses (CSRF via crafted URL).
+
+function signUnsubscribeEmail(email: string): string {
+  const secret = process.env["INTERNAL_API_SECRET"] ?? "";
+  return createHmac("sha256", secret).update(email.toLowerCase()).digest("hex");
+}
+
+function verifyUnsubscribeToken(email: string, tok: string): boolean {
+  if (!process.env["INTERNAL_API_SECRET"]) return true; // skip validation if secret not set
+  const expected = signUnsubscribeEmail(email.toLowerCase());
+  try {
+    return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(tok, "hex"));
+  } catch { return false; }
+}
 
 // ─── HTML escaping ─────────────────────────────────────────────────────────────
 // Must be applied to any user-supplied value before it is interpolated into HTML.
@@ -235,7 +253,7 @@ function buildWeeklyDigestHtml(email: string, firstName: string, motivation: str
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const safeName = escapeHtml(firstName);
-  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}`;
+  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}&tok=${signUnsubscribeEmail(email)}`;
 
   const streakSection = (stats?.streak && stats.streak > 0)
     ? `<div style="background:#0c1520;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 20px;margin-bottom:20px;">
@@ -289,7 +307,7 @@ function buildWeeklyDigestHtml(email: string, firstName: string, motivation: str
 
 function buildMidWeekHtml(email: string, firstName: string, motivation: string): string {
   const safeName = escapeHtml(firstName);
-  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}`;
+  const unsubscribeUrl = `https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(email)}&tok=${signUnsubscribeEmail(email)}`;
 
   const bodyHtml = `
     <p style="margin:0 0 24px;font-size:20px;font-weight:700;color:#ffffff;">Mid-week check-in, ${safeName}! 💪</p>
@@ -451,7 +469,7 @@ export async function sendWeeklyDigest(
     "Open the app: https://www.raimzeal.com",
     "RAIMZY resources: https://linktr.ee/Raimzy",
     "",
-    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}`,
+    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}&tok=${signUnsubscribeEmail(to)}`,
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -482,7 +500,7 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
     "Open the app: https://www.raimzeal.com",
     "RAIMZY resources: https://linktr.ee/Raimzy",
     "",
-    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}`,
+    `To unsubscribe: https://www.raimzeal.com/api/email/digest/unsubscribe?email=${encodeURIComponent(to)}&tok=${signUnsubscribeEmail(to)}`,
     "", "— Your Ovia AI Coach · RAIMZEAL",
   ].join("\n");
 
@@ -618,11 +636,16 @@ emailRouter.post("/email/digest/unsubscribe", requireAuth, emailUnsubscribeRateL
   }
 });
 
-// One-click unsubscribe via email link — no auth required (email addr in query param)
+// One-click unsubscribe via email link — no auth required (email addr + HMAC token in query params)
 emailRouter.get("/email/digest/unsubscribe", emailUnsubscribeRateLimit, async (req, res) => {
   const email = typeof req.query["email"] === "string" ? req.query["email"].trim() : "";
+  const tok = typeof req.query["tok"] === "string" ? req.query["tok"].trim() : "";
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     res.status(400).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Unsubscribe — RAIMZEAL</title></head><body style="margin:0;padding:40px;background:#0a0a0b;font-family:sans-serif;color:#e8e8ec;text-align:center;"><p style="font-size:16px;color:#e11d48;">Invalid or missing email address.</p></body></html>`);
+    return;
+  }
+  if (!verifyUnsubscribeToken(email, tok)) {
+    res.status(403).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Unsubscribe — RAIMZEAL</title></head><body style="margin:0;padding:40px;background:#0a0a0b;font-family:sans-serif;color:#e8e8ec;text-align:center;"><p style="font-size:16px;color:#e11d48;">Invalid unsubscribe link. Please use the link from your email.</p></body></html>`);
     return;
   }
   try {

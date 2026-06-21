@@ -37,17 +37,12 @@ export async function editImages(
   prompt: string,
   outputPath?: string
 ): Promise<Buffer> {
-  const images = await Promise.all(
-    imageFiles.map((file) =>
-      toFile(fs.createReadStream(file), file, {
-        type: "image/png",
-      })
-    )
-  );
+  if (imageFiles.length === 0) throw new Error("At least one image file is required");
+  const image = await toFile(fs.createReadStream(imageFiles[0]), imageFiles[0], { type: "image/png" });
 
   const response = await openai.images.edit({
     model: "gpt-image-1",
-    image: images,
+    image,
     prompt,
   });
 

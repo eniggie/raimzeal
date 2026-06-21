@@ -339,6 +339,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     // Step 1: hydrate from AsyncStorage (fast, works offline)
     AsyncStorage.getItem(STORAGE_KEY).then(async (raw) => {
       let parsed: Partial<AppState> = {};
@@ -358,6 +359,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         dismissedHints: parsed.dismissedHints ?? [],
         quickFoods: Array.isArray(parsed.quickFoods) ? (parsed.quickFoods as QuickFood[]).slice(0, 8) : DEFAULT_QUICK_FOODS,
       };
+      if (!isMounted) return;
       setState(hydrated);
       setStateHydrated(true);
 
@@ -436,6 +438,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         });
         const mergedFavs = [...localOnlyFoods, ...filteredServerFoods];
 
+        if (!isMounted) return;
         setState((prev) => {
           const remoteSettings = prefs?.appSettings;
           return {
@@ -498,6 +501,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
               const body = await res.json() as { id?: string; foodId?: string };
               if (body.id) {
+                if (!isMounted) return;
                 setState((prev) => {
                   const favoriteFoods = prev.favoriteFoods.map((ff) =>
                     ff.name === f.name
@@ -516,6 +520,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         // Non-fatal: keep local data if Supabase sync fails
       }
     });
+    return () => { isMounted = false; };
   }, []);
 
   const persist = useCallback((next: AppState) => {
