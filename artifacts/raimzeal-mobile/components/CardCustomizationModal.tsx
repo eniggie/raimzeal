@@ -1016,6 +1016,7 @@ function DimLevelSlider({ value, onChange, colors }: DimLevelSliderProps) {
   const trackWidthSV = useSharedValue(0);
   const knobX = useSharedValue(0);
   const savedX = useSharedValue(0);
+  const lastDimUpdateTime = useSharedValue(0);
 
   useEffect(() => {
     const w = trackWidthSV.value;
@@ -1034,9 +1035,13 @@ function DimLevelSlider({ value, onChange, colors }: DimLevelSliderProps) {
       if (w === 0) return;
       const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
       knobX.value = x;
-      const ratio = x / w;
-      const newVal = DIM_MIN + ratio * (DIM_MAX - DIM_MIN);
-      runOnJS(onChange)(Math.round(newVal * 100) / 100);
+      const now = Date.now();
+      if (now - lastDimUpdateTime.value >= 32) {
+        lastDimUpdateTime.value = now;
+        const ratio = x / w;
+        const newVal = DIM_MIN + ratio * (DIM_MAX - DIM_MIN);
+        runOnJS(onChange)(Math.round(newVal * 100) / 100);
+      }
     })
     .onEnd((e) => {
       "worklet";
@@ -1045,6 +1050,8 @@ function DimLevelSlider({ value, onChange, colors }: DimLevelSliderProps) {
       const x = Math.max(0, Math.min(w, savedX.value + e.translationX));
       savedX.value = x;
       knobX.value = x;
+      const ratio = x / w;
+      runOnJS(onChange)(Math.round((DIM_MIN + ratio * (DIM_MAX - DIM_MIN)) * 100) / 100);
     });
 
   const fillStyle = useAnimatedStyle(() => ({
