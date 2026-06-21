@@ -3761,6 +3761,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         setBackgroundPhotoUri(uri);
         setBackgroundPhotoCrop(crop);
         setActivePresetModified(false);
+        if (!reduceMotionRef.current) {
+          previewOpacity.stopAnimation();
+          Animated.sequence([
+            Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+            Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+          ]).start();
+        }
       }
       return;
     }
@@ -3854,6 +3861,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setBackgroundPhotoCrop(preset.backgroundPhotoCrop ?? null);
     applyDimLevel(preset.backgroundPhotoDimLevel ?? DEFAULT_DIM_LEVEL);
     setBackgroundPhotoBlurRadius(preset.backgroundPhotoBlurRadius ?? DEFAULT_BLUR_RADIUS);
+    if (!reduceMotionRef.current) {
+      previewOpacity.stopAnimation();
+      Animated.sequence([
+        Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+        Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+      ]).start();
+    }
     resetZoomPosition();
     dismissCardChip();
     dismissSwipeHintEarly();
