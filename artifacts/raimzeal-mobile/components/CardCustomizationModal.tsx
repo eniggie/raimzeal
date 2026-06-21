@@ -790,8 +790,9 @@ function ZoomableCard({
       if (scale.value === 1 && gestureAxisLocked.value === 1) {
         if (!reduceMotionShared.value) {
           const absDx = Math.abs(e.translationX);
+          // RNGH velocityX is in px/s; 500 px/s ≈ the 0.5 px/ms PanResponder threshold.
           const absVx = Math.abs(e.velocityX);
-          if (absDx > 60 || absVx > 0.5) {
+          if (absDx > 60 || absVx > 500) {
             const dir: 1 | -1 = e.translationX < 0 ? 1 : -1;
             if (onPresetNavigateDir) {
               runOnJS(Haptics.selectionAsync)();
