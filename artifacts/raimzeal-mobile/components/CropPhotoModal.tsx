@@ -97,9 +97,10 @@ export default function CropPhotoModal({
   useEffect(() => {
     AsyncStorage.getItem(OVERLAY_PREF_KEY).then((stored) => {
       if (stored !== null) {
-        const saved = stored !== "false";
-        setShowCardOverlay(saved);
-        overlayOpacity.value = saved ? 1 : 0;
+        const parsed = parseFloat(stored);
+        const opacity = !isNaN(parsed) ? parsed : stored !== "false" ? 1 : 0;
+        setShowCardOverlay(opacity > 0);
+        overlayOpacity.value = opacity;
       }
     });
   }, []);
@@ -194,7 +195,7 @@ export default function CropPhotoModal({
     overlayOpacity.value = reduceMotion
       ? next ? 1 : 0
       : withTiming(next ? 1 : 0, { duration: 175 });
-    AsyncStorage.setItem(OVERLAY_PREF_KEY, String(next));
+    AsyncStorage.setItem(OVERLAY_PREF_KEY, next ? "1" : "0");
   }, [showCardOverlay, overlayOpacity, reduceMotion]);
 
   if (!photoUri) return null;
