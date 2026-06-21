@@ -85,10 +85,12 @@ function ScanRow({
   runHintAnimation,
 }: ScanRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
+  const isHintOpenRef = useRef(false);
 
   useEffect(() => {
     if (!runHintAnimation) return;
     const timer = setTimeout(() => {
+      isHintOpenRef.current = true;
       swipeableRef.current?.openRight();
       const closeTimer = setTimeout(() => {
         swipeableRef.current?.close();
@@ -149,7 +151,10 @@ function ScanRow({
       renderRightActions={renderRightActions}
       rightThreshold={40}
       overshootRight={false}
-      onSwipeableOpen={() => Haptics.selectionAsync()}
+      onSwipeableOpen={() => {
+        if (isHintOpenRef.current) { isHintOpenRef.current = false; return; }
+        Haptics.selectionAsync();
+      }}
       containerStyle={styles.swipeContainer}
       childrenContainerStyle={[
         styles.item,
