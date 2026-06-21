@@ -1025,13 +1025,16 @@ function ZoomableCard({
     })
     .onEnd(() => {
       "worklet";
-      runOnJS(Haptics.selectionAsync)();
       if (scale.value <= 1 && onDismiss) {
         // Already at scale 1 — second double-tap dismisses the overlay entirely.
+        runOnJS(Haptics.selectionAsync)();
         runOnJS(onDismiss)();
         return;
       }
-      // Zoomed in — first double-tap resets scale back to 1.
+      // Zoomed in — double-tap resets scale and position back to defaults.
+      // Light impact gives a decisive "snap-back" feel distinct from the
+      // lighter selectionAsync used for the dismiss path.
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
       if (reduceMotionShared.value) {
         scale.value = 1;
         translateX.value = 0;
