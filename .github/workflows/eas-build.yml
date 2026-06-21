@@ -46,7 +46,7 @@ jobs:
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile production --non-interactive --no-wait
+        run: eas build --platform android --profile production --non-interactive
 
   build-ios:
     name: Build iOS (production)
@@ -80,7 +80,7 @@ jobs:
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile production --non-interactive --no-wait
+        run: eas build --platform ios --profile production --non-interactive
 
   submit-android:
     name: Submit Android to Play Store (internal)
