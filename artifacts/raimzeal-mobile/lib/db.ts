@@ -715,6 +715,11 @@ export interface UserPreferences {
      * background photo can be restored on a fresh install.
      */
     cardBgPhotoStoragePath?: string;
+    /**
+     * Custom caption/message shown on the progress card.
+     * Synced cross-device so the message survives reinstalls.
+     */
+    cardCustomMessage?: string;
   };
 }
 

@@ -63,7 +63,7 @@ import ShareProgressCard, {
 const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
 
 export const STORAGE_KEY_STATS = "@raimzeal_card_visible_stats";
-const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
+export const STORAGE_KEY_MESSAGE = "@raimzeal_card_custom_message";
 export const STORAGE_KEY_THEME = "@raimzeal_card_theme";
 export const STORAGE_KEY_BG_PHOTO = "@raimzeal_card_bg_photo";
 
@@ -3223,6 +3223,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         ops.push(AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO));
       }
       await Promise.all(ops);
+      updateSettings({ cardCustomMessage: message });
     } catch {
       // ignore storage errors
     }
@@ -3728,6 +3729,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         AsyncStorage.removeItem(STORAGE_KEY_BADGE_DISMISSED),
         AsyncStorage.removeItem(STORAGE_KEY_BG_PHOTO),
       ]);
+      updateSettings({ cardCustomMessage: "" });
     } catch {
       // ignore
     }

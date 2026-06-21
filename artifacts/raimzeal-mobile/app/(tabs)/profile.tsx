@@ -56,7 +56,7 @@ import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captu
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
-import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
+import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_MESSAGE, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 import { useCardPreferences } from "@/hooks/useCardPreferences";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
@@ -418,6 +418,25 @@ export default function ProfileScreen() {
       })
       .catch(() => {});
   }, [settings.defaultCardAction]);
+
+  // Reconcile STORAGE_KEY_MESSAGE with the cloud-backed setting.
+  // When Supabase hydration delivers a cardCustomMessage (e.g. on a fresh device /
+  // reinstall), update local state so the card preview reflects the synced message
+  // immediately and write it back to AsyncStorage so CardCustomizationModal's local
+  // read stays consistent.
+  useEffect(() => {
+    if (settings.cardCustomMessage === undefined) return;
+    setCardCustomMessage(settings.cardCustomMessage);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        if (settings.cardCustomMessage) {
+          AsyncStorage.setItem(STORAGE_KEY_MESSAGE, settings.cardCustomMessage).catch(() => {});
+        } else {
+          AsyncStorage.removeItem(STORAGE_KEY_MESSAGE).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [settings.cardCustomMessage]);
 
   // Reconcile STORAGE_KEY_THEME with the cloud-backed setting.
   // When Supabase hydration delivers a cardThemeId (e.g. on a fresh device / reinstall),

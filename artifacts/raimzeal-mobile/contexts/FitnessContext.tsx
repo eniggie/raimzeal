@@ -190,6 +190,8 @@ export interface AppState {
     cardVisibleStats?: Record<string, boolean>;
     /** Supabase Storage path for the card background photo — synced cross-device. */
     cardBgPhotoStoragePath?: string;
+    /** Custom caption/message shown on the progress card — synced cross-device. */
+    cardCustomMessage?: string;
   };
   /** Mobile-only extension: Ovia AI chat history */
   oviaMessages: OviaMessage[];
@@ -477,6 +479,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.cardThemeId != null ? { cardThemeId: remoteSettings.cardThemeId } : {}),
                     ...(remoteSettings.cardVisibleStats != null ? { cardVisibleStats: remoteSettings.cardVisibleStats } : {}),
                     ...(remoteSettings.cardBgPhotoStoragePath != null ? { cardBgPhotoStoragePath: remoteSettings.cardBgPhotoStoragePath } : {}),
+                    ...(remoteSettings.cardCustomMessage != null ? { cardCustomMessage: remoteSettings.cardCustomMessage } : {}),
                   }
                 : {}),
             },
@@ -1170,6 +1173,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("cardThemeId" in updates) appSettings.cardThemeId = updates.cardThemeId;
       if ("cardVisibleStats" in updates) appSettings.cardVisibleStats = updates.cardVisibleStats;
       if ("cardBgPhotoStoragePath" in updates) appSettings.cardBgPhotoStoragePath = updates.cardBgPhotoStoragePath;
+      if ("cardCustomMessage" in updates) appSettings.cardCustomMessage = updates.cardCustomMessage;
       if (Object.keys(appSettings).length === 0) return;
 
       // Accumulate all changes from this burst into the pending patch ref.
