@@ -1303,7 +1303,7 @@ export default function ProfileScreen() {
         onBadgeDismiss={() => updateSettings({ showRestoreBadge: false })}
         initialBadgeDismissed={!(settings.showRestoreBadge ?? true)}
         initialDefaultAction={settings.defaultCardAction !== undefined ? settings.defaultCardAction as CardAction : defaultCardAction}
-        onDefaultActionChange={(val) => updateSettings({ defaultCardAction: val ?? undefined })}
+        onDefaultActionChange={(val) => { setDefaultCardAction(val); updateSettings({ defaultCardAction: val ?? undefined }); }}
         initialLongPressAndRun={settings.longPressAndRun}
         onLongPressAndRunChange={(val) => updateSettings({ longPressAndRun: val })}
         onAutoTriggerDelayChange={handleSetAutoTriggerDelay}
