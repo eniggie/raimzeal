@@ -11,6 +11,10 @@ const isClipboardImageSupported =
   typeof navigator !== 'undefined' &&
   typeof navigator.clipboard?.write === 'function';
 
+const isNativeShareSupported =
+  typeof navigator !== 'undefined' &&
+  typeof navigator.canShare === 'function';
+
 interface ProgressShareCardProps {
   open: boolean;
   onClose: () => void;
@@ -262,10 +266,17 @@ export function ProgressShareCard({ open, onClose, state }: ProgressShareCardPro
               </p>
             )}
           </div>
-          <Button className="flex-1" onClick={handleShare}>
-            <Share2 className="w-4 h-4 mr-2" />
-            Share
-          </Button>
+          <div className="flex-1 flex flex-col items-center gap-1">
+            <Button className="w-full" onClick={handleShare}>
+              <Share2 className="w-4 h-4 mr-2" />
+              Share
+            </Button>
+            {!isNativeShareSupported && (
+              <p className="text-xs text-muted-foreground text-center leading-tight">
+                Opens a download instead
+              </p>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
