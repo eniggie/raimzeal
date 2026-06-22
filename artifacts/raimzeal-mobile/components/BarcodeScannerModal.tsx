@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Animated,
   ActivityIndicator,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -823,12 +824,18 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         {/* Permission denied */}
         {permission && !permission.granted && (
           <View style={[styles.centeredContent, { backgroundColor: colors.background }]}>
-            <Ionicons name="camera-outline" size={56} color={colors.mutedForeground} />
+            <Ionicons
+              name={permission.canAskAgain ? "camera-outline" : "alert-circle-outline"}
+              size={56}
+              color={permission.canAskAgain ? colors.mutedForeground : colors.warning}
+            />
             <Text style={[styles.permTitle, { color: colors.foreground }]}>
-              Camera access needed
+              {permission.canAskAgain ? "Camera access needed" : "Camera blocked"}
             </Text>
             <Text style={[styles.permSubtitle, { color: colors.mutedForeground }]}>
-              Allow camera access to scan food barcodes instantly.
+              {permission.canAskAgain
+                ? "Allow camera access to scan food barcodes instantly."
+                : "RAIMZEAL can\u2019t open the camera. Enable Camera access in your device Settings to scan barcodes."}
             </Text>
             {permission.canAskAgain ? (
               <TouchableOpacity
@@ -836,13 +843,24 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                 style={[styles.permBtn, { backgroundColor: colors.primary }]}
               >
                 <Text style={[styles.permBtnText, { color: colors.primaryForeground }]}>
-                  Allow Camera
+                  Grant Access
                 </Text>
               </TouchableOpacity>
             ) : (
-              <Text style={[styles.permDenied, { color: colors.mutedForeground }]}>
-                Camera access was denied. Please enable it in Settings to use the scanner.
-              </Text>
+              <View style={[styles.permWarningCard, { backgroundColor: colors.warning + "22", borderColor: colors.warning + "55" }]}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.warning} />
+                <Text style={[styles.permWarningText, { color: colors.warning }]}>
+                  Camera access was permanently denied. Tap below to open Settings and re-enable it.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => { Linking.openSettings().catch(() => {}); }}
+                  style={[styles.permBtn, { backgroundColor: colors.warning, marginTop: 0, width: "100%" }]}
+                >
+                  <Text style={[styles.permBtnText, { color: "#0D0D0D" }]}>
+                    Open Settings
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
             <TouchableOpacity onPress={handleManualEntry} style={[styles.permBtn, { backgroundColor: colors.muted, marginTop: 0 }]}>
               <Text style={[styles.permBtnText, { color: colors.foreground }]}>
@@ -1753,6 +1771,20 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 8,
+  },
+  permWarningCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 8,
+    gap: 8,
+    alignItems: "center",
+    width: "100%",
+  },
+  permWarningText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   cancelLink: { marginTop: 8, padding: 8 },
   cancelLinkText: { fontSize: 14, fontFamily: "Inter_400Regular" },
