@@ -51,6 +51,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -77,6 +78,10 @@ export default function LoginScreen() {
   }
 
   async function handleLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in.");
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please enter your email and password.");
       return;
@@ -126,6 +131,10 @@ export default function LoginScreen() {
   }
 
   async function handleAppleLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in with Apple.");
+      return;
+    }
     setAppleLoading(true);
     const { error } = await signInWithApple();
     setAppleLoading(false);
@@ -133,6 +142,10 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in with Google.");
+      return;
+    }
     if (!request) return;
     setGoogleLoading(true);
     try {
@@ -152,6 +165,10 @@ export default function LoginScreen() {
   }
 
   async function handleBiometricLogin() {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before using biometric sign-in.");
+      return;
+    }
     if (!biometricLabel) return;
     setBiometricLoading(true);
     try {
@@ -370,31 +387,33 @@ export default function LoginScreen() {
           )}
         </View>
 
-        <View
+        <TouchableOpacity
           style={[
             styles.termsBox,
             { backgroundColor: colors.muted, borderColor: colors.border },
           ]}
+          onPress={() => setTermsAccepted((accepted) => !accepted)}
+          activeOpacity={0.8}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: termsAccepted }}
+          accessibilityLabel="Accept the Terms of Use and Community Guidelines"
         >
-          <Ionicons
-            name="shield-checkmark-outline"
-            size={15}
-            color={colors.primary}
-            style={{ marginTop: 1 }}
-          />
+          <View style={[styles.checkbox, { borderColor: termsAccepted ? colors.primary : colors.border, backgroundColor: termsAccepted ? colors.primary : "transparent" }]}>
+            {termsAccepted && <Ionicons name="checkmark" size={16} color={colors.primaryForeground} />}
+          </View>
           <Text style={[styles.termsText, { color: colors.mutedForeground }]}>
-            By signing in, you agree to the RAIMZEAL{" "}
+            I accept the RAIMZEAL{" "}
             <Text
               style={{ color: colors.primary }}
               onPress={() => router.push("/terms" as never)}
             >
-              Terms
+              Terms of Use and Community Guidelines
             </Text>
-            . RAIMZEAL has no tolerance for objectionable community content or
+            . RAIMZEAL has zero tolerance for objectionable community content or
             abusive users, and content may be filtered, reported, blocked,
             removed, and escalated to moderation.
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
@@ -507,6 +526,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: 8,
     alignItems: "flex-start",
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1.5,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   termsText: {
     fontSize: 12,
