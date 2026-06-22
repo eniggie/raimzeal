@@ -158,6 +158,8 @@ export default function ProfileScreen() {
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
     cameraRollStatus,
+    cameraStatus,
+    refreshCameraStatus,
     hasSeenRationale,
     markRationaleDismissed,
     resetRationale,
@@ -165,7 +167,7 @@ export default function ProfileScreen() {
     updateCameraRollStatus,
   } = usePermissions();
 
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [, requestCameraPermission] = useCameraPermissions();
 
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
@@ -671,12 +673,13 @@ export default function ProfileScreen() {
   }
 
   async function handleCameraAccessPress() {
-    if (cameraPermission?.granted) {
+    if (cameraStatus?.granted) {
       Alert.alert("Camera Access", "Camera access is active. RAIMZEAL can use your camera to scan food barcodes.");
-    } else if (cameraPermission?.canAskAgain === false) {
+    } else if (cameraStatus?.canAskAgain === false) {
       Linking.openSettings();
     } else {
       await requestCameraPermission();
+      await refreshCameraStatus();
     }
   }
 
@@ -1897,26 +1900,26 @@ export default function ProfileScreen() {
               icon="camera-outline"
               label="Camera Access"
               sublabel={
-                cameraPermission?.granted
+                cameraStatus?.granted
                   ? "Camera is active — used for barcode scanning"
-                  : cameraPermission?.canAskAgain === false
+                  : cameraStatus?.canAskAgain === false
                   ? "Permanently blocked — tap to open Settings"
                   : "Tap to enable the camera for barcode scanning"
               }
               sublabelColor={
-                cameraPermission?.granted
+                cameraStatus?.granted
                   ? colors.mutedForeground
                   : colors.warning
               }
               value={
-                cameraPermission?.granted
+                cameraStatus?.granted
                   ? "Active"
-                  : cameraPermission?.canAskAgain === false
+                  : cameraStatus?.canAskAgain === false
                   ? "Open Settings"
                   : "Not granted"
               }
               color={
-                cameraPermission?.granted
+                cameraStatus?.granted
                   ? colors.secondary
                   : colors.warning
               }

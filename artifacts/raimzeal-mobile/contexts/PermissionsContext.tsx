@@ -2,15 +2,34 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import * as MediaLibrary from "expo-media-library";
+import { useCameraPermissions } from "expo-camera";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
 
 export type CameraRollPermissionStatus = "granted" | "denied" | "undetermined" | "restricted";
 
+/** Minimal shape returned by getCameraPermissionsAsync that consumers care about. */
+export interface CameraPermissionStatus {
+  granted: boolean;
+  canAskAgain: boolean;
+}
+
 const RATIONALE_DISMISSED_KEY = "camera_roll_rationale_dismissed";
 
 interface PermissionsContextType {
   cameraRollStatus: CameraRollPermissionStatus | null;
+  /**
+   * Camera (barcode scanner) permission status, re-checked on every foreground
+   * resume so the Camera Access row stays accurate after the user visits Settings.
+   * `null` while the initial check is in flight.
+   */
+  cameraStatus: CameraPermissionStatus | null;
+  /**
+   * Re-queries the OS camera permission and updates `cameraStatus`.
+   * Call this after triggering a permission request so the row reflects the
+   * new status immediately (without waiting for the next foreground resume).
+   */
+  refreshCameraStatus: () => Promise<void>;
   /**
    * True once both the OS permission status and the AsyncStorage dismissal
    * flag have finished loading. Consumers should wait for this before
@@ -75,6 +94,27 @@ export function PermissionsProvider({ children, initialRationaleDismissed = fals
   const cameraRollStatusRef = useRef<CameraRollPermissionStatus | null>(null);
   cameraRollStatusRef.current = cameraRollStatus;
 
+  // useCameraPermissions returns [permission, requestPermission, getPermission].
+  // getPermission() re-queries the OS without showing a dialog — used in the
+  // AppState listener below to refresh status on every foreground resume.
+  const [cameraPermRaw, , getCameraPermission] = useCameraPermissions();
+
+  // Kept in a ref so the AppState listener (registered once, in useEffect(,[]))
+  // can always call the latest version without stale-closure issues.
+  const getCameraPermRef = useRef(getCameraPermission);
+  useEffect(() => { getCameraPermRef.current = getCameraPermission; }, [getCameraPermission]);
+
+  // Derive cameraStatus from the hook's reactive state — no extra useState needed.
+  const cameraStatus: CameraPermissionStatus | null = cameraPermRaw != null
+    ? { granted: cameraPermRaw.granted, canAskAgain: cameraPermRaw.canAskAgain }
+    : null;
+
+  // Calling getCameraPermission() causes the hook to re-query the OS and update
+  // cameraPermRaw, which cascades into a fresh cameraStatus on the next render.
+  const refreshCameraStatus = useCallback(async () => {
+    await getCameraPermRef.current();
+  }, []);
+
   useEffect(() => {
     /**
      * Bootstrap order (all must resolve before permissionsBootstrapped = true):
@@ -133,18 +173,22 @@ export function PermissionsProvider({ children, initialRationaleDismissed = fals
 
     bootstrap();
 
-    // Re-check whenever the app returns to the foreground so a stale "denied"
-    // cache is refreshed if the user enabled access in Settings and came back.
+    // Re-check whenever the app returns to the foreground so stale "denied"
+    // caches are refreshed if the user enabled access in Settings and came back.
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === "active") {
+        // Re-check camera roll permission (state managed here).
         checkPermission().then((status) => {
           setCameraRollStatus(status);
-          // Clear the stale flag if permission was resolved while away
+          // Clear the stale rationale flag if camera roll permission was resolved while away
           if (status !== "undetermined") {
             AsyncStorage.removeItem(RATIONALE_DISMISSED_KEY).catch(() => {});
             setHasSeenRationale(false);
           }
         });
+        // Re-check camera (scanner) permission — the hook updates cameraPermRaw
+        // which cascades into a fresh cameraStatus on the next render.
+        getCameraPermRef.current().catch(() => {});
       }
       appState.current = nextState;
     });
@@ -253,6 +297,8 @@ export function PermissionsProvider({ children, initialRationaleDismissed = fals
     <PermissionsContext.Provider
       value={{
         cameraRollStatus,
+        cameraStatus,
+        refreshCameraStatus,
         permissionsBootstrapped,
         hasSeenRationale,
         markRationaleDismissed,
