@@ -29,6 +29,8 @@ function newDeck(title: string) {
   return prs;
 }
 
+type PptxDeck = ReturnType<typeof newDeck>;
+
 function addTopBar(slide: any) {
   slide.addShape("rect", {
     x: 0, y: 0, w: "100%", h: 0.05,
@@ -53,7 +55,7 @@ function addFooter(slide: any, label: string, pageNum: string) {
   });
 }
 
-function titleSlide(prs: pptxgen, docTitle: string, subtitle: string) {
+function titleSlide(prs: PptxDeck, docTitle: string, subtitle: string) {
   const slide = prs.addSlide();
   // Gradient background
   slide.background = { color: BRAND.bg };
@@ -86,7 +88,7 @@ function titleSlide(prs: pptxgen, docTitle: string, subtitle: string) {
   });
 }
 
-function sectionTitle(prs: pptxgen, num: string, heading: string, total: string) {
+function sectionTitle(prs: PptxDeck, num: string, heading: string, total: string) {
   const slide = prs.addSlide();
   slide.background = { color: BRAND.bg };
   addTopBar(slide);
@@ -111,7 +113,7 @@ function sectionTitle(prs: pptxgen, num: string, heading: string, total: string)
 }
 
 function contentSlide(
-  prs: pptxgen,
+  prs: PptxDeck,
   heading: string,
   bullets: { text: string; sub?: string }[],
   footer: string
@@ -155,7 +157,7 @@ function contentSlide(
 }
 
 function twoColSlide(
-  prs: pptxgen,
+  prs: PptxDeck,
   heading: string,
   left: { title: string; body: string }[],
   right: { title: string; body: string }[],
@@ -195,7 +197,7 @@ function twoColSlide(
 }
 
 function tableSlide(
-  prs: pptxgen,
+  prs: PptxDeck,
   heading: string,
   headers: string[],
   rows: string[][],
@@ -229,7 +231,7 @@ function tableSlide(
   addFooter(slide, "RAIMZEAL Documentation Suite – ECONTEUR LLC", footer);
 }
 
-function closingSlide(prs: pptxgen, guideTitle: string) {
+function closingSlide(prs: PptxDeck, guideTitle: string) {
   const slide = prs.addSlide();
   slide.background = { color: BRAND.bg };
   slide.addShape("rect", {

@@ -51,7 +51,7 @@ async function resolvePermission(opts?: PermissionOptions): Promise<boolean> {
     // "undetermined" means the user dismissed the pre-prompt — skip silently.
     if (resolved === "undetermined") return false;
   } else {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
+    const { status } = await MediaLibrary.requestPermissionsAsync(true, []);
     resolved = status as CameraRollPermissionStatus;
   }
   opts?.onStatusChange?.(resolved);

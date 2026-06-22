@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { cleanChunk } from "../ovia.js";
+import { cleanChunk } from "../../lib/cleanChunk.js";
 
 describe("cleanChunk", () => {
   it("strips heading markers at start of line", () => {

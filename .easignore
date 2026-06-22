@@ -1,0 +1,36 @@
+# Dependencies and generated output
+node_modules/
+**/node_modules/
+**/dist/
+**/static-build/
+**/.expo/
+**/.cache/
+**/.local/
+generated/
+
+# Mobile builds do not need web, presentation, video, or server artifacts
+attached_assets/
+screenshots/
+.agents/
+.migration-backup/
+artifacts/api-server/
+artifacts/mockup-sandbox/
+artifacts/raimzeal/
+artifacts/raimzeal-docs/
+artifacts/raimzeal-pitch/
+artifacts/raimzeal-video/
+scripts/
+
+# Native and local-only credentials are generated or supplied by EAS
+artifacts/raimzeal-mobile/android/
+artifacts/raimzeal-mobile/ios/
+artifacts/raimzeal-mobile/google-play-service-account.json
+**/.env
+**/.env.*
+
+# Local noise
+.git
+.DS_Store
+*.log
+*.zip
+*.tgz
