@@ -179,6 +179,8 @@ export interface AppState {
     longPressAndRun?: boolean;
     /** Auto-generate countdown duration ("off" | "2" | "3" | "5") — synced cross-device. */
     autoTriggerDelay?: string;
+    /** Whether the user has consciously chosen a countdown delay — synced cross-device. */
+    autoTriggerDelayCustomised?: boolean;
     /** Background photo dim level for the share card (0–1) — synced cross-device. */
     backgroundPhotoDimLevel?: number;
     /** Background photo blur radius for the share card — synced cross-device. */
@@ -476,6 +478,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     ...(remoteSettings.reorderHintFrequency != null ? { reorderHintFrequency: remoteSettings.reorderHintFrequency } : {}),
                     ...(remoteSettings.longPressAndRun != null ? { longPressAndRun: remoteSettings.longPressAndRun } : {}),
                     ...(remoteSettings.autoTriggerDelay != null ? { autoTriggerDelay: remoteSettings.autoTriggerDelay } : {}),
+                    ...(remoteSettings.autoTriggerDelayCustomised != null ? { autoTriggerDelayCustomised: remoteSettings.autoTriggerDelayCustomised } : {}),
                     ...(remoteSettings.backgroundPhotoDimLevel != null ? { backgroundPhotoDimLevel: remoteSettings.backgroundPhotoDimLevel } : {}),
                     ...(remoteSettings.backgroundPhotoBlurRadius != null ? { backgroundPhotoBlurRadius: remoteSettings.backgroundPhotoBlurRadius } : {}),
                     ...(remoteSettings.defaultCardAction != null ? { defaultCardAction: remoteSettings.defaultCardAction } : {}),
@@ -1171,6 +1174,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       if ("reorderHintFrequency" in updates) appSettings.reorderHintFrequency = updates.reorderHintFrequency;
       if ("longPressAndRun" in updates) appSettings.longPressAndRun = updates.longPressAndRun;
       if ("autoTriggerDelay" in updates) appSettings.autoTriggerDelay = updates.autoTriggerDelay;
+      if ("autoTriggerDelayCustomised" in updates) appSettings.autoTriggerDelayCustomised = updates.autoTriggerDelayCustomised;
       if ("backgroundPhotoDimLevel" in updates) appSettings.backgroundPhotoDimLevel = updates.backgroundPhotoDimLevel;
       if ("backgroundPhotoBlurRadius" in updates) appSettings.backgroundPhotoBlurRadius = updates.backgroundPhotoBlurRadius;
       if ("defaultCardAction" in updates) appSettings.defaultCardAction = updates.defaultCardAction;

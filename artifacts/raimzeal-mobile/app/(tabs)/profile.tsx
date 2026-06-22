@@ -401,6 +401,20 @@ export default function ProfileScreen() {
       .catch(() => {});
   }, [settings.autoTriggerDelay]);
 
+  // Reconcile STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED with the cloud-backed setting.
+  // When Supabase hydration delivers true (e.g. on a fresh device / reinstall after
+  // the user consciously picked a delay on another device), set the flag locally so
+  // the countdown banner correctly shows "Xs · Change" from the very first open.
+  useEffect(() => {
+    if (!settings.autoTriggerDelayCustomised) return;
+    setHasCustomisedCountdown(true);
+    import("@react-native-async-storage/async-storage")
+      .then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, "1").catch(() => {});
+      })
+      .catch(() => {});
+  }, [settings.autoTriggerDelayCustomised]);
+
   // Reconcile STORAGE_KEY_ACTION with the cloud-backed setting.
   // When Supabase hydration delivers a value (e.g. on a fresh device / reinstall),
   // update local state so the UI reflects the synced preference immediately and
@@ -588,6 +602,10 @@ export default function ProfileScreen() {
   async function handleSetAutoTriggerDelay(value: string) {
     setAutoTriggerDelay(value);
     updateSettings({ autoTriggerDelay: value });
+    if (!hasCustomisedCountdown) {
+      setHasCustomisedCountdown(true);
+      updateSettings({ autoTriggerDelayCustomised: true });
+    }
     try {
       const AsyncStorage = (
         await import("@react-native-async-storage/async-storage")
@@ -601,6 +619,7 @@ export default function ProfileScreen() {
   function handlePickAutoTriggerDelay() {
     if (!hasCustomisedCountdown) {
       setHasCustomisedCountdown(true);
+      updateSettings({ autoTriggerDelayCustomised: true });
       import("@react-native-async-storage/async-storage")
         .then(({ default: AsyncStorage }) =>
           AsyncStorage.setItem(STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, "1")

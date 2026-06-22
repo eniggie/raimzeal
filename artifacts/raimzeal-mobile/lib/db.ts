@@ -668,6 +668,12 @@ export interface UserPreferences {
      */
     autoTriggerDelay?: string;
     /**
+     * Whether the user has ever consciously picked a countdown delay.
+     * Controls whether the banner shows "Xs · Change" vs just "Change".
+     * Synced cross-device so the label survives reinstalls.
+     */
+    autoTriggerDelayCustomised?: boolean;
+    /**
      * Default card action ("share" | "save" | "copy" | "both").
      * Synced cross-device so the preference survives reinstalls.
      */
