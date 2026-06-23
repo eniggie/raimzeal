@@ -1676,6 +1676,7 @@ export default function NutritionScreen() {
   const historyChipHighlightAnims = useRef(
     Array.from({ length: HISTORY_CHIP_COUNT }, () => new Animated.Value(0))
   ).current;
+  const chipPulseAnimsRef = useRef<Animated.CompositeAnimation[]>([]);
   const chipScaleAnims = useRef<Record<string, Animated.Value>>({});
   const chipGlowAnims = useRef<Record<string, Animated.Value>>({});
   const presetChipScaleAnims = useRef<Record<string, Animated.Value>>({});
@@ -2123,6 +2124,12 @@ export default function NutritionScreen() {
     dismissHint(PRESET_REORDER_HINT_KEY);
   }
 
+  function stopChipPulse() {
+    chipPulseAnimsRef.current.forEach((a) => a.stop());
+    chipPulseAnimsRef.current = [];
+    historyChipHighlightAnims.forEach((a) => a.setValue(0));
+  }
+
   function handleHistoryFilterHintPress() {
     flatListRef.current?.scrollToOffset({ offset: historyFilterBarYRef.current, animated: true });
     historyFilterScrollRef.current?.scrollTo({ x: 0, animated: true });
@@ -2132,16 +2139,40 @@ export default function NutritionScreen() {
     const HINT_FADE_DURATION = 300;
     const totalAnimMs = (HISTORY_CHIP_COUNT - 1) * STAGGER_MS + PER_CHIP_DURATION;
     const dismissDelayMs = SCROLL_SETTLE_MS + totalAnimMs - HINT_FADE_DURATION;
+
+    // Determine which chip indices are active at trigger time so only they pulse.
+    const dateRanges: string[] = ["all", "7d", "30d"];
+    const mealFiltersArr: string[] = ["all", ...MEALS];
+    const activeDateIdx = dateRanges.indexOf(historyDateRange);
+    const activeMealRaw = mealFiltersArr.indexOf(historyMealFilter);
+    const activeMealIdx = activeMealRaw >= 0 ? 3 + activeMealRaw : -1;
+    const activeIdxSet = new Set<number>();
+    if (activeDateIdx >= 0) activeIdxSet.add(activeDateIdx);
+    if (activeMealIdx >= 3) activeIdxSet.add(activeMealIdx);
+
+    stopChipPulse();
+
     setTimeout(() => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       historyChipHighlightAnims.forEach((anim, i) => {
         anim.setValue(0);
+        const isActive = activeIdxSet.has(i);
         Animated.sequence([
           Animated.delay(i * STAGGER_MS),
           Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: false }),
           Animated.delay(300),
-          Animated.timing(anim, { toValue: 0, duration: 400, useNativeDriver: false }),
-        ]).start();
+          Animated.timing(anim, { toValue: isActive ? 0.6 : 0, duration: 400, useNativeDriver: false }),
+        ]).start(({ finished }) => {
+          if (!finished || !isActive) return;
+          const pulse = Animated.loop(
+            Animated.sequence([
+              Animated.timing(anim, { toValue: 1, duration: 600, useNativeDriver: false }),
+              Animated.timing(anim, { toValue: 0.6, duration: 900, useNativeDriver: false }),
+            ])
+          );
+          chipPulseAnimsRef.current.push(pulse);
+          pulse.start();
+        });
       });
     }, SCROLL_SETTLE_MS);
     setTimeout(dismissHistoryFilterHint, dismissDelayMs);
@@ -6175,6 +6206,7 @@ export default function NutritionScreen() {
                       const chip = (
                         <TouchableOpacity
                           onPress={() => {
+                            stopChipPulse();
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                             setHistoryDateRange(range);
@@ -6297,6 +6329,7 @@ export default function NutritionScreen() {
                         >
                           <TouchableOpacity
                             onPress={() => {
+                              stopChipPulse();
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                               setHistoryMealFilter(meal as HistoryMealFilter);
