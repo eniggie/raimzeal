@@ -7177,6 +7177,10 @@ export default function NutritionScreen() {
               ]}
             />
 
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Nutrition · per serving
+            </Text>
+
             <View style={styles.macroInputRow}>
               <MacroInput
                 label="Calories"
