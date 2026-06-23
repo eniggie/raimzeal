@@ -1545,7 +1545,6 @@ export default function NutritionScreen() {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [per100gItems, setPer100gItems] = useState<Set<string>>(new Set());
   const [quickPer100gMap, setQuickPer100gMap] = useState<Record<string, boolean>>({});
-  const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
   const [recentFoodsExpanded, setRecentFoodsExpanded] = useState(false);
   React.useEffect(() => {
     AsyncStorage.getItem(RECENT_FOODS_EXPANDED_KEY).then((raw) => {
@@ -2092,13 +2091,11 @@ export default function NutritionScreen() {
       try {
         const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
         const result: Record<string, boolean> = {};
-        for (const food of quickFoods) {
-          if (!food.nutrients100g || !food.servingLabel) continue;
-          const entry = map[food.name];
+        for (const [name, entry] of Object.entries(map)) {
           if (entry !== null && typeof entry === "object") {
-            result[food.name] = entry.per100g;
+            result[name] = entry.per100g;
           } else if (typeof entry === "boolean") {
-            result[food.name] = entry;
+            result[name] = entry;
           }
         }
         setQuickPer100gMap(result);
@@ -2376,24 +2373,6 @@ export default function NutritionScreen() {
       })
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (recentFoods.length === 0) return;
-    AsyncStorage.getItem(LAST_USED_VIEW_KEY)
-      .then((raw) => {
-        if (!raw) return;
-        let map: Record<string, boolean> = {};
-        try { map = JSON.parse(raw); } catch { return; }
-        const initial = new Set<string>();
-        for (const food of recentFoods) {
-          if (food.nutrients100g && food.servingLabel && map[food.name] === true) {
-            initial.add(food.name);
-          }
-        }
-        setRecentFoodsPer100g(initial);
-      })
-      .catch(() => {});
-  }, [recentFoods]);
 
   useEffect(() => {
     reloadQuickPer100gMap();
@@ -5895,22 +5874,57 @@ export default function NutritionScreen() {
                               <View style={[styles.foodIcon, { backgroundColor: "#f59f0a20" }]}>
                                 <Ionicons name="star" size={18} color="#f59f0a" />
                               </View>
-                              <View style={styles.foodInfo}>
-                                <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
-                                  {food.name}
-                                </Text>
-                                <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
-                                  P {food.protein}g · C {food.carbs}g · F {food.fat}g
-                                </Text>
-                                <View style={[styles.servingPill, { backgroundColor: colors.primary + "18" }]}>
-                                  <Text style={[styles.servingPillText, { color: colors.primary }]}>
-                                    {food.servingLabel ? `per ${food.servingLabel}` : "per serving"}
-                                  </Text>
-                                </View>
-                              </View>
-                              <Text style={[styles.foodCal, { color: colors.primary }]}>
-                                {food.calories}
-                              </Text>
+                              {(() => {
+                                const canToggleFav = !!(food.nutrients100g && food.servingLabel);
+                                const showingFav100g = canToggleFav && quickPer100gMap[food.name] === true;
+                                const favDisplayBase = showingFav100g ? food.nutrients100g! : food;
+                                const favPillLabel = showingFav100g
+                                  ? "per 100g"
+                                  : food.servingLabel
+                                  ? `per ${food.servingLabel}`
+                                  : "per serving";
+                                return (
+                                  <>
+                                    <View style={styles.foodInfo}>
+                                      <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
+                                        {food.name}
+                                      </Text>
+                                      <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
+                                        P {favDisplayBase.protein}g · C {favDisplayBase.carbs}g · F {favDisplayBase.fat}g
+                                      </Text>
+                                      <TouchableOpacity
+                                        activeOpacity={canToggleFav ? 0.7 : 1}
+                                        onPress={canToggleFav ? (e) => {
+                                          e.stopPropagation();
+                                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                          const newVal = !quickPer100gMap[food.name];
+                                          setQuickPer100gMap((prev) => ({ ...prev, [food.name]: newVal }));
+                                          AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                                            const storageMap: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                                            storageMap[food.name] = { per100g: newVal, grams: 0 };
+                                            AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(storageMap)));
+                                          }).catch(() => {});
+                                        } : undefined}
+                                        style={[
+                                          styles.servingPill,
+                                          { backgroundColor: colors.primary + "18" },
+                                          canToggleFav && { paddingRight: 6 },
+                                        ]}
+                                      >
+                                        <Text style={[styles.servingPillText, { color: colors.primary }]}>
+                                          {favPillLabel}
+                                        </Text>
+                                        {canToggleFav && (
+                                          <Ionicons name="swap-horizontal-outline" size={11} color={colors.primary} style={{ marginLeft: 3 }} />
+                                        )}
+                                      </TouchableOpacity>
+                                    </View>
+                                    <Text style={[styles.foodCal, { color: colors.primary }]}>
+                                      {favDisplayBase.calories}
+                                    </Text>
+                                  </>
+                                );
+                              })()}
                               <TouchableOpacity
                                 onPress={() => handleToggleFavorite(food)}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -5979,7 +5993,7 @@ export default function NutritionScreen() {
                     )}
                     {(recentFoodsExpanded ? recentFoods : recentFoods.slice(0, 5)).map((food, idx) => {
                       const canToggleRecent = !!(food.nutrients100g && food.servingLabel);
-                      const showingRecent100g = canToggleRecent && recentFoodsPer100g.has(food.name);
+                      const showingRecent100g = canToggleRecent && quickPer100gMap[food.name] === true;
                       const displayRecentCalories = showingRecent100g ? food.nutrients100g!.calories : food.calories;
                       const displayRecentProtein = showingRecent100g ? food.nutrients100g!.protein : food.protein;
                       const displayRecentCarbs = showingRecent100g ? food.nutrients100g!.carbs : food.carbs;
@@ -6054,12 +6068,13 @@ export default function NutritionScreen() {
                             onPress={canToggleRecent ? (e) => {
                               e.stopPropagation();
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setRecentFoodsPer100g((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(food.name)) next.delete(food.name);
-                                else next.add(food.name);
-                                return next;
-                              });
+                              const newVal = !quickPer100gMap[food.name];
+                              setQuickPer100gMap((prev) => ({ ...prev, [food.name]: newVal }));
+                              AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
+                                const storageMap: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+                                storageMap[food.name] = { per100g: newVal, grams: 0 };
+                                AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(storageMap)));
+                              }).catch(() => {});
                             } : undefined}
                             style={[
                               styles.servingPill,
