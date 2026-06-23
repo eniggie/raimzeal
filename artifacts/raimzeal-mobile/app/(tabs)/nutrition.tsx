@@ -8162,6 +8162,7 @@ export default function NutritionScreen() {
               const item = previewSheetFood;
               const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack", servingLabel: item.servingLabel };
               const starred = isFavorite(item.name);
+              const isInRecents = recentFoods.some((f) => f.name === item.name);
               const canToggleDefault = !!(item.nutrients100g);
               const showingPer100g = defaultPer100g && canToggleDefault;
               const displayVals = showingPer100g ? item.nutrients100g! : item;
@@ -8316,6 +8317,15 @@ export default function NutritionScreen() {
                                 },
                               },
                             ] : []),
+                            ...(isInRecents ? [{
+                              text: "Remove from Recents",
+                              style: "destructive" as const,
+                              onPress: () => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                setPreviewSheetFood(null);
+                                handleRemoveFromRecents(item.name);
+                              },
+                            }] : []),
                             {
                               text: "Reset Defaults",
                               style: "destructive" as const,
