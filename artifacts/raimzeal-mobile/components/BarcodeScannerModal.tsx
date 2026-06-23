@@ -402,6 +402,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [notFoundBannerVisible, setNotFoundBannerVisible] = useState(false);
   const notFoundOpacity = useRef(new Animated.Value(0)).current;
+  const resultCardOpacity = useRef(new Animated.Value(0)).current;
   const [searchQuery, setSearchQuery] = useState("");
   const [hasNewScans, setHasNewScans] = useState(false);
   const recentTabPulse = useRef(new Animated.Value(1)).current;
@@ -446,6 +447,26 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       if (finished) setNotFoundBannerVisible(false);
     });
   }, [notFoundOpacity]);
+
+  const showResultCard = useCallback(() => {
+    resultCardOpacity.stopAnimation();
+    Animated.timing(resultCardOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [resultCardOpacity]);
+
+  const hideResultCard = useCallback((onDone?: () => void) => {
+    resultCardOpacity.stopAnimation();
+    Animated.timing(resultCardOpacity, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) onDone?.();
+    });
+  }, [resultCardOpacity]);
 
   const loadRecentScans = useCallback(async (markViewed = false) => {
     setRecentLoading(true);
@@ -494,6 +515,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setActiveTab("scan");
       notFoundOpacity.setValue(0);
       setNotFoundBannerVisible(false);
+      resultCardOpacity.setValue(0);
       setSearchQuery("");
       setActiveFilter(null);
       setHasNewScans(false);
@@ -533,6 +555,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       if (result) {
         if (result.fromCache) {
           setCachedResult({ food: result.food, barcode: data, cachedAt: result.cachedAt ?? Date.now(), fromCorrection: result.fromCorrection });
+          showResultCard();
           setHasNewScans(true);
           setNewScanTrigger((c) => c + 1);
           loadRecentScans();
@@ -548,7 +571,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       // Lock is intentionally NOT released here — the user must tap
       // "Scan Again" / switch tabs to re-arm the scanner.
     },
-    [scanLock, onFoodFound, onClose, loadRecentScans, showNotFoundBanner, hideNotFoundBanner]
+    [scanLock, onFoodFound, onClose, loadRecentScans, showNotFoundBanner, hideNotFoundBanner, showResultCard]
   );
 
   async function handleRefresh() {
@@ -666,10 +689,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     setAddedSuccess(false);
     scanLock.current = false;
     setError(null);
-    setCachedResult(null);
     setRefreshFailed(false);
     setScanning(true);
     setActiveTab("scan");
+    hideResultCard(() => setCachedResult(null));
   }
 
   function handleClose() {
@@ -1024,7 +1047,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                       </View>
                     )}
                     {cachedResult && (
-                      <View style={styles.resultCard}>
+                      <Animated.View style={[styles.resultCard, { opacity: resultCardOpacity }]}>
                         <View style={styles.resultHeader}>
                           <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
                           <Text style={styles.resultName} numberOfLines={1}>
@@ -1160,7 +1183,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         <TouchableOpacity onPress={handleRetry} style={styles.scanAgainLink}>
                           <Text style={styles.scanAgainText}>Scan a different product</Text>
                         </TouchableOpacity>
-                      </View>
+                      </Animated.View>
                     )}
                   </View>
                 </>
