@@ -4952,7 +4952,6 @@ export default function NutritionScreen() {
                       <TouchableOpacity
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          setRecentScanCount(0);
                           if (filterHintTimerRef.current) {
                             clearTimeout(filterHintTimerRef.current);
                             filterHintTimerRef.current = null;
