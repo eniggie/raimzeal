@@ -885,6 +885,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       prev && prev.barcode === editTarget.barcode ? { ...prev, food: updated, fromCorrection: true } : prev
     );
     setEditTarget(null);
+    setServingMultiplier(1);
   }
 
   async function handleSaveAndAdd(updated: ScannedFood) {
@@ -1167,7 +1168,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                           <TouchableOpacity
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setEditTarget({ barcode: cachedResult.barcode, food: cachedResult.food, scannedAt: cachedResult.cachedAt, scanCount: 0 });
+                              const canToggle = !!(cachedResult.food.nutrients100g && cachedResult.food.servingLabel);
+                              const baseFood = (canToggle && resultPer100g)
+                                ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
+                                : cachedResult.food;
+                              setEditTarget({ barcode: cachedResult.barcode, food: scaledFood(baseFood, servingMultiplier), scannedAt: cachedResult.cachedAt, scanCount: 0 });
                             }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             style={styles.resultEditBtn}
