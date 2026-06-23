@@ -4641,6 +4641,22 @@ export default function NutritionScreen() {
       })
       .catch(() => {});
 
+    if (!isGramsMode && !selectedFoodNutrients100g && !selectedFoodServingLabel) {
+      AsyncStorage.getItem(MANUAL_MACROS_KEY)
+        .then((raw) => {
+          const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
+            raw ? JSON.parse(raw) : {};
+          map[name] = {
+            calories: String(Math.round(base.calories)),
+            protein: String(Math.round(base.protein * 10) / 10),
+            carbs: String(Math.round(base.carbs * 10) / 10),
+            fat: String(Math.round(base.fat * 10) / 10),
+          };
+          return AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify(map));
+        })
+        .catch(() => {});
+    }
+
     if (!isGramsMode) {
       lastUsedServingsMapRef.current[name] = servings;
       AsyncStorage.getItem(LAST_USED_SERVING_KEY)
