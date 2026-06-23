@@ -398,6 +398,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [error, setError] = useState<string | null>(null);
   const [cachedResult, setCachedResult] = useState<{ food: ScannedFood; barcode: string; cachedAt: number; fromCorrection?: boolean } | null>(null);
   const [servingMultiplier, setServingMultiplier] = useState(1);
+  const [editingServing, setEditingServing] = useState(false);
+  const [servingInputText, setServingInputText] = useState("1");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>("scan");
@@ -759,6 +761,15 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       return next;
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function confirmServingInput() {
+    setEditingServing(false);
+    const parsed = parseFloat(servingInputText);
+    if (!isNaN(parsed) && parsed > 0 && parsed <= 99) {
+      const rounded = Math.round(parsed * 100) / 100;
+      setServingMultiplier(rounded);
+    }
   }
 
   function handleRetry() {
@@ -1206,9 +1217,31 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                             >
                               <Ionicons name="remove" size={16} color="#fff" />
                             </TouchableOpacity>
-                            <Text style={styles.stepperValue}>
-                              {servingMultiplier}×
-                            </Text>
+                            {editingServing ? (
+                              <TextInput
+                                style={styles.stepperValueInput}
+                                value={servingInputText}
+                                onChangeText={setServingInputText}
+                                keyboardType="decimal-pad"
+                                autoFocus
+                                selectTextOnFocus
+                                returnKeyType="done"
+                                onSubmitEditing={confirmServingInput}
+                                onBlur={confirmServingInput}
+                              />
+                            ) : (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setServingInputText(String(servingMultiplier));
+                                  setEditingServing(true);
+                                }}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <Text style={styles.stepperValue}>
+                                  {servingMultiplier}×
+                                </Text>
+                              </TouchableOpacity>
+                            )}
                             <TouchableOpacity
                               onPress={() => handleStepMultiplier(0.5)}
                               style={[styles.stepperBtn, servingMultiplier >= 10 && styles.stepperBtnDisabled]}
@@ -1907,6 +1940,15 @@ const styles = StyleSheet.create({
     minWidth: 36,
     textAlign: "center",
     paddingVertical: 6,
+  },
+  stepperValueInput: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    minWidth: 56,
+    textAlign: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   resultActions: {
     flexDirection: "row",
