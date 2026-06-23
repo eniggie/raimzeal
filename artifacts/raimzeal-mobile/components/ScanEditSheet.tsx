@@ -31,6 +31,14 @@ function parseNum(raw: string, allowDecimal = true): number {
   return isNaN(n) ? 0 : n;
 }
 
+function computeDefaultQty(food: ScannedFood): string {
+  if (food.servingLabel) {
+    const m = food.servingLabel.match(/^(\d+(?:\.\d+)?)\s*(?:g|ml)$/i);
+    if (m) return m[1];
+  }
+  return "100";
+}
+
 export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -40,6 +48,10 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
+
+  const [quantity, setQuantity] = useState("100");
+  const [canScale, setCanScale] = useState(false);
+  const basis100gRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
 
   const [loggedToast, setLoggedToast] = useState(false);
   const [toastLabel, setToastLabel] = useState("");
@@ -53,10 +65,40 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
       setProtein(String(food.protein));
       setCarbs(String(food.carbs));
       setFat(String(food.fat));
+
+      if (food.nutrients100g) {
+        basis100gRef.current = food.nutrients100g;
+        setCanScale(true);
+      } else if (!food.servingLabel) {
+        basis100gRef.current = { calories: food.calories, protein: food.protein, carbs: food.carbs, fat: food.fat };
+        setCanScale(true);
+      } else {
+        basis100gRef.current = null;
+        setCanScale(false);
+      }
+      setQuantity(computeDefaultQty(food));
     }
   }, [food, visible]);
 
+  function applyQuantity(rawQty: string) {
+    const basis = basis100gRef.current;
+    if (!basis) return;
+    const qty = parseFloat(rawQty);
+    if (!qty || qty <= 0) return;
+    const f = qty / 100;
+    setCalories(String(Math.round(basis.calories * f)));
+    setProtein(String(Math.round(basis.protein * f * 10) / 10));
+    setCarbs(String(Math.round(basis.carbs * f * 10) / 10));
+    setFat(String(Math.round(basis.fat * f * 10) / 10));
+  }
+
   function buildUpdated(): ScannedFood {
+    const qty = parseFloat(quantity) || 0;
+    const u = food?.unit ?? "g";
+    const derivedLabel =
+      canScale && qty > 0
+        ? `${qty % 1 === 0 ? String(Math.round(qty)) : String(qty)}${u}`
+        : food?.servingLabel;
     return {
       ...(food ?? {}),
       name: name.trim(),
@@ -64,6 +106,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
       protein: parseNum(protein),
       carbs: parseNum(carbs),
       fat: parseNum(fat),
+      servingLabel: derivedLabel,
     };
   }
 
@@ -100,6 +143,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
       setProtein(String(food.protein));
       setCarbs(String(food.carbs));
       setFat(String(food.fat));
+      setQuantity(computeDefaultQty(food));
     }
   }
 
@@ -183,8 +227,46 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
             />
 
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-              {`Nutrition · ${food?.servingLabel ? `per ${food.servingLabel}` : "per 100g"}`}
+              {(() => {
+                if (canScale) {
+                  const qty = parseFloat(quantity) || 0;
+                  const u = food?.unit ?? "g";
+                  return qty > 0
+                    ? `Nutrition · per ${qty % 1 === 0 ? String(Math.round(qty)) : String(qty)}${u}`
+                    : "Nutrition · per 100g";
+                }
+                return `Nutrition · ${food?.servingLabel ? `per ${food.servingLabel}` : "per 100g"}`;
+              })()}
             </Text>
+
+            {canScale && (
+              <View style={[styles.macroRow, { marginBottom: 2 }]}>
+                <View style={styles.macroField}>
+                  <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                    Amount ({food?.unit ?? "g"})
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.foreground,
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    value={quantity}
+                    onChangeText={(v) => {
+                      setQuantity(v);
+                      applyQuantity(v);
+                    }}
+                    placeholder="100"
+                    placeholderTextColor={colors.mutedForeground}
+                    keyboardType="decimal-pad"
+                    returnKeyType="next"
+                  />
+                </View>
+              </View>
+            )}
 
             <View style={styles.macroRow}>
               <View style={styles.macroField}>
