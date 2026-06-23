@@ -3982,7 +3982,7 @@ export default function NutritionScreen() {
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Reset",
+          text: "Reset All",
           style: "destructive",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -4118,7 +4118,7 @@ export default function NutritionScreen() {
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Reset",
+          text: "Reset to Default",
           style: "destructive",
           onPress: () => {
             const next = { ...filterThresholds, [thresholdEditKey]: def.defaultThreshold };
