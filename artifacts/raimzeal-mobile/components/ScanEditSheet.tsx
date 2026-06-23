@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Animated,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -463,7 +464,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
             {onSaveAndAdd && (
               <TouchableOpacity
                 style={styles.doneBtn}
-                onPress={onClose}
+                onPress={() => { Keyboard.dismiss(); onClose(); }}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.doneBtnText, { color: colors.mutedForeground }]}>
