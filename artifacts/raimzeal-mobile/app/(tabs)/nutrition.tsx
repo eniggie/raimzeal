@@ -8273,13 +8273,24 @@ export default function NutritionScreen() {
                           "More Options",
                           item.name,
                           [
-                            ...(starred ? [{
-                              text: "Reorder Favorites",
-                              onPress: () => {
-                                setPreviewSheetFood(null);
-                                enterReorderMode();
+                            ...(starred ? [
+                              {
+                                text: "Reorder Favorites",
+                                onPress: () => {
+                                  setPreviewSheetFood(null);
+                                  enterReorderMode();
+                                },
                               },
-                            }] : []),
+                              {
+                                text: "Remove from Favorites",
+                                style: "destructive" as const,
+                                onPress: () => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                  setPreviewSheetFood(null);
+                                  handleToggleFavorite(favFood);
+                                },
+                              },
+                            ] : []),
                             {
                               text: "Reset Defaults",
                               style: "destructive" as const,
