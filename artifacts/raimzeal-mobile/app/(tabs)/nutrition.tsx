@@ -1629,12 +1629,19 @@ export default function NutritionScreen() {
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
   const previewMacroScale  = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
   const previewMacroOpacity = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
+  const previewMacroBorderOpacity = useRef({ protein: new Animated.Value(0), carbs: new Animated.Value(0), fat: new Animated.Value(0) }).current;
   const highlightPreviewMacro = (macro: "protein" | "carbs" | "fat") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const scale   = previewMacroScale[macro];
     const opacity = previewMacroOpacity[macro];
+    const border  = previewMacroBorderOpacity[macro];
     scale.setValue(1);
     opacity.setValue(1);
+    border.setValue(0);
+    Animated.sequence([
+      Animated.timing(border, { toValue: 1, duration: 80, useNativeDriver: true }),
+      Animated.timing(border, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start();
     Animated.sequence([
       Animated.parallel([
         Animated.spring(scale,   { toValue: 1.12, useNativeDriver: true, speed: 30, bounciness: 10 }),
@@ -8243,32 +8250,41 @@ export default function NutritionScreen() {
                   })()}
 
                   <View style={[styles.previewSheetMacroGrid, { backgroundColor: colors.muted }]}>
-                    <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.protein }], opacity: previewMacroOpacity.protein }]}>
-                      <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
-                        {displayVals.protein}g
-                      </Text>
-                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
-                        Protein
-                      </Text>
-                    </Animated.View>
+                    <View style={{ flex: 1 }}>
+                      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#3b82f6", borderRadius: 8, opacity: previewMacroBorderOpacity.protein }} />
+                      <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.protein }], opacity: previewMacroOpacity.protein }]}>
+                        <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
+                          {displayVals.protein}g
+                        </Text>
+                        <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                          Protein
+                        </Text>
+                      </Animated.View>
+                    </View>
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
-                    <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.carbs }], opacity: previewMacroOpacity.carbs }]}>
-                      <Text style={[styles.previewSheetMacroValue, { color: "#f97316" }]}>
-                        {displayVals.carbs}g
-                      </Text>
-                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
-                        Carbs
-                      </Text>
-                    </Animated.View>
+                    <View style={{ flex: 1 }}>
+                      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#f97316", borderRadius: 8, opacity: previewMacroBorderOpacity.carbs }} />
+                      <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.carbs }], opacity: previewMacroOpacity.carbs }]}>
+                        <Text style={[styles.previewSheetMacroValue, { color: "#f97316" }]}>
+                          {displayVals.carbs}g
+                        </Text>
+                        <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                          Carbs
+                        </Text>
+                      </Animated.View>
+                    </View>
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
-                    <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.fat }], opacity: previewMacroOpacity.fat }]}>
-                      <Text style={[styles.previewSheetMacroValue, { color: "#ec4899" }]}>
-                        {displayVals.fat}g
-                      </Text>
-                      <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
-                        Fat
-                      </Text>
-                    </Animated.View>
+                    <View style={{ flex: 1 }}>
+                      <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#ec4899", borderRadius: 8, opacity: previewMacroBorderOpacity.fat }} />
+                      <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.fat }], opacity: previewMacroOpacity.fat }]}>
+                        <Text style={[styles.previewSheetMacroValue, { color: "#ec4899" }]}>
+                          {displayVals.fat}g
+                        </Text>
+                        <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
+                          Fat
+                        </Text>
+                      </Animated.View>
+                    </View>
                   </View>
 
                   <View style={styles.previewSheetActions}>
