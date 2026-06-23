@@ -8528,9 +8528,16 @@ export default function NutritionScreen() {
                                   ]}
                                 />
                               )}
-                              <Text style={[styles.breakdownFoodName, { color: colors.foreground }]} numberOfLines={1}>
-                                {log.name}
-                              </Text>
+                              <View style={[styles.nutritionNameRow, { flex: 1 }]}>
+                                <Text style={[styles.breakdownFoodName, { color: colors.foreground, flex: 0, flexShrink: 1 }]} numberOfLines={1}>
+                                  {log.name}
+                                </Text>
+                                {log.amountGrams !== undefined && (
+                                  <Text style={[styles.nutritionAmountBadge, { color: colors.mutedForeground }]}>
+                                    {Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)} g
+                                  </Text>
+                                )}
+                              </View>
                               <Text style={[styles.breakdownFoodMacros, { color: colors.mutedForeground }]}>
                                 P {Math.round(log.protein)}g · C {Math.round(log.carbs)}g · F {Math.round(log.fat)}g
                               </Text>
