@@ -9,6 +9,8 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   subscriptionTier: SubscriptionTier;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
   refreshTier: () => Promise<void>;
   signUp: (email: string, password: string, metadata: Record<string, string>) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -30,15 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>('foundation');
+  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
   const fetchTier = useCallback(async (userId: string) => {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('subscription_tier')
+        .select('subscription_tier, current_period_end, cancel_at_period_end')
         .eq('id', userId)
         .single();
-      setSubscriptionTier(parseTier((data as Record<string, unknown> | null)?.['subscription_tier']));
+      const row = data as Record<string, unknown> | null;
+      setSubscriptionTier(parseTier(row?.['subscription_tier']));
+      setCurrentPeriodEnd((row?.['current_period_end'] as string | null) ?? null);
+      setCancelAtPeriodEnd(Boolean(row?.['cancel_at_period_end']));
     } catch {
       // non-fatal — stay on foundation
     }
@@ -74,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchTier(session.user.id);
       } else {
         setSubscriptionTier('foundation');
+        setCurrentPeriodEnd(null);
+        setCancelAtPeriodEnd(false);
       }
 
       // Sync profile to DB on every new sign-in (upserts name, phone, country, city from metadata)
@@ -131,6 +140,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       subscriptionTier,
+      currentPeriodEnd,
+      cancelAtPeriodEnd,
       refreshTier,
       signUp,
       signIn,

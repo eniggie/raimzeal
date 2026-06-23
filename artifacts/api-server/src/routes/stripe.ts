@@ -174,6 +174,7 @@ stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
       subscription_status: sub.status,
       subscription_tier: tier,
       current_period_end: periodEndIso,
+      cancel_at_period_end: Boolean((sub as any).cancel_at_period_end),
     }).eq("id", userId);
 
     logger.info({ userId, tier, status: sub.status }, "Subscription synced via /stripe/sync-subscription");

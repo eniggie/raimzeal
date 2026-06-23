@@ -144,6 +144,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
         subscription_status: sub.status,
         subscription_tier: tier,
         current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        cancel_at_period_end: Boolean((sub as any).cancel_at_period_end),
       }).eq("id", userId);
 
       await activateDigestForCustomer(session.customer as string);
@@ -174,6 +175,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
           subscription_status: sub.status,
           subscription_tier: tier,
           current_period_end: periodEndIso,
+          cancel_at_period_end: Boolean((sub as any).cancel_at_period_end),
         }).eq("stripe_customer_id", customerId);
 
         await activateDigestForCustomer(customerId);
@@ -184,6 +186,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
           subscription_status: sub.status,
           subscription_tier: "foundation",
           current_period_end: null,
+          cancel_at_period_end: false,
         }).eq("stripe_customer_id", customerId);
 
         await deactivateDigestForCustomer(customerId);
@@ -207,6 +210,7 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
         subscription_status: "canceled",
         subscription_tier: "foundation",
         current_period_end: null,
+        cancel_at_period_end: false,
       }).eq("stripe_customer_id", customerId);
 
       await deactivateDigestForCustomer(customerId);

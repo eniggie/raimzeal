@@ -121,7 +121,7 @@ const PAID_PLANS = [
 export function Membership() {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const { refreshTier, subscriptionTier } = useAuth();
+  const { refreshTier, subscriptionTier, currentPeriodEnd, cancelAtPeriodEnd } = useAuth();
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [notifyPlan, setNotifyPlan] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState<Record<string, boolean>>({});
@@ -132,6 +132,9 @@ export function Membership() {
   const [portalError, setPortalError] = useState('');
 
   const isPaidSubscriber = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
+  const periodEndLabel = currentPeriodEnd
+    ? new Date(currentPeriodEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -312,7 +315,7 @@ export function Membership() {
             transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
             className="mb-4 rounded-2xl glass p-5 border border-primary/20"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <Settings2 className="h-5 w-5 text-primary" />
               <p className="font-bold text-foreground">
                 Your Subscription ·{' '}
@@ -321,6 +324,16 @@ export function Membership() {
                   : 'Legacy Plan'}
               </p>
             </div>
+            {periodEndLabel && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${cancelAtPeriodEnd ? 'bg-amber-400/15 text-amber-400' : 'bg-primary/15 text-primary'}`}>
+                  {cancelAtPeriodEnd
+                    ? <><X className="h-3 w-3" />Cancels on {periodEndLabel}</>
+                    : <><CheckCircle2 className="h-3 w-3" />Renews {periodEndLabel}</>
+                  }
+                </span>
+              </div>
+            )}
             <p className="text-xs text-foreground/60 mb-3 leading-relaxed">
               Manage your billing, update your payment method, or cancel your subscription from the Stripe portal. Any changes take effect immediately.
             </p>
