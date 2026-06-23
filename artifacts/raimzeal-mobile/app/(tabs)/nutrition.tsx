@@ -1731,6 +1731,7 @@ export default function NutritionScreen() {
   const infoTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [dayBreakdownDate, setDayBreakdownDate] = useState<string | null>(null);
+  const [foodHistoryFoodName, setFoodHistoryFoodName] = useState<string | null>(null);
   const [breakdownReAddCount, setBreakdownReAddCount] = useState(0);
   const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
   const [breakdownHighlightMeal, setBreakdownHighlightMeal] = useState<string | null>(null);
@@ -5968,9 +5969,18 @@ export default function NutritionScreen() {
                             <Text style={[styles.foodName, { color: colors.foreground, flexShrink: 1 }]} numberOfLines={1}>
                               {food.name}
                             </Text>
-                            <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 0 }}>
-                              {formatRecentDate(food.lastEaten, food.loggedAtMs)}
-                            </Text>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setFoodHistoryFoodName(food.name);
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 0, textDecorationLine: "underline" }}>
+                                {formatRecentDate(food.lastEaten, food.loggedAtMs)}
+                              </Text>
+                            </TouchableOpacity>
                           </View>
                           <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                             P {displayRecentProtein}g · C {displayRecentCarbs}g · F {displayRecentFat}g
@@ -8600,6 +8610,131 @@ export default function NutritionScreen() {
 
                 <TouchableOpacity
                   onPress={() => { setDayBreakdownDate(null); setBreakdownReAddCount(0); setBreakdownHighlightMacro(null); setBreakdownHighlightMeal(null); breakdownRowFadeAnim.setValue(0); breakdownChipAnim.setValue(0); if (breakdownHighlightTimer.current) { clearTimeout(breakdownHighlightTimer.current); breakdownHighlightTimer.current = null; } setTooltipMountedMeal(null); }}
+                  activeOpacity={0.8}
+                  style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.breakdownDoneBtnText, { color: colors.primaryForeground }]}>Done</Text>
+                </TouchableOpacity>
+              </GlassCard>
+            </View>
+          </Modal>
+        );
+      })()}
+
+      {(() => {
+        const historyLogs = foodHistoryFoodName
+          ? [...mealLogs]
+              .filter((l) => l.name === foodHistoryFoodName)
+              .sort((a, b) => {
+                const ta = Number.isFinite(Number(a.id)) ? Number(a.id) : 0;
+                const tb = Number.isFinite(Number(b.id)) ? Number(b.id) : 0;
+                if (ta > 0 && tb > 0) return tb - ta;
+                return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+              })
+          : [];
+        const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const nowH = new Date();
+        const localDateStrH = `${nowH.getFullYear()}-${String(nowH.getMonth() + 1).padStart(2, "0")}-${String(nowH.getDate()).padStart(2, "0")}`;
+        const ydMs = nowH.getTime() - 86400000;
+        const ydDate = new Date(ydMs);
+        const yesterdayStrH = `${ydDate.getFullYear()}-${String(ydDate.getMonth() + 1).padStart(2, "0")}-${String(ydDate.getDate()).padStart(2, "0")}`;
+        function fmtHistoryDate(log: MealLog): string {
+          const ms = Number.isFinite(Number(log.id)) ? Number(log.id) : null;
+          const timeStr = ms
+            ? (() => {
+                const d = new Date(ms);
+                const h = d.getHours();
+                const mins = d.getMinutes().toString().padStart(2, "0");
+                const period = h >= 12 ? "PM" : "AM";
+                const h12 = h % 12 === 0 ? 12 : h % 12;
+                return ` · ${h12}:${mins} ${period}`;
+              })()
+            : "";
+          if (log.date === localDateStrH) return `Today${timeStr}`;
+          if (log.date === yesterdayStrH) return `Yesterday${timeStr}`;
+          const d = new Date(log.date + "T12:00:00");
+          return `${DAYS_SHORT[d.getDay()]}, ${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}${timeStr}`;
+        }
+        return (
+          <Modal
+            visible={foodHistoryFoodName !== null}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setFoodHistoryFoodName(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <GlassCard
+                style={[styles.modalCard, styles.breakdownSheetCard, { backgroundColor: colors.card }]}
+                variant="elevated"
+              >
+                <View style={styles.breakdownSheetHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.modalTitle, { color: colors.foreground }]} numberOfLines={1}>
+                      {foodHistoryFoodName}
+                    </Text>
+                    <Text style={[styles.breakdownSheetSubtitle, { color: colors.mutedForeground }]}>
+                      {historyLogs.length} {historyLogs.length === 1 ? "entry" : "entries"}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setFoodHistoryFoodName(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.breakdownCloseBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Ionicons name="close" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+                {historyLogs.length === 0 ? (
+                  <Text style={[styles.foodHistoryEmpty, { color: colors.mutedForeground }]}>
+                    No logs found.
+                  </Text>
+                ) : (
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    style={styles.breakdownScrollView}
+                    contentContainerStyle={styles.breakdownScrollContent}
+                  >
+                    {historyLogs.map((log, i) => {
+                      const qtyLabel = log.amountGrams !== undefined
+                        ? `${Number.isInteger(log.amountGrams) ? log.amountGrams : log.amountGrams.toFixed(1)}g`
+                        : log.servingLabel
+                        ? log.servingLabel
+                        : "1 serving";
+                      const mealColor = MEAL_COLORS[log.mealType];
+                      return (
+                        <View
+                          key={`${log.id}-${i}`}
+                          style={[
+                            styles.foodHistoryRow,
+                            { borderBottomColor: colors.border },
+                            i === historyLogs.length - 1 && { borderBottomWidth: 0 },
+                          ]}
+                        >
+                          <View style={styles.foodHistoryRowLeft}>
+                            <View style={[styles.mealDot, { backgroundColor: mealColor, marginTop: 4 }]} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.foodHistoryDate, { color: colors.foreground }]}>
+                                {fmtHistoryDate(log)}
+                              </Text>
+                              <Text style={[styles.foodHistoryMeta, { color: mealColor }]}>
+                                {log.mealType.charAt(0).toUpperCase() + log.mealType.slice(1)} · {qtyLabel}
+                              </Text>
+                              <Text style={[styles.foodHistoryMacros, { color: colors.mutedForeground }]}>
+                                P {Math.round(log.protein)}g · C {Math.round(log.carbs)}g · F {Math.round(log.fat)}g
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={[styles.foodHistoryCal, { color: colors.primary }]}>
+                            {Math.round(log.calories)} kcal
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+                <TouchableOpacity
+                  onPress={() => setFoodHistoryFoodName(null)}
                   activeOpacity={0.8}
                   style={[styles.breakdownDoneBtn, { backgroundColor: colors.primary }]}
                 >
@@ -12297,6 +12432,45 @@ const styles = StyleSheet.create({
     maxHeight: "80%",
     gap: 0,
     paddingBottom: 0,
+  },
+  foodHistoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+  },
+  foodHistoryRowLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  foodHistoryDate: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  foodHistoryMeta: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  foodHistoryMacros: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  foodHistoryCal: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    flexShrink: 0,
+  },
+  foodHistoryEmpty: {
+    textAlign: "center",
+    marginVertical: 24,
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
   },
   breakdownSheetHeader: {
     flexDirection: "row",
