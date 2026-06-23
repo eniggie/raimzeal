@@ -4734,6 +4734,10 @@ export default function NutritionScreen() {
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           setRecentScanCount(0);
+                          if (filterHintTimerRef.current) {
+                            clearTimeout(filterHintTimerRef.current);
+                            filterHintTimerRef.current = null;
+                          }
                           setShowRecentScans(true);
                         }}
                         style={[styles.recentBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
@@ -4752,6 +4756,10 @@ export default function NutritionScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        if (filterHintTimerRef.current) {
+                          clearTimeout(filterHintTimerRef.current);
+                          filterHintTimerRef.current = null;
+                        }
                         setShowScanner(true);
                       }}
                       style={[styles.scanBtn, { backgroundColor: colors.primary }]}
@@ -6967,11 +6975,13 @@ export default function NutritionScreen() {
       <BarcodeScannerModal
         visible={showScanner}
         onClose={() => {
+          extendFilterHint();
           setShowScanner(false);
           refreshRecentScanCount();
         }}
         onFoodFound={handleScannedFood}
         onManualEntry={() => {
+          extendFilterHint();
           setShowScanner(false);
           handleManualEntry();
         }}
@@ -6981,6 +6991,7 @@ export default function NutritionScreen() {
       <RecentlyScannedModal
         visible={showRecentScans}
         onClose={() => {
+          extendFilterHint();
           setShowRecentScans(false);
           refreshRecentScanCount();
         }}
