@@ -12,6 +12,12 @@
  *  3. Default state (demo data for unauthenticated users)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  SWIPE_DELETE_HINT_STORAGE_KEY,
+  HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
+  SCAN_SWIPE_HINT_KEY,
+  WORKOUT_SWIPE_DELETE_HINT_KEY,
+} from "@/lib/hints";
 import React, {
   createContext,
   useCallback,
@@ -541,6 +547,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const resetState = useCallback(() => {
     setState({ ...defaultState, isOnboarded: true }); // keep onboarded flag so health-onboarding doesn't re-fire
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+    AsyncStorage.multiRemove([
+      SWIPE_DELETE_HINT_STORAGE_KEY,
+      HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
+      SCAN_SWIPE_HINT_KEY,
+      WORKOUT_SWIPE_DELETE_HINT_KEY,
+    ]).catch(() => {});
     setDataResetCount((c) => c + 1);
   }, []);
 
