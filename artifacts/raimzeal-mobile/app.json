@@ -132,8 +132,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     },
     "extra": {
       "privacyPolicyUrl": "https://www.raimzeal.com/privacy",

@@ -164,10 +164,29 @@ export default function RootLayout() {
   const [bootPrefs, setBootPrefs] = useState<BootPreferences | null>(null);
 
   useEffect(() => {
-    loadBootPreferences().then(setBootPrefs);
+    loadBootPreferences().then(setBootPrefs).catch(() => {
+      setBootPrefs({
+        thumbnailSize: "m",
+        defaultPer100g: false,
+        macroGoals: { calories: 2000, protein: 150, carbs: 200, fat: 65 },
+        cameraRollRationaleDismissed: false,
+        cardAction: null,
+        cardAutoTriggerDelay: "3",
+        lastTab: "index",
+      });
+    });
   }, []);
 
-  const appReady = (fontsLoaded || !!fontError) && bootPrefs !== null;
+  // Safety valve: if fonts have not signalled loaded/error after 5 s (e.g.
+  // a production bundle issue or a React-Compiler hook-stale bug), proceed
+  // anyway so SplashScreen.hideAsync() is never skipped indefinitely.
+  const [fontTimedOut, setFontTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const appReady = (fontsLoaded || !!fontError || fontTimedOut) && bootPrefs !== null;
 
   const splashFadeAnim = useRef(new Animated.Value(1)).current;
   const [splashDone, setSplashDone] = useState(false);
@@ -190,7 +209,16 @@ export default function RootLayout() {
     );
   }, [appReady, splashFadeAnim]);
 
-  if (!appReady) return <BootSplash tab={bootPrefs?.lastTab} />;
+  // SafeAreaProvider is required before any SafeAreaView can render.
+  // Wrapping the pre-ready skeleton here prevents an uncaught throw that
+  // would leave the native splash screen (black bg) frozen on screen.
+  if (!appReady) {
+    return (
+      <SafeAreaProvider>
+        <BootSplash tab={bootPrefs?.lastTab} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>

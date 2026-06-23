@@ -2374,15 +2374,66 @@ export default function ProfileScreen() {
               color={colors.accent}
               onPress={() => router.push("/reminders")}
             />
-            <SettingToggleRow
-              icon="mail-outline"
-              label="Weekly digest emails"
-              sublabel="Saturday digest + Wednesday mid-week boost"
-              color={colors.primary}
-              value={digestSubscribed}
-              onValueChange={handleDigestToggle}
-              loading={digestLoading}
-            />
+            {tier === "foundation" ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => router.push("/membership")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 13,
+                  paddingHorizontal: 16,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: colors.primary + "22",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <Ionicons name="mail-outline" size={17} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>
+                    Weekly digest emails
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                    Saturday digest + Wednesday mid-week boost
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: colors.primary + "22",
+                    borderRadius: 6,
+                    paddingHorizontal: 7,
+                    paddingVertical: 3,
+                    marginRight: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, color: colors.primary, fontWeight: "700" }}>
+                    Rise+
+                  </Text>
+                </View>
+                <Ionicons name="lock-closed-outline" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : (
+              <SettingToggleRow
+                icon="mail-outline"
+                label="Weekly digest emails"
+                sublabel="Saturday digest + Wednesday mid-week boost"
+                color={colors.primary}
+                value={digestSubscribed}
+                onValueChange={handleDigestToggle}
+                loading={digestLoading}
+              />
+            )}
             <ActionRow
               icon="shield-checkmark-outline"
               label="Privacy Policy"
