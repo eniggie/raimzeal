@@ -86,6 +86,7 @@ type MealDefaultEntry = {
   serving?: number;
 };
 const LAST_EXPORT_KEY = "@profile_last_export_timestamp";
+const HINTS_EXPANDED_KEY = "@profile_hints_section_expanded";
 
 function formatExportCustomLabel(start: string, end: string): string {
   const s = new Date(start + "T12:00:00");
@@ -208,6 +209,11 @@ export default function ProfileScreen() {
   const [digestLoading, setDigestLoading] = useState(false);
 
   const [hintsExpanded, setHintsExpanded] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(HINTS_EXPANDED_KEY).then((val) => {
+      if (val === "1") setHintsExpanded(true);
+    }).catch(() => {});
+  }, []);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const flashAnimRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -2004,7 +2010,11 @@ export default function ProfileScreen() {
             />
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => setHintsExpanded((v) => !v)}
+              onPress={() => setHintsExpanded((v) => {
+                const next = !v;
+                AsyncStorage.setItem(HINTS_EXPANDED_KEY, next ? "1" : "0").catch(() => {});
+                return next;
+              })}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
