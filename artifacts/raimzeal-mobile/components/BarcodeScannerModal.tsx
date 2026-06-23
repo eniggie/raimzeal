@@ -512,7 +512,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       setHasNewScans(false);
     } else {
       const newest = data[0]?.scannedAt ?? 0;
-      setHasNewScans(newest > lastViewed);
+      if (newest > lastViewed) setHasNewScans(true);
+      // Never clear hasNewScans here — once set in-session it must stay
+      // visible until the user actually taps the Recent tab (markViewed=true).
     }
     setRecentLoading(false);
   }, [defaultPer100g]);
