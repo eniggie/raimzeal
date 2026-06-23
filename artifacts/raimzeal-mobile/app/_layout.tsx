@@ -63,7 +63,7 @@ async function initNotifications() {
 /** Redirects between auth and app based on session */
 function AuthGate() {
   const { session, loading } = useAuth();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   const router = useRouter();
   const notificationsInitialised = useRef(false);
   const rationaleShown = useRef(false);

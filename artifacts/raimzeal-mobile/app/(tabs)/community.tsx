@@ -101,6 +101,7 @@ export default function CommunityScreen() {
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const userIdLoadedRef = useRef(false);
   const { tier, loading: tierLoading } = useTier(userId);
 
   const [showNewPost, setShowNewPost] = useState(false);
@@ -170,6 +171,10 @@ export default function CommunityScreen() {
   }, [feedTab]);
 
   useEffect(() => {
+    if (!userIdLoadedRef.current) {
+      userIdLoadedRef.current = true;
+      return;
+    }
     if (userId !== null) {
       loadPosts(feedTab);
     }
