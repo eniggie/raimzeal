@@ -1658,6 +1658,7 @@ export default function NutritionScreen() {
   const [thresholdEditValue, setThresholdEditValue] = useState<string>("");
 
   const [isReordering, setIsReordering] = useState(false);
+  const reorderEntryBannerOpacity = React.useRef(new Animated.Value(0)).current;
   const [reorderItems, setReorderItems] = useState<FavoriteFood[]>([]);
   const reorderItemsRef = useRef<FavoriteFood[]>([]);
   const [activeReorderIdx, setActiveReorderIdx] = useState(-1);
@@ -4404,6 +4405,12 @@ export default function NutritionScreen() {
   function enterReorderMode() {
     dismissReorderHint();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    reorderEntryBannerOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(reorderEntryBannerOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.delay(2200),
+      Animated.timing(reorderEntryBannerOpacity, { toValue: 0, duration: 380, useNativeDriver: true }),
+    ]).start();
     const items = [...favoriteFoods];
     reorderItemsRef.current = items;
     while (indexRefsRef.current.length < items.length) {
@@ -5823,6 +5830,24 @@ export default function NutritionScreen() {
                         >
                           <Ionicons name="close" size={14} color={colors.mutedForeground} />
                         </TouchableOpacity>
+                      </Animated.View>
+                    )}
+                    {isReordering && (
+                      <Animated.View
+                        pointerEvents="none"
+                        style={[
+                          styles.reorderHintBanner,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.primary + "40",
+                            opacity: reorderEntryBannerOpacity,
+                          },
+                        ]}
+                      >
+                        <Ionicons name="swap-vertical-outline" size={14} color={colors.primary} />
+                        <Text style={[styles.reorderHintBannerText, { color: colors.mutedForeground }]}>
+                          Reorder mode — long-press a card to drag
+                        </Text>
                       </Animated.View>
                     )}
                     {!isReordering && favGramsHintVisible && (
