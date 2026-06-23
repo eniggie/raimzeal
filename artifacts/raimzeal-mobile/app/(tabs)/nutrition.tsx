@@ -2135,6 +2135,15 @@ export default function NutritionScreen() {
     historyChipHighlightAnims.forEach((a) => a.setValue(0));
   }
 
+  function handleFilterHintPress() {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    const SCROLL_SETTLE_MS = 350;
+    setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      dismissFilterHint();
+    }, SCROLL_SETTLE_MS);
+  }
+
   function handleHistoryFilterHintPress() {
     flatListRef.current?.scrollToOffset({ offset: historyFilterBarYRef.current, animated: true });
     historyFilterScrollRef.current?.scrollTo({ x: 0, animated: true });
@@ -5372,7 +5381,10 @@ export default function NutritionScreen() {
             {/* Long-press hint — shown once below filter chips */}
             {activeTab === "today" && isSearching && filterHintVisible && (
               <Animated.View style={{ opacity: filterHintFadeAnim }}>
-                <Text style={[styles.filterHintText, { color: colors.mutedForeground }]}>
+                <Text
+                  style={[styles.filterHintText, { color: colors.mutedForeground }]}
+                  onPress={handleFilterHintPress}
+                >
                   Long-press an active chip to save as preset · long-press an inactive chip to adjust its threshold
                 </Text>
               </Animated.View>
