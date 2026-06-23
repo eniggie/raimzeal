@@ -1841,7 +1841,11 @@ export default function NutritionScreen() {
       if (!presetChipScaleAnims.current[prevId]) {
         presetChipScaleAnims.current[prevId] = new Animated.Value(1);
       }
+      if (!presetChipGlowAnims.current[prevId]) {
+        presetChipGlowAnims.current[prevId] = new Animated.Value(0);
+      }
       const deactAnim = presetChipScaleAnims.current[prevId];
+      const deactGlow = presetChipGlowAnims.current[prevId];
       Animated.sequence([
         Animated.spring(deactAnim, {
           toValue: 0.88,
@@ -1855,6 +1859,10 @@ export default function NutritionScreen() {
           bounciness: 6,
           useNativeDriver: true,
         }),
+      ]).start();
+      Animated.sequence([
+        Animated.timing(deactGlow, { toValue: 1, duration: 80, useNativeDriver: true }),
+        Animated.timing(deactGlow, { toValue: 0, duration: 250, useNativeDriver: true }),
       ]).start();
     }
     prevActivePresetIdRef.current = currentActivePresetId;
