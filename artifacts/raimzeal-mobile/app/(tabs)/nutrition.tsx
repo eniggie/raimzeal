@@ -1103,6 +1103,12 @@ function RecentFoodStarButton({
   );
 }
 
+const MACRO_TOOLTIPS: Record<"protein" | "carbs" | "fat", { color: string; text: string }> = {
+  protein: { color: "#3b82f6", text: "Protein builds and repairs muscle, supports immune function, and keeps you fuller for longer." },
+  carbs:   { color: "#f97316", text: "Carbohydrates are your body's primary fuel — they power workouts, brain function, and recovery." },
+  fat:     { color: "#ec4899", text: "Healthy fats support hormone balance, brain health, and help absorb fat-soluble vitamins." },
+};
+
 export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -1630,6 +1636,22 @@ export default function NutritionScreen() {
   const previewMacroScale  = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
   const previewMacroOpacity = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
   const previewMacroBorderOpacity = useRef({ protein: new Animated.Value(0), carbs: new Animated.Value(0), fat: new Animated.Value(0) }).current;
+  const [activeMacroTooltip, setActiveMacroTooltip] = useState<"protein" | "carbs" | "fat" | null>(null);
+  const previewMacroTooltipOpacity = useRef(new Animated.Value(0)).current;
+  const previewMacroTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showMacroTooltip = (macro: "protein" | "carbs" | "fat") => {
+    highlightPreviewMacro(macro);
+    if (previewMacroTooltipTimerRef.current) clearTimeout(previewMacroTooltipTimerRef.current);
+    setActiveMacroTooltip(macro);
+    previewMacroTooltipOpacity.setValue(0);
+    Animated.timing(previewMacroTooltipOpacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    previewMacroTooltipTimerRef.current = setTimeout(() => {
+      previewMacroTooltipTimerRef.current = null;
+      Animated.timing(previewMacroTooltipOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setActiveMacroTooltip(null);
+      });
+    }, 2500);
+  };
   const highlightPreviewMacro = (macro: "protein" | "carbs" | "fat") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const scale   = previewMacroScale[macro];
@@ -8250,7 +8272,7 @@ export default function NutritionScreen() {
                   })()}
 
                   <View style={[styles.previewSheetMacroGrid, { backgroundColor: colors.muted }]}>
-                    <View style={{ flex: 1 }}>
+                    <TouchableOpacity activeOpacity={0.8} style={{ flex: 1 }} onPress={() => showMacroTooltip("protein")}>
                       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#3b82f6", borderRadius: 8, opacity: previewMacroBorderOpacity.protein }} />
                       <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.protein }], opacity: previewMacroOpacity.protein }]}>
                         <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
@@ -8260,9 +8282,9 @@ export default function NutritionScreen() {
                           Protein
                         </Text>
                       </Animated.View>
-                    </View>
+                    </TouchableOpacity>
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
-                    <View style={{ flex: 1 }}>
+                    <TouchableOpacity activeOpacity={0.8} style={{ flex: 1 }} onPress={() => showMacroTooltip("carbs")}>
                       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#f97316", borderRadius: 8, opacity: previewMacroBorderOpacity.carbs }} />
                       <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.carbs }], opacity: previewMacroOpacity.carbs }]}>
                         <Text style={[styles.previewSheetMacroValue, { color: "#f97316" }]}>
@@ -8272,9 +8294,9 @@ export default function NutritionScreen() {
                           Carbs
                         </Text>
                       </Animated.View>
-                    </View>
+                    </TouchableOpacity>
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
-                    <View style={{ flex: 1 }}>
+                    <TouchableOpacity activeOpacity={0.8} style={{ flex: 1 }} onPress={() => showMacroTooltip("fat")}>
                       <Animated.View pointerEvents="none" style={{ position: "absolute", top: 2, bottom: 2, left: 4, right: 4, borderWidth: 2, borderColor: "#ec4899", borderRadius: 8, opacity: previewMacroBorderOpacity.fat }} />
                       <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.fat }], opacity: previewMacroOpacity.fat }]}>
                         <Text style={[styles.previewSheetMacroValue, { color: "#ec4899" }]}>
@@ -8284,8 +8306,31 @@ export default function NutritionScreen() {
                           Fat
                         </Text>
                       </Animated.View>
-                    </View>
+                    </TouchableOpacity>
                   </View>
+
+                  {activeMacroTooltip !== null && (
+                    <Animated.View
+                      pointerEvents="none"
+                      style={{
+                        opacity: previewMacroTooltipOpacity,
+                        backgroundColor: MACRO_TOOLTIPS[activeMacroTooltip].color + "18",
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: MACRO_TOOLTIPS[activeMacroTooltip].color + "50",
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        marginBottom: 14,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, color: MACRO_TOOLTIPS[activeMacroTooltip].color, fontFamily: "Inter_600SemiBold", marginBottom: 2 }}>
+                        {activeMacroTooltip.charAt(0).toUpperCase() + activeMacroTooltip.slice(1)}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 17 }}>
+                        {MACRO_TOOLTIPS[activeMacroTooltip].text}
+                      </Text>
+                    </Animated.View>
+                  )}
 
                   <View style={styles.previewSheetActions}>
                     <TouchableOpacity
