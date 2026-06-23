@@ -51,43 +51,60 @@ function parseOFF(p: OFFProduct): QuickFood | null {
   const name = p.product_name?.trim();
   if (!name) return null;
   const n = p.nutriments ?? {};
-  const hasServingNutrient =
-    n["energy-kcal_serving"] !== undefined ||
-    n.proteins_serving !== undefined ||
-    n.carbohydrates_serving !== undefined ||
-    n.fat_serving !== undefined;
-  const useServing = !!(p.serving_size?.trim() && hasServingNutrient);
-  const servingLabel = useServing ? p.serving_size?.trim() : undefined;
-  const calories = Math.round(
-    useServing
-      ? (n["energy-kcal_serving"] ?? n["energy-kcal_100g"] ?? 0)
-      : (n["energy-kcal_100g"] ?? 0)
-  );
-  const protein =
-    Math.round((useServing
-      ? (n.proteins_serving ?? n.proteins_100g ?? 0)
-      : (n.proteins_100g ?? 0)) * 10) / 10;
-  const carbs =
-    Math.round((useServing
-      ? (n.carbohydrates_serving ?? n.carbohydrates_100g ?? 0)
-      : (n.carbohydrates_100g ?? 0)) * 10) / 10;
-  const fat =
-    Math.round((useServing
-      ? (n.fat_serving ?? n.fat_100g ?? 0)
-      : (n.fat_100g ?? 0)) * 10) / 10;
+
   const has100g =
     n["energy-kcal_100g"] !== undefined ||
     n.proteins_100g !== undefined ||
     n.carbohydrates_100g !== undefined ||
     n.fat_100g !== undefined;
+
+  const hasServingNutrient =
+    n["energy-kcal_serving"] !== undefined ||
+    n.proteins_serving !== undefined ||
+    n.carbohydrates_serving !== undefined ||
+    n.fat_serving !== undefined;
+
+  const servingSize = p.serving_size?.trim();
+  const useServing = !!(servingSize && hasServingNutrient);
+
+  // When OFF provides a serving_quantity (grams per serving) and 100g data,
+  // we can compute per-serving values even if the response omits _serving fields.
+  const servingQty =
+    typeof p.serving_quantity === "number" && p.serving_quantity > 0
+      ? p.serving_quantity
+      : null;
+  const canComputeServing = !useServing && !!(servingSize) && has100g && servingQty !== null;
+
+  const servingLabel = useServing || canComputeServing ? servingSize : undefined;
+
+  let calories: number, protein: number, carbs: number, fat: number;
+  if (useServing) {
+    calories = Math.round(n["energy-kcal_serving"] ?? n["energy-kcal_100g"] ?? 0);
+    protein  = Math.round((n.proteins_serving       ?? n.proteins_100g       ?? 0) * 10) / 10;
+    carbs    = Math.round((n.carbohydrates_serving   ?? n.carbohydrates_100g  ?? 0) * 10) / 10;
+    fat      = Math.round((n.fat_serving             ?? n.fat_100g            ?? 0) * 10) / 10;
+  } else if (canComputeServing) {
+    const ratio = servingQty! / 100;
+    calories = Math.round((n["energy-kcal_100g"] ?? 0) * ratio);
+    protein  = Math.round(((n.proteins_100g       ?? 0) * ratio) * 10) / 10;
+    carbs    = Math.round(((n.carbohydrates_100g   ?? 0) * ratio) * 10) / 10;
+    fat      = Math.round(((n.fat_100g             ?? 0) * ratio) * 10) / 10;
+  } else {
+    calories = Math.round(n["energy-kcal_100g"] ?? 0);
+    protein  = Math.round((n.proteins_100g       ?? 0) * 10) / 10;
+    carbs    = Math.round((n.carbohydrates_100g   ?? 0) * 10) / 10;
+    fat      = Math.round((n.fat_100g             ?? 0) * 10) / 10;
+  }
+
   const nutrients100g = has100g
     ? {
         calories: Math.round(n["energy-kcal_100g"] ?? 0),
-        protein: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-        carbs: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-        fat: Math.round((n.fat_100g ?? 0) * 10) / 10,
+        protein:  Math.round((n.proteins_100g       ?? 0) * 10) / 10,
+        carbs:    Math.round((n.carbohydrates_100g   ?? 0) * 10) / 10,
+        fat:      Math.round((n.fat_100g             ?? 0) * 10) / 10,
       }
     : undefined;
+
   return { name, calories, protein, carbs, fat, mealType: "snack", servingLabel, nutrients100g };
 }
 
