@@ -1479,6 +1479,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                     <Text style={styles.correctionPillText}>Edited</Text>
                                   </View>
                                 )}
+                                {(scan.scanCount ?? 0) > 1 && (
+                                  <Text style={styles.recentItemScanCount}>
+                                    {scan.scanCount}×
+                                  </Text>
+                                )}
                               </View>
                             </View>
                             <View style={styles.recentItemActions}>
@@ -2204,6 +2209,12 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.4)",
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  recentItemScanCount: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    marginLeft: 2,
   },
   recentItemActions: {
     flexDirection: "row",
