@@ -2979,6 +2979,14 @@ export default function NutritionScreen() {
       nutrients100g: log.nutrients100g,
       sourceMealLogId: log.sourceMealLogId ?? log.id,
     }, finishSync);
+    lastUsedMealMapRef.current[log.name] = log.mealType;
+    AsyncStorage.getItem(LAST_USED_MEAL_KEY)
+      .then((raw) => {
+        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+        map[log.name] = log.mealType;
+        return AsyncStorage.setItem(LAST_USED_MEAL_KEY, JSON.stringify(map));
+      })
+      .catch(() => {});
     showLogTodayToast(log.name);
   }
 
