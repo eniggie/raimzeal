@@ -9804,11 +9804,33 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
               </View>
             </View>
 
-            <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              {editServings === 1
-                ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
-                : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+              <Text style={[styles.editRefLine, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                {editServings === 1
+                  ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
+                  : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
+              </Text>
+              {editServings > 1 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setEditServings(1);
+                    editServingsRef.current = 1;
+                    setEditServingsText("1");
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories)),
+                      protein: String(Math.round(editBase.protein * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * 10) / 10),
+                      fat: String(Math.round(editBase.fat * 10) / 10),
+                    }));
+                  }}
+                  style={{ backgroundColor: colors.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: colors.border }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>Reset to 1</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={styles.modalNutrients}>
               {(
@@ -10675,11 +10697,33 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
               </View>
             </View>
 
-            <Text style={[styles.editRefLine, { color: colors.mutedForeground }]}>
-              {editServings === 1
-                ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
-                : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+              <Text style={[styles.editRefLine, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                {editServings === 1
+                  ? `Per serving${log.servingLabel ? ` (${log.servingLabel})` : ""}`
+                  : `Total (${editServings % 1 === 0 ? editServings : editServings.toFixed(1)} × per serving)`}
+              </Text>
+              {editServings > 1 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setEditServings(1);
+                    editServingsRef.current = 1;
+                    setEditServingsText("1");
+                    setEditForm(f => ({
+                      ...f,
+                      calories: String(Math.round(editBase.calories)),
+                      protein: String(Math.round(editBase.protein * 10) / 10),
+                      carbs: String(Math.round(editBase.carbs * 10) / 10),
+                      fat: String(Math.round(editBase.fat * 10) / 10),
+                    }));
+                  }}
+                  style={{ backgroundColor: colors.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: colors.border }}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>Reset to 1</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={styles.modalNutrients}>
               {(
