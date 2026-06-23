@@ -2915,7 +2915,19 @@ export default function NutritionScreen() {
           {
             text: "Delete",
             style: "destructive",
-            onPress: () => { startSync(); removeMealLog(meal.id, finishSync); showUndoToast(meal); },
+            onPress: () => {
+              startSync();
+              removeMealLog(meal.id, finishSync);
+              showUndoToast(meal);
+              delete lastUsedServingsMapRef.current[meal.name];
+              AsyncStorage.getItem(LAST_USED_SERVING_KEY)
+                .then((raw) => {
+                  const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+                  delete map[meal.name];
+                  return AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(map));
+                })
+                .catch(() => {});
+            },
           },
         ]
       );
@@ -2933,7 +2945,18 @@ export default function NutritionScreen() {
         {
           text: `Delete all ${sameNameCount + 1}`,
           style: "destructive",
-          onPress: () => { startSync(); removeMealLogsByName(meal.name, finishSync); },
+          onPress: () => {
+            startSync();
+            removeMealLogsByName(meal.name, finishSync);
+            delete lastUsedServingsMapRef.current[meal.name];
+            AsyncStorage.getItem(LAST_USED_SERVING_KEY)
+              .then((raw) => {
+                const map: Record<string, number> = raw ? JSON.parse(raw) : {};
+                delete map[meal.name];
+                return AsyncStorage.setItem(LAST_USED_SERVING_KEY, JSON.stringify(map));
+              })
+              .catch(() => {});
+          },
         },
       ]
     );
