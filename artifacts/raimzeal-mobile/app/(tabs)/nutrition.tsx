@@ -271,7 +271,7 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
       ? p.serving_quantity_unit.toLowerCase() === "g"
       : /(?:^|\s|\()\d+(?:\.\d+)?\s*g(?:\)|$|\s|,)/i.test(p.serving_size ?? "")
     : false;
-  const gramLabel = isGramBased ? `${p.serving_quantity}g` : undefined;
+  const gramLabel = isGramBased ? `${Math.round(p.serving_quantity!)}g` : undefined;
   const servingLabel = useServingNutrients || useServingQuantity ? (gramLabel ?? servingSize) : undefined;
   const sqFactor = p.serving_quantity ? p.serving_quantity / 100 : 1;
 
