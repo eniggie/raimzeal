@@ -141,6 +141,7 @@ export default function ProfileScreen() {
     resetState,
     resetHints,
     undismissHint,
+    isHintDismissed,
     clearAllData,
     lastSyncedAt,
   } = useFitness();
@@ -2080,6 +2081,9 @@ export default function ProfileScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, color: colors.foreground }}>{label}</Text>
                     </View>
+                    {isHintDismissed(key) && (
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginRight: 10 }}>Seen</Text>
+                    )}
                     <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Reset</Text>
                   </TouchableOpacity>
                 ))}
