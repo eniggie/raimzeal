@@ -1352,6 +1352,8 @@ export default function NutritionScreen() {
   const trendPillPulse = useRef(new Animated.Value(1)).current;
   const calRowPulse = useRef(new Animated.Value(1)).current;
   const trendMetricMounted = useRef(false);
+  const per100gPillAnim = useRef(new Animated.Value(1)).current;
+  const per100gPillMounted = useRef(false);
 
   useEffect(() => {
     AsyncStorage.getItem(TREND_METRIC_STORAGE_KEY).then((val) => {
@@ -1381,6 +1383,19 @@ export default function NutritionScreen() {
       ]).start();
     }
   }, [trendMetric]);
+
+  useEffect(() => {
+    if (!per100gPillMounted.current) {
+      per100gPillMounted.current = true;
+      return;
+    }
+    per100gPillAnim.setValue(1);
+    Animated.sequence([
+      Animated.timing(per100gPillAnim, { toValue: 1.18, duration: 90, useNativeDriver: true }),
+      Animated.timing(per100gPillAnim, { toValue: 0.93, duration: 70, useNativeDriver: true }),
+      Animated.timing(per100gPillAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+    ]).start();
+  }, [defaultPer100g]);
 
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -5022,35 +5037,37 @@ export default function NutritionScreen() {
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 style={styles.per100gPill}
               >
-                <View
-                  style={[
-                    styles.per100gPillInner,
-                    {
-                      backgroundColor: defaultPer100g ? colors.primary + "18" : colors.muted,
-                      borderColor: defaultPer100g ? colors.primary + "40" : colors.border,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="scale-outline"
-                    size={11}
-                    color={defaultPer100g ? colors.primary : colors.mutedForeground}
-                  />
-                  <Text
+                <Animated.View style={{ transform: [{ scale: per100gPillAnim }] }}>
+                  <View
                     style={[
-                      styles.per100gPillText,
-                      { color: defaultPer100g ? colors.primary : colors.mutedForeground },
+                      styles.per100gPillInner,
+                      {
+                        backgroundColor: defaultPer100g ? colors.primary + "18" : colors.muted,
+                        borderColor: defaultPer100g ? colors.primary + "40" : colors.border,
+                      },
                     ]}
                   >
-                    {defaultPer100g ? "per 100g" : "per serving"}
-                  </Text>
-                  <Ionicons
-                    name="swap-horizontal-outline"
-                    size={10}
-                    color={defaultPer100g ? colors.primary : colors.mutedForeground}
-                    style={{ opacity: 0.7 }}
-                  />
-                </View>
+                    <Ionicons
+                      name="scale-outline"
+                      size={11}
+                      color={defaultPer100g ? colors.primary : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.per100gPillText,
+                        { color: defaultPer100g ? colors.primary : colors.mutedForeground },
+                      ]}
+                    >
+                      {defaultPer100g ? "per 100g" : "per serving"}
+                    </Text>
+                    <Ionicons
+                      name="swap-horizontal-outline"
+                      size={10}
+                      color={defaultPer100g ? colors.primary : colors.mutedForeground}
+                      style={{ opacity: 0.7 }}
+                    />
+                  </View>
+                </Animated.View>
               </TouchableOpacity>
             )}
 
