@@ -65,6 +65,8 @@ const PAID_PLANS = [
     icon: Zap,
     color: 'text-blue-400',
     border: 'border-blue-400/30',
+    activeBorder: 'border-blue-400/70',
+    activeRing: 'ring-2 ring-blue-400/40',
     bg: 'bg-blue-400/5',
     badge: 'bg-blue-400/20 text-blue-400',
     monthly: PLANS.rise.monthly,
@@ -82,6 +84,8 @@ const PAID_PLANS = [
     icon: Star,
     color: 'text-purple-400',
     border: 'border-purple-400/30',
+    activeBorder: 'border-purple-400/70',
+    activeRing: 'ring-2 ring-purple-400/40',
     bg: 'bg-purple-400/5',
     badge: 'bg-purple-400/20 text-purple-400',
     monthly: PLANS.reign.monthly,
@@ -99,6 +103,8 @@ const PAID_PLANS = [
     icon: Crown,
     color: 'text-yellow-400',
     border: 'border-yellow-400/30',
+    activeBorder: 'border-yellow-400/70',
+    activeRing: 'ring-2 ring-yellow-400/40',
     bg: 'bg-yellow-400/5',
     badge: 'bg-yellow-400/20 text-yellow-400',
     monthly: PLANS.legacy.monthly,
@@ -403,6 +409,7 @@ export function Membership() {
             const isLoading = checkoutLoading[plan.key] ?? false;
             const error = checkoutError[plan.key] ?? '';
             const stripeUrl = checkoutUrl[plan.key] ?? '';
+            const isCurrentPlan = subscriptionTier === plan.key;
 
             return (
               <motion.div
@@ -410,9 +417,9 @@ export function Membership() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: 'tween', ease: 'easeOut', duration: 0.3, delay: 0.06 + i * 0.04 }}
-                className={`relative rounded-2xl glass p-5 border ${plan.border} ${!plan.hasPrice ? 'opacity-80' : ''}`}
+                className={`relative rounded-2xl glass p-5 border ${isCurrentPlan ? plan.activeBorder : plan.border} ${isCurrentPlan ? plan.activeRing : ''} ${!plan.hasPrice ? 'opacity-80' : ''}`}
               >
-                {plan.popular && plan.badgeLabel && (
+                {plan.popular && plan.badgeLabel && !isCurrentPlan && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500 text-white shadow-lg flex items-center gap-1">
                       <Flame className="h-3 w-3" />
@@ -420,10 +427,18 @@ export function Membership() {
                     </span>
                   </div>
                 )}
+                {isCurrentPlan && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 ${plan.badge}`}>
+                      <Check className="h-3 w-3" />
+                      Current plan
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={`h-5 w-5 ${plan.color}`} />
                   <p className="font-bold text-foreground">{plan.name}</p>
-                  {!plan.hasPrice && (
+                  {!plan.hasPrice && !isCurrentPlan && (
                     <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-foreground/10 text-foreground/50">
                       Coming Soon
                     </span>
@@ -456,49 +471,58 @@ export function Membership() {
 
                 {plan.hasPrice ? (
                   <div className="space-y-2">
-                    <button
-                      onClick={() => handleCheckout(plan.key, billing)}
-                      disabled={isLoading}
-                      className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2
-                        ${plan.key === 'rise'
-                          ? 'bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-60'
-                          : plan.key === 'legacy'
-                            ? 'bg-yellow-500 hover:bg-yellow-400 text-black disabled:opacity-60'
-                            : 'bg-purple-500 hover:bg-purple-400 text-white disabled:opacity-60'
-                        }`}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Opening Stripe checkout…
-                        </>
-                      ) : (
-                        `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price.toFixed(2)}${period}`
-                      )}
-                    </button>
-                    {error && (
-                      <p className="text-xs text-destructive text-center leading-relaxed">{error}</p>
+                    {isCurrentPlan ? (
+                      <div className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 ${plan.badge}`}>
+                        <CheckCircle2 className="w-4 h-4" />
+                        You're on this plan
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleCheckout(plan.key, billing)}
+                          disabled={isLoading}
+                          className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2
+                            ${plan.key === 'rise'
+                              ? 'bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-60'
+                              : plan.key === 'legacy'
+                                ? 'bg-yellow-500 hover:bg-yellow-400 text-black disabled:opacity-60'
+                                : 'bg-purple-500 hover:bg-purple-400 text-white disabled:opacity-60'
+                            }`}
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Opening Stripe checkout…
+                            </>
+                          ) : (
+                            `Subscribe ${billing === 'monthly' ? 'Monthly' : 'Yearly'} — $${price.toFixed(2)}${period}`
+                          )}
+                        </button>
+                        {error && (
+                          <p className="text-xs text-destructive text-center leading-relaxed">{error}</p>
+                        )}
+                        {stripeUrl && (
+                          <a
+                            href={stripeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-center transition-opacity hover:opacity-90
+                              ${plan.key === 'rise'
+                                ? 'bg-blue-500 text-white'
+                                : plan.key === 'legacy'
+                                  ? 'bg-yellow-500 text-black'
+                                  : 'bg-purple-500 text-white'
+                              }`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Continue to Stripe Checkout
+                          </a>
+                        )}
+                        <p className="text-[10px] text-foreground/40 text-center">
+                          Secure checkout via Stripe · Cancel anytime
+                        </p>
+                      </>
                     )}
-                    {stripeUrl && (
-                      <a
-                        href={stripeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-center transition-opacity hover:opacity-90
-                          ${plan.key === 'rise'
-                            ? 'bg-blue-500 text-white'
-                            : plan.key === 'legacy'
-                              ? 'bg-yellow-500 text-black'
-                              : 'bg-purple-500 text-white'
-                          }`}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Continue to Stripe Checkout
-                      </a>
-                    )}
-                    <p className="text-[10px] text-foreground/40 text-center">
-                      Secure checkout via Stripe · Cancel anytime
-                    </p>
                   </div>
                 ) : (
                   <button
