@@ -1839,6 +1839,8 @@ export default function NutritionScreen() {
   const historyDividerFadeAnim = useRef(new Animated.Value(0)).current;
   const historyDividerSlideAnim = useRef(new Animated.Value(-8)).current;
   const historyChipDividerFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyFilterBarFadeAnim = useRef(new Animated.Value(0)).current;
+  const historyFilterBarSlideAnim = useRef(new Animated.Value(-6)).current;
   const historyFilterHintShownRef = useRef(false);
   const historyFilterHintDismissedRef = useRef(false);
   const historyFilterHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2562,6 +2564,24 @@ export default function NutritionScreen() {
 
   useEffect(() => {
     if (!historyFilterPanelOpen) return;
+    // Animate the container itself in first (opacity + slide up from -6px)
+    historyFilterBarFadeAnim.setValue(0);
+    historyFilterBarSlideAnim.setValue(-6);
+    Animated.parallel([
+      Animated.timing(historyFilterBarFadeAnim, {
+        toValue: 1,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.spring(historyFilterBarSlideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 60,
+        stiffness: 500,
+        mass: 0.5,
+        overshootClamping: true,
+      }),
+    ]).start();
     historyChipFadeAnims.forEach((anim) => anim.setValue(0));
     historyChipSlideAnims.forEach((anim) => anim.setValue(18));
     historyChipDividerFadeAnim.setValue(0);
@@ -6509,8 +6529,11 @@ export default function NutritionScreen() {
                     collapse/expand toggle can flip that boolean and the chip
                     slide-in animation will replay automatically on every re-open. */}
                 {historyFilterPanelOpen && (
-                <><View
-                  style={styles.historyFilterBar}
+                <><Animated.View
+                  style={[styles.historyFilterBar, {
+                    opacity: historyFilterBarFadeAnim,
+                    transform: [{ translateY: historyFilterBarSlideAnim }],
+                  }]}
                   onLayout={(e) => {
                     historyFilterBarYRef.current = e.nativeEvent.layout.y;
                   }}
@@ -6714,7 +6737,7 @@ export default function NutritionScreen() {
                       </TouchableOpacity>
                     </Animated.View>
                   </ScrollView>
-                </View>
+                </Animated.View>
 
                 {/* Long-press hint — shown once below history filter chips */}
                 {historyFilterHintVisible && (
