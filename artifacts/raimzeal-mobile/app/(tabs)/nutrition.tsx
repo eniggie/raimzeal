@@ -4411,7 +4411,9 @@ export default function NutritionScreen() {
       setSelectedFoodUnit("g");
       setModalShowPer100g(false);
       setGrams(String(defaultGrams));
-      setGramsPreFillHint(String(defaultGrams));
+      setGramsPreFillHint(
+        Number.isFinite(parsedRemembered) && parsedRemembered > 0 ? String(defaultGrams) : null
+      );
     } else if (food.nutrients100g && food.servingLabel) {
       setSelectedFood(food);
       setSelectedFoodServingLabel(food.servingLabel);
