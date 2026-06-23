@@ -427,6 +427,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [thresholdSheetTarget, setThresholdSheetTarget] = useState<CustomisableFilter | null>(null);
   const [thresholdInput, setThresholdInput] = useState("");
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const [scanToast, setScanToast] = useState(false);
+  const [scanToastLabel, setScanToastLabel] = useState("");
+  const scanToastOpacity = useRef(new Animated.Value(0)).current;
+  const scanToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [correctedBarcodes, setCorrectedBarcodes] = useState<Set<string>>(new Set());
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -679,20 +683,35 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     saveViewPreference(cachedResult.barcode, newVal);
   }
 
+  function showScanToast(label: string) {
+    if (scanToastTimerRef.current) clearTimeout(scanToastTimerRef.current);
+    setScanToastLabel(label);
+    setScanToast(true);
+    scanToastOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(scanToastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.delay(1300),
+      Animated.timing(scanToastOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
+    ]).start(() => setScanToast(false));
+    scanToastTimerRef.current = setTimeout(() => setScanToast(false), 2000);
+  }
+
   function handleUseCached() {
     if (!cachedResult) return;
     const canToggle = !!(cachedResult.food.nutrients100g && cachedResult.food.servingLabel);
     const baseFood = (canToggle && resultPer100g)
       ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
       : cachedResult.food;
-    onFoodFound(scaledFood(baseFood, servingMultiplier), canToggle && resultPer100g);
+    const logged = scaledFood(baseFood, servingMultiplier);
+    onFoodFound(logged, canToggle && resultPer100g);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showScanToast(`${logged.name} added · ${logged.calories} kcal`);
     setAddedSuccess(true);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
     autoCloseTimer.current = setTimeout(() => {
       autoCloseTimer.current = null;
       handleClose();
-    }, 1500);
+    }, 1800);
   }
 
   function handleAddAgain() {
@@ -930,6 +949,16 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   return (
     <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={handleClose}>
       <View style={[styles.fullscreen, { backgroundColor: "#000" }]}>
+        {/* Green pill confirmation toast (Add Food direct-log path) */}
+        {scanToast && (
+          <Animated.View
+            style={[styles.scanToast, { opacity: scanToastOpacity }]}
+            pointerEvents="none"
+          >
+            <Ionicons name="checkmark-circle" size={16} color="#fff" />
+            <Text style={styles.scanToastText} numberOfLines={1}>{scanToastLabel}</Text>
+          </Animated.View>
+        )}
         {/* Permission not yet loaded */}
         {!permission && (
           <View style={styles.centeredContent}>
@@ -2419,6 +2448,30 @@ const styles = StyleSheet.create({
   thresholdSaveBtnText: {
     color: "#09090b",
     fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  scanToast: {
+    position: "absolute",
+    top: 60,
+    alignSelf: "center",
+    maxWidth: "88%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scanToastText: {
+    color: "#fff",
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
   },
 });
