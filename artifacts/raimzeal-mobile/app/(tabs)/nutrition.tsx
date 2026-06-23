@@ -173,6 +173,18 @@ const PENDING_PREFS_SYNC_KEY = "@nutrition_pending_prefs_sync";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const EDIT_PER100G_PREF_KEY = "@nutrition_edit_per100g_pref";
+const EDIT_PER100G_MAX_ENTRIES = 100;
+function trimPer100gPrefMap(
+  map: Record<string, { per100g: boolean; grams: number } | boolean>
+): Record<string, { per100g: boolean; grams: number } | boolean> {
+  const keys = Object.keys(map);
+  if (keys.length <= EDIT_PER100G_MAX_ENTRIES) return map;
+  const trimmed: Record<string, { per100g: boolean; grams: number } | boolean> = {};
+  for (const k of keys.slice(keys.length - EDIT_PER100G_MAX_ENTRIES)) {
+    trimmed[k] = map[k];
+  }
+  return trimmed;
+}
 const LAST_USED_MEAL_KEY = "@nutrition_last_used_meal";
 const LAST_USED_VIEW_KEY = "@nutrition_last_used_view";
 const LAST_USED_SERVING_KEY = "@nutrition_last_used_serving";
@@ -1384,19 +1396,6 @@ export default function NutritionScreen() {
     }
   }, [trendMetric]);
 
-  useEffect(() => {
-    if (!per100gPillMounted.current) {
-      per100gPillMounted.current = true;
-      return;
-    }
-    per100gPillAnim.setValue(1);
-    Animated.sequence([
-      Animated.timing(per100gPillAnim, { toValue: 1.18, duration: 90, useNativeDriver: true }),
-      Animated.timing(per100gPillAnim, { toValue: 0.93, duration: 70, useNativeDriver: true }),
-      Animated.timing(per100gPillAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
-    ]).start();
-  }, [defaultPer100g]);
-
   const trendChartDays = React.useMemo(() => {
     const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1547,6 +1546,18 @@ export default function NutritionScreen() {
     }).catch(() => {});
   }, []);
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
+  useEffect(() => {
+    if (!per100gPillMounted.current) {
+      per100gPillMounted.current = true;
+      return;
+    }
+    per100gPillAnim.setValue(1);
+    Animated.sequence([
+      Animated.timing(per100gPillAnim, { toValue: 1.18, duration: 90, useNativeDriver: true }),
+      Animated.timing(per100gPillAnim, { toValue: 0.93, duration: 70, useNativeDriver: true }),
+      Animated.timing(per100gPillAnim, { toValue: 1, duration: 80, useNativeDriver: true }),
+    ]).start();
+  }, [defaultPer100g]);
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
   const previewMacroScale  = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
   const previewMacroOpacity = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
@@ -4756,7 +4767,7 @@ export default function NutritionScreen() {
         .then((raw) => {
           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
           map[name] = { per100g: modalShowPer100g, grams: 0 };
-          return AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+          return AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
         })
         .catch(() => {});
     }
@@ -7137,7 +7148,7 @@ export default function NutritionScreen() {
                           AsyncStorage.getItem(EDIT_PER100G_PREF_KEY).then((raw) => {
                             const storageMap: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                             storageMap[item.name] = { per100g: newVal, grams: 0 };
-                            AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(storageMap));
+                            AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(storageMap)));
                           }).catch(() => {});
                         } : undefined}
                         style={[
@@ -7742,7 +7753,7 @@ export default function NutritionScreen() {
                                 try {
                                   const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                                   map[selectedFood.name] = { per100g: false, grams: 0 };
-                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                                 } catch {}
                               });
                             }
@@ -7771,7 +7782,7 @@ export default function NutritionScreen() {
                                 try {
                                   const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                                   map[selectedFood.name] = { per100g: true, grams: 0 };
-                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                                  AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                                 } catch {}
                               });
                             }
@@ -9870,7 +9881,7 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                         try {
                           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                           map[log.name] = { per100g: false, grams: log.amountGrams ?? 0 };
-                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                         } catch {}
                       });
                       if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
@@ -9921,7 +9932,7 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                         try {
                           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                           map[log.name] = { per100g: true, grams: log.amountGrams ?? 0 };
-                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                         } catch {}
                       });
                       setEditGramsText("100");
@@ -10810,7 +10821,7 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                         try {
                           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                           map[log.name] = { per100g: false, grams: log.amountGrams ?? 0 };
-                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                         } catch {}
                       });
                       if (log.amountGrams !== undefined && log.amountGrams > 0 && perGramRef.current) {
@@ -10863,7 +10874,7 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                         try {
                           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
                           map[log.name] = { per100g: true, grams: log.amountGrams ?? 0 };
-                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+                          AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(trimPer100gPrefMap(map)));
                         } catch {}
                       });
                       setEditGramsText("100");
