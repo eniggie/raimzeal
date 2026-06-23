@@ -741,10 +741,20 @@ const HorizontalDraggablePresetChip = memo(function HorizontalDraggablePresetChi
   prev.displacement === next.displacement &&
   prev.colors === next.colors);
 
-function formatRecentDate(dateStr: string): string {
+function formatRecentDate(dateStr: string, loggedAtMs?: number): string {
   const now = new Date();
   const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  if (dateStr === localDateStr) return "Today";
+  if (dateStr === localDateStr) {
+    if (loggedAtMs != null && Number.isFinite(loggedAtMs)) {
+      const d = new Date(loggedAtMs);
+      const h = d.getHours();
+      const mins = d.getMinutes().toString().padStart(2, "0");
+      const period = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return `Today · ${h12}:${mins} ${period}`;
+    }
+    return "Today";
+  }
   const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const logMidnight = new Date(dateStr + "T00:00:00");
   const diffDays = Math.floor((todayMidnight.getTime() - logMidnight.getTime()) / (1000 * 60 * 60 * 24));
@@ -1081,12 +1091,13 @@ export default function NutritionScreen() {
   const recentFoods = React.useMemo(() => {
     const favoriteNames = new Set(favoriteFoods.map((f) => f.name));
     const seen = new Set<string>();
-    const result: (Omit<MealLog, "id" | "date"> & { lastEaten: string })[] = [];
+    const result: (Omit<MealLog, "id" | "date"> & { lastEaten: string; loggedAtMs?: number })[] = [];
     const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const log of sortedLogs) {
       if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name)) && !recentlyUnstarredNames.has(log.name)) {
         seen.add(log.name);
-        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
+        const loggedAtMs = Number.isFinite(Number(log.id)) ? Number(log.id) : undefined;
+        result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, loggedAtMs, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
       }
       if (result.length >= 20) break;
     }
@@ -5958,7 +5969,7 @@ export default function NutritionScreen() {
                               {food.name}
                             </Text>
                             <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 0 }}>
-                              {formatRecentDate(food.lastEaten)}
+                              {formatRecentDate(food.lastEaten, food.loggedAtMs)}
                             </Text>
                           </View>
                           <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
