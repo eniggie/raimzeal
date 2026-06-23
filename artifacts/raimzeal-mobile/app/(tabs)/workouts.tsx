@@ -21,7 +21,9 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useReduceMotion } from "@/hooks/useReduceMotion";
+import { useSwipeHint } from "@/hooks/useSwipeHint";
 import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
+import { WORKOUT_SWIPE_DELETE_HINT_KEY } from "@/lib/hints";
 import { useFitness, type WorkoutLog } from "@/contexts/FitnessContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { WORKOUT_TEMPLATES } from "@/constants/workoutTemplates";
@@ -254,6 +256,68 @@ const secStyles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
 });
+
+interface WorkoutHistoryRowProps {
+  log: WorkoutLog;
+  onDelete: (log: WorkoutLog) => void;
+  indented: boolean;
+  isFirst: boolean;
+}
+
+function WorkoutHistoryRow({ log, onDelete, indented, isFirst }: WorkoutHistoryRowProps) {
+  const colors = useColors();
+  const swipeableRef = useRef<Swipeable>(null);
+  const runHintAnimation = useSwipeHint(WORKOUT_SWIPE_DELETE_HINT_KEY, isFirst);
+
+  useEffect(() => {
+    if (!runHintAnimation) return;
+    let cancelled = false;
+    const openTimer = setTimeout(() => {
+      if (!cancelled) swipeableRef.current?.openRight();
+      const closeTimer = setTimeout(() => {
+        if (!cancelled) swipeableRef.current?.close();
+      }, 600);
+      return () => clearTimeout(closeTimer);
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(openTimer);
+    };
+  }, [runHintAnimation]);
+
+  return (
+    <View style={indented ? secStyles.indentedLog : undefined}>
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={() => (
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert(
+                "Delete this workout?",
+                `"${log.workoutName}" will be removed from your log.`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => onDelete(log),
+                  },
+                ]
+              );
+            }}
+            style={secStyles.deleteAction}
+          >
+            <Ionicons name="trash-outline" size={20} color="#fff" />
+            <Text style={secStyles.deleteActionText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+        overshootRight={false}
+      >
+        <WorkoutCard workout={log} />
+      </Swipeable>
+    </View>
+  );
+}
 
 const DEFAULT_PROGRAMS: ProgramItem[] = [
   {
@@ -569,6 +633,11 @@ export default function WorkoutsScreen() {
       return items;
     }
   }, [historyViewMode, weekGroups, monthGroups, expandedKeys, pendingDelete]);
+
+  const firstLogFlatIdx = useMemo(
+    () => flatItems.findIndex((i) => i.type === "log"),
+    [flatItems]
+  );
 
   useEffect(() => {
     if (expandedInitRef.current || weekGroups.length === 0) return;
@@ -1354,7 +1423,7 @@ export default function WorkoutsScreen() {
               <Text style={[styles.emptySubtext, { color: colors.mutedForeground }]}>Start a workout from the library</Text>
             </View>
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             if (item.type === "weekHeader") {
               const g = item.group;
               const expanded = expandedKeys.has(g.weekKey);
@@ -1461,35 +1530,12 @@ export default function WorkoutsScreen() {
             }
             // type === "log"
             return (
-              <View style={item.indented ? secStyles.indentedLog : undefined}>
-                <Swipeable
-                  renderRightActions={() => (
-                    <TouchableOpacity
-                      onPress={() => {
-                        Alert.alert(
-                          "Delete this workout?",
-                          `"${item.log.workoutName}" will be removed from your log.`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => handleDeleteWithUndo(item.log),
-                            },
-                          ]
-                        );
-                      }}
-                      style={secStyles.deleteAction}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#fff" />
-                      <Text style={secStyles.deleteActionText}>Delete</Text>
-                    </TouchableOpacity>
-                  )}
-                  overshootRight={false}
-                >
-                  <WorkoutCard workout={item.log} />
-                </Swipeable>
-              </View>
+              <WorkoutHistoryRow
+                log={item.log}
+                indented={item.indented}
+                isFirst={index === firstLogFlatIdx}
+                onDelete={handleDeleteWithUndo}
+              />
             );
           }}
         />

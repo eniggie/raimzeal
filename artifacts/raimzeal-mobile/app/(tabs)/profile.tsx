@@ -46,6 +46,7 @@ import {
   FAV_RESET_DEFAULTS_HINT_KEY,
   RECENT_RESET_DEFAULTS_HINT_KEY,
   SCAN_SWIPE_HINT_KEY,
+  WORKOUT_SWIPE_DELETE_HINT_KEY,
 } from "@/lib/hints";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
@@ -725,6 +726,7 @@ export default function ProfileScreen() {
         FAV_RESET_DEFAULTS_HINT_KEY,
         RECENT_RESET_DEFAULTS_HINT_KEY,
         SCAN_SWIPE_HINT_KEY,
+        WORKOUT_SWIPE_DELETE_HINT_KEY,
       ]);
     } catch {
       // ignore storage errors
@@ -2057,6 +2059,7 @@ export default function ProfileScreen() {
                     { key: FAV_RESET_DEFAULTS_HINT_KEY, label: "Favourite reset-defaults hint", desc: "This hint explains the reset-to-defaults option for favourite foods." },
                     { key: RECENT_RESET_DEFAULTS_HINT_KEY, label: "Recent reset-defaults hint", desc: "This hint explains the reset-to-defaults option for recent foods." },
                     { key: SCAN_SWIPE_HINT_KEY, label: "Barcode scan swipe hint", desc: "This hint shows that you can swipe between results on the scanner." },
+                    { key: WORKOUT_SWIPE_DELETE_HINT_KEY, label: "Workout history swipe-to-delete tip", desc: "This tip demonstrates swiping to delete a workout history entry." },
                   ] as { key: string; label: string; desc: string }[]
                 ).map(({ key, label, desc }) => (
                   <TouchableOpacity
