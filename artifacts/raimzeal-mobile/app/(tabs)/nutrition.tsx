@@ -9564,7 +9564,7 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
           const entry = map[log.name];
           const pref = entry !== null && typeof entry === "object" ? entry : null;
-          const isStale = !pref || (pref.grams > 0 && pref.grams !== log.amountGrams);
+          const isStale = !pref || (pref.grams > 0 && Math.abs(pref.grams - (log.amountGrams ?? 0)) / pref.grams > 0.05);
           if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
@@ -10510,7 +10510,7 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
           const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
           const entry = map[log.name];
           const pref = entry !== null && typeof entry === "object" ? entry : null;
-          const isStale = !pref || (pref.grams > 0 && pref.grams !== log.amountGrams);
+          const isStale = !pref || (pref.grams > 0 && Math.abs(pref.grams - (log.amountGrams ?? 0)) / pref.grams > 0.05);
           if (!isStale && pref!.per100g && perGramRef.current) {
             setEditShowPer100g(true);
             setEditGramsText("100");
