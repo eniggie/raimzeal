@@ -369,6 +369,10 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const pendingDeleteRef = useRef<PendingDelete | null>(null);
   const [pendingClearAll, setPendingClearAll] = useState<PendingClearAll | null>(null);
   const pendingClearAllRef = useRef<PendingClearAll | null>(null);
+  const [selectToast, setSelectToast] = useState(false);
+  const [selectToastLabel, setSelectToastLabel] = useState("");
+  const selectToastOpacity = useRef(new Animated.Value(0)).current;
+  const selectToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Commit any pending delete/clear when the component unmounts
   useEffect(() => {
@@ -481,10 +485,24 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     });
   }
 
+  function showSelectToast(label: string) {
+    if (selectToastTimerRef.current) clearTimeout(selectToastTimerRef.current);
+    setSelectToastLabel(label);
+    setSelectToast(true);
+    selectToastOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(selectToastOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.delay(1300),
+      Animated.timing(selectToastOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
+    ]).start(() => setSelectToast(false));
+    selectToastTimerRef.current = setTimeout(() => setSelectToast(false), 2000);
+  }
+
   function handleSelect(scan: RecentScan, showing100g: boolean) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onFoodFound(scan.food, showing100g);
-    handleClose();
+    showSelectToast(`${scan.food.name} added · ${scan.food.calories} kcal`);
+    setTimeout(() => handleClose(), 1800);
   }
 
   function handleLongPress(scan: RecentScan) {
@@ -602,6 +620,16 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             },
           ]}
         >
+          {/* Green pill confirmation toast (direct-select path) */}
+          {selectToast && (
+            <Animated.View
+              style={[styles.selectToast, { opacity: selectToastOpacity }]}
+              pointerEvents="none"
+            >
+              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Text style={styles.selectToastText} numberOfLines={1}>{selectToastLabel}</Text>
+            </Animated.View>
+          )}
           {/* Handle bar */}
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
@@ -968,6 +996,30 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 4,
+  },
+  selectToast: {
+    position: "absolute",
+    top: 52,
+    alignSelf: "center",
+    maxWidth: "88%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#22c55e",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  selectToastText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
   undoToast: {
     flexDirection: "row",

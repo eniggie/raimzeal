@@ -803,7 +803,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const showing100g = per100gScans.has(scan.barcode);
     const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+    let loggedName = scan.food.name;
+    let loggedCal = scan.food.calories;
     if (canToggle && showing100g && scan.food.nutrients100g) {
+      loggedCal = scan.food.nutrients100g.calories;
       onFoodFound({
         ...scan.food,
         calories: scan.food.nutrients100g.calories,
@@ -814,7 +817,12 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     } else {
       onFoodFound(scan.food, canToggle ? false : undefined);
     }
-    handleClose();
+    showScanToast(`${loggedName} added · ${loggedCal} kcal`);
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    autoCloseTimer.current = setTimeout(() => {
+      autoCloseTimer.current = null;
+      handleClose();
+    }, 1800);
   }
 
   async function handleRemoveRecent(barcode: string) {
