@@ -28,6 +28,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext";
 import { exportToPdf, type DateRangeOption, type CustomDateRange } from "@/lib/pdf";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import {
   FILTER_HINT_STORAGE_KEY,
   REORDER_HINT_STORAGE_KEY,
@@ -174,6 +176,7 @@ export default function ProfileScreen() {
   const [shareLoading, setShareLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [jsonLoading, setJsonLoading] = useState(false);
   const [showPhotoRationaleModal, setShowPhotoRationaleModal] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [cardVisibleStats, setCardVisibleStats] = useState<CardVisibleStats>({ ...DEFAULT_VISIBLE_STATS });
@@ -846,9 +849,27 @@ export default function ProfileScreen() {
         {
           text: "Export First",
           onPress: () => {
-            if (pdfLoading) return;
-            setPendingClearAfterExport(true);
-            handleExportPdf();
+            if (pdfLoading || jsonLoading) return;
+            Alert.alert(
+              "Choose Export Format",
+              "Pick a format for your data backup.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "PDF Report",
+                  onPress: () => {
+                    setPendingClearAfterExport(true);
+                    handleExportPdf();
+                  },
+                },
+                {
+                  text: "JSON Backup",
+                  onPress: () => {
+                    handleExportJson(true);
+                  },
+                },
+              ]
+            );
           },
         },
         {
@@ -1139,6 +1160,52 @@ export default function ProfileScreen() {
         }
       });
     });
+  }
+
+  async function handleExportJson(wasPending = false) {
+    if (jsonLoading) return;
+    setJsonLoading(true);
+    try {
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        app: "RAIMZEAL",
+        version: 1,
+        user,
+        workoutLogs,
+        mealLogs,
+        bodyMeasurements,
+        waterIntake,
+        personalRecords,
+        streak,
+        settings,
+        favoriteFoods,
+        oviaMessages,
+      };
+      const json = JSON.stringify(exportData, null, 2);
+      const dateStr = new Date().toISOString().split("T")[0];
+      const filename = `raimzeal_backup_${dateStr}.json`;
+      const file = new FileSystem.File(FileSystem.Paths.document, filename);
+      file.write(json);
+      const uri = file.uri;
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/json",
+          dialogTitle: "Save your RAIMZEAL Data Backup",
+          UTI: "public.json",
+        });
+      }
+      await AsyncStorage.setItem(LAST_EXPORT_KEY, String(Date.now())).catch(() => {});
+      if (wasPending) {
+        setPendingClearAfterExport(false);
+        handleClearAppData();
+      }
+    } catch {
+      showPermissionToast("Export failed — please try again", "download-outline");
+      if (wasPending) setPendingClearAfterExport(false);
+    } finally {
+      setJsonLoading(false);
+    }
   }
 
   function handleExportPdf() {
