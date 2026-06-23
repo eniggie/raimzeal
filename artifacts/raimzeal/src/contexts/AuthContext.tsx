@@ -11,7 +11,7 @@ interface AuthContextValue {
   subscriptionTier: SubscriptionTier;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
-  refreshTier: () => Promise<void>;
+  refreshTier: () => Promise<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null>;
   signUp: (email: string, password: string, metadata: Record<string, string>) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
-  const fetchTier = useCallback(async (userId: string) => {
+  const fetchTier = useCallback(async (userId: string): Promise<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null }> => {
     try {
       const { data } = await supabase
         .from('profiles')
@@ -43,17 +43,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
       const row = data as Record<string, unknown> | null;
+      const periodEnd = (row?.['current_period_end'] as string | null) ?? null;
+      const cancelAtEnd = Boolean(row?.['cancel_at_period_end']);
       setSubscriptionTier(parseTier(row?.['subscription_tier']));
-      setCurrentPeriodEnd((row?.['current_period_end'] as string | null) ?? null);
-      setCancelAtPeriodEnd(Boolean(row?.['cancel_at_period_end']));
+      setCurrentPeriodEnd(periodEnd);
+      setCancelAtPeriodEnd(cancelAtEnd);
+      return { cancelAtPeriodEnd: cancelAtEnd, currentPeriodEnd: periodEnd };
     } catch {
       // non-fatal — stay on foundation
+      return { cancelAtPeriodEnd: false, currentPeriodEnd: null };
     }
   }, []);
 
-  const refreshTier = useCallback(async () => {
+  const refreshTier = useCallback(async (): Promise<{ cancelAtPeriodEnd: boolean; currentPeriodEnd: string | null } | null> => {
     const { data: { session: s } } = await supabase.auth.getSession();
-    if (s?.user?.id) await fetchTier(s.user.id);
+    if (s?.user?.id) return fetchTier(s.user.id);
+    return null;
   }, [fetchTier]);
 
   useEffect(() => {

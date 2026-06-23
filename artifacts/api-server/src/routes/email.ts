@@ -453,6 +453,75 @@ export async function sendWelcomeEmail(to: string, userName: string): Promise<vo
   });
 }
 
+export async function sendCancellationEmail(
+  to: string,
+  userName: string,
+  planName: string,
+  periodEndDate: string,
+): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) throw new Error("SMTP not configured");
+
+  const firstName = userName.split(" ")[0];
+  const safeFirstName = escapeHtml(firstName);
+  const safePlan = escapeHtml(planName);
+  const safeDate = escapeHtml(periodEndDate);
+
+  const subject = `Your RAIMZEAL ${planName} plan is set to cancel`;
+
+  const bodyHtml = `
+    <p style="margin:0 0 20px;font-size:20px;font-weight:700;color:#ffffff;">Cancellation confirmed, ${safeFirstName}</p>
+
+    <div style="background:#1a1208;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:20px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:1px;color:#f59e0b;text-transform:uppercase;">What happens next</p>
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.65;color:#e8e8ec;">
+        Your <strong style="color:#ffffff;">${safePlan} plan</strong> will remain fully active until
+        <strong style="color:#f59e0b;">${safeDate}</strong>. After that, your account will automatically
+        revert to the Foundation plan — which is <strong style="color:#2E8B57;">free forever</strong>.
+      </p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#9ca3af;">
+        All your workout history, nutrition logs, body measurements, and progress photos will be kept.
+        Nothing is deleted.
+      </p>
+    </div>
+
+    <div style="background:#0d1f15;border-left:3px solid #2E8B57;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:1px;color:#2E8B57;text-transform:uppercase;">Changed your mind?</p>
+      <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#e8e8ec;">
+        You can re-subscribe at any time before ${safeDate} to continue without interruption. Just head to the Membership page.
+      </p>
+      <a href="https://www.raimzeal.com/membership" style="display:inline-block;background:#2E8B57;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:10px 22px;border-radius:8px;letter-spacing:0.3px;">Re-subscribe on RAIMZEAL →</a>
+    </div>
+
+    <p style="margin:0 0 20px;font-size:13px;line-height:1.65;color:#9ca3af;">
+      Thank you for supporting the RAIMZEAL mission. Whether you are on Foundation or a paid plan,
+      you are helping keep fitness, food therapy, and health support free for everyone.
+    </p>
+  `;
+
+  const plainText = [
+    `Cancellation confirmed, ${firstName}`,
+    "",
+    `Your ${planName} plan will remain active until ${periodEndDate}.`,
+    "After that, your account will revert to the Foundation plan (free forever).",
+    "",
+    "Your workout history, nutrition logs, and progress data will all be kept.",
+    "",
+    "Changed your mind? Re-subscribe at: https://www.raimzeal.com/membership",
+    "",
+    "Thank you for supporting the RAIMZEAL mission.",
+    "",
+    "— Ovia AI · RAIMZEAL",
+  ].join("\n");
+
+  const fromAddress = process.env["SMTP_FROM"] ?? process.env["SMTP_USER"];
+  await transporter.sendMail({
+    from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`,
+    to, subject, text: plainText,
+    html: buildHtmlEmail(subject, bodyHtml),
+  });
+}
+
 export async function sendWeeklyDigest(
   to: string,
   userName: string,

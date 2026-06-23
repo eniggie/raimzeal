@@ -4,6 +4,7 @@ import { getUncachableStripeClient } from "../stripeClient";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { logger } from "./logger";
 import { normaliseTier, tierFromPriceId } from "./tier";
+import { sendCancellationEmail } from "../routes/email";
 
 /**
  * Extract the current billing period end from a Stripe Subscription object.
@@ -180,6 +181,25 @@ export async function handleBillingEvent(event: Stripe.Event): Promise<void> {
 
         await activateDigestForCustomer(customerId);
         logger.info({ customerId, tier, status: sub.status }, "Subscription created/updated — tier upgraded");
+
+        // If the user scheduled a cancellation at period end, send them a confirmation email
+        if ((sub as any).cancel_at_period_end && periodEndIso) {
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("email, name")
+            .eq("stripe_customer_id", customerId)
+            .maybeSingle();
+          if (profile?.email) {
+            const planLabel = tier === "rise" ? "Rise" : tier === "reign" ? "Reign" : "Legacy";
+            const dateLabel = new Date(periodEndIso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+            sendCancellationEmail(
+              profile.email as string,
+              (profile.name as string | null) ?? "Friend",
+              planLabel,
+              dateLabel,
+            ).catch(err => logger.warn({ customerId, err }, "Cancellation email failed — non-fatal"));
+          }
+        }
       } else if (sub.status === "incomplete_expired" || sub.status === "unpaid") {
         // Payment window lapsed or permanently unpaid — revoke access
         await supabaseAdmin.from("profiles").update({

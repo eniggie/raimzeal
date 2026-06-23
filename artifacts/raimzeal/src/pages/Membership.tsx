@@ -128,6 +128,7 @@ export function Membership() {
   const [checkoutError, setCheckoutError] = useState<Record<string, string>>({});
   const [checkoutUrl, setCheckoutUrl] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showCancelToast, setShowCancelToast] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState('');
 
@@ -140,7 +141,14 @@ export function Membership() {
     const params = new URLSearchParams(search);
     if (params.get('portal') === 'return') {
       window.history.replaceState({}, '', '/membership');
-      refreshTier().catch(() => {});
+      (async () => {
+        try {
+          const data = await refreshTier();
+          if (data?.cancelAtPeriodEnd) setShowCancelToast(true);
+        } catch {
+          // non-fatal
+        }
+      })();
       return;
     }
     if (params.get('checkout') !== 'success') return;
@@ -299,6 +307,32 @@ export function Membership() {
               </div>
               <button
                 onClick={() => setShowSuccess(false)}
+                className="text-foreground/40 hover:text-foreground/70 transition-colors shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          )}
+          {showCancelToast && (
+            <motion.div
+              key="cancel-toast"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ type: 'tween', ease: 'easeOut', duration: 0.25 }}
+              className="mb-4 flex items-start gap-3 rounded-2xl p-4 bg-amber-400/10 border border-amber-400/25"
+            >
+              <Bell className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Cancellation confirmed</p>
+                <p className="text-xs text-foreground/60 mt-0.5 leading-relaxed">
+                  {periodEndLabel
+                    ? `Your plan will stay active until ${periodEndLabel}, then revert to Foundation. Your data and progress will be kept.`
+                    : 'Your plan will stay active until the end of your billing period, then revert to Foundation. Your data and progress will be kept.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCancelToast(false)}
                 className="text-foreground/40 hover:text-foreground/70 transition-colors shrink-0"
               >
                 <X className="h-4 w-4" />
