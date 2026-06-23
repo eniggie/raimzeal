@@ -184,6 +184,7 @@ const HIGHLIGHTED_DATE_STORAGE_KEY = "@nutrition_highlighted_date";
 const JUMP_TO_HISTORY_KEY = "@nutrition_jump_to_history";
 const MANUAL_MACROS_KEY = "@nutrition_manual_macros";
 const JUMP_TO_MACRO_KEY = "@nutrition_jump_to_macro";
+const HIDDEN_RECENTS_KEY = "@nutrition_hidden_recents";
 
 interface CustomFilterPreset {
   id: string;
@@ -1078,6 +1079,26 @@ export default function NutritionScreen() {
   const recentlyStarredTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [recentlyUnstarredNames, setRecentlyUnstarredNames] = useState<Set<string>>(new Set());
   const recentlyUnstarredTimersRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [hiddenRecentNames, setHiddenRecentNames] = useState<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    AsyncStorage.getItem(HIDDEN_RECENTS_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const arr = JSON.parse(raw) as string[];
+        setHiddenRecentNames(new Set(arr));
+      } catch {}
+    }).catch(() => {});
+  }, []);
+
+  const handleRemoveFromRecents = React.useCallback((foodName: string) => {
+    setHiddenRecentNames((prev) => {
+      const next = new Set(prev);
+      next.add(foodName);
+      AsyncStorage.setItem(HIDDEN_RECENTS_KEY, JSON.stringify([...next])).catch(() => {});
+      return next;
+    });
+  }, []);
 
   React.useEffect(() => {
     const starredTimers = recentlyStarredTimersRef;
@@ -1094,7 +1115,7 @@ export default function NutritionScreen() {
     const result: (Omit<MealLog, "id" | "date"> & { lastEaten: string; loggedAtMs?: number })[] = [];
     const sortedLogs = [...mealLogs].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     for (const log of sortedLogs) {
-      if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name)) && !recentlyUnstarredNames.has(log.name)) {
+      if (!seen.has(log.name) && (!favoriteNames.has(log.name) || recentlyStarredNames.has(log.name)) && !recentlyUnstarredNames.has(log.name) && !hiddenRecentNames.has(log.name)) {
         seen.add(log.name);
         const loggedAtMs = Number.isFinite(Number(log.id)) ? Number(log.id) : undefined;
         result.push({ name: log.name, calories: log.calories, protein: log.protein, carbs: log.carbs, fat: log.fat, mealType: log.mealType, lastEaten: log.date, loggedAtMs, ...(log.amountGrams !== undefined ? { amountGrams: log.amountGrams } : {}), ...(log.nutrients100g ? { nutrients100g: log.nutrients100g } : {}), ...(log.servingLabel ? { servingLabel: log.servingLabel } : {}) });
@@ -1102,7 +1123,7 @@ export default function NutritionScreen() {
       if (result.length >= 20) break;
     }
     return result;
-  }, [mealLogs, favoriteFoods, recentlyStarredNames, recentlyUnstarredNames]);
+  }, [mealLogs, favoriteFoods, recentlyStarredNames, recentlyUnstarredNames, hiddenRecentNames]);
 
   const historyDays = React.useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -1828,6 +1849,8 @@ export default function NutritionScreen() {
     setActiveTab("today");
     setHistoryFilterPanelOpen(false);
     setRecentScanCount(0);
+    setHiddenRecentNames(new Set());
+    AsyncStorage.removeItem(HIDDEN_RECENTS_KEY).catch(() => {});
     if (isSupabaseConfigured) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session?.user) return;
@@ -6072,6 +6095,17 @@ export default function NutritionScreen() {
                             size={18}
                             color={(isFavorite(food.name) || recentlyStarredNames.has(food.name)) ? "#f59f0a" : colors.mutedForeground}
                           />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            handleRemoveFromRecents(food.name);
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.recentRemoveBtn}
+                        >
+                          <Ionicons name="close-circle-outline" size={17} color={colors.mutedForeground} />
                         </TouchableOpacity>
                       </TouchableOpacity>
                       );
@@ -12148,6 +12182,10 @@ const styles = StyleSheet.create({
   },
   starBtn: {
     padding: 2,
+  },
+  recentRemoveBtn: {
+    padding: 4,
+    marginLeft: 1,
   },
   favHighlightWrapper: {
     borderRadius: 14,
