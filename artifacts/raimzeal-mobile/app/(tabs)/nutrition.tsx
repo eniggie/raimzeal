@@ -61,7 +61,7 @@ import { useSwipeHint } from "@/hooks/useSwipeHint";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { fetchUserPreferences, upsertUserPreferences } from "@/lib/db";
+import { fetchUserPreferences, upsertUserPreferences, type UserPreferences } from "@/lib/db";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
 import { GlassCard } from "@/components/GlassCard";
 import { ProgressRing } from "@/components/ProgressRing";
@@ -169,6 +169,7 @@ const FILTER_DEFS: NutritionFilterDef[] = [
 
 const THRESHOLDS_STORAGE_KEY = "@nutrition_filter_thresholds";
 const ACTIVE_FILTERS_STORAGE_KEY = "@nutrition_active_filters";
+const PENDING_PREFS_SYNC_KEY = "@nutrition_pending_prefs_sync";
 const CUSTOM_PRESETS_STORAGE_KEY = "@nutrition_custom_filter_presets";
 const LAST_USED_GRAMS_KEY = "@nutrition_last_used_grams";
 const EDIT_PER100G_PREF_KEY = "@nutrition_edit_per100g_pref";
@@ -3145,48 +3146,71 @@ export default function NutritionScreen() {
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         if (!session?.user) return;
+        const userId = session.user.id;
         const validKeys = new Set(FILTER_DEFS.map((d) => d.key));
-        return fetchUserPreferences(session.user.id).then((prefs) => {
-          if (!prefs) return;
-          if (prefs.activeFilters !== undefined) {
-            const restored = prefs.activeFilters.filter(
-              (k): k is string => typeof k === "string" && validKeys.has(k)
-            );
-            setActiveFilters(new Set(restored));
+        // If there is a pending write from a previous failed sync, push local
+        // state to the cloud instead of overwriting it with potentially stale
+        // cloud data.  The stored payload is the most recent state the user
+        // intended the cloud to hold.
+        return AsyncStorage.getItem(PENDING_PREFS_SYNC_KEY).then((pendingRaw) => {
+          if (pendingRaw) {
+            let pending: UserPreferences | null = null;
+            try {
+              pending = JSON.parse(pendingRaw) as UserPreferences;
+            } catch {
+              AsyncStorage.removeItem(PENDING_PREFS_SYNC_KEY).catch(() => {});
+            }
+            if (pending) {
+              return upsertUserPreferences(userId, pending)
+                .then(() => {
+                  AsyncStorage.removeItem(PENDING_PREFS_SYNC_KEY).catch(() => {});
+                })
+                .catch(() => {});
+            }
           }
-          if (prefs.customPresets !== undefined) {
-            const valid = prefs.customPresets.filter(
-              (p) =>
-                p !== null &&
-                typeof p === "object" &&
-                typeof p.id === "string" &&
-                typeof p.name === "string" &&
-                Array.isArray(p.filterKeys)
-            );
-            setCustomPresets(valid);
-          }
-          if (prefs.filterThresholds !== undefined && typeof prefs.filterThresholds === "object") {
-            const validated: FilterThresholds = {};
-            for (const def of FILTER_DEFS) {
-              const v = (prefs.filterThresholds as Record<string, unknown>)[def.key];
-              if (typeof v === "number" && isFinite(v) && v >= 0) {
-                validated[def.key] = Math.round(v);
+          // No pending write — pull latest prefs from cloud as usual.
+          return fetchUserPreferences(userId).then((prefs) => {
+            if (!prefs) return;
+            if (prefs.activeFilters !== undefined) {
+              const restored = prefs.activeFilters.filter(
+                (k): k is string => typeof k === "string" && validKeys.has(k)
+              );
+              setActiveFilters(new Set(restored));
+            }
+            if (prefs.customPresets !== undefined) {
+              const valid = prefs.customPresets.filter(
+                (p) =>
+                  p !== null &&
+                  typeof p === "object" &&
+                  typeof p.id === "string" &&
+                  typeof p.name === "string" &&
+                  Array.isArray(p.filterKeys)
+              );
+              setCustomPresets(valid);
+            }
+            if (prefs.filterThresholds !== undefined && typeof prefs.filterThresholds === "object") {
+              const validated: FilterThresholds = {};
+              for (const def of FILTER_DEFS) {
+                const v = (prefs.filterThresholds as Record<string, unknown>)[def.key];
+                if (typeof v === "number" && isFinite(v) && v >= 0) {
+                  validated[def.key] = Math.round(v);
+                }
+              }
+              setFilterThresholds((prev) => ({ ...prev, ...validated }));
+            }
+            if (prefs.macroGoals !== undefined && typeof prefs.macroGoals === "object") {
+              const g = prefs.macroGoals as Record<string, unknown>;
+              const cal = g["calories"], pro = g["protein"], car = g["carbs"], fa = g["fat"];
+              if (
+                typeof cal === "number" && cal > 0 &&
+                typeof pro === "number" && pro > 0 &&
+                typeof car === "number" && car > 0 &&
+                typeof fa === "number" && fa > 0
+              ) {
+                setMacroGoals({ calories: Math.round(cal), protein: Math.round(pro), carbs: Math.round(car), fat: Math.round(fa) });
               }
             }
-            setFilterThresholds((prev) => ({ ...prev, ...validated }));
-          }
-          if (prefs.macroGoals !== undefined && typeof prefs.macroGoals === "object") {
-            const g = prefs.macroGoals as Record<string, unknown>;
-            const cal = g["calories"], pro = g["protein"], car = g["carbs"], fa = g["fat"];
-            if (
-              typeof cal === "number" && cal > 0 &&
-              typeof pro === "number" && pro > 0 &&
-              typeof car === "number" && car > 0 &&
-              typeof fa === "number" && fa > 0
-            ) {
-              setMacroGoals({ calories: Math.round(cal), protein: Math.round(pro), carbs: Math.round(car), fat: Math.round(fa) });
-            }
-          }
+          });
         });
       })
       .catch(() => {})
@@ -3206,12 +3230,19 @@ export default function NutritionScreen() {
       suppressTimerRef.current = setTimeout(() => {
         suppressRemoteRef.current = false;
       }, 3000);
-      upsertUserPreferences(session.user.id, {
+      const payload = {
         activeFilters: Array.from(activeFilters),
         customPresets,
         filterThresholds,
         macroGoals,
-      }).catch(() => {});
+      };
+      upsertUserPreferences(session.user.id, payload)
+        .then(() => {
+          AsyncStorage.removeItem(PENDING_PREFS_SYNC_KEY).catch(() => {});
+        })
+        .catch(() => {
+          AsyncStorage.setItem(PENDING_PREFS_SYNC_KEY, JSON.stringify(payload)).catch(() => {});
+        });
     });
   }, [activeFilters, customPresets, filterThresholds, macroGoals]);
 
