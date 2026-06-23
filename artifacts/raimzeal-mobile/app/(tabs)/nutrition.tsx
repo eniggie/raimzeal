@@ -1081,6 +1081,13 @@ export default function NutritionScreen() {
       }).start(() => setHighlightedFavorite(null));
     } else {
       delete favoriteCardYsRef.current[food.name];
+      AsyncStorage.getItem(EDIT_PER100G_PREF_KEY)
+        .then((raw) => {
+          const map: Record<string, { per100g: boolean; grams: number } | boolean> = raw ? JSON.parse(raw) : {};
+          delete map[food.name];
+          return AsyncStorage.setItem(EDIT_PER100G_PREF_KEY, JSON.stringify(map));
+        })
+        .catch(() => {});
     }
   }
 
