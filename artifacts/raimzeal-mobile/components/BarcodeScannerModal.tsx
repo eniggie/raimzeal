@@ -1211,8 +1211,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                             </>
                           );
                         })()}
-                        <View style={styles.servingStepperRow}>
-                          <Text style={styles.servingStepperLabel}>Servings</Text>
+                        <View style={[styles.servingStepperRow, addedSuccess && { opacity: 0.5 }]}>
+                          <Text style={styles.servingStepperLabel}>
+                            {addedSuccess ? "For next add" : "Servings"}
+                          </Text>
                           <View style={styles.servingStepper}>
                             <TouchableOpacity
                               onPress={() => handleStepMultiplier(-0.5)}
