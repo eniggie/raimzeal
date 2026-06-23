@@ -8021,7 +8021,10 @@ export default function NutritionScreen() {
               const item = previewSheetFood;
               const favFood: FavoriteFood = { name: item.name, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat, mealType: "snack", servingLabel: item.servingLabel };
               const starred = isFavorite(item.name);
-              const servingText = item.servingLabel ? `per ${item.servingLabel}` : "per 100g";
+              const canToggleDefault = !!(item.nutrients100g);
+              const showingPer100g = defaultPer100g && canToggleDefault;
+              const displayVals = showingPer100g ? item.nutrients100g! : item;
+              const servingText = showingPer100g ? "per 100g" : (item.servingLabel ? `per ${item.servingLabel}` : "per 100g");
               return (
                 <>
                   <View style={styles.previewSheetHandle} />
@@ -8038,16 +8041,45 @@ export default function NutritionScreen() {
                         <Ionicons name="close" size={18} color={colors.mutedForeground} />
                       </TouchableOpacity>
                     </View>
-                    <View style={[styles.previewSheetServingBadge, { backgroundColor: colors.primary + "18" }]}>
-                      <Text style={[styles.previewSheetServingText, { color: colors.primary }]}>
-                        {servingText}
-                      </Text>
-                    </View>
+                    {canToggleDefault ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setDefaultPer100g(!defaultPer100g);
+                        }}
+                        activeOpacity={0.75}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <View
+                          style={[
+                            styles.previewSheetServingBadge,
+                            {
+                              backgroundColor: showingPer100g ? colors.primary + "18" : colors.muted,
+                              borderColor: showingPer100g ? colors.primary + "40" : colors.border,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.previewSheetServingText, { color: showingPer100g ? colors.primary : colors.mutedForeground }]}>
+                            {servingText}
+                          </Text>
+                          <Ionicons name="swap-horizontal-outline" size={10} color={showingPer100g ? colors.primary : colors.mutedForeground} style={{ opacity: 0.7 }} />
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={[styles.previewSheetServingBadge, { backgroundColor: colors.primary + "18" }]}>
+                        <Text style={[styles.previewSheetServingText, { color: colors.primary }]}>
+                          {servingText}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.previewSheetCalRow}>
                     <Text style={[styles.previewSheetCalValue, { color: colors.foreground }]}>
-                      {item.calories}
+                      {displayVals.calories}
                     </Text>
                     <Text style={[styles.previewSheetCalLabel, { color: colors.mutedForeground }]}>
                       kcal
@@ -8055,10 +8087,10 @@ export default function NutritionScreen() {
                   </View>
 
                   {(() => {
-                    const total = item.protein + item.carbs + item.fat;
-                    const proteinPct = total > 0 ? item.protein / total : 1 / 3;
-                    const carbsPct   = total > 0 ? item.carbs   / total : 1 / 3;
-                    const fatPct     = total > 0 ? item.fat     / total : 1 / 3;
+                    const total = displayVals.protein + displayVals.carbs + displayVals.fat;
+                    const proteinPct = total > 0 ? displayVals.protein / total : 1 / 3;
+                    const carbsPct   = total > 0 ? displayVals.carbs   / total : 1 / 3;
+                    const fatPct     = total > 0 ? displayVals.fat     / total : 1 / 3;
                     return (
                       <View style={styles.previewSheetMacroBar}>
                         <TouchableOpacity activeOpacity={0.75} onPress={() => highlightPreviewMacro("protein")} style={[styles.previewSheetMacroBarSegment, { flex: proteinPct, backgroundColor: "#3b82f6", borderTopLeftRadius: 6, borderBottomLeftRadius: 6 }]} />
@@ -8071,7 +8103,7 @@ export default function NutritionScreen() {
                   <View style={[styles.previewSheetMacroGrid, { backgroundColor: colors.muted }]}>
                     <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.protein }], opacity: previewMacroOpacity.protein }]}>
                       <Text style={[styles.previewSheetMacroValue, { color: "#3b82f6" }]}>
-                        {item.protein}g
+                        {displayVals.protein}g
                       </Text>
                       <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
                         Protein
@@ -8080,7 +8112,7 @@ export default function NutritionScreen() {
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
                     <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.carbs }], opacity: previewMacroOpacity.carbs }]}>
                       <Text style={[styles.previewSheetMacroValue, { color: "#f97316" }]}>
-                        {item.carbs}g
+                        {displayVals.carbs}g
                       </Text>
                       <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
                         Carbs
@@ -8089,7 +8121,7 @@ export default function NutritionScreen() {
                     <View style={[styles.previewSheetMacroDivider, { backgroundColor: colors.border }]} />
                     <Animated.View style={[styles.previewSheetMacroCell, { transform: [{ scale: previewMacroScale.fat }], opacity: previewMacroOpacity.fat }]}>
                       <Text style={[styles.previewSheetMacroValue, { color: "#ec4899" }]}>
-                        {item.fat}g
+                        {displayVals.fat}g
                       </Text>
                       <Text style={[styles.previewSheetMacroLabel, { color: colors.mutedForeground }]}>
                         Fat
