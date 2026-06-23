@@ -9707,6 +9707,15 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                     setEditGramsText(editGrams !== undefined ? String(editGrams) : "");
                   } else {
                     commitGramsBaseline(editGramsText);
+                    const pg = perGramRef.current;
+                    if (pg) {
+                      const cal = Math.round(pg.calories * n);
+                      const pro = Math.round(pg.protein * n * 10) / 10;
+                      const carb = Math.round(pg.carbs * n * 10) / 10;
+                      const fat = Math.round(pg.fat * n * 10) / 10;
+                      setHistGramsPreviewText(`~${cal} kcal · ${pro}g P · ${carb}g C · ${fat}g F at ${n}g`);
+                      histGramsPreviewOpacity.value = withTiming(1, { duration: 200 });
+                    }
                   }
                 }}
                 keyboardType="decimal-pad"
@@ -10640,6 +10649,15 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                     setEditGramsText(editGrams !== undefined ? String(editGrams) : "");
                   } else {
                     commitGramsBaseline(editGramsText);
+                    const pg = perGramRef.current;
+                    if (pg) {
+                      const cal = Math.round(pg.calories * n);
+                      const pro = Math.round(pg.protein * n * 10) / 10;
+                      const carb = Math.round(pg.carbs * n * 10) / 10;
+                      const fat = Math.round(pg.fat * n * 10) / 10;
+                      setRowGramsPreviewText(`~${cal} kcal · ${pro}g P · ${carb}g C · ${fat}g F at ${n}g`);
+                      rowGramsPreviewOpacity.value = withTiming(1, { duration: 200 });
+                    }
                   }
                 }}
                 keyboardType="decimal-pad"
