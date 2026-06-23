@@ -9502,6 +9502,16 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
   const [editDate, setEditDate] = useState(log.date);
   const histSaveShakeX = useSharedValue(0);
   const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
+  const editHasChanged = (
+    editForm.name.trim() !== log.name ||
+    Math.round(editBase.calories * editServings) !== log.calories ||
+    Math.round(editBase.protein * editServings * 10) / 10 !== log.protein ||
+    Math.round(editBase.carbs * editServings * 10) / 10 !== log.carbs ||
+    Math.round(editBase.fat * editServings * 10) / 10 !== log.fat ||
+    editMealType !== log.mealType ||
+    editDate !== log.date ||
+    (editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined) !== log.amountGrams
+  );
   const histGramsPreviewOpacity = useSharedValue(0);
   const histGramsPreviewAnimStyle = useAnimatedStyle(() => ({ opacity: histGramsPreviewOpacity.value }));
   const [histGramsPreviewText, setHistGramsPreviewText] = useState<string | null>(null);
@@ -9740,6 +9750,7 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
   }
 
   function handleSaveEdit() {
+    if (!editHasChanged) return;
     const name = editForm.name.trim();
     const hasBlankNumeric = editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "";
     if (!name || hasBlankNumeric) {
@@ -10383,7 +10394,8 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
               <Reanimated.View style={[histSaveShakeStyle, { flex: 2 }]}>
                 <TouchableOpacity
                   onPress={handleSaveEdit}
-                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
+                  disabled={!editHasChanged}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editHasChanged && editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
                 >
                   <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
                     Save Changes
@@ -10460,6 +10472,16 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
   const [editDate, setEditDate] = useState(log.date);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
+  const editHasChanged = (
+    editForm.name.trim() !== log.name ||
+    Math.round(editBase.calories * editServings) !== log.calories ||
+    Math.round(editBase.protein * editServings * 10) / 10 !== log.protein ||
+    Math.round(editBase.carbs * editServings * 10) / 10 !== log.carbs ||
+    Math.round(editBase.fat * editServings * 10) / 10 !== log.fat ||
+    editMealType !== log.mealType ||
+    editDate !== log.date ||
+    (editGrams !== undefined ? Math.round(editGrams * editServings * 10) / 10 : undefined) !== log.amountGrams
+  );
   const rowGramsPreviewOpacity = useSharedValue(0);
   const rowGramsPreviewAnimStyle = useAnimatedStyle(() => ({ opacity: rowGramsPreviewOpacity.value }));
   const [rowGramsPreviewText, setRowGramsPreviewText] = useState<string | null>(null);
@@ -10701,6 +10723,7 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
   }
 
   function handleSaveEdit() {
+    if (!editHasChanged) return;
     const name = editForm.name.trim();
     const hasBlankNumeric = editForm.calories === "" || editForm.protein === "" || editForm.carbs === "" || editForm.fat === "";
     if (!name || hasBlankNumeric) {
@@ -11338,7 +11361,8 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
               <Reanimated.View style={[rowSaveShakeStyle, { flex: 2 }]}>
                 <TouchableOpacity
                   onPress={handleSaveEdit}
-                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
+                  disabled={!editHasChanged}
+                  style={[styles.modalConfirmBtn, { flex: 1, backgroundColor: colors.primary, opacity: (editHasChanged && editForm.name.trim() && editForm.calories !== "" && editForm.protein !== "" && editForm.carbs !== "" && editForm.fat !== "") ? 1 : 0.45 }]}
                 >
                   <Text style={[styles.modalConfirmText, { color: colors.primaryForeground }]}>
                     Save Changes
