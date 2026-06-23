@@ -4439,6 +4439,14 @@ export default function NutritionScreen() {
         // ignore
       }
       setModalShowPer100g(restoredPer100g);
+      if (restoredPer100g) {
+        const rememberedGrams = lastUsedGramsMapRef.current[food.name];
+        const parsedRemembered = rememberedGrams ? parseFloat(rememberedGrams) : NaN;
+        if (Number.isFinite(parsedRemembered) && parsedRemembered > 0) {
+          setGrams(String(parsedRemembered));
+          setGramsPreFillHint(String(parsedRemembered));
+        }
+      }
     } else {
       let foodWithMacros = food;
       try {
