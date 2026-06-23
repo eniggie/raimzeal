@@ -313,7 +313,12 @@ function parseOFFProduct(p: OFFProduct): ScannedFood | null {
 
   const unit: "g" | "ml" = /\bml\b/i.test(servingSize ?? "") ? "ml" : "g";
 
-  return { name, calories, protein, carbs, fat, servingLabel, nutrients100g, unit };
+  const servingDescription =
+    useServingQuantity && gramLabel && servingSize && servingSize !== gramLabel
+      ? servingSize
+      : undefined;
+
+  return { name, calories, protein, carbs, fat, servingLabel, nutrients100g, unit, servingDescription };
 }
 
 type QuickItem = Omit<MealLog, "id" | "date"> & { _kind: "quick" };
@@ -6947,6 +6952,11 @@ export default function NutritionScreen() {
                   <Text style={[styles.foodName, { color: colors.foreground }]} numberOfLines={1}>
                     {item.name}
                   </Text>
+                  {item.servingDescription && (
+                    <Text style={[styles.foodServingDesc, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      {item.servingDescription}
+                    </Text>
+                  )}
                   <Text style={[styles.foodMacros, { color: colors.mutedForeground }]}>
                     P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
                   </Text>
@@ -11594,6 +11604,7 @@ const styles = StyleSheet.create({
   },
   foodInfo: { flex: 1, gap: 2 },
   foodName: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  foodServingDesc: { fontSize: 11, fontFamily: "Inter_400Regular", opacity: 0.75 },
   foodMacros: { fontSize: 12, fontFamily: "Inter_400Regular" },
   servingPill: {
     alignSelf: "flex-start",

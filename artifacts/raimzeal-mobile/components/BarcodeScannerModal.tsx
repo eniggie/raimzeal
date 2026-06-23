@@ -181,6 +181,7 @@ export interface ScannedFood {
   servingLabel?: string;
   nutrients100g?: { calories: number; protein: number; carbs: number; fat: number };
   unit?: "g" | "ml";
+  servingDescription?: string;
 }
 
 interface OpenFoodFactsProduct {
