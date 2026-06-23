@@ -291,20 +291,7 @@ function WorkoutHistoryRow({ log, onDelete, indented, isFirst }: WorkoutHistoryR
         ref={swipeableRef}
         renderRightActions={() => (
           <TouchableOpacity
-            onPress={() => {
-              Alert.alert(
-                "Delete this workout?",
-                `"${log.workoutName}" will be removed from your log.`,
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: () => onDelete(log),
-                  },
-                ]
-              );
-            }}
+            onPress={() => onDelete(log)}
             style={secStyles.deleteAction}
           >
             <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -479,7 +466,7 @@ export default function WorkoutsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { workoutLogs, removeWorkoutLog } = useFitness();
+  const { workoutLogs, removeWorkoutLog, settings } = useFitness();
   const { syncStatus, startSync, finishSync } = useSyncIndicator();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("library");
@@ -494,7 +481,7 @@ export default function WorkoutsScreen() {
   const expandedInitRef = useRef(false);
 
   // ── Undo-delete for workout logs ──────────────────────────────────────────
-  const UNDO_DURATION_MS = 5_000;
+  const UNDO_DURATION_MS = (settings.undoWindowSeconds ?? 5) * 1000;
   const [pendingDelete, setPendingDelete] = useState<{ id: string; workoutName: string } | null>(null);
   const pendingDeleteRef = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   const undoOpacity = useRef(new Animated.Value(0)).current;
