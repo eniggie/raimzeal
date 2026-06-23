@@ -589,6 +589,16 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     );
   }
 
+  function handleScrollBeginDrag() {
+    if (!pendingDeleteRef.current) return;
+    const { timer } = pendingDeleteRef.current;
+    clearTimeout(timer);
+    commitDelete(pendingDeleteRef.current.scan.barcode);
+    pendingDeleteRef.current = null;
+    setPendingDelete(null);
+    undoProgressAnimRef.current?.stop();
+  }
+
   function handleUndoClearAll() {
     if (!pendingClearAllRef.current) return;
     const { scans: savedScans, per100gScans: savedPer100g, timer } = pendingClearAllRef.current;
@@ -739,6 +749,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
               style={styles.list}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onScrollBeginDrag={handleScrollBeginDrag}
             >
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
                 Tap to add · Pencil to edit
