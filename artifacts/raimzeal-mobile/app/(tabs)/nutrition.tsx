@@ -9719,6 +9719,12 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                   onPress={() => {
                     if (editServings > 0.5) {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (editGrams !== undefined) {
+                        setEditGrams(undefined);
+                        editGramsRef.current = undefined;
+                        setEditGramsText("");
+                        perGramRef.current = null;
+                      }
                       const steps = Math.round(editServings * 200) / 100;
                       const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
                       setEditServings(next);
@@ -9750,6 +9756,12 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                     setEditServingsText(normalized);
                     const n = parseFloat(normalized);
                     if (!isNaN(n) && n > 0) {
+                      if (editGrams !== undefined) {
+                        setEditGrams(undefined);
+                        editGramsRef.current = undefined;
+                        setEditGramsText("");
+                        perGramRef.current = null;
+                      }
                       setEditServings(n);
                       editServingsRef.current = n;
                       setEditForm(f => ({
@@ -9764,6 +9776,12 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
+                    if (snapped !== editServings && editGrams !== undefined) {
+                      setEditGrams(undefined);
+                      editGramsRef.current = undefined;
+                      setEditGramsText("");
+                      perGramRef.current = null;
+                    }
                     setEditServings(snapped);
                     editServingsRef.current = snapped;
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
@@ -9783,6 +9801,12 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
                 <TouchableOpacity
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (editGrams !== undefined) {
+                      setEditGrams(undefined);
+                      editGramsRef.current = undefined;
+                      setEditGramsText("");
+                      perGramRef.current = null;
+                    }
                     const steps = Math.round(editServings * 200) / 100;
                     const next = Math.floor(steps + 1) * 0.5;
                     setEditServings(next);
@@ -10612,6 +10636,12 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                   onPress={() => {
                     if (editServings > 0.5) {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (editGrams !== undefined) {
+                        setEditGrams(undefined);
+                        editGramsRef.current = undefined;
+                        setEditGramsText("");
+                        perGramRef.current = null;
+                      }
                       const steps = Math.round(editServings * 200) / 100;
                       const next = Math.max(0.5, Math.ceil(steps - 1) * 0.5);
                       setEditServings(next);
@@ -10643,6 +10673,12 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                     setEditServingsText(normalized);
                     const n = parseFloat(normalized);
                     if (!isNaN(n) && n > 0) {
+                      if (editGrams !== undefined) {
+                        setEditGrams(undefined);
+                        editGramsRef.current = undefined;
+                        setEditGramsText("");
+                        perGramRef.current = null;
+                      }
                       setEditServings(n);
                       editServingsRef.current = n;
                       setEditForm(f => ({
@@ -10657,6 +10693,12 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                   onBlur={() => {
                     const n = parseFloat(editServingsText);
                     const snapped = !isNaN(n) && n > 0 ? Math.max(0.5, Math.round(n / 0.5) * 0.5) : 1;
+                    if (snapped !== editServings && editGrams !== undefined) {
+                      setEditGrams(undefined);
+                      editGramsRef.current = undefined;
+                      setEditGramsText("");
+                      perGramRef.current = null;
+                    }
                     setEditServings(snapped);
                     editServingsRef.current = snapped;
                     setEditServingsText(Number.isInteger(snapped) ? String(snapped) : snapped.toFixed(1));
@@ -10676,6 +10718,12 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
                 <TouchableOpacity
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (editGrams !== undefined) {
+                      setEditGrams(undefined);
+                      editGramsRef.current = undefined;
+                      setEditGramsText("");
+                      perGramRef.current = null;
+                    }
                     const steps = Math.round(editServings * 200) / 100;
                     const next = Math.floor(steps + 1) * 0.5;
                     setEditServings(next);
