@@ -916,19 +916,32 @@ export async function unenrollProgram(): Promise<void> {
 export const PENDING_CLOUD_WIPE_KEY = "@pending_cloud_wipe";
 
 /**
- * Deletes all personal health data for `userId` from every Supabase table.
+ * Deletes all personal health data for `userId` from every Supabase table,
+ * plus all community content (posts, comments, likes) via the API server.
  * Runs all deletions in parallel. Throws if network / auth prevents any of
  * them so the caller can schedule a retry via PENDING_CLOUD_WIPE_KEY.
  *
  * Tables cleared:
  *   workout_logs, meal_logs, body_measurements, water_intake,
- *   ovia_messages, personal_records, favourite_foods, progress_photos
+ *   ovia_messages, personal_records, favourite_foods, progress_photos,
+ *   community_posts, community_comments, community_likes (via API)
  *
  * Profile row: preferences column is nulled out and personal fields are reset
  * so no stale data re-hydrates into the app on next sign-in.
  */
 export async function clearAllUserData(userId: string): Promise<void> {
   if (!isSupabaseConfigured) return;
+
+  const token = await getAccessToken();
+
+  const communityWipe = token
+    ? fetch(`${getApiBase()}/community/user-data`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (res) => {
+        if (!res.ok) throw new Error(`Community wipe failed: ${res.status}`);
+      })
+    : Promise.reject(new Error("No auth token — cannot wipe community data"));
 
   const results = await Promise.allSettled([
     supabase.from("workout_logs").delete().eq("user_id", userId),
@@ -948,6 +961,7 @@ export async function clearAllUserData(userId: string): Promise<void> {
       goals: null,
       updated_at: new Date().toISOString(),
     }).eq("id", userId),
+    communityWipe,
   ]);
 
   const failed = results.filter((r) => {

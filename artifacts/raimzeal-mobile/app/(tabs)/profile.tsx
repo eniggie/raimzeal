@@ -812,7 +812,7 @@ export default function ProfileScreen() {
   async function handleClearAppData() {
     const isSignedIn = Boolean(authUser?.id) && isSupabaseConfigured;
     const cloudLine = isSignedIn
-      ? " Your cloud-synced data — workouts, meals, measurements, AI history, personal records, favourite foods, and progress photos — will also be permanently deleted from the server."
+      ? " Your cloud-synced data — workouts, meals, measurements, AI history, personal records, favourite foods, progress photos, and community posts — will also be permanently deleted from the server."
       : "";
 
     let exportLine = "";

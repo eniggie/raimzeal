@@ -530,5 +530,41 @@ communityRouter.post(
   },
 );
 
+// ── DELETE /api/community/user-data ──────────────────────────────────────────
+// Bulk-wipes all community content owned by the authenticated user:
+//   • community_posts (FK cascade removes the user's own comments + likes on those posts)
+//   • community_comments on other users' posts
+//   • community_likes on other users' posts
+// Used by the "Clear All App Data" flow on the mobile client.
+communityRouter.delete(
+  "/community/user-data",
+  requireAuth,
+  async (req, res) => {
+    const userId = (req as any).userId as string;
+    const supabase = getAdminClient();
+
+    const results = await Promise.allSettled([
+      supabase.from("community_posts").delete().eq("user_id", userId),
+      supabase.from("community_comments").delete().eq("user_id", userId),
+      supabase.from("community_likes").delete().eq("user_id", userId),
+    ]);
+
+    const failed = results.filter((r) => {
+      if (r.status === "rejected") return true;
+      const v = (r as PromiseFulfilledResult<{ error: unknown }>).value;
+      return v?.error != null;
+    });
+
+    if (failed.length > 0) {
+      req.log.error({ userId, failed: failed.length }, "DELETE /community/user-data partial failure");
+      res.status(500).json({ error: "Community data wipe incomplete" });
+      return;
+    }
+
+    req.log.info({ userId }, "Community data wiped for user");
+    res.json({ deleted: true });
+  }
+);
+
 export default communityRouter;
 
