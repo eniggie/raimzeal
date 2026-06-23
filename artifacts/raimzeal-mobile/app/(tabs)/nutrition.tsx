@@ -2030,6 +2030,11 @@ export default function NutritionScreen() {
     dismissHint(HISTORY_FILTER_HINT_STORAGE_KEY);
   }
 
+  function dismissHistoryFilterHintManual() {
+    Haptics.selectionAsync();
+    dismissHistoryFilterHint();
+  }
+
   function dismissPresetNudge() {
     presetNudgeDismissedRef.current = true;
     Animated.timing(presetNudgeFadeAnim, {
@@ -6397,13 +6402,19 @@ export default function NutritionScreen() {
 
                 {/* Long-press hint — shown once below history filter chips */}
                 {historyFilterHintVisible && (
-                  <Animated.View style={{ opacity: historyFilterHintFadeAnim }}>
+                  <Animated.View style={[styles.filterHintRow, { opacity: historyFilterHintFadeAnim }]}>
                     <Text
-                      style={[styles.filterHintText, { color: colors.mutedForeground }]}
+                      style={[styles.filterHintText, { color: colors.mutedForeground, flex: 1, textAlign: "left", paddingHorizontal: 0 }]}
                       onPress={handleHistoryFilterHintPress}
                     >
                       Tap a chip to filter by date range or meal type
                     </Text>
+                    <TouchableOpacity
+                      onPress={dismissHistoryFilterHintManual}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={14} color={colors.mutedForeground + "aa"} />
+                    </TouchableOpacity>
                   </Animated.View>
                 )}
                 </>)}
@@ -11692,6 +11703,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: 6,
     flexShrink: 0,
+  },
+  filterHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 4,
+    gap: 6,
   },
   filterHintText: {
     fontSize: 11,
