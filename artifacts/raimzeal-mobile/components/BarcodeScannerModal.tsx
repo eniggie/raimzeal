@@ -535,7 +535,6 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       resultCardOpacity.setValue(0);
       setSearchQuery("");
       setActiveFilter(null);
-      setHasNewScans(false);
       setNewScanTrigger(0);
       setPer100gScans(new Set());
       setCorrectedBarcodes(new Set());
