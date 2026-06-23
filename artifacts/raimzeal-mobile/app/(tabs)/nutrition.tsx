@@ -7225,7 +7225,7 @@ export default function NutritionScreen() {
           setShowScanner(false);
           refreshRecentScanCount();
         }}
-        onFoodFound={handleScannedFood}
+        onFoodFound={(food, per100g) => handleScannedFood(food, undefined, per100g)}
         onManualEntry={() => {
           extendFilterHint();
           setShowScanner(false);

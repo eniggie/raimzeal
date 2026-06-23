@@ -352,7 +352,7 @@ function formatScannedDate(ts: number): string {
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onFoodFound: (food: ScannedFood) => void;
+  onFoodFound: (food: ScannedFood, per100g?: boolean) => void;
   onManualEntry: () => void;
 }
 
@@ -626,7 +626,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     const baseFood = (canToggle && resultPer100g)
       ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
       : cachedResult.food;
-    onFoodFound(scaledFood(baseFood, servingMultiplier));
+    onFoodFound(scaledFood(baseFood, servingMultiplier), canToggle && resultPer100g);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAddedSuccess(true);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
@@ -642,7 +642,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     const baseFood = (canToggle && resultPer100g)
       ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
       : cachedResult.food;
-    onFoodFound(scaledFood(baseFood, servingMultiplier));
+    onFoodFound(scaledFood(baseFood, servingMultiplier), canToggle && resultPer100g);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
     autoCloseTimer.current = setTimeout(() => {
@@ -710,9 +710,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         protein: scan.food.nutrients100g.protein,
         carbs: scan.food.nutrients100g.carbs,
         fat: scan.food.nutrients100g.fat,
-      });
+      }, true);
     } else {
-      onFoodFound(scan.food);
+      onFoodFound(scan.food, canToggle ? false : undefined);
     }
     handleClose();
   }
