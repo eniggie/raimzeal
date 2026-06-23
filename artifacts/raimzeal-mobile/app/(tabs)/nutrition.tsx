@@ -5995,13 +5995,13 @@ export default function NutritionScreen() {
                                   </>
                                 );
                               })()}
-                              <TouchableOpacity
+                              <RecentFoodStarButton
+                                isFavoriteFood={true}
+                                isStarredDisplay={true}
+                                isReordering={false}
+                                colors={colors}
                                 onPress={() => handleToggleFavorite(food)}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                style={styles.starBtn}
-                              >
-                                <Ionicons name="star" size={18} color="#f59f0a" />
-                              </TouchableOpacity>
+                              />
                             </TouchableOpacity>
                           </Animated.View>
                         );
