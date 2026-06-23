@@ -359,13 +359,24 @@ interface Props {
 type ActiveTab = "scan" | "recent";
 type SortOrder = "recent" | "most-used";
 type MacroFilter = "under200cal" | "highProtein" | "lowFat" | "lowCarb";
+type CustomisableFilter = "under200cal" | "highProtein";
 
-const MACRO_FILTERS: { id: MacroFilter; label: string; test: (food: ScannedFood) => boolean }[] = [
-  { id: "under200cal", label: "Under 200 kcal", test: (f) => f.calories < 200 },
-  { id: "highProtein",  label: "High Protein",   test: (f) => f.protein >= 15 },
-  { id: "lowFat",       label: "Low Fat",         test: (f) => f.fat <= 5 },
-  { id: "lowCarb",      label: "Low Carb",        test: (f) => f.carbs <= 10 },
-];
+const CUSTOM_CAL_KEY = "@scanner_custom_cal_limit";
+const CUSTOM_PROTEIN_KEY = "@scanner_custom_protein_min";
+const DEFAULT_CAL_LIMIT = 200;
+const DEFAULT_PROTEIN_MIN = 15;
+
+function buildMacroFilters(
+  calLimit: number,
+  proteinMin: number,
+): { id: MacroFilter; label: string; test: (food: ScannedFood) => boolean }[] {
+  return [
+    { id: "under200cal", label: `Under ${calLimit} kcal`,      test: (f) => f.calories < calLimit },
+    { id: "highProtein",  label: `High Protein (≥${proteinMin}g)`, test: (f) => f.protein >= proteinMin },
+    { id: "lowFat",       label: "Low Fat",                     test: (f) => f.fat <= 5 },
+    { id: "lowCarb",      label: "Low Carb",                    test: (f) => f.carbs <= 10 },
+  ];
+}
 
 export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEntry }: Props) {
   const colors = useColors();
@@ -411,6 +422,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [newScanTrigger, setNewScanTrigger] = useState(0);
   const [activeFilter, setActiveFilter] = useState<MacroFilter | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("recent");
+  const [customCalLimit, setCustomCalLimit] = useState(DEFAULT_CAL_LIMIT);
+  const [customProteinMin, setCustomProteinMin] = useState(DEFAULT_PROTEIN_MIN);
+  const [thresholdSheetTarget, setThresholdSheetTarget] = useState<CustomisableFilter | null>(null);
+  const [thresholdInput, setThresholdInput] = useState("");
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [correctedBarcodes, setCorrectedBarcodes] = useState<Set<string>>(new Set());
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -532,6 +547,26 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       loadRecentScans(true);
     }
   }, [activeTab, loadRecentScans]);
+
+  // Load persisted custom filter thresholds once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const [calRaw, protRaw] = await Promise.all([
+          AsyncStorage.getItem(CUSTOM_CAL_KEY),
+          AsyncStorage.getItem(CUSTOM_PROTEIN_KEY),
+        ]);
+        if (calRaw) {
+          const v = parseInt(calRaw, 10);
+          if (!isNaN(v) && v > 0) setCustomCalLimit(v);
+        }
+        if (protRaw) {
+          const v = parseInt(protRaw, 10);
+          if (!isNaN(v) && v > 0) setCustomProteinMin(v);
+        }
+      } catch {}
+    })();
+  }, []);
 
   const handleBarcodeScanned = useCallback(
     async ({ data }: { data: string }) => {
@@ -672,6 +707,28 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
       autoCloseTimer.current = null;
       handleClose();
     }, 1500);
+  }
+
+  function handleLongPressFilterChip(id: MacroFilter) {
+    if (id !== "under200cal" && id !== "highProtein") return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setThresholdInput(String(id === "under200cal" ? customCalLimit : customProteinMin));
+    setThresholdSheetTarget(id as CustomisableFilter);
+  }
+
+  async function handleSaveThreshold() {
+    const val = parseInt(thresholdInput, 10);
+    setThresholdSheetTarget(null);
+    if (isNaN(val) || val <= 0) return;
+    try {
+      if (thresholdSheetTarget === "under200cal") {
+        setCustomCalLimit(val);
+        await AsyncStorage.setItem(CUSTOM_CAL_KEY, String(val));
+      } else if (thresholdSheetTarget === "highProtein") {
+        setCustomProteinMin(val);
+        await AsyncStorage.setItem(CUSTOM_PROTEIN_KEY, String(val));
+      }
+    } catch {}
   }
 
   function handleStepMultiplier(delta: number) {
@@ -820,7 +877,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     }
   }
 
-  const filterDef = activeFilter ? MACRO_FILTERS.find((f) => f.id === activeFilter) : null;
+  const macroFilters = buildMacroFilters(customCalLimit, customProteinMin);
+  const filterDef = activeFilter ? macroFilters.find((f) => f.id === activeFilter) : null;
   const filteredScans = recentScans.filter((s) => {
     if (searchQuery.trim() && !s.food.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterDef && !filterDef.test(s.food)) return false;
@@ -1265,8 +1323,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                           </Text>
                         </TouchableOpacity>
                         <View style={styles.filterChipDivider} />
-                        {MACRO_FILTERS.map((f) => {
+                        {macroFilters.map((f) => {
                           const isActive = activeFilter === f.id;
+                          const isCustomisable = f.id === "under200cal" || f.id === "highProtein";
                           return (
                             <TouchableOpacity
                               key={f.id}
@@ -1274,6 +1333,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setActiveFilter(isActive ? null : f.id);
                               }}
+                              onLongPress={isCustomisable ? () => handleLongPressFilterChip(f.id) : undefined}
+                              delayLongPress={400}
                               style={[styles.filterChip, isActive && styles.filterChipActive]}
                               activeOpacity={0.75}
                             >
@@ -1283,6 +1344,9 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                               <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                                 {f.label}
                               </Text>
+                              {isCustomisable && !isActive && (
+                                <Ionicons name="options-outline" size={10} color="rgba(255,255,255,0.35)" style={{ marginLeft: 3 }} />
+                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -1450,6 +1514,58 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
         onSaveAndAdd={handleSaveAndAdd}
         onClose={() => setEditTarget(null)}
       />
+
+      {/* Custom threshold sheet */}
+      <Modal
+        visible={thresholdSheetTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setThresholdSheetTarget(null)}
+      >
+        <View style={styles.thresholdOverlay}>
+          <View style={styles.thresholdSheet}>
+            <Text style={styles.thresholdTitle}>
+              {thresholdSheetTarget === "under200cal" ? "Calorie limit" : "Protein minimum"}
+            </Text>
+            <Text style={styles.thresholdSub}>
+              {thresholdSheetTarget === "under200cal"
+                ? "Show foods under how many calories?"
+                : "Show foods with at least how many grams of protein?"}
+            </Text>
+            <View style={styles.thresholdInputRow}>
+              <TextInput
+                style={styles.thresholdInput}
+                value={thresholdInput}
+                onChangeText={setThresholdInput}
+                keyboardType="number-pad"
+                returnKeyType="done"
+                onSubmitEditing={handleSaveThreshold}
+                maxLength={5}
+                autoFocus
+                selectTextOnFocus
+                placeholderTextColor="rgba(255,255,255,0.3)"
+              />
+              <Text style={styles.thresholdUnit}>
+                {thresholdSheetTarget === "under200cal" ? "kcal" : "g protein"}
+              </Text>
+            </View>
+            <View style={styles.thresholdActions}>
+              <TouchableOpacity
+                onPress={() => setThresholdSheetTarget(null)}
+                style={styles.thresholdCancelBtn}
+              >
+                <Text style={styles.thresholdCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveThreshold}
+                style={styles.thresholdSaveBtn}
+              >
+                <Text style={styles.thresholdSaveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -2192,5 +2308,83 @@ const styles = StyleSheet.create({
     color: "rgba(163,230,53,0.9)",
     fontSize: 10,
     fontFamily: "Inter_500Medium",
+  },
+  thresholdOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  thresholdSheet: {
+    width: "100%",
+    backgroundColor: "#1c1c1e",
+    borderRadius: 18,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  thresholdTitle: {
+    color: "#fff",
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 6,
+  },
+  thresholdSub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 18,
+  },
+  thresholdInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 20,
+  },
+  thresholdInput: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: "#fff",
+    fontSize: 22,
+    fontFamily: "Inter_600SemiBold",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  thresholdUnit: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  thresholdActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  thresholdCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+  },
+  thresholdCancelText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  thresholdSaveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#a3e635",
+    alignItems: "center",
+  },
+  thresholdSaveBtnText: {
+    color: "#09090b",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
 });
