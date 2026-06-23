@@ -1045,6 +1045,64 @@ function makeCombinedSyncCallback(
   };
 }
 
+function RecentFoodStarButton({
+  isFavoriteFood,
+  isStarredDisplay,
+  isReordering,
+  colors,
+  onPress,
+}: {
+  isFavoriteFood: boolean;
+  isStarredDisplay: boolean;
+  isReordering: boolean;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  onPress: () => void;
+}) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const handlePress = () => {
+    if (isFavoriteFood) {
+      scale.value = withSequence(
+        withTiming(0.4, { duration: 180 }),
+        withTiming(1, { duration: 0 }),
+      );
+      opacity.value = withSequence(
+        withTiming(0, { duration: 180 }),
+        withTiming(1, { duration: 0 }),
+      );
+    } else {
+      scale.value = withSequence(
+        withTiming(1.45, { duration: 120 }),
+        withTiming(1, { duration: 130 }),
+      );
+    }
+    onPress();
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={isReordering ? undefined : handlePress}
+      disabled={isReordering}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      style={[styles.starBtn, isReordering && { opacity: 0.35 }]}
+    >
+      <Reanimated.View style={animatedStyle}>
+        <Ionicons
+          name={isStarredDisplay ? "star" : "star-outline"}
+          size={18}
+          color={isStarredDisplay ? "#f59f0a" : colors.mutedForeground}
+        />
+      </Reanimated.View>
+    </TouchableOpacity>
+  );
+}
+
 export default function NutritionScreen() {
   const router = useRouter();
   const colors = useColors();
@@ -6105,8 +6163,12 @@ export default function NutritionScreen() {
                         <Text style={[styles.foodCal, { color: colors.primary }]}>
                           {displayRecentCalories}
                         </Text>
-                        <TouchableOpacity
-                          onPress={isReordering ? undefined : () => {
+                        <RecentFoodStarButton
+                          isFavoriteFood={isFavorite(food.name)}
+                          isStarredDisplay={isFavorite(food.name) || recentlyStarredNames.has(food.name)}
+                          isReordering={isReordering}
+                          colors={colors}
+                          onPress={() => {
                             const alreadyFavorited = isFavorite(food.name);
                             if (!alreadyFavorited) {
                               setRecentlyStarredNames((prev) => {
@@ -6154,16 +6216,7 @@ export default function NutritionScreen() {
                             }
                             handleToggleFavorite(food);
                           }}
-                          disabled={isReordering}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={[styles.starBtn, isReordering && { opacity: 0.35 }]}
-                        >
-                          <Ionicons
-                            name={(isFavorite(food.name) || recentlyStarredNames.has(food.name)) ? "star" : "star-outline"}
-                            size={18}
-                            color={(isFavorite(food.name) || recentlyStarredNames.has(food.name)) ? "#f59f0a" : colors.mutedForeground}
-                          />
-                        </TouchableOpacity>
+                        />
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
