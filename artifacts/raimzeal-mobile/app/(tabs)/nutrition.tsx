@@ -4619,16 +4619,9 @@ export default function NutritionScreen() {
         })
         .catch(() => {});
 
-      if (selectedFoodSourceRef.current === "quick") {
-        dismissQuickGramsHint();
-      } else if (selectedFoodSourceRef.current === "fav") {
-        dismissFavGramsHint();
-      } else if (selectedFoodSourceRef.current === "recent") {
-        dismissRecentGramsHint();
-      } else if (selectedFoodSourceRef.current === "scan") {
-        dismissQuickGramsHint();
-        dismissFavGramsHint();
-      }
+      dismissQuickGramsHint();
+      dismissFavGramsHint();
+      dismissRecentGramsHint();
     }
 
     lastUsedMealMapRef.current[name] = selectedMeal;
