@@ -185,6 +185,7 @@ const JUMP_TO_HISTORY_KEY = "@nutrition_jump_to_history";
 const MANUAL_MACROS_KEY = "@nutrition_manual_macros";
 const JUMP_TO_MACRO_KEY = "@nutrition_jump_to_macro";
 const HIDDEN_RECENTS_KEY = "@nutrition_hidden_recents";
+const RECENT_FOODS_EXPANDED_KEY = "@nutrition_recent_foods_expanded";
 
 interface CustomFilterPreset {
   id: string;
@@ -1525,6 +1526,11 @@ export default function NutritionScreen() {
   const [quickPer100gMap, setQuickPer100gMap] = useState<Record<string, boolean>>({});
   const [recentFoodsPer100g, setRecentFoodsPer100g] = useState<Set<string>>(new Set());
   const [recentFoodsExpanded, setRecentFoodsExpanded] = useState(false);
+  React.useEffect(() => {
+    AsyncStorage.getItem(RECENT_FOODS_EXPANDED_KEY).then((raw) => {
+      if (raw !== null) setRecentFoodsExpanded(raw === "true");
+    }).catch(() => {});
+  }, []);
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const [previewSheetFood, setPreviewSheetFood] = useState<SearchItem | null>(null);
   const previewMacroScale  = useRef({ protein: new Animated.Value(1), carbs: new Animated.Value(1), fat: new Animated.Value(1) }).current;
@@ -6112,7 +6118,11 @@ export default function NutritionScreen() {
                     })}
                     {recentFoods.length > 5 && (
                       <TouchableOpacity
-                        onPress={() => setRecentFoodsExpanded((prev) => !prev)}
+                        onPress={() => setRecentFoodsExpanded((prev) => {
+                          const next = !prev;
+                          AsyncStorage.setItem(RECENT_FOODS_EXPANDED_KEY, JSON.stringify(next)).catch(() => {});
+                          return next;
+                        })}
                         activeOpacity={0.7}
                         style={{
                           alignSelf: "center",
