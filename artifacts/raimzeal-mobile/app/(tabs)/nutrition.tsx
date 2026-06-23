@@ -1645,6 +1645,7 @@ export default function NutritionScreen() {
   const per100gToastAnim = useRef(new Animated.Value(0)).current;
 
   const [savedMealToastMessage, setSavedMealToastMessage] = useState<string | null>(null);
+  const [savedMealUndoFn, setSavedMealUndoFn] = useState<{ fn: () => void } | null>(null);
   const savedMealToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedMealToastAnim = useRef(new Animated.Value(0)).current;
 
@@ -2950,14 +2951,16 @@ export default function NutritionScreen() {
     showRestoredToast(dateStr);
   }
 
-  function handleMealSaved(label: string) {
+  function handleMealSaved(label: string, onUndo?: () => void) {
     if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
     setSavedMealToastMessage(label);
+    setSavedMealUndoFn(onUndo ? { fn: onUndo } : null);
     savedMealToastAnim.setValue(0);
     Animated.spring(savedMealToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
     savedMealToastTimerRef.current = setTimeout(() => {
       Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
         setSavedMealToastMessage(null);
+        setSavedMealUndoFn(null);
       });
       savedMealToastTimerRef.current = null;
     }, 2000);
@@ -9071,7 +9074,6 @@ export default function NutritionScreen() {
 
       {savedMealToastMessage !== null && (
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.starToast,
             {
@@ -9091,9 +9093,29 @@ export default function NutritionScreen() {
           ]}
         >
           <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={[styles.starToastText, { color: "#fff" }]} numberOfLines={1}>
+          <Text style={[styles.starToastText, { color: "#fff", flex: 1 }]} numberOfLines={1}>
             {savedMealToastMessage}
           </Text>
+          {savedMealUndoFn !== null && (
+            <TouchableOpacity
+              onPress={() => {
+                savedMealUndoFn.fn();
+                setSavedMealUndoFn(null);
+                if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
+                setSavedMealToastMessage("Undone");
+                savedMealToastTimerRef.current = setTimeout(() => {
+                  Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+                    setSavedMealToastMessage(null);
+                  });
+                  savedMealToastTimerRef.current = null;
+                }, 1500);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginLeft: 10 }}
+            >
+              <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" }}>Undo</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       )}
 
@@ -9430,7 +9452,7 @@ function MacroBar({
   );
 }
 
-const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
+const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, onLogToday, isFirst, onSaved }: { log: MealLog; onAddFood: () => void; onDelete: (meal: MealLog) => void; onLogToday: (meal: MealLog) => void; isFirst?: boolean; onSaved?: (label: string, onUndo?: () => void) => void }) {
   const colors = useColors();
   const { updateMealLog, syncMealName } = useFitness();
   const { syncStatus: histSyncStatus, startSync: histStartSync, finishSync: histFinishSync } = useSyncIndicator();
@@ -9738,6 +9760,16 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
     const savedMealType = editMealType;
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
+    const prevSnapshot = {
+      name: log.name,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+      fat: log.fat,
+      mealType: log.mealType,
+      date: log.date,
+      amountGrams: log.amountGrams,
+    };
     histStartSync();
     const histSyncCb = name !== oldName
       ? makeCombinedSyncCallback(2, histFinishSync)
@@ -9756,7 +9788,10 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
       syncMealName(log.id, name, histSyncCb);
     }
     setShowEditSheet(false);
-    onSaved?.(`${name} saved · ${savedCalories} kcal`);
+    onSaved?.(`${name} saved · ${savedCalories} kcal`, () => {
+      updateMealLog(log.id, prevSnapshot);
+      if (name !== prevSnapshot.name) syncMealName(log.id, prevSnapshot.name);
+    });
   }
 
   function handleCancelEdit() {
@@ -10374,7 +10409,7 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
   prev.log.amountGrams === next.log.amountGrams &&
   prev.isFirst === next.isFirst);
 
-const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string) => void }) {
+const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, isFirst, onSaved }: { log: MealLog; onDelete: (meal: MealLog) => void; onToggleStar?: () => void; isFirst?: boolean; onSaved?: (label: string, onUndo?: () => void) => void }) {
   const colors = useColors();
   const { updateMealLog, syncMealName, favoriteFoods } = useFitness();
   const { syncStatus: rowSyncStatus, startSync: rowStartSync, finishSync: rowFinishSync } = useSyncIndicator();
@@ -10686,6 +10721,16 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
     const savedMealType = editMealType;
     const savedGrams = editGrams;
     const savedCalories = Math.round(savedBase.calories * savedServings);
+    const prevSnapshot = {
+      name: log.name,
+      calories: log.calories,
+      protein: log.protein,
+      carbs: log.carbs,
+      fat: log.fat,
+      mealType: log.mealType,
+      date: log.date,
+      amountGrams: log.amountGrams,
+    };
     rowStartSync();
     const rowSyncCb = name !== oldName
       ? makeCombinedSyncCallback(2, rowFinishSync)
@@ -10704,7 +10749,10 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
       syncMealName(log.id, name, rowSyncCb);
     }
     setShowEditSheet(false);
-    onSaved?.(`${name} saved · ${savedCalories} kcal`);
+    onSaved?.(`${name} saved · ${savedCalories} kcal`, () => {
+      updateMealLog(log.id, prevSnapshot);
+      if (name !== prevSnapshot.name) syncMealName(log.id, prevSnapshot.name);
+    });
   }
 
   function handleCancelEdit() {
