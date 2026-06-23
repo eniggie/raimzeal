@@ -1726,7 +1726,7 @@ export default function NutritionScreen() {
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
   const pendingScrollFavoriteRef = useRef<string | null>(null);
-  const selectedFoodSourceRef = useRef<"quick" | "fav" | "recent" | null>(null);
+  const selectedFoodSourceRef = useRef<"quick" | "fav" | "recent" | "scan" | null>(null);
   const [highlightedFavorite, setHighlightedFavorite] = useState<string | null>(null);
   const highlightAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList<FoodListItem>>(null);
@@ -4497,6 +4497,7 @@ export default function NutritionScreen() {
 
   async function handleScannedFood(food: ScannedFood, forceGrams?: string, per100gHint?: boolean) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    selectedFoodSourceRef.current = "scan";
     const lastMeal: MealLog["mealType"] =
       (lastUsedMealMapRef.current[food.name] as MealLog["mealType"] | undefined) ?? "snack";
     setSelectedMeal(lastMeal);
@@ -4624,6 +4625,9 @@ export default function NutritionScreen() {
         dismissFavGramsHint();
       } else if (selectedFoodSourceRef.current === "recent") {
         dismissRecentGramsHint();
+      } else if (selectedFoodSourceRef.current === "scan") {
+        dismissQuickGramsHint();
+        dismissFavGramsHint();
       }
     }
 
