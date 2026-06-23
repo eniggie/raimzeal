@@ -1611,6 +1611,7 @@ export default function NutritionScreen() {
   const indexRefsPresetRef = useRef<React.MutableRefObject<number>[]>([]);
   const presetItemHeightRef = useRef(DRAG_PRESET_ITEM_HEIGHT);
   const avgPresetChipWidthRef = useRef(80);
+  const presetChipWidthsRef = useRef<Record<string, number>>({});
 
   const [filterSummaryVisible, setFilterSummaryVisible] = useState(false);
   const filterSummaryFadeAnim = useRef(new Animated.Value(0)).current;
@@ -5062,35 +5063,7 @@ export default function NutritionScreen() {
                       </Animated.View>
                     )}
 
-                    {customPresets.length > 0 && !isReorderingPresets && (
-                      <View
-                        pointerEvents="none"
-                        onLayout={(e) => {
-                          const w = e.nativeEvent.layout.width;
-                          if (w > 0) avgPresetChipWidthRef.current = w;
-                        }}
-                        style={{
-                          position: "absolute",
-                          opacity: 0,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          borderRadius: 20,
-                          borderWidth: 1,
-                          maxWidth: 200,
-                        }}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingLeft: 10, paddingRight: 6, paddingVertical: 7 }}>
-                          <Ionicons name="reorder-two-outline" size={11} color="transparent" />
-                          <Ionicons name="bookmark" size={12} color="transparent" />
-                          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
-                            {customPresets[0].name}
-                          </Text>
-                        </View>
-                        <View style={{ paddingHorizontal: 7, paddingVertical: 7 }}>
-                          <Ionicons name="close" size={13} color="transparent" />
-                        </View>
-                      </View>
-                    )}
+
 
                     {isReorderingPresets ? (
                       <ScrollView
@@ -5140,6 +5113,14 @@ export default function NutritionScreen() {
                               { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55", overflow: "hidden" },
                               { transform: [{ scale: presetScale }] },
                             ]}
+                            onLayout={(e) => {
+                              const w = e.nativeEvent.layout.width;
+                              if (w > 0) {
+                                presetChipWidthsRef.current[preset.id] = w;
+                                const vals = Object.values(presetChipWidthsRef.current);
+                                avgPresetChipWidthRef.current = vals.reduce((s, v) => s + v, 0) / vals.length;
+                              }
+                            }}
                           >
                             <Animated.View
                               pointerEvents="none"
@@ -6139,35 +6120,7 @@ export default function NutritionScreen() {
                         </TouchableOpacity>
                       </Animated.View>
                     )}
-                    {customPresets.length > 0 && !isReorderingPresets && (
-                      <View
-                        pointerEvents="none"
-                        onLayout={(e) => {
-                          const w = e.nativeEvent.layout.width;
-                          if (w > 0) avgPresetChipWidthRef.current = w;
-                        }}
-                        style={{
-                          position: "absolute",
-                          opacity: 0,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          borderRadius: 20,
-                          borderWidth: 1,
-                          maxWidth: 200,
-                        }}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingLeft: 10, paddingRight: 6, paddingVertical: 7 }}>
-                          <Ionicons name="reorder-two-outline" size={11} color="transparent" />
-                          <Ionicons name="bookmark" size={12} color="transparent" />
-                          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
-                            {customPresets[0].name}
-                          </Text>
-                        </View>
-                        <View style={{ paddingHorizontal: 7, paddingVertical: 7 }}>
-                          <Ionicons name="close" size={13} color="transparent" />
-                        </View>
-                      </View>
-                    )}
+
                     {isReorderingPresets ? (
                       <ScrollView
                         horizontal
@@ -6216,6 +6169,14 @@ export default function NutritionScreen() {
                                 { backgroundColor: colors.secondary + "18", borderColor: colors.secondary + "55", overflow: "hidden" },
                                 { transform: [{ scale: presetScale }] },
                               ]}
+                              onLayout={(e) => {
+                                const w = e.nativeEvent.layout.width;
+                                if (w > 0) {
+                                  presetChipWidthsRef.current[preset.id] = w;
+                                  const vals = Object.values(presetChipWidthsRef.current);
+                                  avgPresetChipWidthRef.current = vals.reduce((s, v) => s + v, 0) / vals.length;
+                                }
+                              }}
                             >
                               <Animated.View
                                 pointerEvents="none"
