@@ -5,21 +5,34 @@
  * nutrition, workouts, and sleep recovery.
  *
  * Every message carries the Ovia AI disclaimer and is science-backed.
+ *
+ * expo-notifications is loaded LAZILY (dynamic import) so that the module's
+ * native side-effects (DevicePushTokenAutoRegistration / PushTokenManager)
+ * do not run at app launch on iOS 26, where they trigger an uncatchable
+ * NSException in the TurboModule void-return path (react-native#54859).
  */
-import * as Notifications from "expo-notifications";
+import type * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
-// Configure foreground notification presentation
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+async function getNotifications() {
+  return await import("expo-notifications");
+}
+
+/** Call once after the user has signed in — never at module load. */
+export async function configureNotificationHandler() {
+  if (Platform.OS === "web") return;
+  const N = await getNotifications();
+  N.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 const STORAGE_KEY = "raimzeal_reminder_settings";
 
@@ -227,9 +240,10 @@ const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === "web") return false;
-  const { status: existing } = await Notifications.getPermissionsAsync();
+  const N = await getNotifications();
+  const { status: existing } = await N.getPermissionsAsync();
   if (existing === "granted") return true;
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await N.requestPermissionsAsync();
   return status === "granted";
 }
 
@@ -256,7 +270,8 @@ export async function scheduleReminders(
   settings: ReminderSettings
 ): Promise<number> {
   if (Platform.OS === "web") return 0;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  const N = await getNotifications();
+  await N.cancelAllScheduledNotificationsAsync();
   let count = 0;
   for (const [key, enabled] of Object.entries(settings) as [
     keyof ReminderSettings,
@@ -265,7 +280,7 @@ export async function scheduleReminders(
     if (!enabled) continue;
     const config = CONFIGS[key];
     try {
-      await Notifications.scheduleNotificationAsync({
+      await N.scheduleNotificationAsync({
         identifier: config.id,
         content: {
           title: config.title,
@@ -273,7 +288,7 @@ export async function scheduleReminders(
           sound: true,
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          type: N.SchedulableTriggerInputTypes.DAILY,
           hour: config.hour,
           minute: config.minute,
         } as Notifications.DailyTriggerInput,
@@ -288,14 +303,15 @@ export async function scheduleReminders(
 
 export async function sendTestNotification(): Promise<void> {
   if (Platform.OS === "web") return;
-  await Notifications.scheduleNotificationAsync({
+  const N = await getNotifications();
+  await N.scheduleNotificationAsync({
     content: {
       title: "✅ Ovia AI Reminders Active",
       body: "Your personalised daily reminders are set up and working. Ovia AI will guide you every day across nutrition, hydration, fasting, training, and recovery.",
       sound: true,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      type: N.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 3,
       repeats: false,
     } as Notifications.TimeIntervalTriggerInput,
@@ -304,7 +320,8 @@ export async function sendTestNotification(): Promise<void> {
 
 export async function getActiveReminderCount(): Promise<number> {
   if (Platform.OS === "web") return 0;
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const N = await getNotifications();
+  const scheduled = await N.getAllScheduledNotificationsAsync();
   return scheduled.filter((n) => n.identifier.startsWith("ovia_")).length;
 }
 
@@ -351,12 +368,13 @@ const WATER_MESSAGES = [
 
 export async function scheduleWaterIntervalReminders(config: WaterReminderConfig): Promise<number> {
   if (Platform.OS === "web") return 0;
+  const N = await getNotifications();
 
   // Cancel existing water reminders first
-  const all = await Notifications.getAllScheduledNotificationsAsync();
+  const all = await N.getAllScheduledNotificationsAsync();
   for (const n of all) {
     if (n.identifier.startsWith(WATER_NOTIF_PREFIX)) {
-      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      await N.cancelScheduledNotificationAsync(n.identifier);
     }
   }
 
@@ -368,11 +386,11 @@ export async function scheduleWaterIntervalReminders(config: WaterReminderConfig
     const msg = WATER_MESSAGES[msgIdx % WATER_MESSAGES.length];
     msgIdx++;
     try {
-      await Notifications.scheduleNotificationAsync({
+      await N.scheduleNotificationAsync({
         identifier: `${WATER_NOTIF_PREFIX}${hour}`,
         content: { title: msg.title, body: msg.body, sound: true },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          type: N.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute: 0,
         } as Notifications.DailyTriggerInput,

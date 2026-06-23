@@ -1,8 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BlurView } from "expo-blur";
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs, useSegments } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
@@ -19,41 +17,6 @@ function TabTracker() {
     AsyncStorage.setItem(LAST_TAB_KEY, tab).catch(() => {});
   }, [segments]);
   return null;
-}
-
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="workouts">
-        <Icon sf={{ default: "dumbbell", selected: "dumbbell.fill" }} />
-        <Label>Workouts</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="ovia">
-        <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
-        <Label>Ovia AI</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="nutrition">
-        <Icon sf={{ default: "fork.knife", selected: "fork.knife" }} />
-        <Label>Nutrition</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="progress">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Progress</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="community">
-        <Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
-        <Label>Community</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "person", selected: "person.fill" }} />
-        <Label>Profile</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
 }
 
 function ClassicTabLayout() {
@@ -189,10 +152,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  const layout = isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />;
   return (
     <>
-      {layout}
+      <ClassicTabLayout />
       <TabTracker />
     </>
   );

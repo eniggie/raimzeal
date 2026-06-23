@@ -33,6 +33,7 @@ import { BootPreferences, loadBootPreferences } from "@/hooks/useBootPreferences
 import { CardPreferencesProvider } from "@/hooks/useCardPreferences";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import {
+  configureNotificationHandler,
   loadReminderSettings,
   requestNotificationPermissions,
   scheduleReminders,
@@ -49,6 +50,7 @@ const queryClient = new QueryClient();
 async function initNotifications() {
   if (Platform.OS === "web") return;
   try {
+    await configureNotificationHandler();
     const granted = await requestNotificationPermissions();
     if (!granted) return;
     const settings = await loadReminderSettings();

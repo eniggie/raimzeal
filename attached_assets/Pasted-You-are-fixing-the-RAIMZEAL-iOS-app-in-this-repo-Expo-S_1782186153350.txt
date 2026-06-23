@@ -1,0 +1,49 @@
+You are fixing the RAIMZEAL iOS app in this repo (Expo SDK 54, React Native 0.81.5, New Architecture; the mobile app is in artifacts/raimzeal-mobile). The iOS build crashes on launch on iOS 26+ ("opens then closes"). There are TWO confirmed iOS-26-specific native crashes (both the facebook/react-native#54859 "async void TurboModule NSException" pattern). Apply ALL fixes below exactly. Do NOT add buildReactNativeFromSource, patch-package, or any RCTTurboModule exception-swallowing plugin — those were tried and produce a BLANK screen. Keep the standard prebuilt config.
+
+──────────── FIX 1 — Tab bar (artifacts/raimzeal-mobile/app/(tabs)/_layout.tsx) ────────────
+The app renders experimental NativeTabs (from "expo-router/unstable-native-tabs") on iOS 26 via isLiquidGlassAvailable(). NativeTabs is backed by RNSTabBarController, which throws on iOS 26 (react-native-screens#3940) and is loaded on launch (there is no app/index.tsx, so "/" mounts the tab navigator). Make TabLayout ALWAYS use the classic JS tab bar:
+
+  export default function TabLayout() {
+    return <ClassicTabLayout />;   // NativeTabs/RNSTabBarController crashes on iOS 26
+  }
+
+Delete the `if (isLiquidGlassAvailable()) return <NativeTabLayout />;` branch. Leave ClassicTabLayout as-is.
+
+──────────── FIX 2 — expo-notifications loaded at launch (artifacts/raimzeal-mobile/lib/notifications.ts + app/_layout.tsx) ────────────
+lib/notifications.ts imports the expo-notifications BARREL and calls setNotificationHandler() at module load, and app/_layout.tsx imports lib/notifications statically. So at launch, expo-notifications' DevicePushTokenAutoRegistration side-effect runs PushTokenManager.addListener() (a native void TurboModule call) which throws the uncatchable iOS-26 NSException on the signed-out launch path. Make expo-notifications FULLY LAZY:
+
+In lib/notifications.ts:
+  1. Change `import * as Notifications from "expo-notifications";`  ->  `import type * as Notifications from "expo-notifications";`
+  2. DELETE the top-level `Notifications.setNotificationHandler({ ... });` block.
+  3. Add a lazy loader:
+       async function getNotifications() { return await import("expo-notifications"); }
+  4. Add an exported handler-init (called only after sign-in):
+       export async function configureNotificationHandler() {
+         if (Platform.OS === "web") return;
+         const N = await getNotifications();
+         N.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert:true, shouldPlaySound:true, shouldSetBadge:false, shouldShowBanner:true, shouldShowList:true }) });
+       }
+  5. In EVERY function that uses Notifications.* at runtime (requestNotificationPermissions, scheduleReminders, sendTestNotification, getActiveReminderCount, scheduleWaterIntervalReminders), add `const N = await getNotifications();` as the first runtime line and replace each runtime `Notifications.<x>` with `N.<x>`. Keep `as Notifications.<Type>` type casts unchanged.
+
+In app/_layout.tsx:
+  6. Add `configureNotificationHandler` to the import from "@/lib/notifications".
+  7. Inside initNotifications() (the function that ONLY runs after a session/sign-in exists), call `await configureNotificationHandler();` as the first line in the try block.
+
+Verify: `grep -rn 'from "expo-notifications"' artifacts/raimzeal-mobile/{app,lib,components,contexts,hooks}` must show ONLY dynamic `import("expo-notifications")` calls + the one `import type` line — NO static barrel import anywhere.
+
+──────────── BUILD CONFIG (artifacts/raimzeal-mobile/app.json + eas.json) ────────────
+  - app.json expo-build-properties: ensure ios.buildReactNativeFromSource is NOT set (remove it if present).
+  - No RCTTurboModule/patch-package/exception-swallow plugins.
+  - Bump ios.buildNumber to 38 (and android.versionCode). DURABLE FIX: in eas.json set cli.appVersionSource="remote" and build.production.autoIncrement=true so EAS auto-assigns unique build numbers.
+
+──────────── POST-SIGN-IN (verify, fix if needed) ────────────
+After sign-in, initNotifications still dynamically loads expo-notifications, which can re-trigger the same iOS-26 push crash. Test SIGNING IN on a real iOS 26 device. If it crashes on sign-in: make notifications fully opt-in (do NOT auto-load expo-notifications in initNotifications; only load it when the user opens/enables the Reminders screen) and/or enable the Push Notifications (aps-environment) capability. Notifications are NOT required for the App Store resubmission.
+
+──────────── BUILD, TEST, DEPLOY ────────────
+  cd artifacts/raimzeal-mobile
+  npx tsc --noEmit              # must be 0 errors
+  eas build --platform ios --profile production
+  eas submit --platform ios --latest
+Then install the new build on a REAL iOS 26 device and confirm: (1) it opens to the welcome screen, (2) Sign in with Apple works, (3) the app is usable. Only then, in App Store Connect: attach the build to version 1.3.0, set export compliance = No, reply to the reviewer in Resolution Center, attach a screen recording of Sign in with Apple working, and Submit for Review.
+
+Do not declare success until the app LAUNCHES and RENDERS on a real iOS 26 device.
