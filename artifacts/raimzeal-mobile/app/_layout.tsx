@@ -17,7 +17,6 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BootSplash } from "@/components/BootSplash";
@@ -227,26 +226,24 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <AuthProvider>
-                <FitnessProvider>
-                  <MacroGoalsProvider initialGoals={bootPrefs.macroGoals}>
-                    <PermissionsProvider initialRationaleDismissed={bootPrefs.cameraRollRationaleDismissed}>
-                      <ThumbnailSizeProvider initialSize={bootPrefs.thumbnailSize}>
-                        <Per100gDefaultProvider initialValue={bootPrefs.defaultPer100g}>
-                          <CardPreferencesProvider
-                            initialAction={bootPrefs.cardAction}
-                            initialDelay={bootPrefs.cardAutoTriggerDelay}
-                          >
-                            <AuthGate />
-                          </CardPreferencesProvider>
-                        </Per100gDefaultProvider>
-                      </ThumbnailSizeProvider>
-                    </PermissionsProvider>
-                  </MacroGoalsProvider>
-                </FitnessProvider>
-              </AuthProvider>
-            </KeyboardProvider>
+            <AuthProvider>
+              <FitnessProvider>
+                <MacroGoalsProvider initialGoals={bootPrefs.macroGoals}>
+                  <PermissionsProvider initialRationaleDismissed={bootPrefs.cameraRollRationaleDismissed}>
+                    <ThumbnailSizeProvider initialSize={bootPrefs.thumbnailSize}>
+                      <Per100gDefaultProvider initialValue={bootPrefs.defaultPer100g}>
+                        <CardPreferencesProvider
+                          initialAction={bootPrefs.cardAction}
+                          initialDelay={bootPrefs.cardAutoTriggerDelay}
+                        >
+                          <AuthGate />
+                        </CardPreferencesProvider>
+                      </Per100gDefaultProvider>
+                    </ThumbnailSizeProvider>
+                  </PermissionsProvider>
+                </MacroGoalsProvider>
+              </FitnessProvider>
+            </AuthProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>

@@ -8678,7 +8678,7 @@ export default function NutritionScreen() {
                 },
               ],
               opacity: presetUndoAnim,
-              bottom: Animated.add(insets.bottom + 16, presetDeleteOffsetAnim),
+              bottom: Animated.add(Animated.add(insets.bottom + 16, presetDeleteOffsetAnim), keyboardHeightAnim),
             },
           ]}
         >
