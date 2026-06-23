@@ -373,6 +373,19 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
   const [selectToastLabel, setSelectToastLabel] = useState("");
   const selectToastOpacity = useRef(new Animated.Value(0)).current;
   const selectToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoProgress = useRef(new Animated.Value(1)).current;
+  const undoProgressAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  function startUndoProgress() {
+    undoProgressAnimRef.current?.stop();
+    undoProgress.setValue(1);
+    undoProgressAnimRef.current = Animated.timing(undoProgress, {
+      toValue: 0,
+      duration: UNDO_DURATION_MS,
+      useNativeDriver: false,
+    });
+    undoProgressAnimRef.current.start();
+  }
 
   // Commit any pending delete/clear when the component unmounts
   useEffect(() => {
@@ -466,6 +479,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     const pd: PendingDelete = { scan, originalIndex, timer };
     pendingDeleteRef.current = pd;
     setPendingDelete(pd);
+    startUndoProgress();
   }
 
   function handleUndo() {
@@ -568,6 +582,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             const pca: PendingClearAll = { scans: savedScans, per100gScans: savedPer100g, timer };
             pendingClearAllRef.current = pca;
             setPendingClearAll(pca);
+            startUndoProgress();
           },
         },
       ]
@@ -782,28 +797,42 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
                 { backgroundColor: colors.foreground },
               ]}
             >
-              <Text
-                style={[
-                  styles.undoToastText,
-                  { color: colors.background },
-                ]}
-                numberOfLines={1}
-              >
-                {pendingClearAll !== null
-                  ? `Cleared ${pendingClearAll.scans.length} scan${pendingClearAll.scans.length === 1 ? "" : "s"}`
-                  : "Scan removed"}
-              </Text>
-              <TouchableOpacity
-                onPress={pendingClearAll !== null ? handleUndoClearAll : handleUndo}
-                hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-                style={styles.undoBtn}
-              >
+              <View style={styles.undoToastRow}>
                 <Text
-                  style={[styles.undoBtnText, { color: colors.primary }]}
+                  style={[
+                    styles.undoToastText,
+                    { color: colors.background },
+                  ]}
+                  numberOfLines={1}
                 >
-                  Undo
+                  {pendingClearAll !== null
+                    ? `Cleared ${pendingClearAll.scans.length} scan${pendingClearAll.scans.length === 1 ? "" : "s"}`
+                    : "Scan removed"}
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={pendingClearAll !== null ? handleUndoClearAll : handleUndo}
+                  hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+                  style={styles.undoBtn}
+                >
+                  <Text
+                    style={[styles.undoBtnText, { color: colors.primary }]}
+                  >
+                    Undo
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Animated.View
+                style={[
+                  styles.undoProgressBar,
+                  {
+                    backgroundColor: colors.primary,
+                    width: undoProgress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["0%", "100%"],
+                    }),
+                  },
+                ]}
+              />
             </View>
           )}
         </View>
@@ -1022,15 +1051,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   undoToast: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    overflow: "hidden",
     marginHorizontal: 16,
     marginTop: 10,
     marginBottom: 4,
+    borderRadius: 12,
+  },
+  undoToastRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
   },
   undoToastText: {
     fontSize: 14,
@@ -1043,5 +1075,8 @@ const styles = StyleSheet.create({
   undoBtnText: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  undoProgressBar: {
+    height: 3,
   },
 });
