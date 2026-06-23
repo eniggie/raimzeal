@@ -429,6 +429,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [thresholdSheetTarget, setThresholdSheetTarget] = useState<CustomisableFilter | null>(null);
   const [thresholdInput, setThresholdInput] = useState("");
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const [recentAddedBarcode, setRecentAddedBarcode] = useState<string | null>(null);
   const [scanToast, setScanToast] = useState(false);
   const [scanToastLabel, setScanToastLabel] = useState("");
   const scanToastOpacity = useRef(new Animated.Value(0)).current;
@@ -811,7 +812,6 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   }
 
   function handleSelectRecent(scan: RecentScan) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const showing100g = per100gScans.has(scan.barcode);
     const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
     let loggedName = scan.food.name;
@@ -828,12 +828,38 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     } else {
       onFoodFound(scan.food, canToggle ? false : undefined);
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showScanToast(`${loggedName} added · ${loggedCal} kcal`);
+    setRecentAddedBarcode(scan.barcode);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
     autoCloseTimer.current = setTimeout(() => {
       autoCloseTimer.current = null;
+      setRecentAddedBarcode(null);
       handleClose();
     }, 1800);
+  }
+
+  function handleRecentAddAgain(scan: RecentScan) {
+    const showing100g = per100gScans.has(scan.barcode);
+    const canToggle = !!(scan.food.servingLabel && scan.food.nutrients100g);
+    if (canToggle && showing100g && scan.food.nutrients100g) {
+      onFoodFound({
+        ...scan.food,
+        calories: scan.food.nutrients100g.calories,
+        protein: scan.food.nutrients100g.protein,
+        carbs: scan.food.nutrients100g.carbs,
+        fat: scan.food.nutrients100g.fat,
+      }, true);
+    } else {
+      onFoodFound(scan.food, canToggle ? false : undefined);
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    autoCloseTimer.current = setTimeout(() => {
+      autoCloseTimer.current = null;
+      setRecentAddedBarcode(null);
+      handleClose();
+    }, 1500);
   }
 
   async function handleRemoveRecent(barcode: string) {
@@ -1508,8 +1534,8 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         return (
                           <TouchableOpacity
                             key={scan.barcode}
-                            onPress={() => handleSelectRecent(scan)}
-                            onLongPress={() => handleLongPressRecent(scan)}
+                            onPress={recentAddedBarcode === scan.barcode ? undefined : () => handleSelectRecent(scan)}
+                            onLongPress={recentAddedBarcode === scan.barcode ? undefined : () => handleLongPressRecent(scan)}
                             delayLongPress={400}
                             activeOpacity={0.75}
                             style={styles.recentItem}
@@ -1564,33 +1590,49 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                 )}
                               </View>
                             </View>
-                            <View style={styles.recentItemActions}>
-                              <TouchableOpacity
-                                onPress={(e) => {
-                                  e.stopPropagation();
-                                  handleLongPressRecent(scan);
-                                }}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                style={styles.recentActionBtn}
-                              >
-                                <Ionicons
-                                  name="pencil-outline"
-                                  size={17}
-                                  color="rgba(255,255,255,0.4)"
-                                />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => handleRemoveRecent(scan.barcode)}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                style={styles.recentActionBtn}
-                              >
-                                <Ionicons
-                                  name="trash-outline"
-                                  size={17}
-                                  color="rgba(255,255,255,0.4)"
-                                />
-                              </TouchableOpacity>
-                            </View>
+                            {recentAddedBarcode === scan.barcode ? (
+                              <View style={styles.recentItemActions}>
+                                <View style={styles.addedConfirm}>
+                                  <Ionicons name="checkmark-circle" size={16} color="#a3e635" />
+                                  <Text style={styles.addedConfirmText}>Added!</Text>
+                                </View>
+                                <TouchableOpacity
+                                  onPress={(e) => { e.stopPropagation(); handleRecentAddAgain(scan); }}
+                                  style={styles.addAgainBtn}
+                                >
+                                  <Ionicons name="add" size={13} color="#09090b" />
+                                  <Text style={styles.addAgainBtnText}>Add again</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              <View style={styles.recentItemActions}>
+                                <TouchableOpacity
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    handleLongPressRecent(scan);
+                                  }}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                  style={styles.recentActionBtn}
+                                >
+                                  <Ionicons
+                                    name="pencil-outline"
+                                    size={17}
+                                    color="rgba(255,255,255,0.4)"
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handleRemoveRecent(scan.barcode)}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                  style={styles.recentActionBtn}
+                                >
+                                  <Ionicons
+                                    name="trash-outline"
+                                    size={17}
+                                    color="rgba(255,255,255,0.4)"
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            )}
                           </TouchableOpacity>
                         );
                       })}
