@@ -7883,43 +7883,39 @@ export default function NutritionScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                onPress={() => { selectedFoodSourceRef.current = null; reloadQuickPer100gMap(); setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
-                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
-              >
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleConfirmLog}
-                disabled={((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)}
-                style={[
-                  styles.modalConfirmBtn,
-                  {
-                    backgroundColor:
-                      ((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)
-                        ? colors.muted
-                        : colors.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modalConfirmText,
-                    {
-                      color:
-                        ((selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g) && !(parseFloat(grams) > 0)
-                          ? colors.mutedForeground
-                          : colors.primaryForeground,
-                    },
-                  ]}
-                >
-                  Add Food
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {(() => {
+              const isGramsMode = (selectedFoodIsApiResult && !selectedFoodServingLabel) || modalShowPer100g;
+              const gramsInvalid = isGramsMode && !(parseFloat(grams) > 0);
+              return (
+                <View style={styles.modalBtns}>
+                  <TouchableOpacity
+                    onPress={() => { selectedFoodSourceRef.current = null; reloadQuickPer100gMap(); setShowModal(false); setGramsPreFillHint(null); setModalShowPer100g(false); setSelectedFoodNutrients100g(undefined); setMacrosFromMemory(false); }}
+                    style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleConfirmLog}
+                    disabled={gramsInvalid}
+                    style={[
+                      styles.modalConfirmBtn,
+                      { backgroundColor: gramsInvalid ? colors.muted : colors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modalConfirmText,
+                        { color: gramsInvalid ? colors.mutedForeground : colors.primaryForeground },
+                      ]}
+                    >
+                      Add Food
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
           </GlassCard>
         </View>
       </Modal>
