@@ -1508,6 +1508,10 @@ export default function NutritionScreen() {
   const badgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: badgeScaleAnim.value }],
   }));
+  const scanBtnScaleAnim = useSharedValue(1);
+  const scanBtnAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scanBtnScaleAnim.value }],
+  }));
   const breakdownReAddBadgeScaleAnim = useSharedValue(1);
   const breakdownReAddBadgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breakdownReAddBadgeScaleAnim.value }],
@@ -1846,6 +1850,10 @@ export default function NutritionScreen() {
     if (recentScanCount > prevScanCountRef.current) {
       badgeScaleAnim.value = withSequence(
         withSpring(1.4, { damping: 4, stiffness: 300 }),
+        withSpring(1, { damping: 10, stiffness: 200 })
+      );
+      scanBtnScaleAnim.value = withSequence(
+        withSpring(1.15, { damping: 4, stiffness: 300 }),
         withSpring(1, { damping: 10, stiffness: 200 })
       );
     }
@@ -4964,23 +4972,25 @@ export default function NutritionScreen() {
                         </Reanimated.View>
                       )}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        if (filterHintTimerRef.current) {
-                          clearTimeout(filterHintTimerRef.current);
-                          filterHintTimerRef.current = null;
-                        }
-                        setShowScanner(true);
-                      }}
-                      style={[styles.scanBtn, { backgroundColor: colors.primary }]}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
-                      <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
-                        Scan
-                      </Text>
-                    </TouchableOpacity>
+                    <Reanimated.View style={scanBtnAnimatedStyle}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          if (filterHintTimerRef.current) {
+                            clearTimeout(filterHintTimerRef.current);
+                            filterHintTimerRef.current = null;
+                          }
+                          setShowScanner(true);
+                        }}
+                        style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="barcode-outline" size={18} color={colors.primaryForeground} />
+                        <Text style={[styles.scanBtnText, { color: colors.primaryForeground }]}>
+                          Scan
+                        </Text>
+                      </TouchableOpacity>
+                    </Reanimated.View>
                   </View>
                 )}
               </View>
