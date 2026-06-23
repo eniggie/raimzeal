@@ -40,6 +40,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onFoodFound: (food: ScannedFood, per100g?: boolean) => void;
+  onScansChanged?: () => void;
 }
 
 function formatScannedDate(ts: number): string {
@@ -357,7 +358,7 @@ interface PendingClearAll {
 
 const UNDO_DURATION_MS = 3000;
 
-export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
+export function RecentlyScannedModal({ visible, onClose, onFoodFound, onScansChanged }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [scans, setScans] = useState<RecentScan[]>([]);
@@ -480,6 +481,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
     pendingDeleteRef.current = pd;
     setPendingDelete(pd);
     startUndoProgress();
+    onScansChanged?.();
   }
 
   function handleUndo() {
@@ -583,6 +585,7 @@ export function RecentlyScannedModal({ visible, onClose, onFoodFound }: Props) {
             pendingClearAllRef.current = pca;
             setPendingClearAll(pca);
             startUndoProgress();
+            onScansChanged?.();
           },
         },
       ]

@@ -7254,6 +7254,7 @@ export default function NutritionScreen() {
           refreshRecentScanCount();
         }}
         onFoodFound={(food, per100g) => handleScannedFood(food, undefined, per100g)}
+        onScansChanged={refreshRecentScanCount}
       />
 
       {/* Manual Entry Modal */}
