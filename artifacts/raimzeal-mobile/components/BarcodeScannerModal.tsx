@@ -884,6 +884,10 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     if (filterDef && !filterDef.test(s.food)) return false;
     return true;
   });
+  // Pre-filtered by search only — used to compute per-chip match counts
+  const searchOnlyScans = searchQuery.trim()
+    ? recentScans.filter((s) => s.food.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : recentScans;
   const sortedScans =
     sortOrder === "most-used"
       ? [...filteredScans].sort((a, b) => (b.scanCount ?? 0) - (a.scanCount ?? 0))
@@ -1326,6 +1330,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                         {macroFilters.map((f) => {
                           const isActive = activeFilter === f.id;
                           const isCustomisable = f.id === "under200cal" || f.id === "highProtein";
+                          const matchCount = searchOnlyScans.filter((s) => f.test(s.food)).length;
                           return (
                             <TouchableOpacity
                               key={f.id}
@@ -1344,6 +1349,14 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                               <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                                 {f.label}
                               </Text>
+                              {!isActive && (
+                                <Text style={[
+                                  styles.filterChipCount,
+                                  matchCount === 0 && styles.filterChipCountZero,
+                                ]}>
+                                  {matchCount}
+                                </Text>
+                              )}
                               {isCustomisable && !isActive && (
                                 <Ionicons name="options-outline" size={10} color="rgba(255,255,255,0.35)" style={{ marginLeft: 3 }} />
                               )}
@@ -2269,6 +2282,15 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: "#09090b",
+  },
+  filterChipCount: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    marginLeft: 4,
+  },
+  filterChipCountZero: {
+    color: "rgba(255,255,255,0.25)",
   },
   filterClearBtn: {
     marginTop: 4,
