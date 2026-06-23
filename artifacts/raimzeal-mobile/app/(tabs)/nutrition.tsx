@@ -9188,6 +9188,9 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
   const [editDate, setEditDate] = useState(log.date);
   const histSaveShakeX = useSharedValue(0);
   const histSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: histSaveShakeX.value }] }));
+  const histGramsPreviewOpacity = useSharedValue(0);
+  const histGramsPreviewAnimStyle = useAnimatedStyle(() => ({ opacity: histGramsPreviewOpacity.value }));
+  const [histGramsPreviewText, setHistGramsPreviewText] = useState<string | null>(null);
 
   // Narrow sync: keep editForm.name current even when the sheet is open.
   // The full-reset effect below is guarded by showEditSheet, so if syncMealName
@@ -9223,6 +9226,26 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
         : ""
     );
   }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, log.date, showEditSheet]);
+
+  useEffect(() => {
+    if (!showEditSheet) {
+      histGramsPreviewOpacity.value = 0;
+      setHistGramsPreviewText(null);
+      return;
+    }
+    const pg = perGramRef.current;
+    const n = parseFloat(editGramsText);
+    if (pg && !isNaN(n) && n > 0) {
+      const cal = Math.round(pg.calories * n);
+      const pro = Math.round(pg.protein * n * 10) / 10;
+      const carb = Math.round(pg.carbs * n * 10) / 10;
+      const fat = Math.round(pg.fat * n * 10) / 10;
+      setHistGramsPreviewText(`~${cal} kcal · ${pro}g P · ${carb}g C · ${fat}g F at ${n}g`);
+      histGramsPreviewOpacity.value = withTiming(1, { duration: 200 });
+    } else {
+      histGramsPreviewOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [editGramsText, showEditSheet]);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -9697,20 +9720,13 @@ const HistoryFoodRow = memo(function HistoryFoodRow({ log, onAddFood, onDelete, 
               />
               <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
             </View>
-            {(() => {
-              const pg = perGramRef.current;
-              const n = parseFloat(editGramsText);
-              if (!pg || isNaN(n) || n <= 0) return null;
-              const cal = Math.round(pg.calories * n);
-              const pro = Math.round(pg.protein * n * 10) / 10;
-              const carb = Math.round(pg.carbs * n * 10) / 10;
-              const fat = Math.round(pg.fat * n * 10) / 10;
-              return (
+            {histGramsPreviewText !== null && (
+              <Reanimated.View style={histGramsPreviewAnimStyle}>
                 <Text style={[styles.gramsPreview, { color: colors.mutedForeground }]}>
-                  ~{cal} kcal · {pro}g P · {carb}g C · {fat}g F at {n}g
+                  {histGramsPreviewText}
                 </Text>
-              );
-            })()}
+              </Reanimated.View>
+            )}
 
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
@@ -10108,6 +10124,9 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
   const [editDate, setEditDate] = useState(log.date);
   const rowSaveShakeX = useSharedValue(0);
   const rowSaveShakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: rowSaveShakeX.value }] }));
+  const rowGramsPreviewOpacity = useSharedValue(0);
+  const rowGramsPreviewAnimStyle = useAnimatedStyle(() => ({ opacity: rowGramsPreviewOpacity.value }));
+  const [rowGramsPreviewText, setRowGramsPreviewText] = useState<string | null>(null);
 
   // Narrow sync: keep editForm.name current even when the sheet is open.
   // The full-reset effect below is guarded by showEditSheet, so if syncMealName
@@ -10143,6 +10162,26 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
         : ""
     );
   }, [log.name, log.calories, log.protein, log.carbs, log.fat, log.mealType, log.amountGrams, log.date, showEditSheet]);
+
+  useEffect(() => {
+    if (!showEditSheet) {
+      rowGramsPreviewOpacity.value = 0;
+      setRowGramsPreviewText(null);
+      return;
+    }
+    const pg = perGramRef.current;
+    const n = parseFloat(editGramsText);
+    if (pg && !isNaN(n) && n > 0) {
+      const cal = Math.round(pg.calories * n);
+      const pro = Math.round(pg.protein * n * 10) / 10;
+      const carb = Math.round(pg.carbs * n * 10) / 10;
+      const fat = Math.round(pg.fat * n * 10) / 10;
+      setRowGramsPreviewText(`~${cal} kcal · ${pro}g P · ${carb}g C · ${fat}g F at ${n}g`);
+      rowGramsPreviewOpacity.value = withTiming(1, { duration: 200 });
+    } else {
+      rowGramsPreviewOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [editGramsText, showEditSheet]);
 
   function openEditSheet() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -10614,20 +10653,13 @@ const NutritionRow = memo(function NutritionRow({ log, onDelete, onToggleStar, i
               />
               <Text style={[styles.gramsUnit, { color: colors.mutedForeground }]}>g</Text>
             </View>
-            {(() => {
-              const pg = perGramRef.current;
-              const n = parseFloat(editGramsText);
-              if (!pg || isNaN(n) || n <= 0) return null;
-              const cal = Math.round(pg.calories * n);
-              const pro = Math.round(pg.protein * n * 10) / 10;
-              const carb = Math.round(pg.carbs * n * 10) / 10;
-              const fat = Math.round(pg.fat * n * 10) / 10;
-              return (
+            {rowGramsPreviewText !== null && (
+              <Reanimated.View style={rowGramsPreviewAnimStyle}>
                 <Text style={[styles.gramsPreview, { color: colors.mutedForeground }]}>
-                  ~{cal} kcal · {pro}g P · {carb}g C · {fat}g F at {n}g
+                  {rowGramsPreviewText}
                 </Text>
-              );
-            })()}
+              </Reanimated.View>
+            )}
 
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: colors.foreground }]}>Servings</Text>
