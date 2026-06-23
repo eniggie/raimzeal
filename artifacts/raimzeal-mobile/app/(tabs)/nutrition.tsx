@@ -4160,7 +4160,7 @@ export default function NutritionScreen() {
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setMacroDefaultsEntries([]);
-            AsyncStorage.setItem(MANUAL_MACROS_KEY, JSON.stringify({})).catch(() => {});
+            AsyncStorage.removeItem(MANUAL_MACROS_KEY).catch(() => {});
           },
         },
       ]
