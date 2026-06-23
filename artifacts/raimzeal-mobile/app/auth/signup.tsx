@@ -1,5 +1,8 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
 import {
   ActivityIndicator,
   Alert,
@@ -18,15 +21,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 
+WebBrowser.maybeCompleteAuthSession();
+
 const MIN_AGE = 18;
 
 export default function SignupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { signUp, signInWithApple } = useAuth();
+  const { signUp, signInWithApple, signInWithGoogleToken } = useAuth();
+
+  const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+  const [request, , promptAsync] = Google.useAuthRequest({
+    webClientId: extra.googleWebClientId,
+    iosClientId: extra.googleIosClientId,
+    scopes: ["openid", "profile", "email"],
+  });
 
   const [appleLoading, setAppleLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -55,6 +68,31 @@ export default function SignupScreen() {
     const { error } = await signInWithApple();
     setAppleLoading(false);
     if (error) Alert.alert("Apple sign-in failed", error);
+  }
+
+  async function handleGoogleSignup() {
+    if (!termsAccepted || !responsibilityAccepted) {
+      Alert.alert(
+        "Accept terms first",
+        "Please read and accept the Personal Responsibility Waiver and Terms & Conditions before continuing with Google."
+      );
+      return;
+    }
+    if (!request) return;
+    setGoogleLoading(true);
+    try {
+      const result = await promptAsync();
+      if (result.type === "success") {
+        const idToken = result.authentication?.idToken;
+        if (!idToken) throw new Error("Google did not return an identity token");
+        const { error } = await signInWithGoogleToken(idToken);
+        if (error) Alert.alert("Google sign-in failed", error);
+      }
+    } catch (e) {
+      Alert.alert("Google sign-in failed", e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   async function handleSignup() {
@@ -408,6 +446,40 @@ export default function SignupScreen() {
               )}
             </>
           )}
+
+          {/* Continue with Google — iOS + Android, gated behind T&C */}
+          {Platform.OS !== "web" && (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              </View>
+              {googleLoading ? (
+                <View style={styles.appleLoadingWrap}>
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.googleButton,
+                    { opacity: termsAccepted && responsibilityAccepted ? 1 : 0.4 },
+                  ]}
+                  onPress={handleGoogleSignup}
+                  disabled={!request || !termsAccepted || !responsibilityAccepted}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="logo-google" size={18} color="#1f1f1f" />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
+              )}
+              {(!termsAccepted || !responsibilityAccepted) && (
+                <Text style={[styles.appleHint, { color: colors.mutedForeground }]}>
+                  Accept the terms above to use Google sign-in
+                </Text>
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.footer}>
@@ -572,6 +644,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   appleHint: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -4 },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#dadce0",
+    width: "100%",
+  },
+  googleButtonText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#1f1f1f" },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   footerLink: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

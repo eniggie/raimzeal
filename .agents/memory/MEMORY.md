@@ -5,3 +5,4 @@
 - [iOS Bundle ID Decision](ios-bundle-id.md) — iOS must stay app.replit.raimzeal; Android stays com.econteur.raimzeal. Do NOT change either.
 - [Expo Google Sign-In Pod Failures](expo-google-signin-pods.md) — never use @react-native-google-signin in Expo managed; use expo-auth-session/providers/google instead
 - [TestFlight Black Screen Causes](testflight-black-screen.md) — three root causes fixed June 2026; never use reactCompiler:true in production
+- [Expo Web Duplicate-React Fix](expo-web-duplicate-react.md) — metro.config.js: unstable_enableSymlinks+resolveRequest pins React; also stub expo-av+RevenueCat for web

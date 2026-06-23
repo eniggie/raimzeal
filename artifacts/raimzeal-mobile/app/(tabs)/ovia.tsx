@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Audio } from "expo-av";
+import { Audio } from "@/lib/audio-compat";
 import * as FileSystem from "expo-file-system";
 import {
   ActivityIndicator,

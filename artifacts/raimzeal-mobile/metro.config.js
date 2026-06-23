@@ -22,4 +22,25 @@ config.resolver.blockList = [
   /react-native-health-connect_tmp_[^/]+/,
 ];
 
+// Follow pnpm symlinks so every require('react') resolves to the same physical
+// file in the pnpm store — prevents "Invalid hook call" / duplicate-React crashes
+// caused by Metro seeing two separate module paths for the same package.
+config.resolver.unstable_enableSymlinks = true;
+
+// Additionally pin React (and JSX transforms) to the workspace-root copy so
+// packages bundled from multiple node_modules depths all share one instance.
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (
+    moduleName === "react" ||
+    moduleName === "react/jsx-runtime" ||
+    moduleName === "react/jsx-dev-runtime" ||
+    moduleName === "react-dom" ||
+    moduleName === "react-dom/client"
+  ) {
+    const filePath = require.resolve(moduleName, { paths: [workspaceRoot] });
+    return { filePath, type: "sourceFile" };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
