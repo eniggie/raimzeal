@@ -398,6 +398,7 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   const [per100gScans, setPer100gScans] = useState<Set<string>>(new Set());
+  const [resultPer100g, setResultPer100g] = useState(false);
   const [editTarget, setEditTarget] = useState<RecentScan | null>(null);
   const [notFoundBannerVisible, setNotFoundBannerVisible] = useState(false);
   const notFoundOpacity = useRef(new Animated.Value(0)).current;
@@ -599,9 +600,33 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
     }
   }, [cachedResult]);
 
+  // Restore the last-used serving/100g view preference for the scanned product
+  useEffect(() => {
+    if (!cachedResult) {
+      setResultPer100g(false);
+      return;
+    }
+    loadViewPreferenceMap().then((map) => {
+      const saved = map[cachedResult.barcode];
+      setResultPer100g(saved !== undefined ? saved : defaultPer100g);
+    });
+  }, [cachedResult, defaultPer100g]);
+
+  function handleResultTogglePer100g() {
+    if (!cachedResult) return;
+    const newVal = !resultPer100g;
+    setResultPer100g(newVal);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    saveViewPreference(cachedResult.barcode, newVal);
+  }
+
   function handleUseCached() {
     if (!cachedResult) return;
-    onFoodFound(scaledFood(cachedResult.food, servingMultiplier));
+    const canToggle = !!(cachedResult.food.nutrients100g && cachedResult.food.servingLabel);
+    const baseFood = (canToggle && resultPer100g)
+      ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
+      : cachedResult.food;
+    onFoodFound(scaledFood(baseFood, servingMultiplier));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setAddedSuccess(true);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
@@ -613,7 +638,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
 
   function handleAddAgain() {
     if (!cachedResult) return;
-    onFoodFound(scaledFood(cachedResult.food, servingMultiplier));
+    const canToggle = !!(cachedResult.food.nutrients100g && cachedResult.food.servingLabel);
+    const baseFood = (canToggle && resultPer100g)
+      ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! }
+      : cachedResult.food;
+    onFoodFound(scaledFood(baseFood, servingMultiplier));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
     autoCloseTimer.current = setTimeout(() => {
@@ -1012,16 +1041,37 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                             <Ionicons name="pencil-outline" size={15} color="rgba(255,255,255,0.6)" />
                           </TouchableOpacity>
                         </View>
-                        {(() => { const s = scaledFood(cachedResult.food, servingMultiplier); return (
-                        <Text style={styles.resultMacros}>
-                          {s.calories} cal · {s.protein}g P · {s.carbs}g C · {s.fat}g F
-                        </Text>
-                        ); })()}
-                        {cachedResult.food.servingLabel ? (
-                          <Text style={styles.resultServingNote} numberOfLines={1}>
-                            1 serving = {cachedResult.food.servingLabel}
-                          </Text>
-                        ) : null}
+                        {(() => {
+                          const canResultToggle = !!(cachedResult.food.nutrients100g && cachedResult.food.servingLabel);
+                          const showPer100g = canResultToggle && resultPer100g;
+                          const baseFood = showPer100g ? { ...cachedResult.food, ...cachedResult.food.nutrients100g! } : cachedResult.food;
+                          const s = scaledFood(baseFood, servingMultiplier);
+                          return (
+                            <>
+                              <Text style={styles.resultMacros}>
+                                {s.calories} cal · {s.protein}g P · {s.carbs}g C · {s.fat}g F
+                              </Text>
+                              {canResultToggle ? (
+                                <TouchableOpacity
+                                  onPress={handleResultTogglePer100g}
+                                  style={styles.resultViewPill}
+                                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.resultViewPillText}>
+                                    {resultPer100g ? "per 100g" : "per serving"}
+                                  </Text>
+                                  <Ionicons name="swap-horizontal" size={10} color="rgba(255,255,255,0.5)" style={{ marginLeft: 3 }} />
+                                </TouchableOpacity>
+                              ) : null}
+                              {!showPer100g && cachedResult.food.servingLabel ? (
+                                <Text style={styles.resultServingNote} numberOfLines={1}>
+                                  1 serving = {cachedResult.food.servingLabel}
+                                </Text>
+                              ) : null}
+                            </>
+                          );
+                        })()}
                         <View style={styles.servingStepperRow}>
                           <Text style={styles.servingStepperLabel}>Servings</Text>
                           <View style={styles.servingStepper}>
@@ -1603,6 +1653,22 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginLeft: 26,
     marginTop: 1,
+  },
+  resultViewPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 26,
+    marginTop: 3,
+  },
+  resultViewPillText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   },
   servingStepperRow: {
     flexDirection: "row",
