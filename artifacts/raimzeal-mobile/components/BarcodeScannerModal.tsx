@@ -1352,6 +1352,11 @@ export function BarcodeScannerModal({ visible, onClose, onFoodFound, onManualEnt
                                   P {displayProtein}g · C {displayCarbs}g · F {displayFat}g
                                 </Text>
                               </View>
+                              {!showing100g && scan.food.servingLabel ? (
+                                <Text style={styles.recentItemServingNote} numberOfLines={1}>
+                                  1 serving = {scan.food.servingLabel}
+                                </Text>
+                              ) : null}
                               <View style={styles.recentItemBottom}>
                                 <TouchableOpacity
                                   activeOpacity={canToggle ? 0.7 : 1}
@@ -2036,6 +2041,12 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.55)",
     fontSize: 10,
     fontFamily: "Inter_500Medium",
+  },
+  recentItemServingNote: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
   recentItemDate: {
     color: "rgba(255,255,255,0.4)",
