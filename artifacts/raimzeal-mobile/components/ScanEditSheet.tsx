@@ -54,12 +54,15 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
   const [canScale, setCanScale] = useState(false);
   const basis100gRef = useRef<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
 
+  const [saveCount, setSaveCount] = useState(0);
+
   const [loggedToast, setLoggedToast] = useState(false);
   const [toastLabel, setToastLabel] = useState("");
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!visible) setSaveCount(0);
     if (food && visible) {
       setName(food.name);
       setCalories(String(food.calories));
@@ -137,6 +140,7 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const updated = buildUpdated();
     onSaveAndAdd(updated);
+    setSaveCount((c) => c + 1);
     showLoggedToast(`${updated.name} added · ${updated.calories} kcal`);
     if (food) {
       setName(food.name);
@@ -461,6 +465,11 @@ export function ScanEditSheet({ visible, food, onSave, onClose, onSaveAndAdd }: 
                 Save Changes
               </Text>
             </TouchableOpacity>
+            {onSaveAndAdd && saveCount > 0 && (
+              <Text style={[styles.saveCountLabel, { color: colors.mutedForeground }]}>
+                {saveCount} serving{saveCount === 1 ? "" : "s"} added
+              </Text>
+            )}
             {onSaveAndAdd && (
               <TouchableOpacity
                 style={styles.doneBtn}
@@ -559,6 +568,13 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  saveCountLabel: {
+    textAlign: "center",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 8,
+    marginBottom: 2,
   },
   doneBtn: {
     alignItems: "center",
