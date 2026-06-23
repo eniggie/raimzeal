@@ -1457,6 +1457,7 @@ export default function NutritionScreen() {
   const [manualMacrosPrefilledFor, setManualMacrosPrefilledFor] = useState<string | null>(null);
   const [showMacroDefaultsSheet, setShowMacroDefaultsSheet] = useState(false);
   const [macroDefaultsEntries, setMacroDefaultsEntries] = useState<{ name: string; calories: string; protein: string; carbs: string; fat: string }[]>([]);
+  const [savedMacroCount, setSavedMacroCount] = useState(0);
   const [showQuickEditor, setShowQuickEditor] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Omit<MealLog, "id" | "date"> | null>(null);
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
@@ -4127,16 +4128,19 @@ export default function NutritionScreen() {
           raw ? JSON.parse(raw) : {};
         const entries = Object.entries(map).map(([name, vals]) => ({ name, ...vals }));
         setMacroDefaultsEntries(entries);
+        setSavedMacroCount(entries.length);
         setShowMacroDefaultsSheet(true);
       })
       .catch(() => {
         setMacroDefaultsEntries([]);
+        setSavedMacroCount(0);
         setShowMacroDefaultsSheet(true);
       });
   }
 
   function deleteMacroDefault(foodName: string) {
     setMacroDefaultsEntries((prev) => prev.filter((e) => e.name !== foodName));
+    setSavedMacroCount((c) => Math.max(0, c - 1));
     AsyncStorage.getItem(MANUAL_MACROS_KEY)
       .then((raw) => {
         const map: Record<string, { calories: string; protein: string; carbs: string; fat: string }> =
@@ -4160,6 +4164,7 @@ export default function NutritionScreen() {
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setMacroDefaultsEntries([]);
+            setSavedMacroCount(0);
             AsyncStorage.removeItem(MANUAL_MACROS_KEY).catch(() => {});
           },
         },
@@ -4573,6 +4578,12 @@ export default function NutritionScreen() {
     setManualMeal("snack");
     setManualMacrosPrefilledFor(null);
     setShowManualEntry(true);
+    AsyncStorage.getItem(MANUAL_MACROS_KEY)
+      .then((raw) => {
+        const map: Record<string, unknown> = raw ? JSON.parse(raw) : {};
+        setSavedMacroCount(Object.keys(map).length);
+      })
+      .catch(() => setSavedMacroCount(0));
   }
 
   function handleConfirmLog() {
@@ -7360,7 +7371,7 @@ export default function NutritionScreen() {
             >
               <Ionicons name="bookmark-outline" size={13} color={colors.mutedForeground} />
               <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
-                Manage saved macros
+                {`Manage saved macros${savedMacroCount > 0 ? ` (${savedMacroCount})` : ""}`}
               </Text>
             </TouchableOpacity>
 
