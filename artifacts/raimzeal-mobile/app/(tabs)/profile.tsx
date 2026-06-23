@@ -30,6 +30,7 @@ import { useMacroGoals, DEFAULT_MACRO_GOALS } from "@/contexts/MacroGoalsContext
 import { exportToPdf, type DateRangeOption, type CustomDateRange } from "@/lib/pdf";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as WebBrowser from "expo-web-browser";
 import {
   FILTER_HINT_STORAGE_KEY,
   REORDER_HINT_STORAGE_KEY,
@@ -159,6 +160,35 @@ export default function ProfileScreen() {
       refetchTier();
     }, [refetchTier])
   );
+
+  const [portalLoading, setPortalLoading] = useState(false);
+  const handleManageSubscription = useCallback(async () => {
+    if (portalLoading) return;
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        Alert.alert("Not signed in", "Please sign in to manage your subscription.");
+        return;
+      }
+      const res = await fetch(`${getApiBase()}/stripe/portal-session`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !json.url) {
+        Alert.alert("Unavailable", json.error ?? "Could not open billing portal. Please try again.");
+        return;
+      }
+      await WebBrowser.openBrowserAsync(json.url, { dismissButtonStyle: "close" });
+      refetchTier();
+    } catch {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setPortalLoading(false);
+    }
+  }, [portalLoading, refetchTier]);
+
   const [defaultPer100g, setDefaultPer100g] = usePer100gDefault();
   const { goals: macroGoals, setGoals: setMacroGoals } = useMacroGoals();
   const {
@@ -1847,6 +1877,16 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Settings</Text>
           <View onLayout={(e) => { settingsCardYRef.current = e.nativeEvent.layout.y; }}>
           <GlassCard style={styles.actionsCard}>
+            {(tier === "rise" || tier === "reign" || tier === "legacy") && (
+              <ActionRow
+                icon="card-outline"
+                label="Manage Subscription"
+                sublabel="Update payment method or cancel your plan"
+                color={colors.warning}
+                onPress={handleManageSubscription}
+                loading={portalLoading}
+              />
+            )}
             <ActionRow
               icon="nutrition-outline"
               label="Daily Macro Goals"
