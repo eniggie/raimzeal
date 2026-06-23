@@ -1122,14 +1122,15 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         if (event !== "SIGNED_IN") return;
         const incomingId = newSession?.user?.id ?? null;
         if (incomingId && incomingId !== prevUserIdRef.current) {
-          resetHints();
+          resetState();  // clears AsyncStorage cache + resets in-memory state before Supabase pull
+          resetHints();  // wipes dismissed-hints list for the new user
         }
         prevUserIdRef.current = incomingId;
       });
       unsubscribe = () => listener.subscription.unsubscribe();
     });
     return () => unsubscribe?.();
-  }, [resetHints]);
+  }, [resetHints, resetState]);
 
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
