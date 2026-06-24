@@ -4820,6 +4820,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function confirmLoadPreset(preset: CardPreset) {
+    dismissSwipeHintEarly();
     const chipNode = presetChipRefsMap.current.get(preset.id);
     if (chipNode) {
       chipNode.measureInWindow((x: number, y: number, width: number, height: number) => {
