@@ -12,6 +12,7 @@
  *  3. Default state (demo data for unauthenticated users)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState as RNAppState } from "react-native";
 import {
   SWIPE_DELETE_HINT_STORAGE_KEY,
   HISTORY_SWIPE_DELETE_HINT_STORAGE_KEY,
@@ -350,7 +351,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   // ("YYYY-MM-DD") so rapid taps on the same day collapse into one write while
   // taps spanning a date boundary (e.g. around midnight) are independent.
   const waterDebounceTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Companion map of pending write functions — flushed immediately on foreground resume
+  const waterPendingWritesRef = useRef<Map<string, () => void>>(new Map());
   const hintsDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Pending write function for the hints reset debounce — flushed on foreground resume
+  const hintsPendingWriteRef = useRef<(() => void) | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -848,14 +853,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       // Debounce per day-key: rapid taps on the same day collapse into one
       // cloud write; taps that span a date boundary (e.g. around midnight)
       // are tracked independently and never cancel each other.
-      const existingTimer = waterDebounceTimersRef.current.get(today);
-      if (existingTimer !== undefined) clearTimeout(existingTimer);
-      const timer = setTimeout(() => {
+      const doWaterWrite = () => {
         waterDebounceTimersRef.current.delete(today);
+        waterPendingWritesRef.current.delete(today);
         upsertWaterIntake(userId, today, glasses)
           .then(() => setLastSyncedAt(new Date()))
           .catch(() => {});
-      }, 600);
+      };
+      waterPendingWritesRef.current.set(today, doWaterWrite);
+      const existingTimer = waterDebounceTimersRef.current.get(today);
+      if (existingTimer !== undefined) clearTimeout(existingTimer);
+      const timer = setTimeout(doWaterWrite, 600);
       waterDebounceTimersRef.current.set(today, timer);
     },
     [persist]
@@ -1096,11 +1104,9 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
     // user switches accounts quickly) collapse into a single round-trip,
     // avoiding the read-before-write race where two concurrent fetches both
     // see stale data and one write clobbers the other.
-    if (hintsDebounceTimerRef.current !== null) {
-      clearTimeout(hintsDebounceTimerRef.current);
-    }
-    hintsDebounceTimerRef.current = setTimeout(() => {
+    const doHintsWrite = () => {
       hintsDebounceTimerRef.current = null;
+      hintsPendingWriteRef.current = null;
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session?.user) return;
         fetchUserPreferences(session.user.id)
@@ -1113,8 +1119,44 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           .then(() => setLastSyncedAt(new Date()))
           .catch(() => {});
       });
-    }, 600);
+    };
+    hintsPendingWriteRef.current = doHintsWrite;
+    if (hintsDebounceTimerRef.current !== null) {
+      clearTimeout(hintsDebounceTimerRef.current);
+    }
+    hintsDebounceTimerRef.current = setTimeout(doHintsWrite, 600);
   }, [persist]);
+
+  // On app foreground resume, flush any pending debounce writes immediately so
+  // changes made just before a force-quit are not lost to a stale cloud record.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const subscription = RNAppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") return;
+      // Flush pending water writes (snapshot then clear to avoid mutation-while-iterating)
+      const pendingWater = [...waterPendingWritesRef.current.entries()];
+      waterPendingWritesRef.current.clear();
+      for (const [day, write] of pendingWater) {
+        const timer = waterDebounceTimersRef.current.get(day);
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          waterDebounceTimersRef.current.delete(day);
+        }
+        write();
+      }
+      // Flush pending hints write
+      if (hintsPendingWriteRef.current !== null) {
+        if (hintsDebounceTimerRef.current !== null) {
+          clearTimeout(hintsDebounceTimerRef.current);
+          hintsDebounceTimerRef.current = null;
+        }
+        const write = hintsPendingWriteRef.current;
+        hintsPendingWriteRef.current = null;
+        write();
+      }
+    });
+    return () => subscription.remove();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset hints when a different user signs in on the same device.
   // Supabase fires SIGNED_IN for every new session, including account switches
