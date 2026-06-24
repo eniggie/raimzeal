@@ -4281,6 +4281,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setRestoredFromStorage(false);
     const payload = JSON.stringify({ uri, ...crop, dimLevel: backgroundPhotoDimLevel, blurRadius: backgroundPhotoBlurRadius });
     AsyncStorage.setItem(STORAGE_KEY_BG_PHOTO, payload).catch(() => {});
+    // Dismiss the 'Last used' chip whenever the current card's background photo
+    // is replaced or re-cropped — mirrors handleRemoveBackgroundPhoto.
+    dismissCardChip();
     if (!reduceMotionRef.current) {
       previewOpacity.stopAnimation();
       Animated.sequence([
