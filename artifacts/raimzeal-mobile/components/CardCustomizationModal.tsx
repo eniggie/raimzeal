@@ -4927,10 +4927,25 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const [showTapGenerateHint, setShowTapGenerateHint] = useState(false);
   const [tapGenerateHintMounted, setTapGenerateHintMounted] = useState(false);
   const tapGenerateHintFadeAnim = useRef(new Animated.Value(0)).current;
+  // First-render guard: prevents the reset-to-0 / fade-in from firing when the
+  // hint is already visible on mount (e.g. after a hot reload or state restore).
+  // Matches the pattern used for longPressHintIsFirstRender and
+  // disabledBtnLpHintIsFirstRender.
+  const tapGenerateHintIsFirstRender = useRef(true);
 
   useEffect(() => {
     if (!openedWithNoSavedActionRef.current) return;
     if (!selectedAction) return;
+    if (tapGenerateHintIsFirstRender.current) {
+      tapGenerateHintIsFirstRender.current = false;
+      if (showTapGenerateHint) {
+        // Already visible on mount (e.g. after a hot reload) — snap straight
+        // to the final opaque state; no reset-to-0 flash needed.
+        tapGenerateHintFadeAnim.setValue(1);
+        return;
+      }
+      // Hint is not yet visible — fall through to show it now.
+    }
     // Show the hint when the user first selects an action
     setTapGenerateHintMounted(true);
     setShowTapGenerateHint(true);
