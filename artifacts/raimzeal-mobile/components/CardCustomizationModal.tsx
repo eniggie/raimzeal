@@ -6956,13 +6956,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               style={[styles.confirmToastWrap, { opacity: confirmOpacity, transform: [{ translateY: Animated.add(confirmTranslateY, confirmSwipeY) }] }]}
               {...confirmToastPanResponder.panHandlers}
             >
-              <Animated.View
-                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
-                pointerEvents="none"
+              <TouchableOpacity
+                onPress={() => dismissToastSwipeHint()}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 12, right: 12 }}
               >
-                <Ionicons name="chevron-up" size={10} color="#fff" />
-                <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
-              </Animated.View>
+                <Animated.View
+                  style={[styles.toastSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
+                >
+                  <Ionicons name="chevron-up" size={10} color="#fff" />
+                  <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
+                </Animated.View>
+              </TouchableOpacity>
               <View
                 pointerEvents="box-none"
                 style={[
@@ -7077,13 +7082,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           )}
           {undoDeleteState && (
             <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: Animated.add(undoTranslateY, undoSwipeY) }] }]} {...undoToastPanResponder.panHandlers}>
-              <Animated.View
-                style={[styles.toastSwipeHint, { opacity: undoSwipeHintOpacity, transform: [{ translateY: undoSwipeHintSlideAnim }] }]}
-                pointerEvents="none"
+              <TouchableOpacity
+                onPress={() => dismissUndoToastSwipeHint()}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 12, right: 12 }}
               >
-                <Ionicons name="chevron-up" size={10} color="#fff" />
-                <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
-              </Animated.View>
+                <Animated.View
+                  style={[styles.toastSwipeHint, { opacity: undoSwipeHintOpacity, transform: [{ translateY: undoSwipeHintSlideAnim }] }]}
+                >
+                  <Ionicons name="chevron-up" size={10} color="#fff" />
+                  <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
+                </Animated.View>
+              </TouchableOpacity>
               <View
                 style={[
                   styles.confirmToast,
