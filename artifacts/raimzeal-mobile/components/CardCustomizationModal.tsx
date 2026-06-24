@@ -432,6 +432,7 @@ function SortablePresetItem({
   });
 
   const pan = Gesture.Pan()
+    .minDistance(6)
     .onStart(() => {
       "worklet";
       if (isDragging.value) return;
