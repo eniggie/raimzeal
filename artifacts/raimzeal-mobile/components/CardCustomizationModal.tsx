@@ -2424,6 +2424,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const undoTransitionIdRef = useRef<number>(0);
   const undoToastBgPausedRef = useRef(false);
   const undoToastResumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoSwipingRef = useRef(false);
+  const pendingUndoToastArgsRef = useRef<null | [preset: CardPreset, index: number]>(null);
+  const showUndoToastRef = useRef<((preset: CardPreset, index: number) => void) | null>(null);
 
   function dismissConfirmToast() {
     if (confirmDismissTimerRef.current !== null) {
@@ -2553,6 +2556,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       onMoveShouldSetPanResponder: (_evt, gestureState) =>
         gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
       onPanResponderGrant: () => {
+        undoSwipingRef.current = true;
         pauseUndoToast();
       },
       onPanResponderMove: (_evt, gestureState) => {
@@ -2562,10 +2566,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       },
       onPanResponderRelease: (_evt, gestureState) => {
         if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          undoSwipingRef.current = false;
+          const pending = pendingUndoToastArgsRef.current;
+          pendingUndoToastArgsRef.current = null;
           if (reduceMotionRef.current) {
-            dismissUndoToast();
+            dismissUndoToast(() => {
+              if (pending) showUndoToastRef.current?.(...pending);
+            });
           } else {
-            dismissUndoToastAnimated();
+            dismissUndoToastAnimated(() => {
+              if (pending) showUndoToastRef.current?.(...pending);
+            });
           }
         } else {
           Animated.spring(undoSwipeY, {
@@ -2575,8 +2586,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             stiffness: 400,
             mass: 0.6,
             overshootClamping: true,
-          }).start();
-          resumeUndoToast();
+          }).start(() => {
+            undoSwipingRef.current = false;
+            const pending = pendingUndoToastArgsRef.current;
+            pendingUndoToastArgsRef.current = null;
+            if (pending) showUndoToastRef.current?.(...pending);
+            resumeUndoToast();
+          });
         }
       },
       onPanResponderTerminate: () => {
@@ -2587,8 +2603,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           stiffness: 400,
           mass: 0.6,
           overshootClamping: true,
-        }).start();
-        resumeUndoToast();
+        }).start(() => {
+          undoSwipingRef.current = false;
+          const pending = pendingUndoToastArgsRef.current;
+          pendingUndoToastArgsRef.current = null;
+          if (pending) showUndoToastRef.current?.(...pending);
+          resumeUndoToast();
+        });
       },
     })
   ).current;
@@ -2738,6 +2759,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       // swipe flags and queued toasts don't persist into the next open.
       confirmSwipingRef.current = false;
       pendingConfirmationArgsRef.current = null;
+      // Same cleanup for the undo-delete toast swipe guard.
+      undoSwipingRef.current = false;
+      pendingUndoToastArgsRef.current = null;
       // Dismiss any in-progress undo-delete toast so the timer and animation
       // don't fire against unmounted/invisible state after the modal closes.
       if (undoTimerRef.current !== null) {
@@ -4528,7 +4552,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
-  function dismissUndoToastAnimated() {
+  function dismissUndoToastAnimated(cb?: () => void) {
     if (undoTimerRef.current !== null) {
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
@@ -4545,12 +4569,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(undoSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
-    ]).start(() => {
+    ]).start(({ finished }) => {
       undoOpacity.setValue(0);
       undoTranslateY.setValue(8);
       undoSwipeY.setValue(0);
       undoProgressAnim.setValue(1);
       setUndoDeleteState(null);
+      if (finished) cb?.();
     });
   }
 
@@ -4624,6 +4649,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }
 
   function showUndoToast(preset: CardPreset, index: number) {
+    showUndoToastRef.current = showUndoToast;
+    if (undoSwipingRef.current) {
+      pendingUndoToastArgsRef.current = [preset, index];
+      return;
+    }
     const undoMs = (settings.undoWindowSeconds ?? 3) * 1000;
     if (undoTimerRef.current !== null) {
       clearTimeout(undoTimerRef.current);

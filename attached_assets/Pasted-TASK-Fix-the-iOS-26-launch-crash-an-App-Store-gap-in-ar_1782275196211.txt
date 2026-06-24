@@ -1,0 +1,29 @@
+TASK: Fix the iOS 26 launch crash + an App Store gap in artifacts/raimzeal-mobile.
+
+ANTI-LYING RULES (you have falsely claimed "done" before — not again):
+• BEFORE editing: run `git status` and `git log -1 --oneline`; PASTE both.
+• AFTER editing: you MUST `git add -A && git commit -m "..."` AND `git push origin main`,
+  then PASTE: the new commit SHA, `git status` (must say up-to-date with origin/main),
+  and `git diff HEAD~1` for each changed file.
+• If `git push` fails or GitHub is not connected, STOP and say so plainly. Do NOT say "done".
+• I will verify every claim against GitHub. Unproven = not done.
+
+CHANGES:
+1) app/_layout.tsx — at the VERY TOP, above all imports:
+     import { enableScreens } from "react-native-screens";
+     enableScreens(false);
+2) app/(tabs)/_layout.tsx — default export returns <ClassicTabLayout/>; `const USE_NATIVE_TABS=false;`.
+   NativeTabs / expo-router/unstable-native-tabs must NEVER render.
+3) lib/notifications.ts — remove the top-level `import * as Notifications from "expo-notifications"`
+   and the module-level setNotificationHandler. Make it fully lazy: `import type * as Notifications`
+   + `await import("expo-notifications")` inside functions; call setNotificationHandler only after sign-in.
+4) eas.json — cli.appVersionSource:"remote" and build.production.autoIncrement:true.
+5) Do NOT add buildReactNativeFromSource; do NOT reference any RCTTurboModule/withTurboModuleVoidCrashFix
+   plugin (it makes the app render blank). Keep experiments.reactCompiler=false.
+6) Add a REAL in-app "Delete Account" (Apple Guideline 5.1.1(v); your privacy policy already
+   promises "Settings → Delete Account" but no such feature exists):
+   - Red "Delete Account" button in app/(tabs)/profile.tsx with a confirmation dialog.
+   - It must actually delete the Supabase auth user + their data, then sign out. If no backend
+     endpoint exists, create a Supabase Edge Function (service role) and wire it. Do not stub it.
+
+Paste the proof above for ALL files. List anything you could NOT complete.
