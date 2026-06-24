@@ -67,7 +67,7 @@ const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
 async function checkPermission(): Promise<CameraRollPermissionStatus> {
   try {
-    const { status } = await MediaLibrary.getPermissionsAsync();
+    const { status } = await MediaLibrary.getPermissionsAsync(true, []);
     return status as CameraRollPermissionStatus;
   } catch {
     return "undetermined";
@@ -277,7 +277,7 @@ export function PermissionsProvider({ children, initialRationaleDismissed = fals
 
   const requestCameraRollPermission = useCallback(async (): Promise<CameraRollPermissionStatus> => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } = await MediaLibrary.requestPermissionsAsync(true, []);
       const s = status as CameraRollPermissionStatus;
       setCameraRollStatus(s);
       // Clear the dismissed flag whenever the OS reaches a definitive answer

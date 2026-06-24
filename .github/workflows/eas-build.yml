@@ -46,7 +46,7 @@ jobs:
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile production --non-interactive --no-wait
+        run: eas build --platform android --profile production --non-interactive
 
   build-ios:
     name: Build iOS (production)
@@ -80,7 +80,7 @@ jobs:
         working-directory: artifacts/raimzeal-mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform ios --profile production --non-interactive --no-wait
+        run: eas build --platform ios --profile production --non-interactive
 
   submit-android:
     name: Submit Android to Play Store (internal)
@@ -175,7 +175,13 @@ jobs:
           EXPO_ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
           EXPO_ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
           EXPO_ASC_API_KEY: /tmp/asc/key.p8
-        run: eas submit --platform ios --profile production --latest --non-interactive
+        run: |
+          jq --arg id "$ASC_APP_ID" '.submit.production.ios.ascAppId = $id' eas.json > eas.tmp.json && mv eas.tmp.json eas.json
+          eas submit \
+            --platform ios \
+            --profile production \
+            --latest \
+            --non-interactive
 
       - name: Remove ASC API key
         if: always()

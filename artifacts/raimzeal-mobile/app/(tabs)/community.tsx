@@ -233,7 +233,10 @@ export default function CommunityScreen() {
       });
       if (res.ok) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert("Reported", "Thank you — our team will review this post.");
+        setPosts((prev) => prev.filter((post) => post.id !== postId));
+        Alert.alert("Reported", "Thank you. The post is hidden and queued for moderation review.");
+      } else {
+        throw new Error("report request failed");
       }
     } catch {
       Alert.alert("Error", "Could not submit report. Please try again.");
@@ -258,10 +261,12 @@ export default function CommunityScreen() {
               const { data } = await supabase.auth.getSession();
               const token = data.session?.access_token;
               if (!token) return;
-              await fetch(`${getApiBase()}/community/users/${targetUserId}/block`, {
+              const response = await fetch(`${getApiBase()}/community/users/${targetUserId}/block`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ postId: posts.find((post) => post.userId === targetUserId)?.id }),
               });
+              if (!response.ok) throw new Error("block request failed");
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               setPosts((prev) => prev.filter((p) => p.userId !== targetUserId));
               Alert.alert("User blocked", `@${targetUserName} has been blocked and their posts removed from your feed.`);

@@ -18,10 +18,5 @@
     "@replit/revenuecat-sdk": "^4.2.0",
     "stripe": "^22.1.1",
     "stripe-replit-sync": "^1.0.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "@expo/fingerprint": "0.15.5"
-    }
   }
 }

@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { Platform } from "react-native";
+import * as Crypto from "expo-crypto";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
 
@@ -104,16 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const AppleAuthentication = await import("expo-apple-authentication");
       const available = await AppleAuthentication.isAvailableAsync();
       if (!available) return { error: "Apple sign-in is not available on this device" };
-      const rawNonce = Array.from(
-        (crypto as unknown as Crypto).getRandomValues(new Uint8Array(32))
-      )
-        .map((b) => (b as number).toString(16).padStart(2, "0"))
-        .join("");
-      const msgBuffer = new TextEncoder().encode(rawNonce);
-      const hashBuffer = await (crypto as unknown as Crypto).subtle.digest("SHA-256", msgBuffer);
-      const hashedNonce = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,

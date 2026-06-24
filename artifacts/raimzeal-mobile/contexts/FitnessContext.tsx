@@ -453,6 +453,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         });
         const mergedFavs = [...localOnlyFoods, ...filteredServerFoods];
 
+        if (!isMounted) return;
         setState((prev) => {
           const remoteSettings = prefs?.appSettings;
           return {
@@ -519,6 +520,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
               const body = await res.json() as { id?: string; foodId?: string };
               if (body.id) {
+                if (!isMounted) return;
                 setState((prev) => {
                   const favoriteFoods = prev.favoriteFoods.map((ff) =>
                     ff.name === f.name
