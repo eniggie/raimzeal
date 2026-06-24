@@ -8,7 +8,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "raimzeal",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
