@@ -6294,7 +6294,46 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   <TouchableOpacity
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                      // Snapshot the current (modified) settings so the user
+                      // can recover them via the Undo action on the toast.
+                      const snap = {
+                        visibleStats,
+                        customMessage,
+                        themeId: selectedThemeId,
+                        backgroundPhotoUri,
+                        backgroundPhotoCrop,
+                        dimLevel: backgroundPhotoDimLevel,
+                        blurRadius: backgroundPhotoBlurRadius,
+                      };
                       loadPreset(activePreset);
+                      showConfirmation(
+                        `Reverted "${activePreset.name}" to saved`,
+                        "success",
+                        "arrow-undo-outline",
+                        undefined,
+                        () => {
+                          setVisibleStats(snap.visibleStats);
+                          syncKnobsImmediate(snap.visibleStats);
+                          setCustomMessage(snap.customMessage);
+                          setSelectedThemeId(snap.themeId);
+                          setDisplayedThemeId(snap.themeId);
+                          setBackgroundPhotoUri(snap.backgroundPhotoUri);
+                          setBackgroundPhotoCrop(snap.backgroundPhotoCrop);
+                          applyDimLevel(snap.dimLevel);
+                          setBackgroundPhotoBlurRadius(snap.blurRadius);
+                          setActivePresetModified(true);
+                          AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
+                          setRestoredFromStorage(false);
+                          if (!reduceMotionRef.current) {
+                            previewOpacity.stopAnimation();
+                            Animated.sequence([
+                              Animated.timing(previewOpacity, { toValue: 0, duration: 90, useNativeDriver: true }),
+                              Animated.timing(previewOpacity, { toValue: 1, duration: 230, useNativeDriver: true }),
+                            ]).start();
+                          }
+                        },
+                        "Undo",
+                      );
                     }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={[
