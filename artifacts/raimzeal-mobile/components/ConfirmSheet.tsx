@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Modal,
   Pressable,
   StyleSheet,
@@ -34,74 +35,131 @@ export default function ConfirmSheet({
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
+  const sheetAnim = useRef(new Animated.Value(500)).current;
+  const overlayAnim = useRef(new Animated.Value(0)).current;
+  const [internalVisible, setInternalVisible] = useState(false);
+  const isDismissingRef = useRef(false);
+
+  useEffect(() => {
+    if (visible) {
+      isDismissingRef.current = false;
+      setInternalVisible(true);
+    } else if (!isDismissingRef.current) {
+      setInternalVisible(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!internalVisible) return;
+    sheetAnim.setValue(500);
+    overlayAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(overlayAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sheetAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }),
+    ]).start();
+  }, [internalVisible, sheetAnim, overlayAnim]);
+
+  function handleDismiss(callback: () => void) {
+    if (isDismissingRef.current) return;
+    isDismissingRef.current = true;
+    Animated.parallel([
+      Animated.timing(overlayAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetAnim, {
+        toValue: 500,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      isDismissingRef.current = false;
+      setInternalVisible(false);
+      callback();
+    });
+  }
+
   return (
     <Modal
-      visible={visible}
+      visible={internalVisible}
       transparent
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
-      onRequestClose={onCancel}
+      onRequestClose={() => handleDismiss(onCancel)}
     >
-      <Pressable style={styles.overlay} onPress={onCancel}>
-        <Pressable
+      <Animated.View style={[styles.overlay, { opacity: overlayAnim }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => handleDismiss(onCancel)} />
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: colors.card,
               paddingBottom: insets.bottom + 16,
+              transform: [{ translateY: sheetAnim }],
             },
           ]}
-          onPress={() => {}}
         >
-          <View style={[styles.handle, { backgroundColor: colors.border }]} />
+          <Pressable onPress={() => {}}>
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
 
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            {title}
-          </Text>
-          <Text style={[styles.message, { color: colors.mutedForeground }]}>
-            {message}
-          </Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {title}
+            </Text>
+            <Text style={[styles.message, { color: colors.mutedForeground }]}>
+              {message}
+            </Text>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={onConfirm}
-            style={[
-              styles.confirmBtn,
-              {
-                backgroundColor: destructive
-                  ? colors.destructive
-                  : colors.primary,
-              },
-            ]}
-          >
-            <Text
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => handleDismiss(onConfirm)}
               style={[
-                styles.confirmBtnText,
+                styles.confirmBtn,
                 {
-                  color: destructive
-                    ? colors.destructiveForeground ?? "#fff"
-                    : colors.primaryForeground,
+                  backgroundColor: destructive
+                    ? colors.destructive
+                    : colors.primary,
                 },
               ]}
             >
-              {confirmLabel}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.confirmBtnText,
+                  {
+                    color: destructive
+                      ? colors.destructiveForeground ?? "#fff"
+                      : colors.primaryForeground,
+                  },
+                ]}
+              >
+                {confirmLabel}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={onCancel}
-            style={[
-              styles.cancelBtn,
-              { backgroundColor: colors.muted },
-            ]}
-          >
-            <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>
-              {cancelLabel}
-            </Text>
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleDismiss(onCancel)}
+              style={[
+                styles.cancelBtn,
+                { backgroundColor: colors.muted },
+              ]}
+            >
+              <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>
+                {cancelLabel}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
