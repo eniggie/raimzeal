@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useReduceMotion } from "../hooks/useReduceMotion";
 import Svg, { Circle } from "react-native-svg";
 import Animated, {
@@ -269,6 +269,13 @@ export function MacroRing({
     };
   }, [targetProteinOffset, targetCarbsOffset, targetFatOffset, hasData]);
 
+  /**
+   * Collapses the percentage row — triggers the animate-out sequence.
+   * Called both by the ring Pressable (toggle) and by the transparent Modal
+   * backdrop so that tapping anywhere outside the ring dismisses the row.
+   */
+  const dismissPercentages = () => setShowPercentages(false);
+
   // Drive the percentage-row fade+slide animation whenever visibility changes.
   useEffect(() => {
     if (pctUnmountTimerRef.current) {
@@ -371,6 +378,30 @@ export function MacroRing({
 
   return (
     <View style={styles.wrapper}>
+      {/*
+       * Outside-tap dismissal backdrop — renders only while the percentage row
+       * is open. A transparent full-screen Modal sits on top of all content so
+       * any tap (anywhere on screen, including on the ring itself) closes the
+       * row via dismissPercentages(). The ring's own Pressable below still
+       * opens the row when the Modal is not present.
+       */}
+      {showPercentages && hasData && (
+        <Modal
+          transparent
+          visible
+          animationType="none"
+          onRequestClose={dismissPercentages}
+          statusBarTranslucent
+        >
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={dismissPercentages}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss percentage breakdown"
+          />
+        </Modal>
+      )}
+
       <Pressable
         onPress={() => hasData && setShowPercentages((v) => !v)}
         accessibilityRole="button"
