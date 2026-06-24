@@ -2380,7 +2380,7 @@ export default function ProfileScreen() {
               onPress={() => router.push("/supplements")}
             />
             <ActionRow
-              icon="flower-outline"
+              icon="infinite-outline"
               label="Mindfulness & Gratitude"
               sublabel="Daily journal · 5-min timer · Streak · Rise+"
               color="#a78bfa"
