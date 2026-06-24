@@ -2335,7 +2335,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     onPressFn?: () => void,
   ]) => void) | null>(null);
 
-  // Swipe-to-dismiss hint (shown once on the first toast the user ever sees, shared across the app)
+  // Swipe-to-dismiss hint for the confirm toast (shown once on the first confirm toast the user sees)
   const {
     hintSeen: toastSwipeHintSeen,
     swipeHintOpacity,
@@ -2344,6 +2344,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     dismissToastSwipeHint,
     clearToastSwipeHintInstant,
   } = useToastSwipeHint();
+  // Swipe-to-dismiss hint for the undo-delete toast (tracked separately so it appears
+  // every time a new undo toast shows, independent of whether the confirm hint has fired)
+  const {
+    hintSeen: undoToastSwipeHintSeen,
+    swipeHintOpacity: undoSwipeHintOpacity,
+    swipeHintSlideAnim: undoSwipeHintSlideAnim,
+    triggerToastSwipeHint: triggerUndoToastSwipeHint,
+    dismissToastSwipeHint: dismissUndoToastSwipeHint,
+  } = useToastSwipeHint("@raimzeal_undo_toast_swipe_hint_seen");
 
   // Undo-delete toast
   const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
@@ -4431,7 +4440,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoAnimRef.current.stop();
       undoAnimRef.current = null;
     }
-    dismissToastSwipeHint();
+    dismissUndoToastSwipeHint();
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoProgressAnim.stopAnimation();
@@ -4556,8 +4565,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoProgressAnim.setValue(1);
       undoSwipeY.setValue(0);
       setUndoDeleteState({ preset, index });
-      if (!toastSwipeHintSeen) {
-        triggerToastSwipeHint(reduceMotionRef.current);
+      if (!undoToastSwipeHintSeen) {
+        triggerUndoToastSwipeHint(reduceMotionRef.current);
       }
       undoRemainingMsRef.current = undoMs;
       undoSegmentStartRef.current = Date.now();
@@ -7059,7 +7068,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           {undoDeleteState && (
             <Animated.View style={[styles.confirmToastWrap, { opacity: undoOpacity, transform: [{ translateY: Animated.add(undoTranslateY, undoSwipeY) }] }]} {...undoToastPanResponder.panHandlers}>
               <Animated.View
-                style={[styles.toastSwipeHint, { opacity: swipeHintOpacity, transform: [{ translateY: swipeHintSlideAnim }] }]}
+                style={[styles.toastSwipeHint, { opacity: undoSwipeHintOpacity, transform: [{ translateY: undoSwipeHintSlideAnim }] }]}
                 pointerEvents="none"
               >
                 <Ionicons name="chevron-up" size={10} color="#fff" />

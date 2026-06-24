@@ -31,7 +31,7 @@ export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_see
  * appears before the first AsyncStorage read completes simply defers the hint to the
  * next eligible toast rather than incorrectly suppressing it.
  */
-export function useToastSwipeHint() {
+export function useToastSwipeHint(storageKey: string = STORAGE_KEY_TOAST_SWIPE_HINT_SEEN) {
   const [hintSeen, setHintSeen] = useState(false);
   const swipeHintOpacity = useRef(new Animated.Value(0)).current;
   const swipeHintSlideAnim = useRef(new Animated.Value(6)).current;
@@ -40,7 +40,7 @@ export function useToastSwipeHint() {
 
   useEffect(() => {
     let cancelled = false;
-    AsyncStorage.getItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN)
+    AsyncStorage.getItem(storageKey)
       .then((val) => {
         if (!cancelled) {
           isStorageLoadedRef.current = true;
@@ -59,7 +59,7 @@ export function useToastSwipeHint() {
       swipeHintOpacity.stopAnimation();
       swipeHintSlideAnim.stopAnimation();
     };
-  }, [swipeHintOpacity, swipeHintSlideAnim]);
+  }, [storageKey, swipeHintOpacity, swipeHintSlideAnim]);
 
   function triggerToastSwipeHint(reduceMotion?: boolean) {
     if (!isStorageLoadedRef.current) return;
