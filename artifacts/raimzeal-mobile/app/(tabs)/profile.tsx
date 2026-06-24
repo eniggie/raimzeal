@@ -63,6 +63,8 @@ import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardV
 import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_MESSAGE, STORAGE_KEY_PRESETS, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 import { useCardPreferences } from "@/hooks/useCardPreferences";
 import { useHighlightRow } from "@/hooks/useHighlightRow";
+import { useHealthSync } from "@/hooks/useHealthSync";
+import { requestNotificationPermissions } from "@/lib/notifications";
 
 // Default card background — bundled at build time so no camera-roll permission needed.
 // Image.resolveAssetSource converts the static require into a local-file URI that
@@ -204,6 +206,11 @@ export default function ProfileScreen() {
   } = usePermissions();
 
   const [, requestCameraPermission] = useCameraPermissions();
+  const {
+    status: healthStatus,
+    requestPermissions: requestHealthPermissions,
+    isAvailable: healthAvailable,
+  } = useHealthSync();
 
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
@@ -245,6 +252,27 @@ export default function ProfileScreen() {
       if (val === "1") setHintsExpanded(true);
     }).catch(() => {});
   }, []);
+
+  const [notifStatus, setNotifStatus] = useState<"granted" | "denied" | "undetermined" | null>(null);
+  const [notifCanAskAgain, setNotifCanAskAgain] = useState(true);
+  const checkNotifStatus = useCallback(async () => {
+    if (Platform.OS === "web") return;
+    try {
+      const N = await import("expo-notifications");
+      const perm = await N.getPermissionsAsync();
+      setNotifStatus(perm.status as "granted" | "denied" | "undetermined");
+      setNotifCanAskAgain(perm.canAskAgain);
+    } catch {
+      // non-fatal
+    }
+  }, []);
+  useEffect(() => {
+    checkNotifStatus();
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") checkNotifStatus();
+    });
+    return () => sub.remove();
+  }, [checkNotifStatus]);
 
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const flashAnimRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -731,6 +759,32 @@ export default function ProfileScreen() {
     } else {
       await requestCameraPermission();
       await refreshCameraStatus();
+    }
+  }
+
+  async function handleNotificationsPress() {
+    if (notifStatus === "granted") {
+      Alert.alert("Notifications", "Notifications are active. RAIMZEAL sends daily health tips, workout reminders, and Ovia AI coaching messages.");
+    } else if (!notifCanAskAgain) {
+      Linking.openSettings();
+    } else {
+      await requestNotificationPermissions();
+      await checkNotifStatus();
+    }
+  }
+
+  async function handleHealthPress() {
+    if (healthStatus === "authorized") {
+      Alert.alert(
+        Platform.OS === "ios" ? "Apple Health" : "Health Connect",
+        Platform.OS === "ios"
+          ? "Apple Health is connected. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
+          : "Health Connect is connected. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
+      );
+    } else if (healthStatus === "denied") {
+      Linking.openSettings();
+    } else {
+      await requestHealthPermissions();
     }
   }
 
@@ -1968,93 +2022,6 @@ export default function ProfileScreen() {
                 setDefaultPer100g(v);
               }}
             />
-            <SettingPickerRow
-              icon="images-outline"
-              label="Photo Library Access"
-              sublabel={
-                cameraRollStatus === "granted"
-                  ? "Tap to confirm — needed to save progress cards"
-                  : cameraRollStatus === "restricted"
-                  ? "Restricted by device policy — contact your admin"
-                  : cameraRollStatus === "denied"
-                  ? "Permanently blocked — tap to open Settings"
-                  : "Tap to enable saving cards to your photo library"
-              }
-              sublabelColor={
-                cameraRollStatus === "granted"
-                  ? colors.mutedForeground
-                  : colors.warning
-              }
-              value={
-                cameraRollStatus === "granted"
-                  ? "Active"
-                  : cameraRollStatus === "restricted"
-                  ? "Restricted"
-                  : cameraRollStatus === "denied"
-                  ? "Open Settings"
-                  : "Not granted"
-              }
-              color={
-                cameraRollStatus === "granted"
-                  ? colors.secondary
-                  : colors.warning
-              }
-              onPress={handlePhotoAccessPress}
-            />
-            {cameraRollStatus === "denied" && (
-              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
-                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
-                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
-                  Access was permanently denied — the reset option is unavailable. Open Settings above to re-enable it.
-                </Text>
-              </View>
-            )}
-            {cameraRollStatus === "restricted" && (
-              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
-                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
-                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
-                  This restriction is enforced by your organisation or device management policy and cannot be changed from Settings.
-                </Text>
-              </View>
-            )}
-            {hasSeenRationale && cameraRollStatus === "undetermined" && (
-              <ActionRow
-                icon="arrow-undo-outline"
-                label="Reset photo access prompt"
-                sublabel="Re-show the explanation on next save attempt"
-                color={colors.accent}
-                onPress={handleResetRationalePrompt}
-              />
-            )}
-            <SettingPickerRow
-              icon="camera-outline"
-              label="Camera Access"
-              sublabel={
-                cameraStatus?.granted
-                  ? "Camera is active — used for barcode scanning"
-                  : cameraStatus?.canAskAgain === false
-                  ? "Permanently blocked — tap to open Settings"
-                  : "Tap to enable the camera for barcode scanning"
-              }
-              sublabelColor={
-                cameraStatus?.granted
-                  ? colors.mutedForeground
-                  : colors.warning
-              }
-              value={
-                cameraStatus?.granted
-                  ? "Active"
-                  : cameraStatus?.canAskAgain === false
-                  ? "Open Settings"
-                  : "Not granted"
-              }
-              color={
-                cameraStatus?.granted
-                  ? colors.secondary
-                  : colors.warning
-              }
-              onPress={handleCameraAccessPress}
-            />
             <ActionRow
               icon="bulb-outline"
               label="Reset all hints"
@@ -2194,6 +2161,127 @@ export default function ProfileScreen() {
             </View>
           </GlassCard>
           </View>
+
+          {/* Permissions */}
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Permissions</Text>
+          <GlassCard style={styles.actionsCard}>
+            {/* Photo Library */}
+            <SettingPickerRow
+              icon="images-outline"
+              label="Photo Library"
+              sublabel={
+                cameraRollStatus === "granted"
+                  ? "Allowed — saves progress cards to your library"
+                  : cameraRollStatus === "restricted"
+                  ? "Restricted by device policy — contact your admin"
+                  : cameraRollStatus === "denied"
+                  ? "Denied — tap to open Settings"
+                  : "Not set — tap to enable saving cards"
+              }
+              sublabelColor={cameraRollStatus === "granted" ? colors.mutedForeground : colors.warning}
+              value={
+                cameraRollStatus === "granted" ? "Allowed"
+                  : cameraRollStatus === "restricted" ? "Restricted"
+                  : cameraRollStatus === "denied" ? "Open Settings"
+                  : "Not Set"
+              }
+              color={cameraRollStatus === "granted" ? colors.secondary : colors.warning}
+              onPress={handlePhotoAccessPress}
+            />
+            {cameraRollStatus === "denied" && (
+              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
+                  Access was permanently denied — open Settings above to re-enable it.
+                </Text>
+              </View>
+            )}
+            {cameraRollStatus === "restricted" && (
+              <View style={[styles.deniedInfoRow, { borderTopColor: colors.border }]}>
+                <Ionicons name="information-circle-outline" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+                <Text style={[styles.deniedInfoText, { color: colors.mutedForeground }]}>
+                  This restriction is enforced by your organisation or device management policy and cannot be changed from Settings.
+                </Text>
+              </View>
+            )}
+            {hasSeenRationale && cameraRollStatus === "undetermined" && (
+              <ActionRow
+                icon="arrow-undo-outline"
+                label="Reset photo access prompt"
+                sublabel="Re-show the explanation on next save attempt"
+                color={colors.accent}
+                onPress={handleResetRationalePrompt}
+              />
+            )}
+            {/* Camera */}
+            <SettingPickerRow
+              icon="camera-outline"
+              label="Camera"
+              sublabel={
+                cameraStatus?.granted
+                  ? "Allowed — used for barcode scanning"
+                  : cameraStatus?.canAskAgain === false
+                  ? "Denied — tap to open Settings"
+                  : "Not set — tap to enable barcode scanning"
+              }
+              sublabelColor={cameraStatus?.granted ? colors.mutedForeground : colors.warning}
+              value={
+                cameraStatus?.granted ? "Allowed"
+                  : cameraStatus?.canAskAgain === false ? "Open Settings"
+                  : "Not Set"
+              }
+              color={cameraStatus?.granted ? colors.secondary : colors.warning}
+              onPress={handleCameraAccessPress}
+            />
+            {/* Notifications */}
+            <SettingPickerRow
+              icon="notifications-outline"
+              label="Notifications"
+              sublabel={
+                notifStatus === "granted"
+                  ? "Allowed — daily tips, reminders & Ovia AI messages"
+                  : notifStatus === "denied"
+                  ? (notifCanAskAgain ? "Denied — tap to re-enable" : "Denied — tap to open Settings")
+                  : notifStatus === null
+                  ? "Checking…"
+                  : "Not set — tap to enable reminders"
+              }
+              sublabelColor={notifStatus === "granted" ? colors.mutedForeground : colors.warning}
+              value={
+                notifStatus === "granted" ? "Allowed"
+                  : notifStatus === "denied" ? (notifCanAskAgain ? "Enable" : "Open Settings")
+                  : notifStatus === null ? "…"
+                  : "Not Set"
+              }
+              color={notifStatus === "granted" ? colors.secondary : colors.warning}
+              onPress={handleNotificationsPress}
+            />
+            {/* Health */}
+            {healthAvailable && (
+              <SettingPickerRow
+                icon={Platform.OS === "ios" ? "heart-outline" : "fitness-outline"}
+                label={Platform.OS === "ios" ? "Apple Health" : "Health Connect"}
+                sublabel={
+                  healthStatus === "authorized"
+                    ? (Platform.OS === "ios" ? "Allowed — reading from Apple Health" : "Allowed — reading from Health Connect")
+                    : healthStatus === "denied"
+                    ? "Denied — tap to open Settings"
+                    : healthStatus === "loading"
+                    ? "Connecting…"
+                    : "Not set — tap to connect health data"
+                }
+                sublabelColor={healthStatus === "authorized" ? colors.mutedForeground : colors.warning}
+                value={
+                  healthStatus === "authorized" ? "Allowed"
+                    : healthStatus === "denied" ? "Open Settings"
+                    : healthStatus === "loading" ? "…"
+                    : "Not Set"
+                }
+                color={healthStatus === "authorized" ? colors.secondary : colors.warning}
+                onPress={handleHealthPress}
+              />
+            )}
+          </GlassCard>
 
           {/* Tools & Wellness */}
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Tools & Wellness</Text>

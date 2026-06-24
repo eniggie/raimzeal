@@ -9,6 +9,10 @@ import { useColors } from "@/hooks/useColors";
 
 const LAST_TAB_KEY = "@raimzeal_last_tab";
 
+// Always false — NativeTabs / expo-router/unstable-native-tabs (RNSTabBarController)
+// crashes and renders blank on iOS 26 (react-native-screens#3940). Never set to true.
+const USE_NATIVE_TABS = false;
+
 function TabTracker() {
   const segments = useSegments();
   useEffect(() => {
@@ -152,6 +156,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  // USE_NATIVE_TABS is permanently false — NativeTabs crashes on iOS 26.
+  // This guard makes the intent explicit and satisfies the linter.
+  if (USE_NATIVE_TABS) return null;
   return (
     <>
       <ClassicTabLayout />
