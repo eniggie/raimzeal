@@ -5305,21 +5305,41 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const swipeHintAnim = useRef(new Animated.Value(0)).current;
+  // Drives the "Tap to dismiss" label fade-in pulse — mirrors pinchDismissAnim.
+  const swipeDismissAnim = useRef(new Animated.Value(0)).current;
+  const swipeDismissOpacity = useMemo(
+    () => swipeDismissAnim.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0, 1, 1] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const swipeDismissScale = useMemo(
+    () => swipeDismissAnim.interpolate({ inputRange: [0, 0.45, 0.72, 1], outputRange: [1, 1, 1.08, 1] }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   function triggerSwipeHint() {
     setShowSwipeHint(true);
     if (reduceMotionRef.current) {
       swipeHintAnim.setValue(1);
+      swipeDismissAnim.setValue(1);
       setTimeout(() => {
         setShowSwipeHint(false);
         AsyncStorage.setItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN, "1").catch(() => {});
       }, 2000);
     } else {
       swipeHintAnim.setValue(0);
-      Animated.sequence([
-        Animated.timing(swipeHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.delay(1800),
-        Animated.timing(swipeHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      swipeDismissAnim.setValue(0);
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(swipeHintAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.delay(1800),
+          Animated.timing(swipeHintAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.delay(600),
+          Animated.timing(swipeDismissAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]),
       ]).start(({ finished }) => {
         if (finished) {
           setShowSwipeHint(false);
@@ -5332,11 +5352,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   function dismissSwipeHintEarly() {
     if (!showSwipeHint) return;
     swipeHintAnim.stopAnimation();
-    Animated.timing(swipeHintAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
+    swipeDismissAnim.stopAnimation();
+    Animated.parallel([
+      Animated.timing(swipeHintAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(swipeDismissAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(({ finished }) => {
       if (finished) {
         setShowSwipeHint(false);
         AsyncStorage.setItem(STORAGE_KEY_PRESET_SWIPE_HINT_SEEN, "1").catch(() => {});
@@ -7778,7 +7798,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         <Ionicons name="arrow-forward" size={22} color="rgba(255,255,255,0.9)" />
                       </View>
                       <Text style={styles.swipeHintTitle}>Swipe to browse presets</Text>
-                      <Text style={styles.swipeHintSub}>Tap to dismiss</Text>
+                      <Animated.Text
+                        style={[
+                          styles.swipeHintSub,
+                          {
+                            opacity: swipeDismissOpacity,
+                            transform: [{ scale: swipeDismissScale }],
+                          },
+                        ]}
+                      >
+                        Tap to dismiss
+                      </Animated.Text>
                     </View>
                   </TouchableOpacity>
                 </Animated.View>
