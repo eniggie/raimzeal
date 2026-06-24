@@ -4456,8 +4456,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   function navigatePresetPreview(dir: 1 | -1) {
     const currentPresets = presetPreviewPresetsRef.current;
-    const newIdx = presetPreviewIndexRef.current + dir;
-    if (newIdx < 0 || newIdx >= currentPresets.length) return;
+    if (currentPresets.length <= 1) return;
+    const rawIdx = presetPreviewIndexRef.current + dir;
+    const newIdx = (rawIdx + currentPresets.length) % currentPresets.length;
     const nextPreset = currentPresets[newIdx];
     dismissSwipeHintEarly();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -5747,20 +5748,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, []);
 
   const handlePresetNavigateDir = useCallback((dir: 1 | -1) => {
-    const newIdx = presetPreviewIndexRef.current + dir;
-    if (newIdx >= 0 && newIdx < presetPreviewPresetsRef.current.length) {
-      navigatePresetPreviewRef.current(dir);
-    } else {
-      // Out of bounds — spring back to center so the card is never left stranded.
-      Animated.spring(presetCardTranslateX, {
-        toValue: 0,
-        damping: 50,
-        stiffness: 400,
-        mass: 0.6,
-        overshootClamping: true,
-        useNativeDriver: true,
-      }).start();
-    }
+    navigatePresetPreviewRef.current(dir);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -5820,12 +5808,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           const absVx = Math.abs(gs.vx);
           if (absDx > 80 || absVx > 0.5) {
             const dir: 1 | -1 = gs.dx < 0 ? 1 : -1;
-            const newIdx = presetPreviewIndexRef.current + dir;
-            if (newIdx >= 0 && newIdx < presetPreviewPresetsRef.current.length) {
-              navigatePresetPreviewRef.current(dir);
-            } else {
-              Animated.spring(presetCardTranslateX, { toValue: 0, ...snapBackSpring }).start();
-            }
+            navigatePresetPreviewRef.current(dir);
           } else {
             Animated.spring(presetCardTranslateX, { toValue: 0, ...snapBackSpring }).start();
           }
@@ -7803,18 +7786,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 {presetPreviewPresetsRef.current.length > 1 && (
                   <View style={styles.presetPreviewNavRow} pointerEvents="box-none">
                     <TouchableOpacity
-                      style={[
-                        styles.presetPreviewNavBtn,
-                        presetPreviewIndex === 0 && styles.presetPreviewNavBtnDisabled,
-                      ]}
+                      style={styles.presetPreviewNavBtn}
                       onPress={() => { dismissSwipeHintEarly(); navigatePresetPreview(-1); }}
-                      disabled={presetPreviewIndex === 0}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Ionicons
                         name="chevron-back"
                         size={20}
-                        color={presetPreviewIndex === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)"}
+                        color="rgba(255,255,255,0.85)"
                       />
                     </TouchableOpacity>
                     <View style={styles.presetPreviewNameBadge} pointerEvents="none">
@@ -7826,18 +7805,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       </Text>
                     </View>
                     <TouchableOpacity
-                      style={[
-                        styles.presetPreviewNavBtn,
-                        presetPreviewIndex === presetPreviewPresetsRef.current.length - 1 && styles.presetPreviewNavBtnDisabled,
-                      ]}
+                      style={styles.presetPreviewNavBtn}
                       onPress={() => { dismissSwipeHintEarly(); navigatePresetPreview(1); }}
-                      disabled={presetPreviewIndex === presetPreviewPresetsRef.current.length - 1}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Ionicons
                         name="chevron-forward"
                         size={20}
-                        color={presetPreviewIndex === presetPreviewPresetsRef.current.length - 1 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)"}
+                        color="rgba(255,255,255,0.85)"
                       />
                     </TouchableOpacity>
                   </View>
