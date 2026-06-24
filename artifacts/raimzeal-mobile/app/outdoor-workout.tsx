@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -299,12 +300,20 @@ export default function OutdoorWorkoutScreen() {
           </View>
 
           {locationGranted === false && Platform.OS !== "web" && (
-            <View style={[styles.warnBanner, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b40" }]}>
+            <TouchableOpacity
+              onPress={() => Linking.openSettings()}
+              activeOpacity={0.75}
+              style={[styles.warnBanner, { backgroundColor: "#f59e0b18", borderColor: "#f59e0b40" }]}
+            >
               <Ionicons name="warning-outline" size={16} color="#f59e0b" />
               <Text style={[styles.warnText, { color: colors.mutedForeground }]}>
                 Location permission not granted. You can still start — distance tracking will be unavailable until you allow access.
               </Text>
-            </View>
+              <View style={styles.warnSettingsRow}>
+                <Text style={styles.warnSettingsLabel}>Open Settings</Text>
+                <Ionicons name="chevron-forward" size={13} color="#f59e0b" />
+              </View>
+            </TouchableOpacity>
           )}
 
           {locationErr && (
@@ -598,6 +607,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, borderWidth: 1, alignItems: "flex-start",
   },
   warnText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  warnSettingsRow: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "center" },
+  warnSettingsLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#f59e0b" },
 
   sectionLabel: {
     fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8,
