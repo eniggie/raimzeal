@@ -2621,12 +2621,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           Animated.spring(confirmTranslateY, { toValue: 0, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true }),
         ]),
         Animated.delay(holdDuration),
-        Animated.timing(confirmOpacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: -8, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        ]),
       ]);
       confirmAnimRef.current = seq;
       seq.start(({ finished }) => {
         confirmAnimRef.current = null;
         if (finished) {
+          confirmTranslateY.setValue(16);
           confirmProgressAnim.setValue(1);
           setConfirmHasCountdown(false);
           confirmHasCountdownRef.current = false;
