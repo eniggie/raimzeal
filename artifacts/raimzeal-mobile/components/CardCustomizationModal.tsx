@@ -2487,6 +2487,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     PanResponder.create({
       onMoveShouldSetPanResponder: (_evt, gestureState) =>
         gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+      onPanResponderGrant: () => {
+        pauseUndoToast();
+      },
       onPanResponderMove: (_evt, gestureState) => {
         if (gestureState.dy < 0) {
           undoSwipeY.setValue(gestureState.dy);
@@ -2508,6 +2511,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             mass: 0.6,
             overshootClamping: true,
           }).start();
+          resumeUndoToast();
         }
       },
       onPanResponderTerminate: () => {
@@ -2519,6 +2523,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           mass: 0.6,
           overshootClamping: true,
         }).start();
+        resumeUndoToast();
       },
     })
   ).current;
