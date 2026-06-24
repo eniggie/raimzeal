@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, memo, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   Animated,
+  BackHandler,
   Easing,
   AppState,
   Dimensions,
@@ -2187,7 +2188,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // gesture, hardware back, or "Done"). When the user moves focus to another
   // input the keyboard will re-appear quickly; keyboardDidShow cancels the
   // pending close so the panel stays open during those focus transitions.
+  //
+  // On Android the keyboard does NOT briefly hide/show when focus moves between
+  // inputs (it stays visible the whole time), so the debounce guard is not
+  // needed and a 0 ms delay collapses the panel immediately on hardware-back or
+  // IME Done without any risk of a spurious cancel from keyboardDidShow.
   useEffect(() => {
+    const closeDelay = Platform.OS === "android" ? 0 : 150;
     const hideSub = Keyboard.addListener("keyboardDidHide", () => {
       if (inlineSaveCloseTimerRef.current !== null) {
         clearTimeout(inlineSaveCloseTimerRef.current);
@@ -2195,7 +2202,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveCloseTimerRef.current = setTimeout(() => {
         inlineSaveCloseTimerRef.current = null;
         setShowInlineSave(false);
-      }, 150);
+      }, closeDelay);
     });
     const showSub = Keyboard.addListener("keyboardDidShow", () => {
       if (inlineSaveCloseTimerRef.current !== null) {
@@ -2212,6 +2219,24 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
     };
   }, []);
+
+  // On Android, the hardware back button should collapse the inline save panel
+  // instead of navigating away. The handler returns true to consume the event
+  // when the panel is open, and false to let the default back action run when
+  // it is closed. Re-registers whenever showInlineSave changes so the captured
+  // value is always current.
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (showInlineSave) {
+        Keyboard.dismiss();
+        setShowInlineSave(false);
+        return true;
+      }
+      return false;
+    });
+    return () => handler.remove();
+  }, [showInlineSave]);
 
   // When autoTriggerDelay changes while a countdown is active, immediately sync
   // the running timer to the new duration. This effect covers every call-site
