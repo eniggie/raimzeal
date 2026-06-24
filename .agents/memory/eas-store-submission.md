@@ -1,70 +1,69 @@
 ---
 name: EAS Store Submission
-description: EAS build and store submission config for RAIMZEAL mobile app (com.econteur.raimzeal)
+description: EAS build and store submission config for RAIMZEAL mobile app (app.replit.raimzeal / com.econteur.raimzeal)
 ---
 
 ## Key identifiers
 - EAS account: econteur (developer@econteur.com)
 - EAS project ID: 352f4ec9-8d51-4d18-8c68-97a1b3be0387
-- Bundle ID (iOS): com.econteur.raimzeal
+- Bundle ID (iOS): app.replit.raimzeal (per ios-bundle-id.md — DO NOT CHANGE)
 - Package (Android): com.econteur.raimzeal
 - Apple Team ID: W842SR649M (EPHRAIM OSAGIE OVIAWE, Individual)
+- ASC App ID: 6773363801 (hardcoded in eas.json submit.production)
 
 ## Build process
-- EAS CLI available globally: `eas` (v19/20)
+- EAS CLI available globally via pnpm exec eas (v20.2.0+)
 - EXPO_TOKEN is set as a secret and handles auth automatically
 - Must run from `artifacts/raimzeal-mobile/` directory
 - Must use `EAS_NO_VCS=1` to bypass Replit's git-operation block
 - Must use `--non-interactive` for non-blocking execution
-- Project archive is ~393 MB — upload takes ~8s, full build ~15–30 min
+- Project archive is ~90 MB (after pnpm dedupe) — upload takes ~1-2s
 - `autoIncrement: true` in eas.json bumps versionCode/buildNumber during build
+- `appVersionSource: "remote"` in eas.json — EAS manages version remotely, app.json value ignored
 
-## Full build command
-```
-cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EAS_BUILD_NO_EXPO_GO_WARNING=true eas build --platform all --profile production --non-interactive
-```
-Command times out locally (upload+fingerprint >2 min) but builds ARE queued successfully.
-Check status with: `cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 eas build:list --limit 4 --non-interactive`
+## IMPORTANT: autoSubmit removed from eas.json (June 2026)
 
-## Submission
-- Android: uses `./google-play-service-account.json` (file exists), track: "internal"
-- iOS: needs `ASC_APP_ID` env var (App Store Connect numeric app ID — user must provide)
-  - Apple Team ID already hardcoded in eas.json as "W842SR649M"
+`"autoSubmit": true` was removed from `build.production` in eas.json because EAS CLI v20.x
+no longer accepts it in the build profile schema (causes validation failure on all eas commands).
 
-## Submit command (after builds finish)
+**Use `--auto-submit` CLI flag instead** for auto-submission after build:
+```bash
+cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --platform ios --profile production --non-interactive --auto-submit
 ```
-cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 ASC_APP_ID=<id> eas submit --platform all --profile production --non-interactive
+
+## Full build commands (with auto-submit)
+```bash
+# iOS only (preferred — faster, ~15 min)
+cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --platform ios --profile production --non-interactive --auto-submit
+
+# All platforms
+cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --platform all --profile production --non-interactive --auto-submit
+```
+
+Command times out locally (upload+fingerprint >2 min) but builds ARE queued and auto-submit is scheduled on EAS servers — client disconnect does NOT cancel the submission.
+
+Check status: `cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build:list --limit 4 --non-interactive`
+
+## Manual submit (after builds finish, if --auto-submit not used)
+```bash
+cd artifacts/raimzeal-mobile && EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas submit --platform ios --profile production --non-interactive
 ```
 
 ## Version history
 - 1.1.0: versionCode 19, multiple iOS builds (2, 4, 5)
 - 1.2.0: versionCode 21, iOS buildNumber 4 (builds ac85bd9c / 1d3555e1, queued 2026-06-01)
-- 1.3.0: versionCode 24 (auto-incremented from 23), build 4fdc301f, queued 2026-06-07, auto-submit to Play Store internal track scheduled (submission e0cf7555)
-
-**Why:** Replit blocks git operations from main agent; EAS_NO_VCS=1 is mandatory.
-
-## iOS Bundle ID correction (June 17 2026)
-- `app.json` had wrong bundleIdentifier: `app.replit.raimzeal` (Replit scaffold default)
-- Correct value is `com.econteur.raimzeal` — fixed
-- **Why this breaks submission:** EAS submit matches the built binary's bundle ID against the ASC app entry. A mismatch causes immediate rejection from TestFlight.
-- Always verify bundleIdentifier == com.econteur.raimzeal before triggering a production build
-
-## EAS CLI version
-- Upgraded from 19.0.1 → 20.2.0 (June 17 2026)
+- 1.3.0: versionCode 24 (auto-incremented from 23), build 4fdc301f, queued 2026-06-07
+- 1.3.0: buildNumber 40 — crashed on TestFlight (worklets double-link + autoSubmit eas.json bug)
+- 1.3.0: buildNumber 25 — queued 2026-06-24, fixes worklets removal + eas.json autoSubmit removal
 
 ## EAS Build from Replit bash tool — archive size limitation
 
 `EAS_NO_VCS=1` causes pnpm symlinks in `artifacts/raimzeal-mobile/node_modules/`
-to be followed into the workspace-root `.pnpm` store, inflating the archive to
-~376 MB. The bash tool has a 120s max timeout; uploading 376 MB takes 3-4 min.
+to be followed into the workspace-root `.pnpm` store. The bash tool has a 120s max
+timeout; uploading the archive may exceed this.
 
-**Workaround**: Run the build from the Replit shell directly (not via the agent
-bash tool):
-```bash
-cd artifacts/raimzeal-mobile
-EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas build --platform ios --profile production --non-interactive
-EAS_NO_VCS=1 EXPO_TOKEN=$EXPO_TOKEN pnpm exec eas submit --platform ios --profile production --non-interactive
-```
+**Workaround**: Run from the Replit shell directly (not via the agent bash tool) if needed.
+The agent bash tool WILL time out but the build IS queued — timeout ≠ build cancelled.
 
 Background approaches (nohup) fail because pnpm is a Nix store binary not in
 PATH of non-interactive shells.

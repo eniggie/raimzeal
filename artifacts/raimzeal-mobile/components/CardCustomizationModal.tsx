@@ -5700,6 +5700,28 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const closePresetPreviewRef = useRef(closePresetPreview);
   closePresetPreviewRef.current = closePresetPreview;
 
+  // Re-measures the chip of the currently displayed preset before closing so
+  // the fly-back animation targets the right chip even if the user navigated
+  // away from the one that was originally tapped to open the preview.
+  // measureInWindow is async, so we update the rect inside the callback and
+  // call closePresetPreview() from there (same pattern as confirmLoadPreset).
+  // Falls back to the current rect immediately if the chip node is not found.
+  function closePresetPreviewWithRemeasure() {
+    const currentPreset = presetPreviewPresetsRef.current[presetPreviewIndexRef.current];
+    const chipNode = currentPreset ? presetChipRefsMap.current.get(currentPreset.id) : null;
+    if (chipNode) {
+      chipNode.measureInWindow((x: number, y: number, width: number, height: number) => {
+        presetPreviewOriginRect.current = { x, y, width, height };
+        closePresetPreviewRef.current();
+      });
+    } else {
+      closePresetPreviewRef.current();
+    }
+  }
+
+  const closePresetPreviewWithRemeasureRef = useRef(closePresetPreviewWithRemeasure);
+  closePresetPreviewWithRemeasureRef.current = closePresetPreviewWithRemeasure;
+
   const navigatePresetPreviewRef = useRef<(dir: 1 | -1) => void>(navigatePresetPreview);
   navigatePresetPreviewRef.current = navigatePresetPreview;
 
@@ -5795,7 +5817,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           }
         } else {
           if (gs.dy > 80 || gs.vy > 0.5) {
-            closePresetPreviewRef.current();
+            closePresetPreviewWithRemeasureRef.current();
           } else {
             Animated.spring(presetPreviewSwipeDragY, { toValue: 0, ...snapBackSpring }).start();
           }
@@ -5812,12 +5834,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Required for the same reason as the zoom view: RNGH can take gesture priority over
   // the outer PanResponder when the card is pinch-zoomed, so we need both paths.
   const handlePresetPreviewSwipeDown = useCallback((_velocityY: number) => {
-    closePresetPreviewRef.current();
+    closePresetPreviewWithRemeasureRef.current();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePresetPreviewDismiss = useCallback(() => {
-    closePresetPreviewRef.current();
+    closePresetPreviewWithRemeasureRef.current();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

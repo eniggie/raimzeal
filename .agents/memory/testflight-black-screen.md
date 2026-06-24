@@ -62,12 +62,32 @@ const appReady = (fontsLoaded || !!fontError || fontTimedOut) && bootPrefs !== n
 
 **Why:** The nutrition screen's keyboard avoid logic already uses the standard RN `Keyboard` API — not the library — so removal has zero functional impact.
 
-## Root Cause 6: `react-native-worklets` unused auto-linked module
+## Root Cause 6: `react-native-worklets` explicit direct dependency (double-registration crash)
 
-`react-native-worklets: 0.5.1` was in `package.json` but never imported. Auto-linked at native load time, adding startup overhead and potential native conflicts.
+**RECURRING PATTERN — do NOT re-add react-native-worklets to package.json as a direct dependency.**
 
-**Fix:** Removed from `package.json`.
+`react-native-worklets` was added to `devDependencies` to fix Metro bundler errors during the Replit web deploy (reanimated@4.x has it as a peer dep). When explicitly listed, Expo auto-links it as a standalone native module. But `react-native-reanimated` ALREADY handles worklets native-linking internally — adding worklets explicitly causes the module to register twice at native startup, crashing the app immediately (splash screen only, app exits instantly).
+
+**Fix:** Remove `react-native-worklets` from `package.json` entirely.
+
+**Why:** Reanimated v4.x manages its own worklets integration. The peer-dep warning from pnpm is a false alarm — the native worklets bridge is registered through reanimated's own auto-link, not a separate one. Two registrations = crash.
+
+**How to apply:**
+- Never re-add `react-native-worklets` to `dependencies` or `devDependencies`.
+- If a web deploy fails with "Cannot find module 'react-native-worklets/plugin'", fix it via Metro resolver or pnpm overrides — NOT by adding worklets as a direct dep.
+- A full new native EAS build is required after removing it; OTA/code-push will NOT fix native-layer crashes.
+
+## Root Cause 7: `"autoSubmit": true` in eas.json build profile (EAS CLI 20.x rejects it)
+
+`eas.json` production profile had `"autoSubmit": true`. EAS CLI 20.x no longer accepts this property in build profiles, causing ALL eas commands (including `eas build`) to fail with schema validation errors.
+
+**Fix:** Removed `"autoSubmit": true` from `build.production` in `eas.json`. Use `--auto-submit` CLI flag instead:
+```bash
+eas build --platform ios --profile production --non-interactive --auto-submit
+```
+
+**Why:** `autoSubmit` was deprecated from the build profile schema in EAS CLI v20. The `submit.production` config block is still valid and used by `--auto-submit`.
 
 ---
 
-**Important:** All three causes in Root Causes 4–6 require a new **native build** to take effect. Code-push / OTA updates do NOT fix native-layer crashes. A full `eas build --platform all --profile production` is required after these changes.
+**Important:** Root Causes 4–7 require a new **native build** to take effect. Code-push / OTA updates do NOT fix native-layer crashes. A full `eas build --platform ios --profile production` is required after these changes.

@@ -16,10 +16,11 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
-// Block Metro from watching temp directories created by react-native-health-connect
+// Block Metro from watching temp directories created by certain native packages
 // during pnpm install — they are removed immediately but Metro crashes if it tries to watch them
 config.resolver.blockList = [
   /react-native-health-connect_tmp_[^/]+/,
+  /react-native-reanimated_tmp_[^/]+/,
 ];
 
 // Follow pnpm symlinks so every require('react') resolves to the same physical
