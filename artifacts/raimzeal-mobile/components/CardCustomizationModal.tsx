@@ -3181,6 +3181,35 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     return () => { cancelled = true; };
   }, [visible]);
 
+  // Reset confirm-toast animation values when the modal closes so stale
+  // in-flight values never bleed into the next open.
+  useEffect(() => {
+    if (!visible) {
+      confirmOpacity.stopAnimation();
+      confirmTranslateY.stopAnimation();
+      confirmSwipeY.stopAnimation();
+      confirmProgressAnim.stopAnimation();
+      confirmOpacity.setValue(0);
+      confirmTranslateY.setValue(16);
+      confirmSwipeY.setValue(0);
+      confirmProgressAnim.setValue(1);
+    }
+  }, [visible]);
+
+  // Reset undo-delete toast animation values when the modal closes.
+  useEffect(() => {
+    if (!visible) {
+      undoOpacity.stopAnimation();
+      undoTranslateY.stopAnimation();
+      undoSwipeY.stopAnimation();
+      undoProgressAnim.stopAnimation();
+      undoOpacity.setValue(0);
+      undoTranslateY.setValue(8);
+      undoSwipeY.setValue(0);
+      undoProgressAnim.setValue(1);
+    }
+  }, [visible]);
+
   // Reset the auto-trigger banner animation value on close so the next open
   // always starts from a clean hidden state rather than a stale in-flight value.
   useEffect(() => {
