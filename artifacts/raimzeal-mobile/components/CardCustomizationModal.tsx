@@ -894,14 +894,19 @@ function ZoomableCard({
         atBoundary.value = 0;
       }
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       "worklet";
       // Spring scale back to [1, 4] if it over-shot during rubber-band.
+      // Pass e.velocity (rate of change of scale) so the spring feels physical.
       const clampedScale = Math.min(4, Math.max(1, scale.value));
       if (reduceMotionShared.value) {
         scale.value = clampedScale;
       } else {
-        scale.value = withSpring(clampedScale, { damping: 15, stiffness: 200 });
+        scale.value = withSpring(clampedScale, {
+          damping: 15,
+          stiffness: 200,
+          velocity: e.velocity,
+        });
       }
       savedScale.value = clampedScale;
       // Translate bounds and centering based on the settled (clamped) scale.
@@ -912,6 +917,8 @@ function ZoomableCard({
       // When a pinch-out returns scale to 1 the card must be centred — any
       // leftover pan offset would leave it floating off-centre. Spring config
       // matches doubleTapGesture (damping 15, stiffness 200) for consistent feel.
+      // e.velocity carries any leftover pinch momentum into the translate springs
+      // so both axes snap back with the same physical feel as the pan gesture.
       const targetX = clampedScale <= 1 ? 0 : clampedX;
       const targetY = clampedScale <= 1 ? 0 : clampedY;
       if (reduceMotionShared.value) {
@@ -920,8 +927,8 @@ function ZoomableCard({
       } else {
         const springCfg =
           clampedScale <= 1
-            ? { damping: 15, stiffness: 200 }
-            : undefined;
+            ? { damping: 15, stiffness: 200, velocity: e.velocity }
+            : { velocity: e.velocity };
         translateX.value = withSpring(targetX, springCfg);
         translateY.value = withSpring(targetY, springCfg);
       }
