@@ -58,6 +58,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { useSwipeHint } from "@/hooks/useSwipeHint";
+import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
 import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -1742,11 +1743,86 @@ export default function NutritionScreen() {
   const [per100gToastMessage, setPer100gToastMessage] = useState<string | null>(null);
   const per100gToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const per100gToastAnim = useRef(new Animated.Value(0)).current;
+  const per100gToastSwipeY = useRef(new Animated.Value(0)).current;
 
   const [savedMealToastMessage, setSavedMealToastMessage] = useState<string | null>(null);
   const [savedMealUndoFn, setSavedMealUndoFn] = useState<{ fn: () => void } | null>(null);
   const savedMealToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedMealToastAnim = useRef(new Animated.Value(0)).current;
+  const savedMealToastSwipeY = useRef(new Animated.Value(0)).current;
+
+  const {
+    hintSeen: toastSwipeHintSeen,
+    swipeHintOpacity: toastSwipeHintOpacity,
+    swipeHintSlideAnim: toastSwipeHintSlideAnim,
+    triggerToastSwipeHint,
+    dismissToastSwipeHint,
+  } = useToastSwipeHint();
+
+  const dismissPer100gAnimatedRef = useRef<() => void>(() => {});
+  const dismissSavedMealAnimatedRef = useRef<() => void>(() => {});
+
+  const per100gToastPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy < -8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.2,
+      onPanResponderMove: (_, gs) => {
+        per100gToastSwipeY.setValue(Math.min(0, gs.dy));
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy < -40 || gs.vy < -0.4) {
+          dismissPer100gAnimatedRef.current();
+        } else {
+          Animated.spring(per100gToastSwipeY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 20,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(per100gToastSwipeY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 20,
+        }).start();
+      },
+    })
+  ).current;
+
+  const savedMealToastPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) =>
+        gs.dy < -8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.2,
+      onPanResponderMove: (_, gs) => {
+        savedMealToastSwipeY.setValue(Math.min(0, gs.dy));
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy < -40 || gs.vy < -0.4) {
+          dismissSavedMealAnimatedRef.current();
+        } else {
+          Animated.spring(savedMealToastSwipeY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 20,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(savedMealToastSwipeY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 20,
+        }).start();
+      },
+    })
+  ).current;
 
   const [deletedPreset, setDeletedPreset] = useState<CustomFilterPreset | null>(null);
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2788,20 +2864,44 @@ export default function NutritionScreen() {
 
   function dismissPer100gToast(forReplacement = false) {
     per100gToastAnim.stopAnimation();
-    Animated.timing(per100gToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-      if (!forReplacement) setPer100gToastMessage(null);
-    });
     if (per100gToastTimerRef.current) {
       clearTimeout(per100gToastTimerRef.current);
       per100gToastTimerRef.current = null;
     }
+    if (forReplacement) {
+      per100gToastSwipeY.setValue(0);
+      return;
+    }
+    dismissToastSwipeHint();
+    Animated.timing(per100gToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      setPer100gToastMessage(null);
+      per100gToastSwipeY.setValue(0);
+    });
   }
+
+  function dismissPer100gToastWithSwipe() {
+    if (per100gToastTimerRef.current) {
+      clearTimeout(per100gToastTimerRef.current);
+      per100gToastTimerRef.current = null;
+    }
+    dismissToastSwipeHint();
+    per100gToastAnim.stopAnimation();
+    Animated.parallel([
+      Animated.timing(per100gToastSwipeY, { toValue: -80, duration: 200, useNativeDriver: true }),
+      Animated.timing(per100gToastAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      setPer100gToastMessage(null);
+      per100gToastSwipeY.setValue(0);
+    });
+  }
+  dismissPer100gAnimatedRef.current = dismissPer100gToastWithSwipe;
 
   function showPer100gToast(message: string) {
     dismissPer100gToast(true);
     setPer100gToastMessage(message);
     per100gToastAnim.setValue(0);
     Animated.spring(per100gToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    if (!toastSwipeHintSeen) triggerToastSwipeHint();
     per100gToastTimerRef.current = setTimeout(() => {
       dismissPer100gToast();
     }, 2000);
@@ -3076,17 +3176,48 @@ export default function NutritionScreen() {
     showRestoredToast(dateStr);
   }
 
+  function dismissSavedMealToast() {
+    if (savedMealToastTimerRef.current) {
+      clearTimeout(savedMealToastTimerRef.current);
+      savedMealToastTimerRef.current = null;
+    }
+    dismissToastSwipeHint();
+    savedMealToastAnim.stopAnimation();
+    Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+      setSavedMealToastMessage(null);
+      setSavedMealUndoFn(null);
+      savedMealToastSwipeY.setValue(0);
+    });
+  }
+
+  function dismissSavedMealToastWithSwipe() {
+    if (savedMealToastTimerRef.current) {
+      clearTimeout(savedMealToastTimerRef.current);
+      savedMealToastTimerRef.current = null;
+    }
+    dismissToastSwipeHint();
+    savedMealToastAnim.stopAnimation();
+    Animated.parallel([
+      Animated.timing(savedMealToastSwipeY, { toValue: -80, duration: 200, useNativeDriver: true }),
+      Animated.timing(savedMealToastAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      setSavedMealToastMessage(null);
+      setSavedMealUndoFn(null);
+      savedMealToastSwipeY.setValue(0);
+    });
+  }
+  dismissSavedMealAnimatedRef.current = dismissSavedMealToastWithSwipe;
+
   function handleMealSaved(label: string, onUndo?: () => void) {
     if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
     setSavedMealToastMessage(label);
     setSavedMealUndoFn(onUndo ? { fn: onUndo } : null);
+    savedMealToastSwipeY.setValue(0);
     savedMealToastAnim.setValue(0);
     Animated.spring(savedMealToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    if (!toastSwipeHintSeen) triggerToastSwipeHint();
     savedMealToastTimerRef.current = setTimeout(() => {
-      Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setSavedMealToastMessage(null);
-        setSavedMealUndoFn(null);
-      });
+      dismissSavedMealToast();
       savedMealToastTimerRef.current = null;
     }, 2000);
   }
@@ -9309,50 +9440,72 @@ export default function NutritionScreen() {
       )}
 
       {savedMealToastMessage !== null && (
-        <Animated.View
-          style={[
-            styles.starToast,
-            {
-              backgroundColor: "#22c55e",
-              borderColor: "#16a34a",
-              transform: [
+        <View style={[styles.toastSwipeContainer, { bottom: insets.bottom + 16 }]}>
+          <TouchableOpacity
+            onPress={() => dismissToastSwipeHint()}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 12, right: 12 }}
+          >
+            <Animated.View
+              style={[
+                styles.toastSwipeHint,
                 {
-                  translateY: savedMealToastAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [100, 0],
-                  }),
+                  opacity: toastSwipeHintOpacity,
+                  transform: [{ translateY: toastSwipeHintSlideAnim }],
                 },
-              ],
-              opacity: savedMealToastAnim,
-              bottom: insets.bottom + 16,
-            },
-          ]}
-        >
-          <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={[styles.starToastText, { color: "#fff", flex: 1 }]} numberOfLines={1}>
-            {savedMealToastMessage}
-          </Text>
-          {savedMealUndoFn !== null && (
-            <TouchableOpacity
-              onPress={() => {
-                savedMealUndoFn.fn();
-                setSavedMealUndoFn(null);
-                if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
-                setSavedMealToastMessage("Undone");
-                savedMealToastTimerRef.current = setTimeout(() => {
-                  Animated.timing(savedMealToastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-                    setSavedMealToastMessage(null);
-                  });
-                  savedMealToastTimerRef.current = null;
-                }, 1500);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ marginLeft: 10 }}
+              ]}
             >
-              <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" }}>Undo</Text>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
+              <Ionicons name="chevron-up" size={10} color="#fff" />
+              <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
+            </Animated.View>
+          </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.starToast,
+              {
+                position: "relative",
+                left: undefined,
+                right: undefined,
+                backgroundColor: "#22c55e",
+                borderColor: "#16a34a",
+                transform: [
+                  {
+                    translateY: savedMealToastAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [100, 0],
+                    }),
+                  },
+                  { translateY: savedMealToastSwipeY },
+                ],
+                opacity: savedMealToastAnim,
+              },
+            ]}
+            {...savedMealToastPanResponder.panHandlers}
+          >
+            <Ionicons name="checkmark-circle" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={[styles.starToastText, { color: "#fff", flex: 1 }]} numberOfLines={1}>
+              {savedMealToastMessage}
+            </Text>
+            {savedMealUndoFn !== null && (
+              <TouchableOpacity
+                onPress={() => {
+                  savedMealUndoFn.fn();
+                  setSavedMealUndoFn(null);
+                  if (savedMealToastTimerRef.current) clearTimeout(savedMealToastTimerRef.current);
+                  setSavedMealToastMessage("Undone");
+                  savedMealToastTimerRef.current = setTimeout(() => {
+                    dismissSavedMealToast();
+                    savedMealToastTimerRef.current = null;
+                  }, 1500);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ marginLeft: 10 }}
+              >
+                <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" }}>Undo</Text>
+              </TouchableOpacity>
+            )}
+          </Animated.View>
+        </View>
       )}
 
       {presetSavedMessage !== null && (
@@ -9440,31 +9593,54 @@ export default function NutritionScreen() {
       )}
 
       {per100gToastMessage !== null && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.starToast,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              transform: [
+        <View style={[styles.toastSwipeContainer, { bottom: insets.bottom + 16 }]}>
+          <TouchableOpacity
+            onPress={() => dismissToastSwipeHint()}
+            activeOpacity={0.7}
+            hitSlop={{ top: 6, bottom: 6, left: 12, right: 12 }}
+          >
+            <Animated.View
+              style={[
+                styles.toastSwipeHint,
                 {
-                  translateY: per100gToastAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [100, 0],
-                  }),
+                  opacity: toastSwipeHintOpacity,
+                  transform: [{ translateY: toastSwipeHintSlideAnim }],
                 },
-              ],
-              opacity: per100gToastAnim,
-              bottom: insets.bottom + 16,
-            },
-          ]}
-        >
-          <Ionicons name="scale-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
-          <Text style={[styles.starToastText, { color: colors.foreground }]}>
-            {per100gToastMessage}
-          </Text>
-        </Animated.View>
+              ]}
+            >
+              <Ionicons name="chevron-up" size={10} color="#fff" />
+              <Text style={styles.toastSwipeHintText}>swipe to dismiss</Text>
+            </Animated.View>
+          </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.starToast,
+              {
+                position: "relative",
+                left: undefined,
+                right: undefined,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                transform: [
+                  {
+                    translateY: per100gToastAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [100, 0],
+                    }),
+                  },
+                  { translateY: per100gToastSwipeY },
+                ],
+                opacity: per100gToastAnim,
+              },
+            ]}
+            {...per100gToastPanResponder.panHandlers}
+          >
+            <Ionicons name="scale-outline" size={16} color={colors.secondary} style={{ marginRight: 6 }} />
+            <Text style={[styles.starToastText, { color: colors.foreground }]}>
+              {per100gToastMessage}
+            </Text>
+          </Animated.View>
+        </View>
       )}
 
       {macroAlert !== null && (
@@ -13435,6 +13611,25 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
+  },
+  toastSwipeContainer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+  },
+  toastSwipeHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    marginBottom: 4,
+  },
+  toastSwipeHintText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: "#fff",
+    opacity: 0.7,
+    letterSpacing: 0.2,
   },
   starToastText: {
     fontSize: 14,
