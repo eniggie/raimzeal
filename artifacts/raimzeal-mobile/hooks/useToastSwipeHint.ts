@@ -32,7 +32,11 @@ export const STORAGE_KEY_TOAST_SWIPE_HINT_SEEN = "@raimzeal_toast_swipe_hint_see
  * next eligible toast rather than incorrectly suppressing it.
  */
 export function useToastSwipeHint(storageKey: string = STORAGE_KEY_TOAST_SWIPE_HINT_SEEN) {
-  const [hintSeen, setHintSeen] = useState(false);
+  // Start as `true` (safe default — "already seen, don't show") so no hint can
+  // fire before the AsyncStorage read completes. Storage corrects it to `false`
+  // if the hint has never been seen. This prevents the race where a caller
+  // checks `!hintSeen` between mount and the storage read resolving.
+  const [hintSeen, setHintSeen] = useState(true);
   const swipeHintOpacity = useRef(new Animated.Value(0)).current;
   const swipeHintSlideAnim = useRef(new Animated.Value(6)).current;
   const swipeHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,6 +44,10 @@ export function useToastSwipeHint(storageKey: string = STORAGE_KEY_TOAST_SWIPE_H
 
   useEffect(() => {
     let cancelled = false;
+    // Reset to the safe state synchronously before each read so a re-mount
+    // never carries over a stale `false` from a previous unmount.
+    setHintSeen(true);
+    isStorageLoadedRef.current = false;
     AsyncStorage.getItem(storageKey)
       .then((val) => {
         if (!cancelled) {
@@ -48,7 +56,11 @@ export function useToastSwipeHint(storageKey: string = STORAGE_KEY_TOAST_SWIPE_H
         }
       })
       .catch(() => {
-        if (!cancelled) isStorageLoadedRef.current = true;
+        if (!cancelled) {
+          isStorageLoadedRef.current = true;
+          // On error assume not yet seen so the hint can still appear.
+          setHintSeen(false);
+        }
       });
     return () => {
       cancelled = true;

@@ -2814,10 +2814,27 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setThemeHasOverflow(false);
     themeContainerWidth.current = 0;
     themeContentWidth.current = 0;
-    // Hide the hint immediately so stale state from a previous session never
-    // flickers while the async storage read is in flight. loadSaved() will
-    // re-show it only after confirming the flag is not set in storage.
+    // Synchronously reset ALL one-time hints to hidden before the async storage
+    // read starts. This prevents stale state from a previous session flickering
+    // visible for even one render frame while the storage flag is in flight.
+    // loadSaved() re-shows each hint only after confirming eligibility.
     setShowLongPressHint(false);
+    // disabled-btn LP hint: set dismissed=true as a guard; loadSaved() will
+    // lift it (set to false) if the user hasn't permanently dismissed the hint.
+    setDisabledBtnLpHintDismissed(true);
+    disabledBtnLpHintFadeAnim.setValue(0);
+    setDisabledBtnLpHintMounted(false);
+    // tap-generate and tap-again hints: reset in case they were left visible
+    // when the modal was previously closed mid-hint.
+    setShowTapGenerateHint(false);
+    setTapGenerateHintMounted(false);
+    tapGenerateHintFadeAnim.setValue(0);
+    setTapAgainHintMounted(false);
+    tapAgainHintFadeAnim.setValue(0);
+    // Eligibility refs: reset so stale values from the previous open cannot
+    // trigger hints before loadSaved() has read the current storage state.
+    openedWithNoSavedActionRef.current = false;
+    tapAgainHintEligibleRef.current = false;
 
     // Cancellation flag: prevents async loadSaved from acting after the modal closes
     let cancelled = false;
@@ -2991,13 +3008,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         }
 
         // Disabled-button long-press hint: persisted dismiss count (backward-compat: "1" → count of 1)
-        if (disabledBtnLpHintSeenRaw !== null) {
-          const count = parseInt(disabledBtnLpHintSeenRaw, 10);
+        // The guard (dismissed=true) was set synchronously above. Lift it here
+        // only when the hint has not been permanently suppressed.
+        {
+          const count = disabledBtnLpHintSeenRaw !== null ? parseInt(disabledBtnLpHintSeenRaw, 10) : 0;
           if (!isNaN(count) && count > 0) {
             disabledBtnLpHintShowCountRef.current = Math.min(count, DISABLED_BTN_LP_HINT_MAX_SHOWS);
-            setDisabledBtnLpHintDismissed(true);
-            disabledBtnLpHintFadeAnim.setValue(0);
-            setDisabledBtnLpHintMounted(false);
+            // Guard remains — hint permanently or temporarily suppressed.
+          } else {
+            // Not yet dismissed: lift the guard so the effect can show the hint
+            // if all stats are currently off.
+            setDisabledBtnLpHintDismissed(false);
           }
         }
 
@@ -3039,6 +3060,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         setDefaultAction(null);
         setSelectedAction(null);
         setShowLongPressHint(false);
+        // Lift the disabled-btn guard on error (unknown state — allow showing).
+        setDisabledBtnLpHintDismissed(false);
       }
     }
     loadSaved();
@@ -5056,8 +5079,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // Tracks how many times the hint has been dismissed (stored as string count in AsyncStorage).
   // Max DISABLED_BTN_LP_HINT_MAX_SHOWS — once reached the hint is permanently suppressed.
   const disabledBtnLpHintShowCountRef = useRef(0);
-  const [disabledBtnLpHintMounted, setDisabledBtnLpHintMounted] = useState(!anyStatEnabled);
-  const disabledBtnLpHintFadeAnim = useRef(new Animated.Value(!anyStatEnabled ? 1 : 0)).current;
+  // Start hidden regardless of anyStatEnabled: the pre-load synchronous reset
+  // (see the visible-effect block) guards this until storage confirms eligibility.
+  const [disabledBtnLpHintMounted, setDisabledBtnLpHintMounted] = useState(false);
+  const disabledBtnLpHintFadeAnim = useRef(new Animated.Value(0)).current;
   const disabledBtnLpHintIsFirstRender = useRef(true);
   // Tracks the previous anyStatEnabled value to detect ≥1 → 0 transitions.
   const disabledBtnLpHintPrevAnyStatEnabled = useRef(anyStatEnabled);
