@@ -2084,6 +2084,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const inlineSaveTranslateY = useSharedValue(0);
   const activePresetBannerOpacity = useSharedValue(1);
   const activePresetBannerTranslateY = useSharedValue(0);
+  // Layout-space animators: collapse the gap the banner occupies so the chip
+  // list doesn't jump when reorder mode turns on (or the save panel opens).
+  const bannerMaxH = useSharedValue(100);
+  const bannerMB = useSharedValue(14);
   const inlineSaveOpen = useRef(false);
   // Tracks whether the close animation is still in flight so rapid re-taps
   // cannot reopen the panel before it finishes sliding away (~160 ms).
@@ -2109,6 +2113,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveTranslateY.value = 0;
       activePresetBannerOpacity.value = bannerHidden ? 0 : 1;
       activePresetBannerTranslateY.value = 0;
+      bannerMaxH.value = bannerHidden ? 0 : 100;
+      bannerMB.value = bannerHidden ? 0 : 14;
     } else if (open) {
       // Inline-save panel opens → slide banner up and out
       inlineSaveHeight.value = withSpring(INLINE_SAVE_EXPANDED_H, { damping: 20, stiffness: 260, mass: 0.7 });
@@ -2117,6 +2123,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveTranslateY.value = withSpring(0, { damping: 18, stiffness: 220, mass: 0.6 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
+      // Collapse the layout space the banner occupies so the save panel
+      // slides into position without a gap underneath the banner.
+      bannerMaxH.value = withTiming(0, { duration: 160 });
+      bannerMB.value = withTiming(0, { duration: 160 });
     } else if (bannerHidden) {
       // Reorder mode turned on (inline-save panel is closed) → slide banner
       // up and out with the same motion as the inline-save open path.
@@ -2126,6 +2136,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveTranslateY.value = withTiming(-8, { duration: 140 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
+      // Smoothly close the gap so the chip list doesn't jump when the
+      // banner's layout space disappears.
+      bannerMaxH.value = withTiming(0, { duration: 160 });
+      bannerMB.value = withTiming(0, { duration: 160 });
     } else {
       // Everything closed (including reorder mode off) → slide banner back in
       // Lock the toggle button for the duration of the close animation only
@@ -2145,11 +2159,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       inlineSaveTranslateY.value = withTiming(-8, { duration: 140 });
       activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
       activePresetBannerOpacity.value = withDelay(60, withTiming(1, { duration: 220 }));
+      // Re-open the layout space in sync with the banner sliding back in.
+      bannerMaxH.value = withSpring(100, { damping: 14, stiffness: 180, mass: 0.8 });
+      bannerMB.value = withTiming(14, { duration: 220 });
     }
   }, [showInlineSave, reorderMode, reduceMotion]);
   const activePresetBannerAnimStyle = useAnimatedStyle(() => ({
     opacity: activePresetBannerOpacity.value,
     transform: [{ translateY: activePresetBannerTranslateY.value }],
+    maxHeight: bannerMaxH.value,
+    overflow: "hidden" as const,
+    marginBottom: bannerMB.value,
   }));
   const inlineSaveAnimStyle = useAnimatedStyle(() => ({
     height: inlineSaveHeight.value,
@@ -6433,7 +6453,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               </View>
             </Reanimated.View>
 
-            {activePreset && !reorderMode && (
+            {activePreset && (
               <Reanimated.View style={[
                 styles.activePresetBanner,
                 {
@@ -8485,7 +8505,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    marginBottom: 14,
   },
   activePresetBannerText: {
     fontSize: 12,
