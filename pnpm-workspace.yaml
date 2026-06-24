@@ -46,8 +46,6 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
-  react: 19.2.0
-  react-dom: 19.2.0
   '@xmldom/xmldom': '>=0.8.13'
   '@expo/fingerprint': 0.15.5
   '@babel/core': ^7.29.1

@@ -1,0 +1,25 @@
+fix(mobile): react@19.1.0 pin + newArchEnabled:true for reanimated@4.x
+
+Two critical crash causes fixed:
+
+1. React version mismatch (react@19.2.0 vs react-native-renderer@19.1.0)
+   - react-native 0.81.5 bundles renderer@19.1.0
+   - React 19.2.0 added a STRICT equality check against the renderer version
+   - pnpm-workspace.yaml had a global override forcing react:19.2.0 on ALL
+     packages including mobile — removed that override
+   - Mobile package.json now pins react@19.1.0 and react-dom@19.1.0 explicitly
+   - Web app keeps react@19.2.0 from catalog (no renderer constraint)
+
+2. newArchEnabled must stay TRUE for reanimated@4.x
+   - reanimated@4.x uses JSI (New Architecture) for worklets
+   - Setting newArchEnabled:false disables JSI → executeOnUIRuntimeSync
+     becomes undefined → entire worklets bridge fails → cascade crash
+   - Reverted to newArchEnabled:true
+   - The OSA directive to set it false was incorrect for this codebase
+
+Evidence: all 3 typechecks CLEAN, pnpm store now has react@19.1.0 and
+react@19.2.0 coexisting correctly.
+
+For TestFlight: code fixes are in place. A new EAS production build is
+required to ship these fixes to TestFlight — the current TestFlight
+build pre-dates all root cause fixes.

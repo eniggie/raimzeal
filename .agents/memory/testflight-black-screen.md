@@ -90,4 +90,22 @@ eas build --platform ios --profile production --non-interactive --auto-submit
 
 ---
 
-**Important:** Root Causes 4–7 require a new **native build** to take effect. Code-push / OTA updates do NOT fix native-layer crashes. A full `eas build --platform ios --profile production` is required after these changes.
+## Root Cause 8: `react@19.2.0` vs `react-native-renderer@19.1.0` strict equality crash
+
+React 19.2.0 added a runtime strict equality check: `react` version must exactly match the `react-native-renderer` version bundled inside react-native. `react-native 0.81.5` bundles renderer@19.1.0. Using `react@19.2.0` → immediate crash on any screen using gesture-handler or reanimated.
+
+**Fix:** Pin mobile `package.json` to `react: "19.1.0"` and `react-dom: "19.1.0"` explicitly. Remove `react` and `react-dom` from the pnpm-workspace.yaml `overrides` section — the global override was forcing 19.2.0 onto all workspace packages including mobile. Web can keep 19.2.0 (no renderer version constraint).
+
+**Why:** pnpm `overrides` is workspace-global and cannot be scoped per-package. Must remove the react override and use explicit per-package pins instead.
+
+## Root Cause 9: `newArchEnabled: false` kills reanimated@4.x (JSI disabled)
+
+`react-native-reanimated@4.x` requires New Architecture (JSI worklets). Setting `newArchEnabled: false` disables the JSI bridge at native startup → `executeOnUIRuntimeSync is not a function` → reanimated crashes on every animated screen.
+
+**Fix:** Keep `newArchEnabled: true`. Never set it to `false` while reanimated@4.x is a dependency.
+
+**Why:** reanimated@4 dropped bridge/legacy architecture support entirely. Any codebase on reanimated@4.x MUST run New Architecture.
+
+---
+
+**Important:** Root Causes 4–9 require a new **native build** to take effect. Code-push / OTA updates do NOT fix native-layer crashes. A full `eas build --platform ios --profile production` is required after these changes.
