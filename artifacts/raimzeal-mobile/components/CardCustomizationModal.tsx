@@ -2410,10 +2410,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     confirmTranslateY.stopAnimation();
     confirmSwipeY.stopAnimation();
     confirmProgressAnim.stopAnimation();
-    Animated.parallel([
-      Animated.timing(confirmOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-      Animated.timing(confirmSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
-    ]).start(({ finished }) => {
+    Animated.timing(confirmOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
       confirmOpacity.setValue(0);
       confirmTranslateY.setValue(16);
       confirmSwipeY.setValue(0);
