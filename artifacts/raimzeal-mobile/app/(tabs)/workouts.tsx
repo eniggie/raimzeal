@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Easing,
   FlatList,
   LayoutAnimation,
   PanResponder,
@@ -674,11 +675,26 @@ export default function WorkoutsScreen() {
     undoOpacity.setValue(0);
     undoTranslateY.setValue(12);
     undoSwipeY.setValue(0);
-    undoAnimRef.current = Animated.parallel([
-      Animated.timing(undoOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.timing(undoTranslateY, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]);
-    undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
+    if (reduceMotionForHintRef.current) {
+      undoOpacity.setValue(1);
+      undoTranslateY.setValue(0);
+    } else {
+      undoAnimRef.current = Animated.parallel([
+        Animated.timing(undoOpacity, {
+          toValue: 1,
+          duration: 280,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(undoTranslateY, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
+      ]);
+      undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
+    }
     if (!toastSwipeHintSeen) {
       triggerToastSwipeHint(reduceMotionForHintRef.current);
     }
