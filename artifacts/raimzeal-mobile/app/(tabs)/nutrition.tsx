@@ -1897,6 +1897,7 @@ export default function NutritionScreen() {
   const [breakdownHighlightMacro, setBreakdownHighlightMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
   const [breakdownHighlightMeal, setBreakdownHighlightMeal] = useState<string | null>(null);
   const [tooltipMountedMeal, setTooltipMountedMeal] = useState<string | null>(null);
+  const [tooltipMacro, setTooltipMacro] = useState<"protein" | "carbs" | "fat" | null>(null);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
   const breakdownHighlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const breakdownRowFadeAnim = useRef(new Animated.Value(0)).current;
@@ -8731,9 +8732,10 @@ export default function NutritionScreen() {
                             const carbPct = Math.round(carbFrac * 100);
                             const fatPct = Math.round(fatFrac * 100);
                             const tooltipMounted = tooltipMountedMeal === meal;
-                            const showTooltip = () => {
+                            const showTooltip = (macro: "protein" | "carbs" | "fat") => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                               tooltipAnim.setValue(0);
+                              setTooltipMacro(macro);
                               setTooltipMountedMeal(meal);
                               Animated.timing(tooltipAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
                             };
@@ -8769,16 +8771,17 @@ export default function NutritionScreen() {
                                       {`Protein ${protPct}%  ·  Carbs ${carbPct}%  ·  Fat ${fatPct}%`}
                                     </Text>
                                     {(() => {
-                                      const leadingMacro: "protein" | "carbs" | "fat" =
+                                      const computedLeadingMacro: "protein" | "carbs" | "fat" =
                                         protPct >= carbPct && protPct >= fatPct
                                           ? "protein"
                                           : carbPct >= fatPct
                                           ? "carbs"
                                           : "fat";
+                                      const effectiveMacro = tooltipMacro ?? computedLeadingMacro;
                                       const sorted = [...entries].sort(
-                                        (a, b) => (b[leadingMacro] ?? 0) - (a[leadingMacro] ?? 0)
+                                        (a, b) => (b[effectiveMacro] ?? 0) - (a[effectiveMacro] ?? 0)
                                       );
-                                      const top = sorted.slice(0, 3).filter((e) => (e[leadingMacro] ?? 0) > 0);
+                                      const top = sorted.slice(0, 3).filter((e) => (e[effectiveMacro] ?? 0) > 0);
                                       if (top.length === 0) return null;
                                       return (
                                         <>
@@ -8795,14 +8798,14 @@ export default function NutritionScreen() {
                                           {top.map((e) => {
                                             const raw = e.name ?? "";
                                             const label = raw.length > 20 ? raw.slice(0, 18) + "…" : raw;
-                                            const g = Math.round(e[leadingMacro] ?? 0);
+                                            const g = Math.round(e[effectiveMacro] ?? 0);
                                             return (
                                               <TouchableOpacity
                                                 key={e.id}
                                                 activeOpacity={0.7}
                                                 onPress={() => {
                                                   hideTooltip();
-                                                  handleBreakdownSegmentTap(leadingMacro, meal);
+                                                  handleBreakdownSegmentTap(effectiveMacro, meal);
                                                 }}
                                               >
                                                 <Text
@@ -8861,17 +8864,17 @@ export default function NutritionScreen() {
                                 <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
                                   <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
                                     <View style={{ flex: protFrac }}>
-                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.secondary }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein", meal)} onLongPress={() => showTooltip("protein")} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.secondary }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "protein" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "protein" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
                                     </View>
                                     <View style={{ flex: carbFrac }}>
-                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.warning }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs", meal)} onLongPress={() => showTooltip("carbs")} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.warning }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "carbs" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "carbs" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
                                     </View>
                                     <View style={{ flex: fatFrac }}>
-                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.accent }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat", meal)} onLongPress={() => showTooltip("fat")} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.accent }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "fat" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
                                       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "fat" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
                                     </View>
