@@ -3858,6 +3858,45 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }
 
+  /**
+   * Show a specific permission-denied toast for the given permission type.
+   *
+   * Encapsulates the 30-second cooldown guard, the correct human-readable
+   * message, and the icon pair so every permission-gated action in this modal
+   * just calls `showPermissionDeniedToast("photoLibrary")` (or "camera",
+   * "microphone", "location") rather than duplicating the guard and strings.
+   *
+   * Add new entries to the `messages` map as new permission-gated features
+   * are added — do NOT use the generic "Storage access blocked" fallback.
+   */
+  function showPermissionDeniedToast(
+    permissionType: "photoLibrary" | "camera" | "microphone" | "location",
+  ) {
+    const messages: Record<
+      "photoLibrary" | "camera" | "microphone" | "location",
+      { message: string; icon: keyof typeof Ionicons.glyphMap }
+    > = {
+      photoLibrary: { message: "Photo library access blocked — tap to open Settings", icon: "images-outline" },
+      camera: { message: "Camera access blocked — tap to open Settings", icon: "camera-outline" },
+      microphone: { message: "Microphone access blocked — tap to open Settings", icon: "mic-outline" },
+      location: { message: "Location access blocked — tap to open Settings", icon: "location-outline" },
+    };
+    const now = Date.now();
+    if (now - lastPermissionToastShownAtRef.current < 30_000) return;
+    lastPermissionToastShownAtRef.current = now;
+    const { message, icon } = messages[permissionType];
+    showConfirmation(
+      message,
+      "error",
+      icon,
+      undefined,
+      () => Linking.openSettings(),
+      "Settings",
+      undefined,
+      "lock-closed-outline",
+    );
+  }
+
   async function handlePickBackgroundPhoto() {
     if (showInlineSave) { setShowInlineSave(false); Keyboard.dismiss(); }
     try {
@@ -3875,19 +3914,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   if (retryStatus === "granted") {
                     await pickBackgroundFromLibrary();
                   } else if (!retryCanAskAgain) {
-                    const now = Date.now();
-                    if (now - lastPermissionToastShownAtRef.current < 30_000) return;
-                    lastPermissionToastShownAtRef.current = now;
-                    showConfirmation(
-                      "Storage access blocked — tap to open Settings",
-                      "error",
-                      "images-outline",
-                      undefined,
-                      () => Linking.openSettings(),
-                      "Settings",
-                      undefined,
-                      "lock-closed-outline",
-                    );
+                    showPermissionDeniedToast("photoLibrary");
                   }
                 },
               },
@@ -3895,19 +3922,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             ],
           );
         } else {
-          const now = Date.now();
-          if (now - lastPermissionToastShownAtRef.current < 30_000) return;
-          lastPermissionToastShownAtRef.current = now;
-          showConfirmation(
-            "Storage access blocked — tap to open Settings",
-            "error",
-            "images-outline",
-            undefined,
-            () => Linking.openSettings(),
-            "Settings",
-            undefined,
-            "lock-closed-outline",
-          );
+          showPermissionDeniedToast("photoLibrary");
         }
         return;
       }
@@ -3934,10 +3949,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                     pendingPresetSwapIdRef.current = presetId;
                     await pickBackgroundFromLibrary();
                   } else if (!retryCanAskAgain) {
-                    const now = Date.now();
-                    if (now - lastPermissionToastShownAtRef.current < 30_000) return;
-                    lastPermissionToastShownAtRef.current = now;
-                    showConfirmation("Storage access blocked — tap to open Settings", "error", "images-outline", undefined, () => Linking.openSettings(), "Settings", undefined, "lock-closed-outline");
+                    showPermissionDeniedToast("photoLibrary");
                   }
                 },
               },
@@ -3945,10 +3957,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             ],
           );
         } else {
-          const now = Date.now();
-          if (now - lastPermissionToastShownAtRef.current < 30_000) return;
-          lastPermissionToastShownAtRef.current = now;
-          showConfirmation("Storage access blocked — tap to open Settings", "error", "images-outline", undefined, () => Linking.openSettings(), "Settings", undefined, "lock-closed-outline");
+          showPermissionDeniedToast("photoLibrary");
         }
         return;
       }
