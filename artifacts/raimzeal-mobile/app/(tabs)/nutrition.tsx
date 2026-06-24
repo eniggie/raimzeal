@@ -1901,6 +1901,7 @@ export default function NutritionScreen() {
   const breakdownRowFadeAnim = useRef(new Animated.Value(0)).current;
   const breakdownChipAnim = useRef(new Animated.Value(0)).current;
   const breakdownAnimGenRef = useRef(0);
+  const breakdownSegmentPulse = useRef(new Animated.Value(0)).current;
 
   const favoritesYRef = useRef<number>(0);
   const favoriteCardYsRef = useRef<Record<string, number>>({});
@@ -4513,6 +4514,8 @@ export default function NutritionScreen() {
     ++breakdownAnimGenRef.current;
     breakdownRowFadeAnim.stopAnimation();
     breakdownChipAnim.stopAnimation();
+    breakdownSegmentPulse.stopAnimation();
+    breakdownSegmentPulse.setValue(0);
     Animated.parallel([
       Animated.timing(breakdownRowFadeAnim, {
         toValue: 0,
@@ -4552,6 +4555,11 @@ export default function NutritionScreen() {
         damping: 14,
         stiffness: 220,
       }),
+    ]).start();
+    breakdownSegmentPulse.setValue(0);
+    Animated.sequence([
+      Animated.timing(breakdownSegmentPulse, { toValue: 0.55, duration: 100, useNativeDriver: true }),
+      Animated.timing(breakdownSegmentPulse, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start();
     breakdownHighlightTimer.current = setTimeout(() => {
       if (gen !== breakdownAnimGenRef.current) return;
@@ -8843,9 +8851,21 @@ export default function NutritionScreen() {
                                 )}
                                 <View style={[styles.breakdownMiniBarTrack, { backgroundColor: colors.border }]}>
                                   <View style={[styles.breakdownMiniBarFill, { flex: calShare }]}>
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: protFrac, backgroundColor: colors.secondary, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "protein" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: carbFrac, backgroundColor: colors.warning, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "carbs" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
-                                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: fatFrac, backgroundColor: colors.accent, opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "fat" ? 0.4 : 1 }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                    <View style={{ flex: protFrac }}>
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("protein", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.secondary }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "protein" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "protein" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
+                                    </View>
+                                    <View style={{ flex: carbFrac }}>
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("carbs", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.warning }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "carbs" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "carbs" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
+                                    </View>
+                                    <View style={{ flex: fatFrac }}>
+                                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleBreakdownSegmentTap("fat", meal)} onLongPress={showTooltip} onPressOut={hideTooltip} delayLongPress={400} style={[styles.breakdownMiniBarSegment, { flex: 1, backgroundColor: colors.accent }]} hitSlop={{ top: 12, bottom: 12, left: 2, right: 2 }} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#ffffff", opacity: breakdownHighlightMacro === "fat" && breakdownHighlightMeal === meal ? breakdownSegmentPulse : 0 }]} />
+                                      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000000", opacity: breakdownHighlightMacro && breakdownHighlightMeal === meal && breakdownHighlightMacro !== "fat" ? breakdownRowFadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }) : 0 }]} />
+                                    </View>
                                   </View>
                                   <View style={{ flex: 1 - calShare }} />
                                 </View>
