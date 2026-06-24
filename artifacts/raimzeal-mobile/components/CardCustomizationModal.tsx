@@ -6760,7 +6760,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                           return;
                         }
                         if (isPhotoBlocked) {
-                          Linking.openSettings();
+                          triggerLockShake(action);
+                          // Let the shake finish (280 ms) before opening Settings,
+                          // but skip the delay when Reduce Motion is on (no shake ran).
+                          if (reduceMotionRef.current) {
+                            Linking.openSettings();
+                          } else {
+                            setTimeout(() => Linking.openSettings(), 280);
+                          }
                           return;
                         }
                         if (actionLongPressedRef.current) {
