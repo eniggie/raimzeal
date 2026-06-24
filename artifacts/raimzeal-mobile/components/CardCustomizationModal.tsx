@@ -5094,6 +5094,12 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (!undoToastSwipeHintSeen) {
         triggerUndoToastSwipeHint(reduceMotionRef.current);
       }
+      // If the user has never seen the global swipe hint (e.g. they use
+      // undo-delete before ever seeing a confirm toast), mark it seen here
+      // so the confirm toast doesn't show a redundant second hint later.
+      if (!toastSwipeHintSeen) {
+        triggerToastSwipeHint(reduceMotionRef.current);
+      }
       undoRemainingMsRef.current = undoMs;
       undoSegmentStartRef.current = Date.now();
       if (reduceMotionRef.current) {
