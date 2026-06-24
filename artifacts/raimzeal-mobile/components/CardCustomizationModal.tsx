@@ -4728,7 +4728,36 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
-    showConfirmation(activePresetId ? (isRename ? `"${oldPresetName}" renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success", isRename ? "create-outline" : "save-outline");
+    if (isRename && activePresetId && oldPresetName) {
+      const capturedId = activePresetId;
+      const capturedOldName = oldPresetName;
+      const capturedNewName = name;
+      const capturedPresets = updatedPresets;
+      showConfirmation(
+        `"${capturedOldName}" renamed to "${capturedNewName}"`,
+        "success",
+        "create-outline",
+        undefined,
+        async () => {
+          const revertedPresets = capturedPresets.map((p) =>
+            p.id === capturedId ? { ...p, name: capturedOldName } : p
+          );
+          setPresets(revertedPresets);
+          await savePresets(revertedPresets);
+          updateSettings({ cardPresets: revertedPresets as unknown as StoredCardPreset[] });
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          showConfirmation(`Renamed back to "${capturedOldName}"`, "success", "arrow-undo-outline");
+        },
+        "Undo",
+        3500,
+      );
+    } else {
+      showConfirmation(
+        activePresetId ? `"${name}" updated` : `"${name}" saved`,
+        "success",
+        "save-outline",
+      );
+    }
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
@@ -5003,9 +5032,30 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, renameTargetPreset.id).catch(() => {});
     }
     setRenamingPreset(false);
+    const capturedId = renameTargetPreset.id;
+    const capturedOldName = renameTargetPreset.name;
+    const capturedNewName = name;
+    const capturedPresets = updatedPresets;
     setRenameTargetPreset(null);
     setRenameInput("");
-    showConfirmation(`Renamed to "${name}"`, "success", "create-outline");
+    showConfirmation(
+      `"${capturedOldName}" renamed to "${capturedNewName}"`,
+      "success",
+      "create-outline",
+      undefined,
+      async () => {
+        const revertedPresets = capturedPresets.map((p) =>
+          p.id === capturedId ? { ...p, name: capturedOldName } : p
+        );
+        setPresets(revertedPresets);
+        await savePresets(revertedPresets);
+        updateSettings({ cardPresets: revertedPresets as unknown as StoredCardPreset[] });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        showConfirmation(`Renamed back to "${capturedOldName}"`, "success", "arrow-undo-outline");
+      },
+      "Undo",
+      3500,
+    );
   }
 
   function scrollToStatToggles() {
