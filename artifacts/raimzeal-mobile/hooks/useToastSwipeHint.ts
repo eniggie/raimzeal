@@ -104,10 +104,23 @@ export function useToastSwipeHint(storageKey: string = STORAGE_KEY_TOAST_SWIPE_H
     }
     swipeHintTimerRef.current = setTimeout(() => {
       swipeHintTimerRef.current = null;
-      Animated.timing(swipeHintOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
-        swipeHintOpacity.setValue(0);
-        swipeHintSlideAnim.setValue(6);
-      });
+      if (reduceMotion) {
+        // Reduce-motion: skip the pulse, plain fade-out only
+        Animated.timing(swipeHintOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
+          swipeHintOpacity.setValue(0);
+          swipeHintSlideAnim.setValue(6);
+        });
+      } else {
+        // Quick opacity dip-and-recover to catch the eye, then fade out
+        Animated.sequence([
+          Animated.timing(swipeHintOpacity, { toValue: 0.35, duration: 90, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(swipeHintOpacity, { toValue: 1,    duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(swipeHintOpacity, { toValue: 0,    duration: 400, useNativeDriver: true }),
+        ]).start(() => {
+          swipeHintOpacity.setValue(0);
+          swipeHintSlideAnim.setValue(6);
+        });
+      }
     }, 1000);
     setHintSeen(true);
     AsyncStorage.setItem(STORAGE_KEY_TOAST_SWIPE_HINT_SEEN, "1").catch(() => {});
