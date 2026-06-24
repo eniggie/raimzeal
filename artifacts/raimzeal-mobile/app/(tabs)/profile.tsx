@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Image,
   InteractionManager,
   Linking,
@@ -253,6 +254,15 @@ export default function ProfileScreen() {
   const profileScrollRef = useRef<ScrollView>(null);
   const settingsCardYRef = useRef<number>(0);
   const photoRestrictedAlertLastShownRef = useRef<number>(0);
+
+  // Reset the restricted-alert cooldown whenever the user returns from Settings
+  // so a round-trip to Settings always allows the alert to show again immediately.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") photoRestrictedAlertLastShownRef.current = 0;
+    });
+    return () => sub.remove();
+  }, []);
   const countdownRowYRef = useRef<number>(0);
   const [countdownActive, setCountdownActive] = useState(false);
   const { animatedStyle: countdownHighlightStyle } = useHighlightRow(countdownActive);
