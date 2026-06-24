@@ -360,6 +360,18 @@ function SortablePresetItem({
   }));
 
   const reduceMotion = useReduceMotion();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 4000);
+    return () => {
+      if (confirmTimerRef.current !== null) {
+        clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = null;
+      }
+    };
+  }, [confirmingDelete]);
   const rowOpacity = useSharedValue(1);
   const rowSlideX = useSharedValue(0);
   const itemTopShared = useSharedValue(itemIndex * PRESET_ITEM_H);
@@ -540,70 +552,115 @@ function SortablePresetItem({
         >
           {preset.name}
         </Text>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            onRename(preset);
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ marginRight: 8 }}
-        >
-          <Ionicons
-            name="pencil-outline"
-            size={17}
-            color={colors.mutedForeground}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            onLoadPreset(preset);
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ marginRight: 10 }}
-        >
-          <Ionicons
-            name="checkmark-circle-outline"
-            size={20}
-            color={isActive ? colors.primary : colors.mutedForeground}
-          />
-        </TouchableOpacity>
-        <Reanimated.View style={trashAnimStyle}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-              if (reduceMotion) {
-                onDeletePreset(preset.id);
-                return;
-              }
-              trashShake.value = withSequence(
-                withTiming(-5, { duration: 50 }),
-                withTiming(5, { duration: 50 }),
-                withTiming(-5, { duration: 50 }),
-                withTiming(5, { duration: 50 }),
-                withTiming(0, { duration: 50 }, (finished) => {
-                  'worklet';
-                  if (finished) {
-                    rowOpacity.value = withTiming(0, { duration: 180 });
-                    rowSlideX.value = withTiming(30, { duration: 180 }, (done) => {
-                      'worklet';
-                      if (done) {
-                        runOnJS(onDeletePreset)(preset.id);
-                      }
-                    });
-                  }
-                }),
-              );
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name="close-circle"
-              size={20}
-              color={isActive ? colors.primary : colors.mutedForeground}
-            />
-          </TouchableOpacity>
-        </Reanimated.View>
+        {confirmingDelete ? (
+          <View style={{ flexDirection: "row", alignItems: "center", marginRight: 2 }}>
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: "Inter_500Medium",
+                color: "#EF4444",
+                marginRight: 8,
+              }}
+            >
+              Delete?
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (confirmTimerRef.current !== null) {
+                  clearTimeout(confirmTimerRef.current);
+                  confirmTimerRef.current = null;
+                }
+                setConfirmingDelete(false);
+                if (reduceMotion) {
+                  onDeletePreset(preset.id);
+                  return;
+                }
+                trashShake.value = withSequence(
+                  withTiming(-5, { duration: 50 }),
+                  withTiming(5, { duration: 50 }),
+                  withTiming(-5, { duration: 50 }),
+                  withTiming(5, { duration: 50 }),
+                  withTiming(0, { duration: 50 }, (finished) => {
+                    "worklet";
+                    if (finished) {
+                      rowOpacity.value = withTiming(0, { duration: 180 });
+                      rowSlideX.value = withTiming(30, { duration: 180 }, (done) => {
+                        "worklet";
+                        if (done) {
+                          runOnJS(onDeletePreset)(preset.id);
+                        }
+                      });
+                    }
+                  }),
+                );
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginRight: 10 }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#EF4444" }}>
+                Yes
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setConfirmingDelete(false);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginRight: 2 }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+                No
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                onRename(preset);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginRight: 8 }}
+            >
+              <Ionicons
+                name="pencil-outline"
+                size={17}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                onLoadPreset(preset);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ marginRight: 10 }}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color={isActive ? colors.primary : colors.mutedForeground}
+              />
+            </TouchableOpacity>
+            <Reanimated.View style={trashAnimStyle}>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                  setConfirmingDelete(true);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={isActive ? colors.primary : colors.mutedForeground}
+                />
+              </TouchableOpacity>
+            </Reanimated.View>
+          </>
+        )}
         </View>
       </Reanimated.View>
     </Reanimated.View>
