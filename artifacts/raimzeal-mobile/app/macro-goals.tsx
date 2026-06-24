@@ -394,7 +394,15 @@ export default function MacroGoalsScreen() {
                       value={`${breakdown.tdee} kcal`}
                       note="Total Daily Energy Expenditure"
                       colors={colors}
-                      glossaryKey="tdee"
+                      glossaryKey={
+                        // Per-level key so users see concrete examples for
+                        // their specific multiplier in the glossary sheet.
+                        user?.fitnessLevel === "advanced"
+                          ? "activity_advanced"
+                          : user?.fitnessLevel === "intermediate"
+                          ? "activity_intermediate"
+                          : "activity_beginner"
+                      }
                       onHelpPress={openGlossary}
                     />
                     <BreakdownRow

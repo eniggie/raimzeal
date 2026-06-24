@@ -170,6 +170,24 @@ export const BREAKDOWN_GLOSSARY: Record<string, GlossaryEntry> = {
     title: "Fat",
     body: "Dietary fat supports hormone production, vitamin absorption (A, D, E, K), and long-lasting energy between meals. Each gram provides 9 calories — more than twice that of protein or carbs — so a little goes a long way.",
   },
+
+  /**
+   * One entry per fitness level, shown when the user taps the help icon on the
+   * "× Activity level" breakdown row in the macro-goals screen. Each entry
+   * gives concrete, real-world examples so the user can self-select correctly.
+   */
+  activity_beginner: {
+    title: "Lightly Active (1.375×)",
+    body: "You spend most of your day sitting or standing with little physical effort, and exercise is light or occasional. Examples: office or desk job with 1–2 gentle workouts per week, a short daily walk, or light housework. If you're unsure, lightly active is the safest starting point — it's better to underestimate and adjust than to overeat.",
+  },
+  activity_intermediate: {
+    title: "Moderately Active (1.55×)",
+    body: "You exercise regularly and with real effort, or your job keeps you on your feet throughout the day. Examples: someone with a desk job who runs, lifts, or cycles 3–5 times a week; a retail or healthcare worker who walks most of their shift; or a parent chasing young kids plus 2–3 structured workouts. This is the most common level for consistent gym-goers.",
+  },
+  activity_advanced: {
+    title: "Very Active (1.725×)",
+    body: "You train hard most days, or combine a physically demanding job with regular workouts. Examples: competitive athletes in-season, people who train twice a day, construction workers who also work out most evenings, or anyone doing 6–7 intense sessions per week. Choose this only if hard training is a daily reality — overestimating here is a common reason people stall on fat-loss goals.",
+  },
 };
 
 /**
