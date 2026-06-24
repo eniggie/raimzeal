@@ -487,6 +487,7 @@ export default function WorkoutsScreen() {
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(12)).current;
   const undoSwipeY = useRef(new Animated.Value(0)).current;
+  const undoAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   const reduceMotionForHint = useReduceMotion();
   const reduceMotionForHintRef = useRef(reduceMotionForHint);
   useEffect(() => { reduceMotionForHintRef.current = reduceMotionForHint; }, [reduceMotionForHint]);
@@ -652,22 +653,32 @@ export default function WorkoutsScreen() {
       setPendingDelete(null);
       startSync();
       removeWorkoutLog(log.id, finishSync);
-      Animated.timing(undoOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      if (undoAnimRef.current !== null) {
+        undoAnimRef.current.stop();
+        undoAnimRef.current = null;
+      }
+      undoAnimRef.current = Animated.timing(undoOpacity, { toValue: 0, duration: 200, useNativeDriver: true });
+      undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
     }, UNDO_DURATION_MS);
 
     pendingDeleteRef.current = { id: log.id, timer };
     setPendingDelete({ id: log.id, workoutName: log.workoutName });
 
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
     undoOpacity.stopAnimation();
     undoTranslateY.stopAnimation();
     undoSwipeY.stopAnimation();
     undoOpacity.setValue(0);
     undoTranslateY.setValue(12);
     undoSwipeY.setValue(0);
-    Animated.parallel([
+    undoAnimRef.current = Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
       Animated.timing(undoTranslateY, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start();
+    ]);
+    undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
     if (!toastSwipeHintSeen) {
       triggerToastSwipeHint(reduceMotionForHintRef.current);
     }
@@ -680,10 +691,16 @@ export default function WorkoutsScreen() {
     pendingDeleteRef.current = null;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     clearToastSwipeHintInstant();
-    Animated.parallel([
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
+    undoAnimRef.current = Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(undoTranslateY, { toValue: 12, duration: 180, useNativeDriver: true }),
-    ]).start(() => {
+    ]);
+    undoAnimRef.current.start(({ finished }) => {
+      undoAnimRef.current = null;
       undoSwipeY.setValue(0);
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setPendingDelete(null);
@@ -699,10 +716,16 @@ export default function WorkoutsScreen() {
       removeWorkoutLog(pd.id, finishSync);
     }
     dismissToastSwipeHint();
-    Animated.parallel([
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
+    undoAnimRef.current = Animated.parallel([
       Animated.timing(undoOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(undoSwipeY, { toValue: -60, duration: 180, useNativeDriver: true }),
-    ]).start(() => {
+    ]);
+    undoAnimRef.current.start(({ finished }) => {
+      undoAnimRef.current = null;
       undoOpacity.setValue(0);
       undoTranslateY.setValue(12);
       undoSwipeY.setValue(0);
@@ -752,6 +775,10 @@ export default function WorkoutsScreen() {
         pendingDeleteRef.current = null;
         setPendingDelete(null);
         removeWorkoutLog(pd.id);
+        if (undoAnimRef.current !== null) {
+          undoAnimRef.current.stop();
+          undoAnimRef.current = null;
+        }
         undoOpacity.setValue(0);
       };
     }, [removeWorkoutLog, undoOpacity])

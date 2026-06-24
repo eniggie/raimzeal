@@ -1714,6 +1714,7 @@ export default function NutritionScreen() {
   const undoTotalDurationMsRef = useRef<number>(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
+  const undoAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const [restoredLabel, setRestoredLabel] = useState<string | null>(null);
   const restoredAnim = useRef(new Animated.Value(0)).current;
@@ -3084,7 +3085,12 @@ export default function NutritionScreen() {
     undoProgressAnim.setValue(1);
     undoTimerStartRef.current = Date.now();
     undoTotalDurationMsRef.current = durationMs;
-    Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
+    undoAnimRef.current = Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 });
+    undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
     Animated.timing(undoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     undoCountdownIntervalRef.current = setInterval(() => {
       setUndoCountdown((prev) => Math.max(0, prev - 1));
@@ -3121,7 +3127,13 @@ export default function NutritionScreen() {
 
   function dismissUndoToast(forReplacement = false) {
     undoProgressAnim.stopAnimation();
-    Animated.timing(undoAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+    if (undoAnimRef.current !== null) {
+      undoAnimRef.current.stop();
+      undoAnimRef.current = null;
+    }
+    undoAnimRef.current = Animated.timing(undoAnim, { toValue: 0, duration: 220, useNativeDriver: true });
+    undoAnimRef.current.start(({ finished }) => {
+      undoAnimRef.current = null;
       if (!forReplacement) setUndoMeal(null);
     });
     if (undoTimerRef.current) {
