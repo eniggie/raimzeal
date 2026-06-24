@@ -718,7 +718,9 @@ function SortablePresetList({
   }, [items]);
 
   function handlePanEnd(fromIdx: number, toIdx: number) {
-    isDragging.value = false;
+    setTimeout(() => {
+      isDragging.value = false;
+    }, 250);
     if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
     setItems((prev) => {
       if (fromIdx >= prev.length || toIdx >= prev.length) return prev;
