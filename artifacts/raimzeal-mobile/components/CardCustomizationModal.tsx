@@ -2035,19 +2035,46 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const renameInputRef = useRef<TextInput>(null);
   const inlineSaveRef = useRef<View>(null);
   const pendingPresetSwapIdRef = useRef<string | null>(null);
+  // Tracks the previous activePresetId so we can look up the pre-filled name
+  // that was in the inline-save field before a preset switch happens.
+  const prevActivePresetIdRef = useRef<string | null>(null);
 
   // When the active preset changes:
   // - If the inline-save field is already open, update it in-place to the new
   //   preset's name so the user never has to close and reopen it.
+  //   If the user had typed a custom name (different from the previous preset's
+  //   saved name), show an undo toast so they can restore what they typed.
   // - Otherwise clear any stale draft so the next openInlineSave() pre-fills
   //   with the newly active preset's name.
   useEffect(() => {
     if (showInlineSave) {
       const newPreset = presets.find((p) => p.id === activePresetId);
-      setPresetNameInput(newPreset ? newPreset.name : "");
+      const newName = newPreset ? newPreset.name : "";
+      // Detect a user-modified draft: the field contains something non-empty
+      // that differs from what the previous preset's name would have pre-filled.
+      const oldPreset = presets.find((p) => p.id === prevActivePresetIdRef.current);
+      const oldPresetName = oldPreset ? oldPreset.name : "";
+      const userModified =
+        presetNameInput.trim() !== "" && presetNameInput !== oldPresetName;
+      if (userModified) {
+        const capturedTypedName = presetNameInput;
+        setPresetNameInput(newName);
+        showConfirmation(
+          `"${capturedTypedName}" replaced`,
+          "success",
+          "create-outline",
+          undefined,
+          () => setPresetNameInput(capturedTypedName),
+          "Undo",
+          3000,
+        );
+      } else {
+        setPresetNameInput(newName);
+      }
     } else {
       setPresetNameInput("");
     }
+    prevActivePresetIdRef.current = activePresetId ?? null;
   }, [activePresetId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inline-save expand/collapse animation
