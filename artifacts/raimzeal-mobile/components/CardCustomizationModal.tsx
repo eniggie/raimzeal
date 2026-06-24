@@ -2552,6 +2552,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const confirmActionFnRef = useRef<(() => void) | null>(null);
   const confirmHasCountdownRef = useRef(false);
   const confirmSwipingRef = useRef(false);
+  // Pause/resume tracking — mirrors the undoRemainingMsRef / undoSegmentStartRef pattern
+  const confirmRemainingMsRef = useRef<number>(0);
+  const confirmSegmentStartRef = useRef<number>(0);
   const pendingConfirmationArgsRef = useRef<null | [
     msg: string,
     variant?: "success" | "error",
@@ -2674,20 +2677,86 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     });
   }
 
+  // Pause the countdown timer and progress animation — mirrors pauseUndoToast.
+  function pauseConfirmToast() {
+    const elapsed = Date.now() - confirmSegmentStartRef.current;
+    confirmRemainingMsRef.current = Math.max(0, confirmRemainingMsRef.current - elapsed);
+    if (confirmDismissTimerRef.current !== null) {
+      clearTimeout(confirmDismissTimerRef.current);
+      confirmDismissTimerRef.current = null;
+    }
+    if (confirmAnimRef.current !== null) {
+      confirmAnimRef.current.stop();
+      confirmAnimRef.current = null;
+    }
+    confirmProgressAnim.stopAnimation();
+  }
+
+  // Resume the countdown from where it left off — mirrors resumeUndoToast.
+  function resumeConfirmToast() {
+    const remaining = confirmRemainingMsRef.current;
+    if (remaining <= 0) {
+      dismissConfirmToastAnimated();
+      return;
+    }
+    confirmSegmentStartRef.current = Date.now();
+    if (!reduceMotionRef.current) {
+      const progressAnim = Animated.timing(confirmProgressAnim, {
+        toValue: 0,
+        duration: remaining,
+        useNativeDriver: false,
+      });
+      confirmAnimRef.current = progressAnim;
+      progressAnim.start(({ finished }) => {
+        if (finished) confirmAnimRef.current = null;
+      });
+      confirmDismissTimerRef.current = setTimeout(() => {
+        confirmDismissTimerRef.current = null;
+        if (confirmAnimRef.current !== null) {
+          confirmAnimRef.current.stop();
+          confirmAnimRef.current = null;
+        }
+        Animated.parallel([
+          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: -8, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        ]).start(({ finished }) => {
+          if (finished) {
+            confirmTranslateY.setValue(16);
+            confirmProgressAnim.setValue(1);
+            setConfirmHasCountdown(false);
+            confirmHasCountdownRef.current = false;
+            setConfirmMessage(null);
+          }
+        });
+      }, remaining);
+    }
+  }
+
   const confirmToastPanResponder = useRef(
     PanResponder.create({
+      // Accept both upward (cancel) and downward/sideways (pause) vertical gestures.
       onMoveShouldSetPanResponder: (_evt, gestureState) =>
-        gestureState.dy < -6 && Math.abs(gestureState.dx) < Math.abs(gestureState.dy),
+        Math.abs(gestureState.dy) > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onPanResponderGrant: () => {
         confirmSwipingRef.current = true;
+        // Pause the countdown whenever a drag starts so the timer doesn't
+        // fire mid-gesture regardless of drag direction.
+        if (confirmHasCountdownRef.current) {
+          pauseConfirmToast();
+        }
       },
       onPanResponderMove: (_evt, gestureState) => {
         if (gestureState.dy < 0) {
+          // Upward: follow the finger freely (cancel gesture)
           confirmSwipeY.setValue(gestureState.dy);
+        } else {
+          // Downward: dampened resistance — signals "pause" without leaving screen
+          confirmSwipeY.setValue(gestureState.dy * 0.25);
         }
       },
       onPanResponderRelease: (_evt, gestureState) => {
         if (gestureState.dy < -30 || gestureState.vy < -0.5) {
+          // Upward swipe → cancel countdown action and dismiss
           confirmSwipingRef.current = false;
           const pending = pendingConfirmationArgsRef.current;
           pendingConfirmationArgsRef.current = null;
@@ -2703,6 +2772,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             });
           }
         } else {
+          // Released without dismissing → spring back then resume countdown
           Animated.spring(confirmSwipeY, {
             toValue: 0,
             useNativeDriver: true,
@@ -2715,6 +2785,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             const pending = pendingConfirmationArgsRef.current;
             pendingConfirmationArgsRef.current = null;
             if (pending) showConfirmationRef.current?.(...pending);
+            if (confirmHasCountdownRef.current) {
+              resumeConfirmToast();
+            }
           });
         }
       },
@@ -2731,6 +2804,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           const pending = pendingConfirmationArgsRef.current;
           pendingConfirmationArgsRef.current = null;
           if (pending) showConfirmationRef.current?.(...pending);
+          if (confirmHasCountdownRef.current) {
+            resumeConfirmToast();
+          }
         });
       },
     })
@@ -2870,6 +2946,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         Animated.spring(confirmTranslateY, { toValue: 0, damping: 50, stiffness: 400, mass: 0.6, overshootClamping: true, useNativeDriver: true }),
       ]).start();
     } else {
+      // Initialise pause/resume tracking so dragging down mid-countdown pauses
+      // the timer and releases it correctly via pauseConfirmToast/resumeConfirmToast.
+      confirmRemainingMsRef.current = holdDuration;
+      confirmSegmentStartRef.current = Date.now();
       if (showProgress) {
         Animated.timing(confirmProgressAnim, {
           toValue: 0,
