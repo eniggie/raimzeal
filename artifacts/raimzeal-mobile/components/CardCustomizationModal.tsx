@@ -2374,14 +2374,14 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       Animated.parallel([
         Animated.timing(cardChipFadeAnim, {
           toValue: 1,
-          duration: 270,
-          easing: Easing.out(Easing.quad),
+          duration: 380,
+          easing: Easing.out(Easing.back(1.2)),
           useNativeDriver: true,
         }),
         Animated.timing(cardChipSlideAnim, {
           toValue: 0,
-          duration: 270,
-          easing: Easing.out(Easing.quad),
+          duration: 380,
+          easing: Easing.out(Easing.back(1.2)),
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
