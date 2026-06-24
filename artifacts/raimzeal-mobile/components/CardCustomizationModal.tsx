@@ -2438,17 +2438,19 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setShowCardChip(false);
     } else {
       Animated.parallel([
-        Animated.timing(cardChipFadeAnim, {
+        Animated.spring(cardChipFadeAnim, {
           toValue: 0,
-          duration: 300,
-          easing: Easing.in(Easing.quad),
           useNativeDriver: true,
+          damping: 18,
+          stiffness: 220,
+          mass: 0.8,
         }),
-        Animated.timing(cardChipSlideAnim, {
-          toValue: -6,
-          duration: 300,
-          easing: Easing.in(Easing.quad),
+        Animated.spring(cardChipSlideAnim, {
+          toValue: 10,
           useNativeDriver: true,
+          damping: 14,
+          stiffness: 180,
+          mass: 0.8,
         }),
       ]).start(() => {
         setShowCardChip(false);
@@ -3618,10 +3620,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   function hideAutoTriggerBanner(then?: () => void) {
     const sessionId = autoTriggerSessionIdRef.current;
-    Animated.timing(autoTriggerBannerAnim, {
+    if (reduceMotionRef.current) {
+      autoTriggerBannerAnim.setValue(0);
+      if (autoTriggerSessionIdRef.current === sessionId) {
+        setAutoTriggerBannerVisible(false);
+        then?.();
+      }
+      return;
+    }
+    Animated.spring(autoTriggerBannerAnim, {
       toValue: 0,
-      duration: reduceMotionRef.current ? 150 : 250,
       useNativeDriver: true,
+      damping: 18,
+      stiffness: 220,
+      mass: 0.8,
     }).start(() => {
       // No-op if a new session started while we were fading out
       if (autoTriggerSessionIdRef.current !== sessionId) return;
