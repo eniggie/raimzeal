@@ -1710,6 +1710,7 @@ export default function NutritionScreen() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [undoCountdown, setUndoCountdown] = useState(0);
+  const [undoHeld, setUndoHeld] = useState(false);
   const undoTimerStartRef = useRef<number>(0);
   const undoTotalDurationMsRef = useRef<number>(0);
   const undoAnim = useRef(new Animated.Value(0)).current;
@@ -1829,6 +1830,7 @@ export default function NutritionScreen() {
   const presetUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetUndoCountdown, setPresetUndoCountdown] = useState(0);
+  const [presetUndoHeld, setPresetUndoHeld] = useState(false);
   const presetUndoTimerStartRef = useRef<number>(0);
   const presetUndoTotalDurationMsRef = useRef<number>(0);
   const presetUndoAnim = useRef(new Animated.Value(0)).current;
@@ -1838,6 +1840,7 @@ export default function NutritionScreen() {
   const presetRenameUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const presetRenameUndoCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [presetRenameUndoCountdown, setPresetRenameUndoCountdown] = useState(0);
+  const [presetRenameUndoHeld, setPresetRenameUndoHeld] = useState(false);
   const presetRenameUndoTimerStartRef = useRef<number>(0);
   const presetRenameUndoTotalDurationMsRef = useRef<number>(0);
   const presetRenameUndoAnim = useRef(new Animated.Value(0)).current;
@@ -2938,6 +2941,7 @@ export default function NutritionScreen() {
 
   function handlePresetUndoPressIn() {
     if (!presetUndoTimerRef.current && !presetUndoCountdownIntervalRef.current) return;
+    setPresetUndoHeld(true);
     const elapsed = Date.now() - presetUndoTimerStartRef.current;
     const remaining = Math.max(0, presetUndoTotalDurationMsRef.current - elapsed);
     presetUndoTotalDurationMsRef.current = remaining;
@@ -2947,6 +2951,7 @@ export default function NutritionScreen() {
   }
 
   function handlePresetUndoPressOut() {
+    setPresetUndoHeld(false);
     const remaining = presetUndoTotalDurationMsRef.current;
     if (remaining <= 0 || deletedPreset === null) return;
     presetUndoTimerStartRef.current = Date.now();
@@ -3039,6 +3044,7 @@ export default function NutritionScreen() {
 
   function handlePresetRenameUndoPressIn() {
     if (!presetRenameUndoTimerRef.current && !presetRenameUndoCountdownIntervalRef.current) return;
+    setPresetRenameUndoHeld(true);
     const elapsed = Date.now() - presetRenameUndoTimerStartRef.current;
     const remaining = Math.max(0, presetRenameUndoTotalDurationMsRef.current - elapsed);
     presetRenameUndoTotalDurationMsRef.current = remaining;
@@ -3048,6 +3054,7 @@ export default function NutritionScreen() {
   }
 
   function handlePresetRenameUndoPressOut() {
+    setPresetRenameUndoHeld(false);
     const remaining = presetRenameUndoTotalDurationMsRef.current;
     if (remaining <= 0 || renamedPreset === null) return;
     presetRenameUndoTimerStartRef.current = Date.now();
@@ -3102,6 +3109,7 @@ export default function NutritionScreen() {
 
   function handleUndoPressIn() {
     if (!undoTimerRef.current && !undoCountdownIntervalRef.current) return;
+    setUndoHeld(true);
     const elapsed = Date.now() - undoTimerStartRef.current;
     const remaining = Math.max(0, undoTotalDurationMsRef.current - elapsed);
     undoTotalDurationMsRef.current = remaining;
@@ -3111,6 +3119,7 @@ export default function NutritionScreen() {
   }
 
   function handleUndoPressOut() {
+    setUndoHeld(false);
     const remaining = undoTotalDurationMsRef.current;
     if (remaining <= 0 || undoMeal === null) return;
     undoTimerStartRef.current = Date.now();
@@ -9295,6 +9304,7 @@ export default function NutritionScreen() {
               {
                 backgroundColor: colors.primary,
                 width: undoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                opacity: undoHeld ? 0.4 : 1,
               },
             ]}
           />
@@ -9398,6 +9408,7 @@ export default function NutritionScreen() {
               {
                 backgroundColor: colors.primary,
                 width: presetUndoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                opacity: presetUndoHeld ? 0.4 : 1,
               },
             ]}
           />
@@ -9445,6 +9456,7 @@ export default function NutritionScreen() {
               {
                 backgroundColor: colors.primary,
                 width: presetRenameUndoProgressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                opacity: presetRenameUndoHeld ? 0.4 : 1,
               },
             ]}
           />
