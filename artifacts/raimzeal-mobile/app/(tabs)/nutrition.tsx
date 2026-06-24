@@ -8843,10 +8843,10 @@ export default function NutritionScreen() {
                                   >
                                     <Text style={styles.breakdownMacroChipText}>
                                       {breakdownHighlightMacro === "protein"
-                                        ? "Protein ▲"
+                                        ? `Protein · ${Math.round(mealProt)} g`
                                         : breakdownHighlightMacro === "carbs"
-                                        ? "Carbs ▲"
-                                        : "Fat ▲"}
+                                        ? `Carbs · ${Math.round(mealCarbs)} g`
+                                        : `Fat · ${Math.round(mealFat)} g`}
                                     </Text>
                                   </Animated.View>
                                 )}
