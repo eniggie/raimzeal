@@ -5373,7 +5373,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       setTimeout(() => {
         setShowModifiedChipHint(false);
         modifiedChipHintAnim.setValue(0);
-        AsyncStorage.setItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN, "1").catch(() => {});
       }, 3000);
     } else {
       modifiedChipHintAnim.setValue(0);
@@ -5384,9 +5383,22 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       ]).start(({ finished }) => {
         if (finished) {
           setShowModifiedChipHint(false);
-          AsyncStorage.setItem(STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN, "1").catch(() => {});
         }
       });
+    }
+  }
+
+  function dismissModifiedChipHint() {
+    modifiedChipHintAnim.stopAnimation();
+    if (reduceMotionRef.current) {
+      setShowModifiedChipHint(false);
+      modifiedChipHintAnim.setValue(0);
+    } else {
+      Animated.timing(modifiedChipHintAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setShowModifiedChipHint(false));
     }
   }
 
@@ -6188,29 +6200,35 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 )}
                 </Reanimated.View>
                 {showModifiedChipHint && (
-                  <Animated.View
-                    style={[
-                      styles.modifiedChipHint,
-                      {
-                        backgroundColor: colors.primary + "15",
-                        borderColor: colors.primary + "40",
-                        opacity: modifiedChipHintAnim,
-                        transform: [
-                          {
-                            translateY: modifiedChipHintAnim.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [-6, 0],
-                            }),
-                          },
-                        ],
-                      },
-                    ]}
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    onPress={dismissModifiedChipHint}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   >
-                    <Ionicons name="information-circle-outline" size={13} color={colors.primary + "cc"} />
-                    <Text style={[styles.modifiedChipHintText, { color: colors.primary + "cc" }]}>
-                      You've changed settings from this preset — it's still saved
-                    </Text>
-                  </Animated.View>
+                    <Animated.View
+                      style={[
+                        styles.modifiedChipHint,
+                        {
+                          backgroundColor: colors.primary + "15",
+                          borderColor: colors.primary + "40",
+                          opacity: modifiedChipHintAnim,
+                          transform: [
+                            {
+                              translateY: modifiedChipHintAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [-6, 0],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Ionicons name="information-circle-outline" size={13} color={colors.primary + "cc"} />
+                      <Text style={[styles.modifiedChipHintText, { color: colors.primary + "cc" }]}>
+                        Changed your mind? Tap Revert ↩ to restore the saved preset
+                      </Text>
+                    </Animated.View>
+                  </TouchableOpacity>
                 )}
                 {presets.length > 1 && settings.reorderHintFrequency !== "never" && (
                   <Text style={[styles.reorderHint, { color: colors.mutedForeground }]}>
