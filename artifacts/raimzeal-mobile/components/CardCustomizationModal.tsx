@@ -2365,6 +2365,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const undoRemainingMsRef = useRef<number>(0);
   const undoSegmentStartRef = useRef<number>(0);
   const undoTransitionIdRef = useRef<number>(0);
+  const undoToastBgPausedRef = useRef(false);
+  const undoToastResumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function dismissConfirmToast() {
     if (confirmDismissTimerRef.current !== null) {
@@ -3100,6 +3102,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             if (!autoTriggerIsPausedRef.current) return;
             autoTriggerIsPausedRef.current = false;
             setAutoTriggerIsPaused(false);
+
             const remaining = autoTriggerRemainingRef.current;
             const action = autoTriggerActiveActionRef.current;
             const delay = autoTriggerActiveDelayRef.current;
@@ -3138,6 +3141,19 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
             }
           }, 300);
         }
+        // Also debounce-resume the undo-delete toast if it was paused by backgrounding.
+        if (undoToastBgPausedRef.current) {
+          if (undoToastResumeDebounceRef.current !== null) {
+            clearTimeout(undoToastResumeDebounceRef.current);
+          }
+          undoToastResumeDebounceRef.current = setTimeout(() => {
+            undoToastResumeDebounceRef.current = null;
+            // Re-check: the app may have re-backgrounded during the debounce.
+            if (!undoToastBgPausedRef.current) return;
+            undoToastBgPausedRef.current = false;
+            resumeUndoToast();
+          }, 300);
+        }
       } else if (nextState === "background" || nextState === "inactive") {
         // Cancel any pending resume debounce — the app went away again before
         // the 300 ms elapsed, so do not restart the countdown.
@@ -3157,6 +3173,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           // "Paused · X in Ys" UI while the app is in the background.
           setAutoTriggerIsPaused(true);
         }
+        // Also pause the undo-delete toast timer so it doesn't silently fire
+        // while the user is away from the app.
+        if (undoToastResumeDebounceRef.current !== null) {
+          clearTimeout(undoToastResumeDebounceRef.current);
+          undoToastResumeDebounceRef.current = null;
+        }
+        if (undoTimerRef.current !== null) {
+          pauseUndoToast();
+          undoToastBgPausedRef.current = true;
+        }
       }
     });
     return () => {
@@ -3166,6 +3192,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       if (resumeDebounceTimerRef.current !== null) {
         clearTimeout(resumeDebounceTimerRef.current);
         resumeDebounceTimerRef.current = null;
+      }
+      if (undoToastResumeDebounceRef.current !== null) {
+        clearTimeout(undoToastResumeDebounceRef.current);
+        undoToastResumeDebounceRef.current = null;
       }
     };
   }, [visible]);

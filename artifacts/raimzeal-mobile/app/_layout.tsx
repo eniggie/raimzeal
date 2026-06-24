@@ -1,3 +1,5 @@
+import { enableScreens } from "react-native-screens";
+enableScreens(false);
 import "react-native-url-polyfill/auto";
 import {
   Inter_400Regular,
