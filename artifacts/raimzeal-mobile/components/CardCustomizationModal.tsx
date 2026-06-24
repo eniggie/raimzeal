@@ -121,6 +121,8 @@ const STORAGE_KEY_LONGPRESS_HINT_SEEN = "@raimzeal_longpress_hint_seen";
 const STORAGE_KEY_DISABLED_BTN_LP_HINT_SEEN = "@raimzeal_disabled_btn_lp_hint_seen";
 const DISABLED_BTN_LP_HINT_MAX_SHOWS = 2;
 const STORAGE_KEY_CHIP_DISMISS_COUNT = "@raimzeal_chip_dismiss_count";
+const STORAGE_KEY_CHIP_DISMISS_TIMESTAMP = "@raimzeal_chip_dismiss_ts";
+const CHIP_DISMISS_RESET_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const STORAGE_KEY_TAP_GENERATE_HINT_SEEN = "@raimzeal_tap_generate_hint_seen";
 const STORAGE_KEY_STATS_NUDGE_SEEN = "@raimzeal_stats_nudge_seen";
 const STORAGE_KEY_TAP_AGAIN_HINT_SEEN = "@raimzeal_tap_again_hint_seen";
@@ -2351,7 +2353,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         cardChipTimerRef.current = null;
         setChipDismissCount((prev) => {
           const next = prev + 1;
+          const ts = String(Date.now());
           AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(next)).catch(() => {});
+          AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_TIMESTAMP, ts).catch(() => {});
           return next;
         });
       }, 2500);
@@ -2377,7 +2381,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           cardChipTimerRef.current = null;
           setChipDismissCount((prev) => {
             const next = prev + 1;
+            const ts = String(Date.now());
             AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(next)).catch(() => {});
+            AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_TIMESTAMP, ts).catch(() => {});
             return next;
           });
           Animated.parallel([
@@ -2415,7 +2421,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     cardChipSlideAnim.stopAnimation();
     const nextCount = chipDismissCount + 1;
     setChipDismissCount(nextCount);
+    const ts = String(Date.now());
     AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, String(nextCount)).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_TIMESTAMP, ts).catch(() => {});
     if (reduceMotion) {
       cardChipFadeAnim.setValue(0);
       setShowCardChip(false);
@@ -2910,7 +2918,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
     async function loadSaved() {
       try {
-        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw, statsNudgeSeenRaw, tapAgainHintSeenRaw] = await Promise.all([
+        const [savedStats, savedMessage, savedTheme, loadedPresets, savedAction, dismissedFlag, savedBgPhoto, lpHintSeen, lpHintOpensRaw, savedLpAndRun, savedAutoTriggerDelay, savedActivePresetId, disabledBtnLpHintSeenRaw, savedChipDismissCount, tapGenerateHintSeenRaw, statsNudgeSeenRaw, tapAgainHintSeenRaw, savedChipDismissTimestamp] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEY_STATS),
           AsyncStorage.getItem(STORAGE_KEY_MESSAGE),
           AsyncStorage.getItem(STORAGE_KEY_THEME),
@@ -2928,6 +2936,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           AsyncStorage.getItem(STORAGE_KEY_TAP_GENERATE_HINT_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_STATS_NUDGE_SEEN),
           AsyncStorage.getItem(STORAGE_KEY_TAP_AGAIN_HINT_SEEN),
+          AsyncStorage.getItem(STORAGE_KEY_CHIP_DISMISS_TIMESTAMP),
         ]);
 
         if (cancelled) return;
@@ -3033,7 +3042,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         // preference (initialBadgeDismissed) is true — the latter ensures a
         // fresh device honours the user's cross-device setting immediately.
         setBadgeDismissed(dismissedFlag === "1" || initialBadgeDismissed === true);
-        setChipDismissCount(parseInt(savedChipDismissCount ?? "0", 10) || 0);
+        // Time-based reset: if the last dismissal was more than 30 days ago,
+        // treat the user as a returning user and bring the close icon back.
+        {
+          const rawCount = parseInt(savedChipDismissCount ?? "0", 10) || 0;
+          const rawTs = savedChipDismissTimestamp !== null ? parseInt(savedChipDismissTimestamp, 10) : 0;
+          const expired = rawTs > 0 && (Date.now() - rawTs) > CHIP_DISMISS_RESET_THRESHOLD_MS;
+          if (expired) {
+            setChipDismissCount(0);
+            AsyncStorage.setItem(STORAGE_KEY_CHIP_DISMISS_COUNT, "0").catch(() => {});
+            AsyncStorage.removeItem(STORAGE_KEY_CHIP_DISMISS_TIMESTAMP).catch(() => {});
+          } else {
+            setChipDismissCount(rawCount);
+          }
+        }
         const validActions: CardAction[] = ["share", "save", "both", "copy"];
         const asyncStorageAction = validActions.includes(savedAction as CardAction)
           ? (savedAction as CardAction)
