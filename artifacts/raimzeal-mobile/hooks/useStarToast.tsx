@@ -84,7 +84,7 @@ export function useStarToast({ bottomOffset }: { bottomOffset: number }) {
       toValue: 1,
       useNativeDriver: true,
       tension: 80,
-      friction: 10,
+      friction: 14,
     }).start();
     if (!hintSeen) {
       triggerToastSwipeHint();

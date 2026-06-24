@@ -2815,7 +2815,7 @@ export default function NutritionScreen() {
     dismissPresetSavedToast(true);
     setPresetSavedMessage(message ?? `Preset "${name}" saved`);
     presetSavedAnim.setValue(0);
-    Animated.spring(presetSavedAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(presetSavedAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     presetSavedTimerRef.current = setTimeout(() => {
       dismissPresetSavedToast();
     }, 2000);
@@ -2836,7 +2836,7 @@ export default function NutritionScreen() {
     dismissFilterSyncToast(true);
     setFilterSyncToastVisible(true);
     filterSyncAnim.setValue(0);
-    Animated.spring(filterSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(filterSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     filterSyncTimerRef.current = setTimeout(() => {
       dismissFilterSyncToast();
     }, 2000);
@@ -2857,7 +2857,7 @@ export default function NutritionScreen() {
     dismissGoalsSyncToast(true);
     setGoalsSyncToastVisible(true);
     goalsSyncAnim.setValue(0);
-    Animated.spring(goalsSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(goalsSyncAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     goalsSyncTimerRef.current = setTimeout(() => {
       dismissGoalsSyncToast();
     }, 2000);
@@ -2901,7 +2901,7 @@ export default function NutritionScreen() {
     dismissPer100gToast(true);
     setPer100gToastMessage(message);
     per100gToastAnim.setValue(0);
-    Animated.spring(per100gToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(per100gToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     if (!toastSwipeHintSeen) triggerToastSwipeHint();
     per100gToastTimerRef.current = setTimeout(() => {
       dismissPer100gToast();
@@ -2926,7 +2926,7 @@ export default function NutritionScreen() {
     presetUndoProgressAnim.setValue(1);
     presetUndoTimerStartRef.current = Date.now();
     presetUndoTotalDurationMsRef.current = durationMs;
-    Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(presetUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     Animated.timing(presetUndoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     presetUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetUndoCountdown((prev) => Math.max(0, prev - 1));
@@ -3027,7 +3027,7 @@ export default function NutritionScreen() {
     presetRenameUndoProgressAnim.setValue(1);
     presetRenameUndoTimerStartRef.current = Date.now();
     presetRenameUndoTotalDurationMsRef.current = durationMs;
-    Animated.spring(presetRenameUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(presetRenameUndoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     Animated.timing(presetRenameUndoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     presetRenameUndoCountdownIntervalRef.current = setInterval(() => {
       setPresetRenameUndoCountdown((prev) => Math.max(0, prev - 1));
@@ -3089,7 +3089,7 @@ export default function NutritionScreen() {
       undoAnimRef.current.stop();
       undoAnimRef.current = null;
     }
-    undoAnimRef.current = Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 });
+    undoAnimRef.current = Animated.spring(undoAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 });
     undoAnimRef.current.start(({ finished }) => { if (finished) undoAnimRef.current = null; });
     Animated.timing(undoProgressAnim, { toValue: 0, duration: durationMs, useNativeDriver: false }).start();
     undoCountdownIntervalRef.current = setInterval(() => {
@@ -3172,7 +3172,7 @@ export default function NutritionScreen() {
     }
     setRestoredLabel(label);
     restoredAnim.setValue(0);
-    Animated.spring(restoredAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(restoredAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     restoredTimerRef.current = setTimeout(() => {
       dismissRestoredToast();
     }, 2500);
@@ -3226,7 +3226,7 @@ export default function NutritionScreen() {
     setSavedMealUndoFn(onUndo ? { fn: onUndo } : null);
     savedMealToastSwipeY.setValue(0);
     savedMealToastAnim.setValue(0);
-    Animated.spring(savedMealToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(savedMealToastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     if (!toastSwipeHintSeen) triggerToastSwipeHint();
     savedMealToastTimerRef.current = setTimeout(() => {
       dismissSavedMealToast();
@@ -3336,7 +3336,7 @@ export default function NutritionScreen() {
     dismissLogTodayToast(true);
     setLogTodayName(name);
     logTodayAnim.setValue(0);
-    Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    Animated.spring(logTodayAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 14 }).start();
     logTodayTimerRef.current = setTimeout(() => {
       dismissLogTodayToast();
     }, 2500);
