@@ -1673,6 +1673,25 @@ const PresetChipItem = memo(function PresetChipItem({
 const PRESET_CHIP_WIDTH = 60;
 const PRESET_CHIP_GAP = 10;
 
+/**
+ * Writes a value to AsyncStorage and retries once on failure so that a
+ * transient storage-busy error does not silently discard a one-time hint
+ * dismissal. After the single retry the error is swallowed — there is nothing
+ * more the UI can do at that point.
+ */
+async function setItemWithRetry(key: string, value: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(key, value);
+  } catch {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      // Second failure — silently drop; the hint may reappear next session
+      // but this avoids an unhandled rejection bubbling up to the user.
+    }
+  }
+}
+
 const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(function CardCustomizationModal({
   visible,
   onClose,
@@ -2203,7 +2222,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   }, [showLongPressHint, visible]);
 
   function dismissLongPressHint() {
-    AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
+    setItemWithRetry(STORAGE_KEY_LONGPRESS_HINT_SEEN, "1").catch(() => {});
     if (reduceMotionRef.current) {
       setShowLongPressHint(false);
       return;
@@ -2963,7 +2982,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           const nextOpens = opens + 1;
           if (nextOpens <= LONGPRESS_HINT_MAX_OPENS) {
             setShowLongPressHint(true);
-            AsyncStorage.setItem(STORAGE_KEY_LONGPRESS_HINT_OPENS, String(nextOpens)).catch(() => {});
+            setItemWithRetry(STORAGE_KEY_LONGPRESS_HINT_OPENS, String(nextOpens)).catch(() => {});
           } else {
             setShowLongPressHint(false);
           }
