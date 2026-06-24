@@ -13,7 +13,7 @@
  */
 import type * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 
 async function getNotifications() {
   return await import("expo-notifications");
@@ -241,8 +241,28 @@ const CONFIGS: Record<keyof ReminderSettings, NotificationConfig> = {
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === "web") return false;
   const N = await getNotifications();
-  const { status: existing } = await N.getPermissionsAsync();
+  const { status: existing, canAskAgain } = await N.getPermissionsAsync();
   if (existing === "granted") return true;
+
+  // Permanently denied — the OS won't show a prompt; send the user to Settings instead.
+  if (!canAskAgain) {
+    Linking.openSettings();
+    return false;
+  }
+
+  // Show a rationale before the OS prompt to improve grant rates.
+  const consented = await new Promise<boolean>((resolve) => {
+    Alert.alert(
+      "Enable Notifications",
+      "RAIMZEAL sends daily health tips, workout reminders, hydration nudges, and sleep coaching from Ovia AI. You can turn these off any time in Settings.",
+      [
+        { text: "Not Now", style: "cancel", onPress: () => resolve(false) },
+        { text: "Enable", onPress: () => resolve(true) },
+      ]
+    );
+  });
+  if (!consented) return false;
+
   const { status } = await N.requestPermissionsAsync();
   return status === "granted";
 }

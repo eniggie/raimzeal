@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface HealthData {
@@ -312,6 +312,23 @@ export function useHealthSync() {
 
   const requestPermissions = useCallback(async () => {
     if (!isAvailable) return;
+
+    // Show a rationale so users know exactly what data will be shared
+    // before the OS health-permissions dialog appears.
+    const consented = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Connect Health Data",
+        Platform.OS === "ios"
+          ? "RAIMZEAL will read steps, heart rate, sleep, weight, and active calories from Apple Health to personalise your insights. You can revoke access any time in the Health app."
+          : "RAIMZEAL will read steps, heart rate, sleep, weight, and active calories from Health Connect to personalise your insights. You can revoke access any time in Health Connect.",
+        [
+          { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+          { text: "Connect", onPress: () => resolve(true) },
+        ]
+      );
+    });
+    if (!consented) return;
+
     setStatus("loading");
     setError(null);
     try {
