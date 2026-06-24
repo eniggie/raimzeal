@@ -130,6 +130,10 @@ const STORAGE_KEY_MODIFIED_CHIP_HINT_SEEN = "@raimzeal_modified_chip_hint_seen";
 const LONGPRESS_HINT_MAX_OPENS = 3;
 const DEFAULT_AUTO_TRIGGER_DELAY = 3;
 
+// How long the long-press hint lingers (in ms) before its fade-out begins.
+// 600 ms gives new users enough time to read the hint before it disappears.
+const LONG_PRESS_HINT_DISMISS_DELAY_MS = 600;
+
 const MAX_PRESETS = 5;
 
 interface StatToggleConfig {
@@ -3748,10 +3752,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const label = action === "share" ? "Share" : action === "save" ? "Save" : action === "copy" ? "Copy" : "Both";
     // Dismiss the long-press hint permanently once the user has discovered the gesture.
-    // Wait 300 ms first so the confirmation toast has time to appear before the hint fades,
-    // avoiding the jarring effect of two things changing at once.
+    // Wait LONG_PRESS_HINT_DISMISS_DELAY_MS first so the confirmation toast has time to
+    // appear before the hint fades, avoiding the jarring effect of two things changing at
+    // once, and giving new users enough time to absorb what the hint was telling them.
     if (showLongPressHint) {
-      setTimeout(() => dismissLongPressHint(), 300);
+      setTimeout(() => dismissLongPressHint(), LONG_PRESS_HINT_DISMISS_DELAY_MS);
     }
 
     const isAlreadyDefault = defaultAction === action;
