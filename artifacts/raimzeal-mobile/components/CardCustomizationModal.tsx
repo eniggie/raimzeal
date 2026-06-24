@@ -2206,6 +2206,20 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     }
   }, [visible, restoredFromStorage, badgeDismissed, reduceMotion]);
 
+  // When the modal opens, scroll the chip row so the active preset is in view.
+  // Deferred one frame so chip onLayout measurements are committed before scrollTo.
+  useEffect(() => {
+    if (!visible) return;
+    const id = activePresetIdRef.current;
+    if (!id) return;
+    setTimeout(() => {
+      const idx = presets.findIndex((p) => p.id === id);
+      if (idx < 0) return;
+      const offset = chipXOffsetsRef.current[idx] ?? idx * (PRESET_CHIP_WIDTH + PRESET_CHIP_GAP);
+      presetChipsScrollRef.current?.scrollTo({ x: offset, animated: false });
+    }, 0);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!visible) {
       longPressHintFadeAnim.stopAnimation();
