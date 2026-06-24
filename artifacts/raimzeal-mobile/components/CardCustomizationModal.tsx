@@ -4861,6 +4861,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   const triggerLockShake = useCallback((action: CardAction) => {
     if (prefersReducedMotion) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     const anim = lockShakeAnims[action];
     anim.setValue(0);
     Animated.sequence([
