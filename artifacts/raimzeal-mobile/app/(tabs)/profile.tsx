@@ -50,6 +50,7 @@ import {
   SCAN_SWIPE_HINT_KEY,
   WORKOUT_SWIPE_DELETE_HINT_KEY,
 } from "@/lib/hints";
+import { STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN } from "@/components/CardCustomizationModal";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
 import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useTier } from "@/hooks/useTier";
@@ -828,6 +829,7 @@ export default function ProfileScreen() {
         RECENT_RESET_DEFAULTS_HINT_KEY,
         SCAN_SWIPE_HINT_KEY,
         WORKOUT_SWIPE_DELETE_HINT_KEY,
+        STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN,
       ]);
     } catch {
       // ignore storage errors
@@ -2154,6 +2156,7 @@ export default function ProfileScreen() {
                     { key: RECENT_RESET_DEFAULTS_HINT_KEY, label: "Recent reset-defaults hint", desc: "This hint explains the reset-to-defaults option for recent foods." },
                     { key: SCAN_SWIPE_HINT_KEY, label: "Barcode scan swipe hint", desc: "This hint shows that you can swipe between results on the scanner." },
                     { key: WORKOUT_SWIPE_DELETE_HINT_KEY, label: "Workout history swipe-to-delete tip", desc: "This tip demonstrates swiping to delete a workout history entry." },
+                    { key: STORAGE_KEY_ZOOM_SWIPE_DOWN_HINT_SEEN, label: "Zoom swipe-down hint", desc: "This hint shows that you can swipe down to close the zoomed card view." },
                   ] as { key: string; label: string; desc: string }[]
                 ).map(({ key, label, desc }) => (
                   <TouchableOpacity
