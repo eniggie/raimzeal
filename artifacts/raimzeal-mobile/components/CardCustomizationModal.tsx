@@ -2521,7 +2521,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   } = useToastSwipeHint("@raimzeal_undo_toast_swipe_hint_seen");
 
   // Undo-delete toast
-  const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number } | null>(null);
+  const [undoDeleteState, setUndoDeleteState] = useState<{ preset: CardPreset; index: number; wasActive: boolean } | null>(null);
   const undoOpacity = useRef(new Animated.Value(0)).current;
   const undoTranslateY = useRef(new Animated.Value(8)).current;
   const undoProgressAnim = useRef(new Animated.Value(1)).current;
@@ -2534,8 +2534,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const undoToastBgPausedRef = useRef(false);
   const undoToastResumeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoSwipingRef = useRef(false);
-  const pendingUndoToastArgsRef = useRef<null | [preset: CardPreset, index: number]>(null);
-  const showUndoToastRef = useRef<((preset: CardPreset, index: number) => void) | null>(null);
+  const pendingUndoToastArgsRef = useRef<null | [preset: CardPreset, index: number, wasActive: boolean]>(null);
+  const showUndoToastRef = useRef<((preset: CardPreset, index: number, wasActive: boolean) => void) | null>(null);
 
   function dismissConfirmToast() {
     if (confirmDismissTimerRef.current !== null) {
@@ -4823,10 +4823,10 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     // until the user explicitly taps Undo or swipes to dismiss.
   }
 
-  function showUndoToast(preset: CardPreset, index: number) {
+  function showUndoToast(preset: CardPreset, index: number, wasActive: boolean) {
     showUndoToastRef.current = showUndoToast;
     if (undoSwipingRef.current) {
-      pendingUndoToastArgsRef.current = [preset, index];
+      pendingUndoToastArgsRef.current = [preset, index, wasActive];
       return;
     }
     const undoMs = (settings.undoWindowSeconds ?? 3) * 1000;
@@ -4866,7 +4866,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       undoTranslateY.setValue(8);
       undoProgressAnim.setValue(1);
       undoSwipeY.setValue(0);
-      setUndoDeleteState({ preset, index });
+      setUndoDeleteState({ preset, index, wasActive });
       if (!undoToastSwipeHintSeen) {
         triggerUndoToastSwipeHint(reduceMotionRef.current);
       }
@@ -4915,13 +4915,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
   async function handleUndoDelete() {
     if (!undoDeleteState) return;
-    const { preset, index } = undoDeleteState;
+    const { preset, index, wasActive } = undoDeleteState;
     dismissUndoToast(async () => {
       const restored = [...presets];
       restored.splice(index, 0, preset);
       await savePresets(restored);
       updateSettings({ cardPresets: restored as unknown as StoredCardPreset[] });
       setPresets(restored);
+      if (wasActive) {
+        setActivePresetId(preset.id);
+        AsyncStorage.setItem(STORAGE_KEY_ACTIVE_PRESET, preset.id).catch(() => {});
+      }
     });
   }
 
@@ -4929,16 +4933,17 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     const index = presets.findIndex((p) => p.id === presetId);
     if (index === -1) return;
     const preset = presets[index];
+    const wasActive = activePresetId === presetId;
     const updated = presets.filter((p) => p.id !== presetId);
     await savePresets(updated);
     updateSettings({ cardPresets: updated as unknown as StoredCardPreset[] });
     setPresets(updated);
-    if (activePresetId === presetId) {
+    if (wasActive) {
       setActivePresetId(null);
       setActivePresetModified(false);
       AsyncStorage.removeItem(STORAGE_KEY_ACTIVE_PRESET).catch(() => {});
     }
-    showUndoToast(preset, index);
+    showUndoToast(preset, index, wasActive);
   }
 
   async function handleRenameConfirm() {
