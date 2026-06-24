@@ -1632,6 +1632,15 @@ const PresetChipItem = memo(function PresetChipItem({
     <TouchableOpacity
       ref={handleChipRef}
       onPress={() => {
+        if (!reduceMotion) {
+          pulseScale.stopAnimation();
+          pulseScale.setValue(1);
+          Animated.sequence([
+            Animated.timing(pulseScale, { toValue: 1.08, duration: 120, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+            Animated.timing(pulseScale, { toValue: 0.96, duration: 100, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+            Animated.timing(pulseScale, { toValue: 1, duration: 150, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          ]).start();
+        }
         if (chipRef.current) {
           chipRef.current.measureInWindow((x: number, y: number, width: number, height: number) => {
             onPress(preset, { x, y, width, height });
