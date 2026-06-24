@@ -5615,6 +5615,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   const closeZoomRef = useRef(closeZoom);
   closeZoomRef.current = closeZoom;
 
+  // Stable ref for dismissZoomSwipeDownHintEarly so the static PanResponder
+  // created in zoomSwipePanResponder can invoke the latest closure.
+  const dismissZoomSwipeDownHintEarlyRef = useRef(dismissZoomSwipeDownHintEarly);
+  dismissZoomSwipeDownHintEarlyRef.current = dismissZoomSwipeDownHintEarly;
+
   // Stable handlers for ZoomableCard's onSwipeDown/onSwipeDownProgress so the
   // inner RNGH pan gesture can drive the dismiss animation directly.  This is
   // necessary because RNGH gestures take priority over the outer PanResponder
@@ -5656,6 +5661,11 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) =>
         gs.dy > 12 && gs.dy > Math.abs(gs.dx) * 1.5,
+      onPanResponderGrant: () => {
+        // Fires exactly once when the responder claims the gesture — dismiss
+        // the hint immediately so it doesn't linger while the card is closing.
+        dismissZoomSwipeDownHintEarlyRef.current();
+      },
       onPanResponderMove: (_, gs) => {
         zoomSwipeDragY.setValue(Math.max(0, gs.dy));
       },
