@@ -2646,6 +2646,57 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setConfirmActionLabel(null);
   }
 
+  // Called only when the countdown expires on its own (natural expiry) — slides
+  // the toast up and fades it out, mirroring dismissUndoToastOnExpiry.
+  // Swipe-to-dismiss and manual Undo button paths still use dismissConfirmToastAnimated.
+  function dismissConfirmToastOnExpiry() {
+    if (confirmDismissTimerRef.current !== null) {
+      clearTimeout(confirmDismissTimerRef.current);
+      confirmDismissTimerRef.current = null;
+    }
+    if (confirmAnimRef.current !== null) {
+      confirmAnimRef.current.stop();
+      confirmAnimRef.current = null;
+    }
+    dismissToastSwipeHint();
+    confirmOpacity.stopAnimation();
+    confirmTranslateY.stopAnimation();
+    confirmSwipeY.stopAnimation();
+    confirmProgressAnim.stopAnimation();
+    if (reduceMotionRef.current) {
+      confirmOpacity.setValue(0);
+      confirmTranslateY.setValue(16);
+      confirmSwipeY.setValue(0);
+      confirmProgressAnim.setValue(1);
+      setConfirmHasCountdown(false);
+      confirmHasCountdownRef.current = false;
+      setConfirmKeepOpen(false);
+      setConfirmMessage(null);
+      setConfirmRetryFn(null);
+      setConfirmActionFn(null);
+      confirmActionFnRef.current = null;
+      setConfirmActionLabel(null);
+    } else {
+      Animated.parallel([
+        Animated.timing(confirmOpacity, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(confirmTranslateY, { toValue: -16, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]).start(() => {
+        confirmOpacity.setValue(0);
+        confirmTranslateY.setValue(16);
+        confirmSwipeY.setValue(0);
+        confirmProgressAnim.setValue(1);
+        setConfirmHasCountdown(false);
+        confirmHasCountdownRef.current = false;
+        setConfirmKeepOpen(false);
+        setConfirmMessage(null);
+        setConfirmRetryFn(null);
+        setConfirmActionFn(null);
+        confirmActionFnRef.current = null;
+        setConfirmActionLabel(null);
+      });
+    }
+  }
+
   function dismissConfirmToastAnimated(onComplete?: () => void) {
     if (confirmDismissTimerRef.current !== null) {
       clearTimeout(confirmDismissTimerRef.current);
@@ -2696,7 +2747,9 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   function resumeConfirmToast() {
     const remaining = confirmRemainingMsRef.current;
     if (remaining <= 0) {
-      dismissConfirmToastAnimated();
+      // Time already ran out while paused — use the expiry slide-up, not the
+      // plain fade used by swipe-dismiss / manual Undo.
+      dismissConfirmToastOnExpiry();
       return;
     }
     confirmSegmentStartRef.current = Date.now();
@@ -2717,8 +2770,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
           confirmAnimRef.current = null;
         }
         Animated.parallel([
-          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(confirmTranslateY, { toValue: -8, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmOpacity, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: -16, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
         ]).start(({ finished }) => {
           if (finished) {
             confirmTranslateY.setValue(16);
@@ -2964,8 +3017,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         ]),
         Animated.delay(holdDuration),
         Animated.parallel([
-          Animated.timing(confirmOpacity, { toValue: 0, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(confirmTranslateY, { toValue: -8, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmOpacity, { toValue: 0, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(confirmTranslateY, { toValue: -16, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
         ]),
       ]);
       confirmAnimRef.current = seq;
