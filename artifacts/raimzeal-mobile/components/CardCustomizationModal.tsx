@@ -3671,7 +3671,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                       AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
                       updateSettings({ defaultCardAction: action });
                       onDefaultActionChange?.(action);
-                      showConfirmation(`★ ${label} set as preferred`, "success");
+                      showConfirmation(`★ ${label} set as preferred`, "success", "star-outline");
                     },
                   },
                 ]
@@ -3689,7 +3689,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               // Restore the long-press hint so the user knows they can set one again
               AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
               setShowLongPressHint(true);
-              showConfirmation("Preference cleared", "success");
+              showConfirmation("Preference cleared", "success", "star-half-outline");
             },
           },
         ]
@@ -3710,7 +3710,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
         isSwitching && oldLabel
           ? `★ ${oldLabel} → ★ ${label} · generating…`
           : `★ ${label} set as default · generating…`,
-        "success", undefined, undefined, undefined, undefined, undefined, undefined, true
+        "success", "star-outline", undefined, undefined, undefined, undefined, undefined, true
       );
       await handleGenerate(action);
     } else {
@@ -3734,7 +3734,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               AsyncStorage.setItem(STORAGE_KEY_ACTION, action).catch(() => {});
               updateSettings({ defaultCardAction: action });
               onDefaultActionChange?.(action);
-              showConfirmation(`★ ${label} set as preferred`, "success");
+              showConfirmation(`★ ${label} set as preferred`, "success", "star-outline");
             },
           },
         ]
@@ -3766,7 +3766,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       showConfirmation(
         "Badge dismissed",
         "success",
-        "checkmark-circle-outline",
+        "ribbon-outline",
         undefined,
         () => {
           // Undo: cancel the pending persist and re-show the badge.
@@ -4401,7 +4401,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setSavingPreset(false);
     setShowInlineSave(false);
     setPresetNameInput("");
-    showConfirmation(activePresetId ? (isRename ? `"${oldPresetName}" renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success");
+    showConfirmation(activePresetId ? (isRename ? `"${oldPresetName}" renamed to "${name}"` : `"${name}" updated`) : `"${name}" saved`, "success", isRename ? "create-outline" : "save-outline");
   }
 
   async function handleReorderPresets(newOrder: CardPreset[]) {
@@ -4667,7 +4667,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     setRenamingPreset(false);
     setRenameTargetPreset(null);
     setRenameInput("");
-    showConfirmation(`Renamed to "${name}"`, "success");
+    showConfirmation(`Renamed to "${name}"`, "success", "create-outline");
   }
 
   function scrollToStatToggles() {
@@ -5760,13 +5760,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
               <SortablePresetList
                 presets={presets}
                 onReorder={handleReorderPresets}
-                onDone={() => { setReorderMode(false); showConfirmation("Order saved"); }}
+                onDone={() => { setReorderMode(false); showConfirmation("Order saved", "success", "list-outline"); }}
                 activePresetId={activePresetId}
                 onLoadPreset={loadPreset}
                 onDeletePreset={(id) => {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                   handleDeletePreset(id);
-                  showConfirmation("Preset deleted");
+                  showConfirmation("Preset deleted", "success", "trash-outline");
                   if (presets.length <= 1) setReorderMode(false);
                 }}
                 onRename={(preset) => {
@@ -6912,7 +6912,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                               onDefaultActionChange?.(null);
                               AsyncStorage.removeItem(STORAGE_KEY_LONGPRESS_HINT_SEEN).catch(() => {});
                               setShowLongPressHint(true);
-                              showConfirmation("Preference cleared", "success");
+                              showConfirmation("Preference cleared", "success", "star-half-outline");
                             } else {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                               setDefaultAction(key);
@@ -6920,7 +6920,7 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                               AsyncStorage.setItem(STORAGE_KEY_ACTION, key).catch(() => {});
                               updateSettings({ defaultCardAction: key });
                               onDefaultActionChange?.(key);
-                              showConfirmation(`★ ${label} set as preferred`, "success");
+                              showConfirmation(`★ ${label} set as preferred`, "success", "star-outline");
                             }
                           }}
                           style={[
