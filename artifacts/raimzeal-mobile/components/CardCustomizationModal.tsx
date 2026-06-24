@@ -891,15 +891,24 @@ function ZoomableCard({
       const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
       const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
       const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
+      // When a pinch-out returns scale to 1 the card must be centred — any
+      // leftover pan offset would leave it floating off-centre. Spring config
+      // matches doubleTapGesture (damping 15, stiffness 200) for consistent feel.
+      const targetX = scale.value <= 1 ? 0 : clampedX;
+      const targetY = scale.value <= 1 ? 0 : clampedY;
       if (reduceMotionShared.value) {
-        translateX.value = clampedX;
-        translateY.value = clampedY;
+        translateX.value = targetX;
+        translateY.value = targetY;
       } else {
-        translateX.value = withSpring(clampedX);
-        translateY.value = withSpring(clampedY);
+        const springCfg =
+          scale.value <= 1
+            ? { damping: 15, stiffness: 200 }
+            : undefined;
+        translateX.value = withSpring(targetX, springCfg);
+        translateY.value = withSpring(targetY, springCfg);
       }
-      savedTranslateX.value = clampedX;
-      savedTranslateY.value = clampedY;
+      savedTranslateX.value = targetX;
+      savedTranslateY.value = targetY;
     });
 
   const panGesture = Gesture.Pan()
