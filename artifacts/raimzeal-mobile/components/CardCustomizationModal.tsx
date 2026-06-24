@@ -851,14 +851,19 @@ function ZoomableCard({
     .onUpdate((e) => {
       "worklet";
       const raw = savedScale.value * e.scale;
-      const clamped = Math.min(4, Math.max(1, raw));
-      scale.value = clamped;
-      // Apply rubber-band damping (20%) to the translate values when the
-      // pinch-driven scale change pushes them past the new boundaries —
-      // mirrors the same over-travel logic used in panGesture.onUpdate so
-      // the whole zoom-and-pan interaction feels consistently elastic.
-      const maxX = Math.max(0, (cardWidth * clamped - screenWidth) / 2);
-      const maxY = Math.max(0, (cardHeight * clamped - screenHeight) / 2);
+      // Rubber-band: allow 20%-damped over-travel past the hard [1, 4] limits,
+      // mirroring the same elastic feel used on the pan translate axes.
+      const rubberbanded =
+        raw > 4
+          ? 4 + (raw - 4) * 0.2
+          : raw < 1
+          ? 1 + (raw - 1) * 0.2
+          : raw;
+      scale.value = rubberbanded;
+      // Translate bounds computed from the live (possibly over-shot) scale so
+      // the card edges stay consistent with the visual size while stretching.
+      const maxX = Math.max(0, (cardWidth * rubberbanded - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * rubberbanded - screenHeight) / 2);
       const tx = translateX.value;
       const ty = translateY.value;
       translateX.value =
@@ -873,12 +878,14 @@ function ZoomableCard({
           : ty < -maxY
           ? -maxY + (ty + maxY) * 0.2
           : ty;
-      if (clamped <= 1) {
+      // Haptics fire at the hard limits (1 and 4), not at the rubber-band extent.
+      const hardClamped = Math.min(4, Math.max(1, raw));
+      if (hardClamped <= 1) {
         if (atBoundary.value !== 1) {
           atBoundary.value = 1;
           runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
         }
-      } else if (clamped >= 4) {
+      } else if (hardClamped >= 4) {
         if (atBoundary.value !== 4) {
           atBoundary.value = 4;
           runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
@@ -889,22 +896,30 @@ function ZoomableCard({
     })
     .onEnd(() => {
       "worklet";
-      savedScale.value = scale.value;
-      const maxX = Math.max(0, (cardWidth * scale.value - screenWidth) / 2);
-      const maxY = Math.max(0, (cardHeight * scale.value - screenHeight) / 2);
+      // Spring scale back to [1, 4] if it over-shot during rubber-band.
+      const clampedScale = Math.min(4, Math.max(1, scale.value));
+      if (reduceMotionShared.value) {
+        scale.value = clampedScale;
+      } else {
+        scale.value = withSpring(clampedScale, { damping: 15, stiffness: 200 });
+      }
+      savedScale.value = clampedScale;
+      // Translate bounds and centering based on the settled (clamped) scale.
+      const maxX = Math.max(0, (cardWidth * clampedScale - screenWidth) / 2);
+      const maxY = Math.max(0, (cardHeight * clampedScale - screenHeight) / 2);
       const clampedX = Math.min(maxX, Math.max(-maxX, translateX.value));
       const clampedY = Math.min(maxY, Math.max(-maxY, translateY.value));
       // When a pinch-out returns scale to 1 the card must be centred — any
       // leftover pan offset would leave it floating off-centre. Spring config
       // matches doubleTapGesture (damping 15, stiffness 200) for consistent feel.
-      const targetX = scale.value <= 1 ? 0 : clampedX;
-      const targetY = scale.value <= 1 ? 0 : clampedY;
+      const targetX = clampedScale <= 1 ? 0 : clampedX;
+      const targetY = clampedScale <= 1 ? 0 : clampedY;
       if (reduceMotionShared.value) {
         translateX.value = targetX;
         translateY.value = targetY;
       } else {
         const springCfg =
-          scale.value <= 1
+          clampedScale <= 1
             ? { damping: 15, stiffness: 200 }
             : undefined;
         translateX.value = withSpring(targetX, springCfg);
