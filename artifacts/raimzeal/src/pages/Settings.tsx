@@ -6,7 +6,7 @@ import {
   ChevronRight, Moon, Type, Bell,
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
   Target, Trophy, Globe, Trash2, Camera,
-  Wind, Calculator, ChefHat, ListChecks, Pill, Settings2, Loader2
+  Wind, Calculator, ChefHat, ListChecks, Pill, Settings2, Loader2, Shield,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,9 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, l
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [lastSyncedAt]);
 
-  const { subscriptionTier } = useAuth();
+  const { subscriptionTier, user: authUser } = useAuth();
+  const isAdmin =
+    (authUser?.app_metadata as Record<string, unknown> | undefined)?.role === 'admin';
   const canExport = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
   const isPaidSubscriber = subscriptionTier === 'rise' || subscriptionTier === 'reign' || subscriptionTier === 'legacy';
   const [portalLoading, setPortalLoading] = useState(false);
@@ -1007,6 +1009,20 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
             </Link>
+            {isAdmin && (
+              <Link href="/settings/admin">
+                <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Admin Settings</div>
+                    <div className="text-sm text-muted-foreground">Alert email and site-wide config</div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </Link>
+            )}
             <Link href="/settings/delete-account">
               <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">

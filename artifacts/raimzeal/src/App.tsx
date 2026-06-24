@@ -55,6 +55,7 @@ import { Calculators } from '@/pages/Calculators';
 import { Recipes } from '@/pages/Recipes';
 import { HabitTracker } from '@/pages/HabitTracker';
 import { Supplements } from '@/pages/Supplements';
+import { AdminSettings } from '@/pages/AdminSettings';
 import NotFound from '@/pages/not-found';
 
 // ─── Redirect helper ──────────────────────────────────────────────────────────
@@ -334,6 +335,9 @@ function AppContent() {
       </Route>
       <Route path="/supplements">
         <Supplements />
+      </Route>
+      <Route path="/settings/admin">
+        <AdminSettings />
       </Route>
       <Route component={NotFound} />
     </Switch>
