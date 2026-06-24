@@ -826,7 +826,7 @@ function ZoomableCard({
   onPresetNavigateDir?: (dir: 1 | -1) => void;
   onPresetSnapBack?: () => void;
   onSwipeDown?: (velocityY: number) => void;
-  onSwipeDownProgress?: (dy: number) => void;
+  onSwipeDownProgress?: (dy: number, velocityY?: number) => void;
   onDismiss?: () => void;
 }) {
   const screenWidth = Dimensions.get("window").width;
@@ -1070,10 +1070,11 @@ function ZoomableCard({
         }
       }
 
-      // Gesture didn't result in a dismiss — reset any in-progress drag
-      // animation so the overlay snaps back to its resting position.
+      // Gesture didn't result in a dismiss — spring the overlay back to
+      // rest, passing the gesture's end velocity so the bounce-back feels
+      // like a natural release rather than starting cold from rest.
       if (onSwipeDownProgress) {
-        runOnJS(onSwipeDownProgress)(0);
+        runOnJS(onSwipeDownProgress)(0, e.velocityY);
       }
     })
     .onFinalize((_e, success) => {
@@ -1083,7 +1084,7 @@ function ZoomableCard({
         if (gestureAxisLocked.value === 1 && onPresetSnapBack && !reduceMotionShared.value) {
           runOnJS(onPresetSnapBack)();
         }
-        if (onSwipeDownProgress) runOnJS(onSwipeDownProgress)(0);
+        if (onSwipeDownProgress) runOnJS(onSwipeDownProgress)(0, 0);
       }
     });
 
@@ -5634,12 +5635,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     useNativeDriver: true,
   } as const;
 
-  const handleZoomSwipeDownProgress = useCallback((dy: number) => {
+  const handleZoomSwipeDownProgress = useCallback((dy: number, velocityY?: number) => {
     if (dy > 0) {
       zoomSwipeDragY.setValue(dy);
     } else {
+      // Pass the gesture's end velocity so the spring starts with the finger's
+      // natural momentum instead of from rest — consistent with the velocity-
+      // aware withSpring used for the card's own centre-snap behaviour.
       Animated.spring(zoomSwipeDragY, {
         toValue: 0,
+        velocity: velocityY,
         ...swipeBackSpringConfig,
       }).start();
     }
@@ -5806,12 +5811,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePresetPreviewSwipeDownProgress = useCallback((dy: number) => {
+  const handlePresetPreviewSwipeDownProgress = useCallback((dy: number, velocityY?: number) => {
     if (dy > 0) {
       presetPreviewSwipeDragY.setValue(dy);
     } else {
       Animated.spring(presetPreviewSwipeDragY, {
         toValue: 0,
+        velocity: velocityY,
         ...swipeBackSpringConfig,
       }).start();
     }
