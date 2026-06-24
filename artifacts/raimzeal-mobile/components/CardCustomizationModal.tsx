@@ -3145,7 +3145,18 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
       if (requiresPhotoAccess && cameraRollStatus === "denied") {
         cancelAutoTrigger();
-        showConfirmation("Photo access needed — countdown cancelled", "error", "lock-closed-outline");
+        showConfirmation(
+          "Photo access needed — tap to open Settings",
+          "error",
+          "lock-closed-outline",
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          () => Linking.openSettings(),
+        );
         return;
       }
       setAutoTriggerAction(selectedAction);
