@@ -7,8 +7,9 @@ const COOLDOWN_MS = 30_000;
 /**
  * Shared permission-denied toast hook.
  *
- * Returns `showPermissionToast(message?, actionIcon?)` to trigger the toast and
- * `permissionToastElement` — the JSX to render inside your screen's root View.
+ * Returns `showPermissionToast(message?, actionIcon?, onPress?)` to trigger
+ * the toast and `permissionToastElement` — the JSX to render inside your
+ * screen's root View.
  *
  * ## When to use this vs. an in-app rationale Alert
  *
@@ -25,13 +26,29 @@ const COOLDOWN_MS = 30_000;
  *     — call `showPermissionToast` here. The toast taps through to Settings,
  *     which is the only remaining path to re-enable the permission.
  *
+ * ## Custom tap action (Retry)
+ *
+ * Pass an optional `onPress` callback as the third argument to override the
+ * default "open Settings" tap behaviour. When provided:
+ *  - A "Retry" label appears on the right side of the toast.
+ *  - The lock-overlay icon is suppressed (lock is permission-specific; a
+ *    transient error like a failed export has no associated permission to fix).
+ *  - Tapping the toast dismisses it and calls `onPress` instead of Settings.
+ *
+ * Example — PDF export failure with in-toast retry:
+ *   showPermissionToast(
+ *     "Export failed — please try again",
+ *     "download-outline",
+ *     () => runPdfExport(dateRange, customRange),
+ *   );
+ *
  * Pass an optional `actionIcon` to show a small action-specific icon alongside
  * the lock icon (e.g. "camera-outline" for a save-to-camera-roll error), matching
  * the pattern used by CardCustomizationModal for permission errors.
  *
  * The toast fades in (200 ms), holds for 4500 ms, then fades out (220 ms).
- * Tapping it immediately calls `Linking.openSettings()` so the user can
- * re-enable the denied permission without hunting through Settings manually.
+ * Tapping it immediately calls `Linking.openSettings()` (or the custom onPress)
+ * so the user can act without hunting through menus manually.
  *
  * Per-session cooldown: the same toast message won't re-appear within 30 s of
  * the last show to avoid spamming on repeated taps. The cooldown resets
@@ -49,9 +66,11 @@ const COOLDOWN_MS = 30_000;
 export function usePermissionToast() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [actionIcon, setActionIcon] = useState<keyof typeof Ionicons.glyphMap | null>(null);
+  const [actionLabel, setActionLabel] = useState<string | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastShownAtRef = useRef<Map<string, number>>(new Map());
+  const onPressRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -76,6 +95,8 @@ export function usePermissionToast() {
         if (finished && !forReplacement) {
           setToastMsg(null);
           setActionIcon(null);
+          setActionLabel(null);
+          onPressRef.current = null;
         }
       }
     );
@@ -84,16 +105,19 @@ export function usePermissionToast() {
   function showPermissionToast(
     message = "Photo access blocked — tap to open Settings",
     icon?: keyof typeof Ionicons.glyphMap,
+    onPress?: () => void,
   ) {
     const now = Date.now();
     const lastShown = lastShownAtRef.current.get(message) ?? 0;
     if (now - lastShown < COOLDOWN_MS) return;
 
     lastShownAtRef.current.set(message, now);
+    onPressRef.current = onPress ?? null;
 
     dismissPermissionToast(true);
     setToastMsg(message);
     setActionIcon(icon ?? null);
+    setActionLabel(onPress ? "Retry" : null);
     toastOpacity.setValue(0);
     Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     timerRef.current = setTimeout(() => {
@@ -105,21 +129,35 @@ export function usePermissionToast() {
     <Animated.View style={[styles.wrap, { opacity: toastOpacity }]}>
       <TouchableOpacity
         onPress={() => {
-          dismissPermissionToast(false);
-          void Linking.openSettings();
+          if (onPressRef.current) {
+            dismissPermissionToast(false);
+            onPressRef.current();
+          } else {
+            dismissPermissionToast(false);
+            void Linking.openSettings();
+          }
         }}
         activeOpacity={0.8}
         style={styles.toast}
       >
-        {actionIcon ? (
+        {/* Lock icon is permission-specific — suppress it when a custom onPress is set */}
+        {actionIcon && !actionLabel ? (
           <View style={styles.iconPair}>
             <Ionicons name={actionIcon} size={14} color="#ff4436" />
             <Ionicons name="lock-closed-outline" size={10} color="#ff4436" />
           </View>
+        ) : actionIcon ? (
+          <Ionicons name={actionIcon} size={14} color="#ff4436" />
         ) : (
           <Ionicons name="lock-closed-outline" size={14} color="#ff4436" />
         )}
         <Text style={styles.text}>{toastMsg}</Text>
+        {actionLabel ? (
+          <>
+            <Text style={styles.separator}>·</Text>
+            <Text style={styles.retryLabel}>{actionLabel}</Text>
+          </>
+        ) : null}
       </TouchableOpacity>
     </Animated.View>
   ) : null;
@@ -156,5 +194,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: "#ff4436",
+  },
+  separator: {
+    fontSize: 13,
+    color: "#ff443680",
+  },
+  retryLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#ff4436",
+    textDecorationLine: "underline",
   },
 });

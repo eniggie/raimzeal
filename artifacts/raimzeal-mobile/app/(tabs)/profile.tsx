@@ -1295,7 +1295,11 @@ export default function ProfileScreen() {
       await exportToPdf(fitnessState as Parameters<typeof exportToPdf>[0], macroGoals, dateRange, customRange);
       await AsyncStorage.setItem(LAST_EXPORT_KEY, String(Date.now())).catch(() => {});
     } catch {
-      showPermissionToast("Export failed — please try again", "download-outline");
+      showPermissionToast(
+        "Export failed — please try again",
+        "download-outline",
+        () => runPdfExport(dateRange, customRange),
+      );
     } finally {
       setPdfLoading(false);
     }
