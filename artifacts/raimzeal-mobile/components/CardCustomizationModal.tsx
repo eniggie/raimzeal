@@ -6202,7 +6202,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                 {showModifiedChipHint && (
                   <TouchableOpacity
                     activeOpacity={0.75}
-                    onPress={dismissModifiedChipHint}
+                    onPress={() => {
+                      dismissModifiedChipHint();
+                      if (activePreset) {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        loadPreset(activePreset);
+                      }
+                    }}
                     hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                   >
                     <Animated.View
@@ -6223,10 +6229,15 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                         },
                       ]}
                     >
-                      <Ionicons name="information-circle-outline" size={13} color={colors.primary + "cc"} />
-                      <Text style={[styles.modifiedChipHintText, { color: colors.primary + "cc" }]}>
-                        Changed your mind? Tap Revert ↩ to restore the saved preset
-                      </Text>
+                      <Ionicons name="arrow-undo-outline" size={13} color={colors.primary + "cc"} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.modifiedChipHintText, { color: colors.primary + "cc" }]}>
+                          {"You've changed settings from the saved preset"}
+                        </Text>
+                        <Text style={[styles.modifiedChipHintSubText, { color: colors.primary + "88" }]}>
+                          Tap to revert
+                        </Text>
+                      </View>
                     </Animated.View>
                   </TouchableOpacity>
                 )}
@@ -8324,8 +8335,13 @@ const styles = StyleSheet.create({
   modifiedChipHintText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    flex: 1,
     lineHeight: 15,
+  },
+  modifiedChipHintSubText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 13,
+    marginTop: 2,
   },
   activePresetBanner: {
     flexDirection: "row",
