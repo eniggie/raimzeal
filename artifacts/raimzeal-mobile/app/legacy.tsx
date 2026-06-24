@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -99,6 +99,22 @@ export default function LegacyScreen() {
   const [certLoading, setCertLoading] = useState(false);
   const [showEndPartnerSheet, setShowEndPartnerSheet] = useState(false);
 
+  // ── Inline toast ──────────────────────────────────────────────────────────
+  const [toastMsg, setToastMsg] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(text: string, type: "success" | "error" | "info" = "info") {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMsg({ text, type });
+    toastAnim.setValue(0);
+    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => setToastMsg(null));
+      toastTimer.current = null;
+    }, 3500);
+  }
+
   // Load data when tab changes
   useEffect(() => {
     if (tab === "leaderboard") loadLeaderboard();
@@ -135,7 +151,7 @@ export default function LegacyScreen() {
       if (!res.ok) throw new Error(data.error ?? "Failed");
       setReport(data.report ?? null);
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Could not generate report.");
+      showToast(err instanceof Error ? err.message : "Could not generate report.", "error");
     }
     finally { setGenerating(false); }
   }
@@ -148,7 +164,7 @@ export default function LegacyScreen() {
       if (!res.ok) throw new Error(data.error ?? "Failed");
       setPlan(data.plan ?? null);
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Could not generate plan.");
+      showToast(err instanceof Error ? err.message : "Could not generate plan.", "error");
     }
     finally { setPlanLoading(false); }
   }
@@ -174,13 +190,13 @@ export default function LegacyScreen() {
       const data = await res.json() as { partnership?: { status: string }; matched?: boolean; partner?: { id: string; name: string } | null; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed");
       if (data.matched && data.partner) {
-        Alert.alert("Matched! 🎉", `You've been matched with ${data.partner.name}. Start supporting each other!`);
+        showToast(`Matched with ${data.partner.name}! 🎉 Start supporting each other!`, "success");
       } else {
-        Alert.alert("Request Sent", "You're in the queue. We'll match you with another Legacy member soon.");
+        showToast("Request sent! You're in the queue — we'll match you soon.", "info");
       }
       await loadPartner();
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : "Could not request partner.");
+      showToast(err instanceof Error ? err.message : "Could not request partner.", "error");
     }
     finally { setRequesting(false); }
   }
@@ -470,6 +486,42 @@ export default function LegacyScreen() {
         onConfirm={confirmEndPartnership}
         onCancel={() => setShowEndPartnerSheet(false)}
       />
+
+      {toastMsg !== null && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.toast,
+            {
+              backgroundColor:
+                toastMsg.type === "error" ? "#ef4444" :
+                toastMsg.type === "success" ? "#22c55e" :
+                colors.card,
+              borderColor:
+                toastMsg.type === "error" ? "#dc2626" :
+                toastMsg.type === "success" ? "#16a34a" :
+                colors.border,
+              bottom: insets.bottom + 16,
+              opacity: toastAnim,
+              transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+            },
+          ]}
+        >
+          <Ionicons
+            name={
+              toastMsg.type === "error" ? "close-circle" :
+              toastMsg.type === "success" ? "checkmark-circle" :
+              "information-circle-outline"
+            }
+            size={18}
+            color={toastMsg.type === "info" ? colors.foreground : "#fff"}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={[styles.toastText, { color: toastMsg.type === "info" ? colors.foreground : "#fff" }]}>
+            {toastMsg.text}
+          </Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -535,6 +587,9 @@ const styles = StyleSheet.create({
   certMemberNum: { fontSize: 14, color: "#fbbf24", fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   certSince: { fontSize: 13, color: "#d4d4d4", fontFamily: "Inter_400Regular", marginTop: 8 },
   certFooter: { fontSize: 10, color: "#78716c", fontFamily: "Inter_400Regular", marginTop: 2 },
+  // Toast
+  toast: { position: "absolute", left: 16, right: 16, flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 10 },
+  toastText: { fontSize: 14, fontFamily: "Inter_500Medium", flex: 1, lineHeight: 20 },
   // Gate
   gateWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
   gateTitle: { fontSize: 22, fontFamily: "SpaceGrotesk_700Bold", textAlign: "center" },
