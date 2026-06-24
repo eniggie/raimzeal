@@ -3009,17 +3009,30 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
 
         // Disabled-button long-press hint: persisted dismiss count (backward-compat: "1" → count of 1)
         // The guard (dismissed=true) was set synchronously above. Lift it here
-        // only when the hint has not been permanently suppressed.
+        // when the hint has not been permanently suppressed AND it is relevant
+        // to show it this session.
         {
-          const count = disabledBtnLpHintSeenRaw !== null ? parseInt(disabledBtnLpHintSeenRaw, 10) : 0;
-          if (!isNaN(count) && count > 0) {
-            disabledBtnLpHintShowCountRef.current = Math.min(count, DISABLED_BTN_LP_HINT_MAX_SHOWS);
-            // Guard remains — hint permanently or temporarily suppressed.
-          } else {
-            // Not yet dismissed: lift the guard so the effect can show the hint
-            // if all stats are currently off.
+          const rawCount = disabledBtnLpHintSeenRaw !== null ? parseInt(disabledBtnLpHintSeenRaw, 10) : 0;
+          const parsedCount = isNaN(rawCount) ? 0 : rawCount;
+          disabledBtnLpHintShowCountRef.current = Math.min(parsedCount, DISABLED_BTN_LP_HINT_MAX_SHOWS);
+
+          const allStatsOff = !Object.values(effectiveStats).some(Boolean);
+
+          if (parsedCount >= DISABLED_BTN_LP_HINT_MAX_SHOWS) {
+            // Permanently suppressed — guard stays.
+          } else if (parsedCount === 0 || allStatsOff) {
+            // Two cases where the hint should be eligible this session:
+            // 1. Never dismissed (count=0) — first-time user, lift guard immediately.
+            // 2. Dismissed before but still below the max AND reopened with all stats
+            //    already off (cross-session rediscovery) — lift guard so the effect
+            //    can surface the hint again. The within-session transition path
+            //    (≥1 → 0 detected via disabledBtnLpHintPrevAnyStatEnabled) is
+            //    unchanged and continues to work as before.
             setDisabledBtnLpHintDismissed(false);
           }
+          // else: count > 0 and at least one stat is on — guard stays (hint is
+          // not relevant when stats are enabled; the effect won't show it anyway,
+          // but keeping dismissed=true avoids a redundant state update).
         }
 
         // Stats nudge: show once to first-time users so they know stats can be customised.
