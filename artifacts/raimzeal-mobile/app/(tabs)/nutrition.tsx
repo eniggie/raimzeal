@@ -1464,6 +1464,12 @@ export default function NutritionScreen() {
         Animated.timing(calRowPulse, { toValue: 1.05, duration: 90, useNativeDriver: true }),
         Animated.timing(calRowPulse, { toValue: 1, duration: 80, useNativeDriver: true }),
       ]).start();
+    } else {
+      calRowPulse.setValue(1);
+      Animated.sequence([
+        Animated.timing(calRowPulse, { toValue: 0.97, duration: 80, useNativeDriver: true }),
+        Animated.timing(calRowPulse, { toValue: 1, duration: 70, useNativeDriver: true }),
+      ]).start();
     }
   }, [trendMetric]);
 
