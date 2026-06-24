@@ -1110,8 +1110,28 @@ function ZoomableCard({
       savedTranslateY.value = 0;
     });
 
+  // Single tap while already at scale 1 dismisses the overlay — mirrors the
+  // standard image-viewer convention (tap-to-close when there is nothing to
+  // zoom into). requireToFail ensures the double-tap gesture gets priority:
+  // the single-tap only fires after the double-tap window expires. While
+  // zoomed in the tap is silently ignored so pan/pinch control is unaffected.
+  const singleTapGesture = Gesture.Tap()
+    .numberOfTaps(1)
+    .requireExternalGestureToFail(doubleTapGesture)
+    .onBegin(() => {
+      "worklet";
+      if (onFirstGesture) runOnJS(onFirstGesture)();
+    })
+    .onEnd(() => {
+      "worklet";
+      if (scale.value <= 1 && onDismiss) {
+        runOnJS(Haptics.selectionAsync)();
+        runOnJS(onDismiss)();
+      }
+    });
+
   const composed = Gesture.Simultaneous(
-    Gesture.Race(doubleTapGesture, panGesture),
+    Gesture.Race(doubleTapGesture, singleTapGesture, panGesture),
     pinchGesture
   );
 
