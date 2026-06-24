@@ -5044,10 +5044,13 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
     undoProgressAnim.stopAnimation();
     undoSwipeY.stopAnimation();
     if (reduceMotionRef.current) {
-      undoOpacity.setValue(0);
-      undoTranslateY.setValue(8);
-      undoSwipeY.setValue(0);
-      setUndoDeleteState(null);
+      // Reduce-motion: cross-fade only — no spatial slide, no instant cut.
+      Animated.timing(undoOpacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+        undoOpacity.setValue(0);
+        undoTranslateY.setValue(8);
+        undoSwipeY.setValue(0);
+        setUndoDeleteState(null);
+      });
     } else {
       Animated.parallel([
         Animated.timing(undoOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
