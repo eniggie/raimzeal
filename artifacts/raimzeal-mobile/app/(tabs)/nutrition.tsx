@@ -1596,6 +1596,7 @@ export default function NutritionScreen() {
   const [selectedFoodServingLabel, setSelectedFoodServingLabel] = useState<string | undefined>(undefined);
   const [selectedFoodIsApiResult, setSelectedFoodIsApiResult] = useState(false);
   const [selectedFoodNutrients100g, setSelectedFoodNutrients100g] = useState<{ calories: number; protein: number; carbs: number; fat: number } | undefined>(undefined);
+  const [labelFood, setLabelFood] = useState<MealLog | null>(null);
   const [selectedFoodUnit, setSelectedFoodUnit] = useState<"g" | "ml">("g");
   const [modalShowPer100g, setModalShowPer100g] = useState(false);
   const [servings, setServings] = useState(1);
@@ -8892,8 +8893,12 @@ export default function NutritionScreen() {
                                 : 0;
                               const dimmed = macroKey && share === 0;
                               return (
-                            <Animated.View
+                            <TouchableOpacity
                               key={log.id}
+                              activeOpacity={0.75}
+                              onPress={() => setLabelFood(log)}
+                            >
+                            <Animated.View
                               style={[
                                 styles.breakdownFoodRow,
                                 { borderTopColor: colors.border },
@@ -8934,6 +8939,7 @@ export default function NutritionScreen() {
                                 primaryColor={colors.primary}
                               />
                             </Animated.View>
+                            </TouchableOpacity>
                           );
                             });
                           })()}
@@ -9511,6 +9517,85 @@ export default function NutritionScreen() {
         initialEnd={customDateRange?.end}
         colors={colors}
       />
+      {/* Food Nutrition Label Sheet */}
+      <Modal
+        visible={labelFood !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLabelFood(null)}
+      >
+        <TouchableOpacity
+          style={styles.drillDownBackdrop}
+          activeOpacity={1}
+          onPress={() => setLabelFood(null)}
+        />
+        {labelFood !== null && (() => {
+          const f = labelFood;
+          const n = f.nutrients100g;
+          const servingLabel = f.servingLabel ?? (f.amountGrams !== undefined ? `${Number.isInteger(f.amountGrams) ? f.amountGrams : f.amountGrams.toFixed(1)}g` : null);
+          return (
+            <View style={[styles.nutritionLabelSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.nutritionLabelHandle, { backgroundColor: colors.border }]} />
+              <Text style={[styles.nutritionLabelTitle, { color: colors.foreground }]} numberOfLines={2}>{f.name}</Text>
+              {servingLabel && (
+                <Text style={[styles.nutritionLabelServing, { color: colors.mutedForeground }]}>{servingLabel}</Text>
+              )}
+              <View style={[styles.nutritionLabelDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.nutritionLabelSection}>
+                <Text style={[styles.nutritionLabelSectionTitle, { color: colors.mutedForeground }]}>Per serving</Text>
+                <View style={styles.nutritionLabelRow}>
+                  <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Calories</Text>
+                  <Text style={[styles.nutritionLabelRowValue, { color: colors.primary }]}>{Math.round(f.calories)} kcal</Text>
+                </View>
+                <View style={styles.nutritionLabelRow}>
+                  <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Protein</Text>
+                  <Text style={[styles.nutritionLabelRowValue, { color: colors.secondary }]}>{Math.round(f.protein)}g</Text>
+                </View>
+                <View style={styles.nutritionLabelRow}>
+                  <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Carbohydrates</Text>
+                  <Text style={[styles.nutritionLabelRowValue, { color: colors.warning }]}>{Math.round(f.carbs)}g</Text>
+                </View>
+                <View style={styles.nutritionLabelRow}>
+                  <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Fat</Text>
+                  <Text style={[styles.nutritionLabelRowValue, { color: colors.accent }]}>{Math.round(f.fat)}g</Text>
+                </View>
+              </View>
+              {n && (
+                <>
+                  <View style={[styles.nutritionLabelDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.nutritionLabelSection}>
+                    <Text style={[styles.nutritionLabelSectionTitle, { color: colors.mutedForeground }]}>Per 100g</Text>
+                    <View style={styles.nutritionLabelRow}>
+                      <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Calories</Text>
+                      <Text style={[styles.nutritionLabelRowValue, { color: colors.primary }]}>{Math.round(n.calories)} kcal</Text>
+                    </View>
+                    <View style={styles.nutritionLabelRow}>
+                      <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Protein</Text>
+                      <Text style={[styles.nutritionLabelRowValue, { color: colors.secondary }]}>{Math.round(n.protein)}g</Text>
+                    </View>
+                    <View style={styles.nutritionLabelRow}>
+                      <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Carbohydrates</Text>
+                      <Text style={[styles.nutritionLabelRowValue, { color: colors.warning }]}>{Math.round(n.carbs)}g</Text>
+                    </View>
+                    <View style={styles.nutritionLabelRow}>
+                      <Text style={[styles.nutritionLabelRowName, { color: colors.foreground }]}>Fat</Text>
+                      <Text style={[styles.nutritionLabelRowValue, { color: colors.accent }]}>{Math.round(n.fat)}g</Text>
+                    </View>
+                  </View>
+                </>
+              )}
+              <View style={[styles.nutritionLabelDivider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                style={[styles.drillDownDismiss, { borderColor: colors.border }]}
+                onPress={() => setLabelFood(null)}
+              >
+                <Text style={[styles.drillDownDismissText, { color: colors.foreground }]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
+      </Modal>
+
       <SyncIndicator status={syncStatus} />
     </View>
   );
@@ -13672,5 +13757,63 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     flex: 1,
     textAlign: "center",
+  },
+  nutritionLabelSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 12,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  nutritionLabelHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  nutritionLabelTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 4,
+  },
+  nutritionLabelServing: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 4,
+  },
+  nutritionLabelDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 12,
+  },
+  nutritionLabelSection: {
+    gap: 8,
+  },
+  nutritionLabelSectionTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  nutritionLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  nutritionLabelRowName: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+  nutritionLabelRowValue: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
 });
