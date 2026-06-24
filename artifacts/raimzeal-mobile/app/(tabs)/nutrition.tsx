@@ -8797,13 +8797,21 @@ export default function NutritionScreen() {
                                             const label = raw.length > 20 ? raw.slice(0, 18) + "…" : raw;
                                             const g = Math.round(e[leadingMacro] ?? 0);
                                             return (
-                                              <Text
+                                              <TouchableOpacity
                                                 key={e.id}
-                                                style={[styles.breakdownBarTooltipFood, { color: colors.background }]}
-                                                numberOfLines={1}
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                  hideTooltip();
+                                                  handleBreakdownSegmentTap(leadingMacro, meal);
+                                                }}
                                               >
-                                                {label}{"  "}{g}g
-                                              </Text>
+                                                <Text
+                                                  style={[styles.breakdownBarTooltipFood, { color: colors.background }]}
+                                                  numberOfLines={1}
+                                                >
+                                                  {label}{"  "}{g}g
+                                                </Text>
+                                              </TouchableOpacity>
                                             );
                                           })}
                                         </>
