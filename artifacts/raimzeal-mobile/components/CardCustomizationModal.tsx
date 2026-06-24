@@ -2122,7 +2122,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       // up and out with the same motion as the inline-save open path.
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
-      inlineSaveTranslateY.value = 0;
+      // Mirror the open entrance: slide the panel upward as it collapses
+      inlineSaveTranslateY.value = withTiming(-8, { duration: 140 });
       activePresetBannerOpacity.value = withTiming(0, { duration: 150 });
       activePresetBannerTranslateY.value = withTiming(-10, { duration: 150 });
     } else {
@@ -2140,7 +2141,8 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       }
       inlineSaveHeight.value = withTiming(0, { duration: 160 });
       inlineSaveOpacity.value = withTiming(0, { duration: 120 });
-      inlineSaveTranslateY.value = 0;
+      // Mirror the open entrance: slide the panel upward as it collapses
+      inlineSaveTranslateY.value = withTiming(-8, { duration: 140 });
       activePresetBannerTranslateY.value = withSpring(0, { damping: 13, stiffness: 190, mass: 0.7 });
       activePresetBannerOpacity.value = withDelay(60, withTiming(1, { duration: 220 }));
     }
