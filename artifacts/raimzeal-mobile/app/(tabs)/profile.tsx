@@ -58,7 +58,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GlassCard } from "@/components/GlassCard";
 import { captureAndShareCard, captureAndSaveCard, captureShareAndSaveCard, captureAndCopyCard, CaptureShareAndSaveResult } from "@/lib/shareCard";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { getApiBase, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
+import { getApiBase, getAccessToken, clearAllUserData, PENDING_CLOUD_WIPE_KEY } from "@/lib/db";
 import ShareProgressCard, { BackgroundPhotoCrop, CARD_THEMES, CardThemeId, CardVisibleStats, DEFAULT_THEME_ID, DEFAULT_VISIBLE_STATS } from "@/components/ShareProgressCard";
 import CardCustomizationModal, { CardAction, CardCustomizationModalHandle, CardCustomizationResult, STORAGE_KEY_ACTION, STORAGE_KEY_AUTO_TRIGGER_DELAY, STORAGE_KEY_AUTO_TRIGGER_DELAY_CUSTOMISED, STORAGE_KEY_BADGE_DISMISSED, STORAGE_KEY_BG_PHOTO, STORAGE_KEY_LONGPRESS_AND_RUN, STORAGE_KEY_MESSAGE, STORAGE_KEY_PRESETS, STORAGE_KEY_STATS, STORAGE_KEY_THEME } from "@/components/CardCustomizationModal";
 import { useCardPreferences } from "@/hooks/useCardPreferences";
@@ -1407,6 +1407,68 @@ export default function ProfileScreen() {
     }
   }
 
+  async function handleDeleteAccount() {
+    if (!authUser?.id) {
+      Alert.alert("Not signed in", "You must be signed in to delete your account.");
+      return;
+    }
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your RAIMZEAL account and all your health data — workouts, meals, measurements, progress photos, and more. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete My Account",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Are you absolutely sure?",
+              "Your account and all personal data will be permanently erased. There is no way to recover it.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Yes, Delete Everything",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await clearAllUserData(authUser.id);
+                    } catch {
+                      // Data wipe best-effort — continue to delete the auth account
+                    }
+                    try {
+                      const token = await getAccessToken();
+                      const res = await fetch(`${getApiBase()}/user/delete`, {
+                        method: "POST",
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
+                      });
+                      if (!res.ok) {
+                        const body = await res.json().catch(() => ({}));
+                        Alert.alert(
+                          "Delete Failed",
+                          (body as any).error ?? "Could not delete your account. Please try again or contact support@raimzeal.com."
+                        );
+                        return;
+                      }
+                    } catch {
+                      Alert.alert(
+                        "Delete Failed",
+                        "Could not reach the server. Please check your connection and try again."
+                      );
+                      return;
+                    }
+                    resetHints();
+                    await signOut().catch(() => {});
+                    resetState();
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }
+
   async function handleLogout() {
     // Check for a pending cloud wipe BEFORE showing the sign-out confirmation.
     // If the user cleared their data while offline, the cloud records were never
@@ -2689,6 +2751,13 @@ export default function ProfileScreen() {
               sublabel="Log out of your RAIMZEAL account"
               color={colors.destructive}
               onPress={handleLogout}
+            />
+            <ActionRow
+              icon="trash-outline"
+              label="Delete Account"
+              sublabel="Permanently erase your account and all data"
+              color="#EF4444"
+              onPress={handleDeleteAccount}
               isLast
             />
           </GlassCard>
