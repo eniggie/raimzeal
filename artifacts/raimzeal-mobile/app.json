@@ -19,9 +19,6 @@
       "bundleIdentifier": "app.replit.raimzeal",
       "buildNumber": "43",
       "usesAppleSignIn": true,
-      "associatedDomains": [
-        "applinks:raimzeal.com"
-      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Allow RAIMZEAL to access your photo library to save and view progress photos.",
