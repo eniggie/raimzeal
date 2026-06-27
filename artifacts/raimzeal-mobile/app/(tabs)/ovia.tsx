@@ -207,29 +207,20 @@ export default function OviaScreen() {
           body: JSON.stringify({ messages: [], userContext: userCtx, weeklyDigest: true }),
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        if (!response.body) throw new Error("No response body from Ovia");
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+        // Read the full SSE payload at once — RN fetch has no streaming body.
         let fullContent = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const json = JSON.parse(line.slice(6)) as {
-                content?: string;
-                done?: boolean;
-                error?: string;
-              };
-              if (json.content) fullContent += json.content;
-              if (json.done || json.error) break;
-            } catch { }
-          }
+        const rawDigest = await response.text();
+        for (const line of rawDigest.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const json = JSON.parse(line.slice(6)) as {
+              content?: string;
+              done?: boolean;
+              error?: string;
+            };
+            if (json.content) fullContent += json.content;
+            if (json.error) break;
+          } catch { }
         }
         if (cancelled) return;
         addOviaMessage({
@@ -298,58 +289,46 @@ export default function OviaScreen() {
         return;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      if (!response.body) throw new Error("No response stream");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let streamDone = false;
-
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const json = JSON.parse(line.slice(6)) as {
-              content?: string;
-              done?: boolean;
-              error?: string;
-              quotaRemaining?: number;
-              searching?: string;
-              profileUpdated?: Record<string, unknown>;
-            };
-            if (typeof json.quotaRemaining === "number") {
-              setQuotaRemaining(json.quotaRemaining);
-            }
-            if (json.profileUpdated) {
-              const p = json.profileUpdated;
-              updateProfile({
-                ...(p["name"] ? { name: p["name"] as string } : {}),
-                ...(p["age"] !== undefined ? { age: p["age"] as number } : {}),
-                ...(p["weight"] !== undefined ? { weight: p["weight"] as number } : {}),
-                ...(p["height"] !== undefined ? { height: p["height"] as number } : {}),
-                ...(p["blood_type"] ? { bloodType: p["blood_type"] as "A" | "B" | "AB" | "O" } : {}),
-                ...(p["rh_factor"] ? { rhFactor: p["rh_factor"] as "+" | "-" } : {}),
-                ...(p["genotype"] ? { genotype: p["genotype"] as "AA" | "AS" | "AC" | "SS" | "SC" } : {}),
-                ...(p["fitness_level"] ? { fitnessLevel: p["fitness_level"] as "beginner" | "intermediate" | "advanced" } : {}),
-                ...(p["goals"] ? { goals: p["goals"] as string[] } : {}),
-                ...(p["units"] ? { units: p["units"] as "metric" | "imperial" } : {}),
-              });
-            }
-            if (json.content) {
-              accumulated += json.content;
-              setStreamingContent(stripMarkdown(accumulated));
-            }
-            if (json.done || json.error) {
-              streamDone = true;
-              break;
-            }
-          } catch { }
-        }
+      // React Native's global fetch does not expose a readable `response.body`
+      // stream, so the previous getReader() path threw on every device send.
+      // Read the entire SSE payload at once and parse each "data:" line — this
+      // is robust on-device and still surfaces content/quota/profile updates.
+      const raw = await response.text();
+      for (const line of raw.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        try {
+          const json = JSON.parse(line.slice(6)) as {
+            content?: string;
+            done?: boolean;
+            error?: string;
+            quotaRemaining?: number;
+            searching?: string;
+            profileUpdated?: Record<string, unknown>;
+          };
+          if (typeof json.quotaRemaining === "number") {
+            setQuotaRemaining(json.quotaRemaining);
+          }
+          if (json.profileUpdated) {
+            const p = json.profileUpdated;
+            updateProfile({
+              ...(p["name"] ? { name: p["name"] as string } : {}),
+              ...(p["age"] !== undefined ? { age: p["age"] as number } : {}),
+              ...(p["weight"] !== undefined ? { weight: p["weight"] as number } : {}),
+              ...(p["height"] !== undefined ? { height: p["height"] as number } : {}),
+              ...(p["blood_type"] ? { bloodType: p["blood_type"] as "A" | "B" | "AB" | "O" } : {}),
+              ...(p["rh_factor"] ? { rhFactor: p["rh_factor"] as "+" | "-" } : {}),
+              ...(p["genotype"] ? { genotype: p["genotype"] as "AA" | "AS" | "AC" | "SS" | "SC" } : {}),
+              ...(p["fitness_level"] ? { fitnessLevel: p["fitness_level"] as "beginner" | "intermediate" | "advanced" } : {}),
+              ...(p["goals"] ? { goals: p["goals"] as string[] } : {}),
+              ...(p["units"] ? { units: p["units"] as "metric" | "imperial" } : {}),
+            });
+          }
+          if (json.content) {
+            accumulated += json.content;
+            setStreamingContent(stripMarkdown(accumulated));
+          }
+          if (json.error) break;
+        } catch { }
       }
       addOviaMessage({
         role: "assistant",
@@ -595,7 +574,7 @@ export default function OviaScreen() {
                       ) : (
                         <Ionicons name={t.icon} size={22} color={t.color} />
                       )}
-                      <Text style={[styles.aiToolCardLabel, { color: t.color }]}>
+                      <Text numberOfLines={2} style={[styles.aiToolCardLabel, { color: t.color }]}>
                         {t.label}
                       </Text>
                     </TouchableOpacity>
@@ -940,15 +919,32 @@ function ChatBubble({ message }: { message: OviaMessage }) {
     if (speaking) {
       ExpoSpeech.stop();
       setSpeaking(false);
-    } else {
-      setSpeaking(true);
-      ExpoSpeech.speak(message.content, {
-        language: "en-US",
-        onDone: () => setSpeaking(false),
-        onError: () => setSpeaking(false),
-        onStopped: () => setSpeaking(false),
-      });
+      return;
     }
+    setSpeaking(true);
+    // Pick the warmest, highest-quality English voice on the device so Ovia
+    // sounds human rather than robotic, and read at a calmer pace and pitch.
+    let voice: string | undefined;
+    try {
+      const voices = await ExpoSpeech.getAvailableVoicesAsync();
+      const prefer = ["samantha", "ava", "allison", "serena", "karen", "moira", "tessa", "zoe", "joana"];
+      const score = (v: { name?: string; quality?: unknown }) =>
+        (String(v.quality).toLowerCase().includes("enhanced") ? 2 : 0) +
+        (prefer.some((n) => (v.name ?? "").toLowerCase().includes(n)) ? 1 : 0);
+      const best = voices
+        .filter((v) => (v.language ?? "").toLowerCase().startsWith("en"))
+        .sort((a, b) => score(b) - score(a))[0];
+      voice = best?.identifier;
+    } catch { /* fall back to the system default voice */ }
+    ExpoSpeech.speak(message.content, {
+      language: "en-US",
+      ...(voice ? { voice } : {}),
+      pitch: 1.05,
+      rate: 0.92,
+      onDone: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+    });
   }, [speaking, message.content]);
 
   return (
@@ -1028,6 +1024,6 @@ const styles = StyleSheet.create({
   aiToolsSection: { width: "100%", marginTop: 20, gap: 8 },
   aiToolsLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, textTransform: "uppercase", paddingHorizontal: 4 },
   aiToolsRow: { flexDirection: "row", gap: 10 },
-  aiToolCard: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 16, borderRadius: 14, borderWidth: 1 },
+  aiToolCard: { flex: 1, height: 82, alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 6, borderRadius: 14, borderWidth: 1 },
   aiToolCardLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", textAlign: "center" },
 });

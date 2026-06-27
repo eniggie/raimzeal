@@ -133,6 +133,9 @@ function EmojiPicker({
           >
             <Text style={pickerStyles.emoji}>{opt.emoji}</Text>
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
               style={[
                 pickerStyles.label,
                 { color: selected ? colors.primary : colors.mutedForeground },
@@ -152,13 +155,15 @@ const pickerStyles = StyleSheet.create({
     flex: 1,
     minWidth: 56,
     paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: 10,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
     gap: 4,
   },
   emoji: { fontSize: 20 },
-  label: { fontSize: 10, fontFamily: "Inter_500Medium" },
+  label: { fontSize: 10, fontFamily: "Inter_500Medium", textAlign: "center" },
 });
 
 function DisclaimerModal({ visible, onAccept }: { visible: boolean; onAccept: () => void }) {
@@ -742,7 +747,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 4 },
   title: { fontSize: 22, fontFamily: "SpaceGrotesk_700Bold" },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
-  scoreCard: { gap: 10, borderWidth: 1.5 },
+  scoreCard: { gap: 10, borderWidth: 1.5, padding: 16 },
   scoreHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   scoreIconWrap: {
     width: 44,
@@ -766,7 +771,7 @@ const styles = StyleSheet.create({
   },
   scoreTip: { fontSize: 13, fontFamily: "Inter_400Regular" },
   scoreDisclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", fontStyle: "italic" },
-  section: { gap: 10 },
+  section: { gap: 10, padding: 16 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   sectionSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -4 },
   notesInput: {
@@ -788,7 +793,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   saveBtnText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
-  historyCard: { gap: 14 },
+  historyCard: { gap: 14, padding: 16 },
   historyRow: { flexDirection: "row", gap: 6 },
   historyCol: { flex: 1, alignItems: "center", gap: 6 },
   historyBar: {
@@ -823,7 +828,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   crisisText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  aiCard: { gap: 12, borderWidth: 1.5 },
+  aiCard: { gap: 12, borderWidth: 1.5, padding: 16 },
   aiCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   aiIconWrap: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   aiCardTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },

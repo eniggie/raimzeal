@@ -119,6 +119,7 @@ function ClassicTabLayout() {
         name="progress"
         options={{
           title: "Progress",
+          href: null, // moved to Home → Quick Actions; keep route alive
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar" tintColor={color} size={22} />
@@ -131,6 +132,7 @@ function ClassicTabLayout() {
         name="community"
         options={{
           title: "Community",
+          href: null, // moved to Home → Quick Actions; keep route alive
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="person.3" tintColor={color} size={22} />

@@ -35,6 +35,7 @@ export default function SignupScreen() {
   const [request, , promptAsync] = Google.useAuthRequest({
     webClientId: extra.googleWebClientId,
     iosClientId: extra.googleIosClientId,
+    androidClientId: extra.googleAndroidClientId,
     scopes: ["openid", "profile", "email"],
   });
 

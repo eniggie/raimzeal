@@ -683,16 +683,6 @@ export default function HomeScreen() {
             }}
           />
           <QuickAction
-            icon="people-outline"
-            label="Community"
-            color="#22c55e"
-            bg="#22c55e20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/community");
-            }}
-          />
-          <QuickAction
             icon="bar-chart-outline"
             label="Progress"
             color="#a855f7"
@@ -702,40 +692,113 @@ export default function HomeScreen() {
               router.navigate("/(tabs)/progress");
             }}
           />
+          <QuickAction
+            icon="people-outline"
+            label="Community"
+            color="#22c55e"
+            bg="#22c55e20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.navigate("/(tabs)/community");
+            }}
+          />
         </View>
         <View style={styles.actionsRow}>
           <QuickAction
-            icon="person-outline"
-            label="Profile"
-            color="#f472b6"
-            bg="#f472b620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/profile");
-            }}
-          />
-          <QuickAction
-            icon="share-social-outline"
-            label="Share Progress"
-            color="#34d399"
-            bg="#34d39920"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/progress");
-            }}
-          />
-          <QuickAction
-            icon="card-outline"
-            label="My Card"
+            icon="happy-outline"
+            label="Check-in"
             color="#38bdf8"
             bg="#38bdf820"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate({ pathname: "/(tabs)/profile", params: { openCard: "1" } });
+              router.push("/wellness-checkin");
+            }}
+          />
+          <QuickAction
+            icon="leaf-outline"
+            label="Breathing"
+            color="#34d399"
+            bg="#34d39920"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/breathing");
+            }}
+          />
+          <QuickAction
+            icon="medkit-outline"
+            label="Supplements"
+            color="#f59e0b"
+            bg="#f59e0b20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/supplements");
             }}
           />
         </View>
-
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="flower-outline"
+            label="Period"
+            color="#f472b6"
+            bg="#f472b620"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/period-tracker");
+            }}
+          />
+          <QuickAction
+            icon="heart-outline"
+            label="Pregnancy"
+            color="#fb7185"
+            bg="#fb718520"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/pregnancy-wellness");
+            }}
+          />
+          <QuickAction
+            icon="pulse-outline"
+            label="PCOS"
+            color="#a78bfa"
+            bg="#a78bfa20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/pcos-tracker");
+            }}
+          />
+        </View>
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="sunny-outline"
+            label="Menopause"
+            color="#fbbf24"
+            bg="#fbbf2420"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/menopause-tracker");
+            }}
+          />
+          <QuickAction
+            icon="stats-chart-outline"
+            label="Weekly Report"
+            color="#2dd4bf"
+            bg="#2dd4bf20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/weekly-report");
+            }}
+          />
+          <QuickAction
+            icon="flash-outline"
+            label="Challenges"
+            color="#f87171"
+            bg="#f8717120"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/challenges");
+            }}
+          />
+        </View>
       </View>
 
       {/* Donation CTA */}
@@ -1252,7 +1315,7 @@ function QuickAction({
       scale={0.93}
     >
       <Ionicons name={icon} size={24} color={color} />
-      <Text style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
+      <Text numberOfLines={2} style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
     </AnimatedPressable>
   );
 }
@@ -1341,13 +1404,16 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: "row", gap: 10 },
   actionBtn: {
     flex: 1,
-    padding: 16,
+    height: 92,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     borderRadius: 18,
     borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
-  actionLabel: { fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" },
+  actionLabel: { fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center" },
   bodyBanner: {
     borderRadius: 18,
     borderWidth: 1,

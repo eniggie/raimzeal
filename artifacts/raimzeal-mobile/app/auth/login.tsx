@@ -45,6 +45,7 @@ export default function LoginScreen() {
   const [request, , promptAsync] = Google.useAuthRequest({
     webClientId: extra.googleWebClientId,
     iosClientId: extra.googleIosClientId,
+    androidClientId: extra.googleAndroidClientId,
     scopes: ["openid", "profile", "email"],
   });
 
