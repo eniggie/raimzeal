@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 39,
+      "versionCode": 44,
       "intentFilters": [
         {
           "action": "VIEW",
