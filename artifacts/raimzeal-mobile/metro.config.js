@@ -38,8 +38,13 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     moduleName === "react-dom" ||
     moduleName === "react-dom/client"
   ) {
-    const filePath = require.resolve(moduleName, { paths: [workspaceRoot] });
-    return { filePath, type: "sourceFile" };
+    try {
+      const filePath = require.resolve(moduleName, { paths: [workspaceRoot] });
+      return { filePath, type: "sourceFile" };
+    } catch {
+      // On EAS the monorepo is pruned, so react may only be resolvable from the
+      // app's own node_modules — fall through to Metro's default resolver.
+    }
   }
   return context.resolveRequest(context, moduleName, platform);
 };
