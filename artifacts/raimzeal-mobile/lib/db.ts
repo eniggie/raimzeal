@@ -846,21 +846,26 @@ export async function enrollProgram(
   programName: string,
   programData: ProgramItem
 ): Promise<EnrolledProgram | null> {
-  if (!isSupabaseConfigured) return null;
-  try {
-    const token = await getAccessToken();
-    if (!token) return null;
-    const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ program_id: programId, program_name: programName, program_data: programData }),
-    });
-    if (!res.ok) return null;
-    const body = await res.json() as { enrollment?: Record<string, unknown> };
-    return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
-  } catch {
-    return null;
+  if (!isSupabaseConfigured) throw new Error("App is not configured. Please reinstall the latest version.");
+  const token = await getAccessToken();
+  if (!token) throw new Error("You're not signed in. Please sign in and try again.");
+  const res = await fetch(`${getApiBase()}/user/enrolled-program`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ program_id: programId, program_name: programName, program_data: programData }),
+  });
+  if (!res.ok) {
+    // Surface the real server error (e.g. a backend/DB failure) instead of a
+    // silent null, so the UI tells the user what actually went wrong.
+    let serverMsg = `Server error ${res.status}. Please try again shortly.`;
+    try {
+      const errBody = (await res.json()) as { error?: string };
+      if (errBody?.error) serverMsg = errBody.error;
+    } catch { /* keep the status-based message */ }
+    throw new Error(serverMsg);
   }
+  const body = await res.json() as { enrollment?: Record<string, unknown> };
+  return body.enrollment ? mapEnrollmentRow(body.enrollment) : null;
 }
 
 /**

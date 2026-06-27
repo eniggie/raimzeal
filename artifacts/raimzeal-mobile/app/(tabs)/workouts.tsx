@@ -836,11 +836,12 @@ export default function WorkoutsScreen() {
       setEnrollLoading(prog.id);
       try {
         const ep = await enrollProgram(prog.id, prog.title, prog);
-        if (!ep) throw new Error("Enrollment returned null");
+        if (!ep) throw new Error("The server didn't return your enrollment. Please try again.");
         setEnrolledProgram(ep);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {
-        Alert.alert("Error", "Could not start program. Please ensure you are signed in and try again.");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Could not start program. Please try again.";
+        Alert.alert("Couldn't start program", msg);
       } finally {
         setEnrollLoading(null);
       }

@@ -675,8 +675,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="body-outline"
             label="Log Body"
-            color={colors.warning}
-            bg={colors.warning + "20"}
+            color="#1AE07E"
+            bg="#1AE07E20"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/body-measurements");
@@ -685,8 +685,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="bar-chart-outline"
             label="Progress"
-            color="#a855f7"
-            bg="#a855f720"
+            color="#F5C542"
+            bg="#F5C54220"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.navigate("/(tabs)/progress");
@@ -695,8 +695,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="people-outline"
             label="Community"
-            color="#22c55e"
-            bg="#22c55e20"
+            color="#1AE07E"
+            bg="#1AE07E20"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.navigate("/(tabs)/community");
@@ -707,8 +707,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="happy-outline"
             label="Check-in"
-            color="#38bdf8"
-            bg="#38bdf820"
+            color="#F5C542"
+            bg="#F5C54220"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/wellness-checkin");
@@ -717,8 +717,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="leaf-outline"
             label="Breathing"
-            color="#34d399"
-            bg="#34d39920"
+            color="#1AE07E"
+            bg="#1AE07E20"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/breathing");
@@ -727,8 +727,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="medkit-outline"
             label="Supplements"
-            color="#f59e0b"
-            bg="#f59e0b20"
+            color="#F5C542"
+            bg="#F5C54220"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/supplements");
@@ -739,8 +739,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="flower-outline"
             label="Period"
-            color="#f472b6"
-            bg="#f472b620"
+            color="#F472B6"
+            bg="#F472B620"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/period-tracker");
@@ -749,8 +749,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="heart-outline"
             label="Pregnancy"
-            color="#fb7185"
-            bg="#fb718520"
+            color="#F472B6"
+            bg="#F472B620"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/pregnancy-wellness");
@@ -759,8 +759,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="pulse-outline"
             label="PCOS"
-            color="#a78bfa"
-            bg="#a78bfa20"
+            color="#F472B6"
+            bg="#F472B620"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/pcos-tracker");
@@ -771,8 +771,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="sunny-outline"
             label="Menopause"
-            color="#fbbf24"
-            bg="#fbbf2420"
+            color="#F472B6"
+            bg="#F472B620"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/menopause-tracker");
@@ -781,8 +781,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="stats-chart-outline"
             label="Weekly Report"
-            color="#2dd4bf"
-            bg="#2dd4bf20"
+            color="#1AE07E"
+            bg="#1AE07E20"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/weekly-report");
@@ -791,8 +791,8 @@ export default function HomeScreen() {
           <QuickAction
             icon="flash-outline"
             label="Challenges"
-            color="#f87171"
-            bg="#f8717120"
+            color="#F5C542"
+            bg="#F5C54220"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/challenges");

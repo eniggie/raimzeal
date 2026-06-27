@@ -27,10 +27,16 @@ const EMPTY: HealthData = {
 
 // ─── iOS HealthKit helpers ────────────────────────────────────────────────────
 
-async function initHealthKit(): Promise<boolean> {
+// Returns null on success, or a human-readable error string explaining why
+// Apple Health could not be connected — surfaced to the user instead of a
+// silent dead-end.
+async function initHealthKit(): Promise<string | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const HK = require("react-native-health").default;
+    if (!HK || typeof HK.initHealthKit !== "function") {
+      return "Apple Health isn't available in this build. Please update to the latest version of RAIMZEAL.";
+    }
     const Perms = HK.Constants.Permissions;
     const permissions = {
       permissions: {
@@ -45,11 +51,13 @@ async function initHealthKit(): Promise<boolean> {
         write: [Perms.ActiveEnergyBurned, Perms.Steps],
       },
     };
-    return await new Promise<boolean>((resolve) => {
-      HK.initHealthKit(permissions, (err: string | null) => resolve(!err));
+    return await new Promise<string | null>((resolve) => {
+      HK.initHealthKit(permissions, (err: string | null) =>
+        resolve(err ? String(err) : null),
+      );
     });
-  } catch {
-    return false;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Apple Health could not start.";
   }
 }
 
@@ -125,11 +133,14 @@ async function readiOSData(): Promise<HealthData> {
 
 // ─── Android Health Connect helpers ─────────────────────────────────────────
 
-async function initHealthConnect(): Promise<boolean> {
+// Returns null on success, or a human-readable error string.
+async function initHealthConnect(): Promise<string | null> {
   try {
     const HC = await import("react-native-health-connect");
     const ok = await HC.initialize();
-    if (!ok) return false;
+    if (!ok) {
+      return "Health Connect isn't available. Install or update the Health Connect app from the Play Store, then try again.";
+    }
     const granted = await HC.requestPermission([
       { accessType: "read", recordType: "Steps" },
       { accessType: "read", recordType: "SleepSession" },
@@ -137,9 +148,11 @@ async function initHealthConnect(): Promise<boolean> {
       { accessType: "read", recordType: "Weight" },
       { accessType: "read", recordType: "ActiveCaloriesBurned" },
     ]);
-    return granted.length > 0;
-  } catch {
-    return false;
+    return granted.length > 0
+      ? null
+      : "No Health Connect permissions were granted. Enable them in the Health Connect app and try again.";
+  } catch (e) {
+    return e instanceof Error ? e.message : "Health Connect could not start.";
   }
 }
 
@@ -332,19 +345,27 @@ export function useHealthSync() {
     setStatus("loading");
     setError(null);
     try {
-      const granted =
+      const failure =
         Platform.OS === "ios"
           ? await initHealthKit()
           : await initHealthConnect();
+      const granted = failure === null;
       await AsyncStorage.setItem(AUTH_KEY, granted ? "true" : "false");
       if (granted) {
         await syncNow();
       } else {
+        setError(failure);
         setStatus("denied");
+        Alert.alert(
+          "Couldn't connect Health",
+          failure ?? "Permission was denied. You can enable it later in the Health app.",
+        );
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Permission request failed");
+      const msg = e instanceof Error ? e.message : "Permission request failed";
+      setError(msg);
       setStatus("idle");
+      Alert.alert("Couldn't connect Health", msg);
     }
   }, [isAvailable, syncNow]);
 
