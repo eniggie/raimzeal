@@ -17,7 +17,7 @@ function TabTracker() {
   const segments = useSegments();
   useEffect(() => {
     if (segments[0] !== "(tabs)") return;
-    const tab = (segments[1] as string | undefined) ?? "index";
+    const tab = ((segments as readonly string[])[1]) ?? "index";
     AsyncStorage.setItem(LAST_TAB_KEY, tab).catch(() => {});
   }, [segments]);
   return null;
