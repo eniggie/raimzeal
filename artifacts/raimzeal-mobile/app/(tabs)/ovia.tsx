@@ -420,9 +420,7 @@ export default function OviaScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setInterimText("Transcribing…");
 
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: "base64",
-      });
+      const base64 = await new FileSystem.File(uri).base64();
 
       const response = await fetch(`${getApiBase()}/ovia/transcribe`, {
         method: "POST",

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -30,6 +30,10 @@ export function ProgressRing({
 }: ProgressRingProps) {
   const colors = useColors();
   const ringColor = color ?? colors.primary;
+  // When no explicit color is given (e.g. the hero calorie ring), sweep the
+  // stroke from royal green into royal gold — straight from the RZ logo.
+  const useGradient = !color;
+  const gradientId = "ring-" + useId().replace(/:/g, "");
   const resolvedLabelColor = labelColor ?? colors.foreground;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -116,6 +120,14 @@ export function ProgressRing({
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size}>
+        {useGradient && (
+          <Defs>
+            <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={colors.primary} />
+              <Stop offset="1" stopColor={colors.secondary} />
+            </LinearGradient>
+          </Defs>
+        )}
         <Circle
           cx={center}
           cy={center}
@@ -128,7 +140,7 @@ export function ProgressRing({
           cx={center}
           cy={center}
           r={radius}
-          stroke={ringColor}
+          stroke={useGradient ? `url(#${gradientId})` : ringColor}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
@@ -175,7 +187,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   label: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "SpaceGrotesk_700Bold",
     lineHeight: undefined,
   },
   sublabel: {
