@@ -65,18 +65,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+
+    let active = true;
+
+    // Safety net: supabase-js v2's getSession() can stall indefinitely when its
+    // internal auth lock never settles (e.g. a wedged token refresh or a slow
+    // auth endpoint). If that happened the app would sit on the splash/boot
+    // screen forever. Force loading to resolve after a few seconds so the
+    // AuthGate can route the user; onAuthStateChange still fills in the session
+    // when it eventually arrives.
+    const loadingFallback = setTimeout(() => {
+      if (active) setLoading(false);
+    }, 4000);
+
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        clearTimeout(loadingFallback);
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        clearTimeout(loadingFallback);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      clearTimeout(loadingFallback);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-    });
-
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      clearTimeout(loadingFallback);
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
@@ -151,7 +180,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    await supabase.auth.signOut();
+    // Attempt a normal (global) sign-out, which revokes the refresh token
+    // server-side. If that network call fails (offline, slow endpoint), fall
+    // back to a local-only sign-out so the user is always signed out on-device
+    // and the UI returns to the welcome screen — logout must never get stuck.
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch {
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } catch {
+        // Last resort — ignore; onAuthStateChange/local state reset still runs.
+      }
+    }
   }, []);
 
   const sendPhoneOtp = useCallback(async (phone: string) => {

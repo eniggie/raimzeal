@@ -158,7 +158,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    // Attempt a global sign-out (revokes the refresh token server-side). If that
+    // network call fails, fall back to a local-only sign-out so the user is
+    // always signed out in this browser — logout must never get stuck.
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Last resort — ignore; auth state listener still clears the session.
+      }
+    }
   }, []);
 
   return (
