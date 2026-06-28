@@ -57,7 +57,11 @@ export default function WelcomeScreen() {
     try {
       const result = await promptAsync();
       if (result.type === "success") {
-        const idToken = result.authentication?.idToken;
+        // The id_token may arrive on `authentication` (parsed token response) or
+        // directly in the raw `params` depending on the OAuth response flow — check both.
+        const idToken =
+          result.authentication?.idToken ??
+          (result.params as { id_token?: string } | undefined)?.id_token;
         if (!idToken) throw new Error("Google did not return an identity token");
         const { error } = await signInWithGoogleToken(idToken);
         if (error) Alert.alert("Google sign-in failed", error);

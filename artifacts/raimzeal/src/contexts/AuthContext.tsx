@@ -67,18 +67,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let active = true;
+
+    // Safety net: supabase-js v2's getSession() can stall indefinitely when its
+    // internal auth lock (navigator.locks) never settles — e.g. a wedged token
+    // refresh in another tab or a slow/unreachable auth endpoint. When that
+    // happens the app would sit on a blank loading spinner forever ("won't load").
+    // Force the gate open after a few seconds so the UI always renders (it falls
+    // back to the unauthenticated view); onAuthStateChange still populates the
+    // session if/when it eventually arrives.
+    const loadingFallback = setTimeout(() => {
+      if (active) setLoading(false);
+    }, 4000);
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        if (!active) return;
+        clearTimeout(loadingFallback);
         setSession(session);
         setLoading(false);
         if (session?.user?.id) fetchTier(session.user.id);
       })
       .catch(() => {
+        if (!active) return;
+        clearTimeout(loadingFallback);
         setSession(null);
         setLoading(false);
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      clearTimeout(loadingFallback);
       setSession(session);
       setLoading(false);
 
@@ -102,7 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      clearTimeout(loadingFallback);
+      subscription.unsubscribe();
+    };
   }, [fetchTier]);
 
   const signUp = useCallback(async (email: string, password: string, metadata: Record<string, string>) => {
@@ -136,7 +158,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    // Attempt a global sign-out (revokes the refresh token server-side). If that
+    // network call fails, fall back to a local-only sign-out so the user is
+    // always signed out in this browser — logout must never get stuck.
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Last resort — ignore; auth state listener still clears the session.
+      }
+    }
   }, []);
 
   return (
