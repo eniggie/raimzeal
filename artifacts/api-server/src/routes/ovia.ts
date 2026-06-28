@@ -766,33 +766,189 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
   }
 });
 
-async function performWebSearch(query: string): Promise<string> {
+// ── Free knowledge sources for Ovia (replaces the paid Brave Search API) ───────
+// All endpoints below are FREE. Wikipedia + DuckDuckGo need no API key at all;
+// USDA FoodData Central works with the public "DEMO_KEY" (or a free FDC_API_KEY);
+// Nutritionix is optional and only used when its free-tier keys are present.
+const OVIA_UA = "RAIMZEAL/1.0 (https://raimzeal.com; support@raimzeal.com)";
+
+// Wikipedia — opensearch finds the best-matching article, then the REST summary
+// endpoint returns a clean encyclopaedic extract. Reliable for health, fitness,
+// nutrition-science, vitamins, conditions, etc.
+async function searchWikipedia(query: string): Promise<string | null> {
   try {
-    const apiKey = process.env["BRAVE_SEARCH_API_KEY"];
-    if (!apiKey) {
-      return "Web search is not configured. Use your expert training knowledge to provide a comprehensive, evidence-based answer.";
-    }
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": apiKey,
-      },
-    });
-    if (!response.ok) throw new Error(`Search HTTP ${response.status}`);
-    const data = (await response.json()) as {
-      web?: { results?: Array<{ title: string; url: string; description: string }> };
+    const osUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(
+      query,
+    )}&limit=1&namespace=0&format=json`;
+    const osRes = await fetch(osUrl, { headers: { "User-Agent": OVIA_UA } });
+    if (!osRes.ok) return null;
+    const os = (await osRes.json()) as [string, string[], string[], string[]];
+    const title = os[1]?.[0];
+    if (!title) return null;
+    const sumRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+      { headers: { "User-Agent": OVIA_UA, accept: "application/json" } },
+    );
+    if (!sumRes.ok) return null;
+    const sum = (await sumRes.json()) as {
+      title?: string;
+      extract?: string;
+      content_urls?: { desktop?: { page?: string } };
     };
-    const results = data.web?.results ?? [];
-    if (results.length === 0) return "No search results found. Use your expert knowledge.";
-    return results
-      .slice(0, 5)
-      .map((r) => `Title: ${r.title}\nURL: ${r.url}\nSummary: ${r.description}`)
-      .join("\n\n");
+    if (!sum.extract) return null;
+    const url =
+      sum.content_urls?.desktop?.page ??
+      `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`;
+    return `Wikipedia — ${sum.title ?? title}:\n${sum.extract}\nSource: ${url}`;
   } catch {
-    return "Web search unavailable. Use your expert training knowledge to answer accurately.";
+    return null;
   }
+}
+
+// DuckDuckGo Instant Answer — free, no key. Returns a sourced abstract for
+// single-entity/topic queries (best-effort; often empty for long questions).
+async function searchDuckDuckGo(query: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(
+        query,
+      )}&format=json&no_html=1&skip_disambig=1`,
+      { headers: { "User-Agent": OVIA_UA } },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      AbstractText?: string;
+      AbstractURL?: string;
+      AbstractSource?: string;
+      Heading?: string;
+    };
+    if (!j.AbstractText) return null;
+    return `${j.AbstractSource || "DuckDuckGo"} (via DuckDuckGo) — ${
+      j.Heading ?? query
+    }:\n${j.AbstractText}\nSource: ${j.AbstractURL || "https://duckduckgo.com"}`;
+  } catch {
+    return null;
+  }
+}
+
+// Nutrition data for specific foods. Prefers Nutritionix (free tier, natural
+// language) when its keys are set, otherwise falls back to USDA FoodData
+// Central (free, DEMO_KEY). Only runs for clearly food/nutrition queries.
+async function searchNutrition(query: string): Promise<string | null> {
+  const isNutritionQuery =
+    /\b(calorie|calories|kcal|nutrient|nutrition|nutritional|protein|carb|carbs|carbohydrate|fiber|fibre|sugar|vitamin|mineral|macro|macros|serving|eat|eating|meal|food|snack)\b/i.test(
+      query,
+    );
+  if (!isNutritionQuery) return null;
+
+  // 1) Nutritionix — best natural-language nutrition ("2 eggs and toast").
+  const nixId = process.env["NUTRITIONIX_APP_ID"];
+  const nixKey = process.env["NUTRITIONIX_APP_KEY"];
+  if (nixId && nixKey) {
+    try {
+      const res = await fetch("https://trackapi.nutritionix.com/v2/natural/nutrients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-id": nixId,
+          "x-app-key": nixKey,
+        },
+        body: JSON.stringify({ query }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as {
+          foods?: Array<{
+            food_name: string;
+            serving_qty: number;
+            serving_unit: string;
+            nf_calories: number;
+            nf_protein: number;
+            nf_total_carbohydrate: number;
+            nf_total_fat: number;
+          }>;
+        };
+        const foods = (j.foods ?? []).slice(0, 4);
+        if (foods.length) {
+          const lines = foods.map(
+            (f) =>
+              `• ${f.serving_qty} ${f.serving_unit} ${f.food_name}: ${Math.round(
+                f.nf_calories,
+              )} kcal, ${Math.round(f.nf_protein)}g protein, ${Math.round(
+                f.nf_total_carbohydrate,
+              )}g carbs, ${Math.round(f.nf_total_fat)}g fat`,
+          );
+          return `Nutritionix — nutrition facts:\n${lines.join(
+            "\n",
+          )}\nSource: https://www.nutritionix.com`;
+        }
+      }
+    } catch {
+      /* fall through to USDA */
+    }
+  }
+
+  // 2) USDA FoodData Central — free (DEMO_KEY or a free FDC_API_KEY).
+  try {
+    const fdcKey = process.env["FDC_API_KEY"] || "DEMO_KEY";
+    const res = await fetch(
+      `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(
+        query,
+      )}&pageSize=1&api_key=${fdcKey}`,
+      { headers: { "User-Agent": OVIA_UA } },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json()) as {
+      foods?: Array<{
+        description: string;
+        foodNutrients?: Array<{ nutrientName: string; value: number; unitName: string }>;
+      }>;
+    };
+    const food = (j.foods ?? [])[0];
+    if (!food) return null;
+    const pick = (re: RegExp) => food.foodNutrients?.find((n) => re.test(n.nutrientName));
+    const kcal = pick(/energy/i);
+    const protein = pick(/protein/i);
+    const carbs = pick(/carbohydrate/i);
+    const fat = pick(/total lipid|fat/i);
+    const parts = [
+      kcal && `${kcal.value} ${kcal.unitName.toLowerCase()}`,
+      protein && `${protein.value}g protein`,
+      carbs && `${carbs.value}g carbs`,
+      fat && `${fat.value}g fat`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return `USDA FoodData Central — ${food.description} (per 100g):\n${
+      parts || "nutrient data available"
+    }\nSource: https://fdc.nal.usda.gov`;
+  } catch {
+    return null;
+  }
+}
+
+// Aggregates the free sources in parallel and returns a clean, citable block of
+// context for Ovia to answer from. No paid search APIs are used.
+async function performWebSearch(query: string): Promise<string> {
+  const settled = await Promise.allSettled([
+    searchWikipedia(query),
+    searchDuckDuckGo(query),
+    searchNutrition(query),
+  ]);
+  const blocks = settled
+    .filter(
+      (r): r is PromiseFulfilledResult<string | null> => r.status === "fulfilled",
+    )
+    .map((r) => r.value)
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+
+  if (blocks.length === 0) {
+    return "No live data was returned from the free knowledge sources for this query. Answer from your expert, evidence-based training knowledge, and tell the user if any part is uncertain.";
+  }
+  return (
+    "Current information from free, citable sources. Use it to answer accurately, " +
+    "and cite the source name and link in your reply:\n\n" +
+    blocks.join("\n\n")
+  );
 }
 
 // POST /api/ovia/transcribe — converts voice audio to text via OpenAI Whisper

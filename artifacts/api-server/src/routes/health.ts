@@ -63,8 +63,12 @@ router.get("/healthz", async (_req, res) => {
     }
   }
 
-  // AI: Ovia AI is up when the Brave Search key is configured
-  const ai: "up" | "degraded" = process.env["BRAVE_SEARCH_API_KEY"] ? "up" : "degraded";
+  // AI: Ovia's chat brain runs on the OpenAI integration. Its knowledge sources
+  // (Wikipedia, DuckDuckGo, USDA FoodData Central) are now free and need no key,
+  // so Brave Search is no longer required.
+  const ai: "up" | "degraded" = process.env["AI_INTEGRATIONS_OPENAI_API_KEY"]
+    ? "up"
+    : "degraded";
 
   if (supabase === "down") {
     logger.warn("[healthz] Supabase ping failed");
