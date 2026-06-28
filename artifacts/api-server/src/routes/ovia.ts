@@ -511,7 +511,8 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             properties: {
               query: {
                 type: "string",
-                description: "The search query — be specific and include relevant context",
+                description:
+                  "Concise search keywords or a food name (e.g. 'creatine benefits', 'banana calories', 'vitamin D deficiency') — not a full sentence question.",
               },
             },
             required: ["query"],
@@ -777,13 +778,17 @@ const OVIA_UA = "RAIMZEAL/1.0 (https://raimzeal.com; support@raimzeal.com)";
 // nutrition-science, vitamins, conditions, etc.
 async function searchWikipedia(query: string): Promise<string | null> {
   try {
-    const osUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(
-      query,
-    )}&limit=1&namespace=0&format=json`;
-    const osRes = await fetch(osUrl, { headers: { "User-Agent": OVIA_UA } });
-    if (!osRes.ok) return null;
-    const os = (await osRes.json()) as [string, string[], string[], string[]];
-    const title = os[1]?.[0];
+    // Full-text search handles natural-language questions far better than the
+    // title-only opensearch endpoint (e.g. "what does creatine do?").
+    const sRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+        query,
+      )}&srlimit=1&format=json`,
+      { headers: { "User-Agent": OVIA_UA } },
+    );
+    if (!sRes.ok) return null;
+    const sj = (await sRes.json()) as { query?: { search?: Array<{ title: string }> } };
+    const title = sj.query?.search?.[0]?.title;
     if (!title) return null;
     const sumRes = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
@@ -831,15 +836,38 @@ async function searchDuckDuckGo(query: string): Promise<string | null> {
   }
 }
 
+// Extracts a likely food term from a question so a keyword food database (USDA)
+// receives "banana" rather than "how many calories are in a banana?".
+function extractFood(query: string): string {
+  const m = query.match(
+    /\b(?:in|of|for)\s+(?:an|a|the|one|some|my)?\s*([a-z][a-z\s'-]+?)[?.!]*$/i,
+  );
+  if (m && m[1] && m[1].trim().length > 1) return m[1].trim();
+  return query
+    .toLowerCase()
+    .replace(/[?.!]/g, "")
+    .replace(
+      /\b(how many|how much|what is|what are|whats|tell me|the|a|an|one|calories?|kcal|nutrition(al)?|macros?|protein|carbs?|carbohydrates?|fats?|in|of|for|are|is|do|does|with)\b/g,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Nutrition data for specific foods. Prefers Nutritionix (free tier, natural
 // language) when its keys are set, otherwise falls back to USDA FoodData
-// Central (free, DEMO_KEY). Only runs for clearly food/nutrition queries.
+// Central (free, DEMO_KEY). Fires only for clear food-nutrition questions —
+// deliberately NOT on "vitamin"/"mineral" info questions (Wikipedia handles those).
 async function searchNutrition(query: string): Promise<string | null> {
-  const isNutritionQuery =
-    /\b(calorie|calories|kcal|nutrient|nutrition|nutritional|protein|carb|carbs|carbohydrate|fiber|fibre|sugar|vitamin|mineral|macro|macros|serving|eat|eating|meal|food|snack)\b/i.test(
+  if (
+    !/\b(calorie|calories|kcal|protein|carb|carbs|carbohydrate|carbohydrates|macro|macros|fat|fats|nutrition|nutritional)\b/i.test(
       query,
-    );
-  if (!isNutritionQuery) return null;
+    )
+  ) {
+    return null;
+  }
+  const food = extractFood(query);
+  if (!food || food.length < 2) return null;
 
   // 1) Nutritionix — best natural-language nutrition ("2 eggs and toast").
   const nixId = process.env["NUTRITIONIX_APP_ID"];
@@ -853,7 +881,7 @@ async function searchNutrition(query: string): Promise<string | null> {
           "x-app-id": nixId,
           "x-app-key": nixKey,
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: food }),
       });
       if (res.ok) {
         const j = (await res.json()) as {
@@ -887,13 +915,14 @@ async function searchNutrition(query: string): Promise<string | null> {
     }
   }
 
-  // 2) USDA FoodData Central — free (DEMO_KEY or a free FDC_API_KEY).
+  // 2) USDA FoodData Central — free (DEMO_KEY or a free FDC_API_KEY). Prefer
+  // whole/raw foods over processed matches; clamp USDA by-difference negatives.
   try {
     const fdcKey = process.env["FDC_API_KEY"] || "DEMO_KEY";
     const res = await fetch(
       `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(
-        query,
-      )}&pageSize=1&api_key=${fdcKey}`,
+        food,
+      )}&dataType=Foundation,SR%20Legacy&pageSize=10&api_key=${fdcKey}`,
       { headers: { "User-Agent": OVIA_UA } },
     );
     if (!res.ok) return null;
@@ -903,22 +932,30 @@ async function searchNutrition(query: string): Promise<string | null> {
         foodNutrients?: Array<{ nutrientName: string; value: number; unitName: string }>;
       }>;
     };
-    const food = (j.foods ?? [])[0];
-    if (!food) return null;
-    const pick = (re: RegExp) => food.foodNutrients?.find((n) => re.test(n.nutrientName));
-    const kcal = pick(/energy/i);
-    const protein = pick(/protein/i);
-    const carbs = pick(/carbohydrate/i);
-    const fat = pick(/total lipid|fat/i);
+    const foods = j.foods ?? [];
+    if (!foods.length) return null;
+    // Prefer "raw" whole foods, then the shortest (least-processed) description.
+    const f = [...foods].sort((a, b) => {
+      const ra = /\braw\b/i.test(a.description) ? 0 : 1;
+      const rb = /\braw\b/i.test(b.description) ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return (a.description || "").length - (b.description || "").length;
+    })[0]!;
+    const pick = (re: RegExp) => f.foodNutrients?.find((n) => re.test(n.nutrientName));
+    const grams = (re: RegExp, label: string) => {
+      const n = pick(re);
+      return n ? `${Math.max(0, Math.round(n.value * 10) / 10)}${label}` : null;
+    };
+    const kcal = pick(/^energy/i);
     const parts = [
-      kcal && `${kcal.value} ${kcal.unitName.toLowerCase()}`,
-      protein && `${protein.value}g protein`,
-      carbs && `${carbs.value}g carbs`,
-      fat && `${fat.value}g fat`,
+      kcal ? `${Math.max(0, Math.round(kcal.value))} ${kcal.unitName.toLowerCase()}` : null,
+      grams(/protein/i, "g protein"),
+      grams(/carbohydrate/i, "g carbs"),
+      grams(/total lipid|fat/i, "g fat"),
     ]
       .filter(Boolean)
       .join(", ");
-    return `USDA FoodData Central — ${food.description} (per 100g):\n${
+    return `USDA FoodData Central — ${f.description} (per 100g):\n${
       parts || "nutrient data available"
     }\nSource: https://fdc.nal.usda.gov`;
   } catch {
