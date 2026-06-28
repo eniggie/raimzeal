@@ -84,7 +84,9 @@ export default function SignupScreen() {
     try {
       const result = await promptAsync();
       if (result.type === "success") {
-        const idToken = result.authentication?.idToken;
+        const idToken =
+          result.authentication?.idToken ??
+          (result.params as Record<string, string> | undefined)?.["id_token"];
         if (!idToken) throw new Error("Google did not return an identity token");
         const { error } = await signInWithGoogleToken(idToken);
         if (error) Alert.alert("Google sign-in failed", error);
