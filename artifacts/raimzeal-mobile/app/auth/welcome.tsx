@@ -28,6 +28,9 @@ const FEATURES = [
   { icon: "chatbubble-ellipses-outline" as const, text: "Chat with Ovia, your AI coach" },
 ];
 
+// Phone sign-in is hidden for now — set to true to restore "Continue with phone number".
+const SHOW_PHONE_AUTH = false;
+
 export default function WelcomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -172,16 +175,19 @@ export default function WelcomeScreen() {
           </>
         )}
 
-        <TouchableOpacity
-          activeOpacity={0.75}
-          style={styles.phoneBtn}
-          onPress={() => router.push("/auth/phone")}
-        >
-          <Ionicons name="phone-portrait-outline" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.phoneBtnText, { color: colors.mutedForeground }]}>
-            Continue with phone number
-          </Text>
-        </TouchableOpacity>
+        {/* Phone sign-in hidden for now (not needed yet). Flip SHOW_PHONE_AUTH to re-enable. */}
+        {SHOW_PHONE_AUTH && (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.phoneBtn}
+            onPress={() => router.push("/auth/phone")}
+          >
+            <Ionicons name="phone-portrait-outline" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.phoneBtnText, { color: colors.mutedForeground }]}>
+              Continue with phone number
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
