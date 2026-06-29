@@ -252,6 +252,9 @@ interface FitnessContextType extends AppState {
   getWeekCalories: () => { day: string; date: string; calories: number }[];
   /** True once AsyncStorage has been read — prevents flash-redirect to onboarding */
   stateHydrated: boolean;
+  /** True once the Supabase cloud sync has settled — routing waits on this so a
+   * returning user loads their cloud profile before any onboarding redirect */
+  cloudSynced: boolean;
   /** Mark the user as having completed health onboarding */
   markOnboarded: () => void;
   /** Wipe all local fitness data and AsyncStorage on logout — prevents ghost-data for the next user */
@@ -339,6 +342,10 @@ const FitnessContext = createContext<FitnessContextType | null>(null);
 export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const [stateHydrated, setStateHydrated] = useState(false);
+  // True once the Supabase cloud sync has settled (succeeded, failed, or no session).
+  // Routing waits on this so returning users aren't sent to onboarding before their
+  // cloud profile (and isOnboarded) has loaded.
+  const [cloudSynced, setCloudSynced] = useState(false);
   const [dataResetCount, setDataResetCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
@@ -384,7 +391,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
       setStateHydrated(true);
 
       // Step 2: sync from Supabase (source of truth for authenticated users)
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        if (isMounted) setCloudSynced(true);
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
@@ -478,6 +488,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
                     id: userId,
                     email: session.user.email ?? prev.user?.email ?? "",
                   },
+                  // Returning user has a cloud profile → they've already onboarded.
+                  // Without this, a fresh install keeps the default isOnboarded:false
+                  // and wrongly re-runs the onboarding wizard, re-asking their data.
+                  isOnboarded: true,
                 }
               : {}),
             workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
@@ -554,6 +568,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         });
       } catch {
         // Non-fatal: keep local data if Supabase sync fails
+      } finally {
+        // Cloud sync has settled (success, failure, or no session) — let routing
+        // decide onboarding now without a premature redirect.
+        if (isMounted) setCloudSynced(true);
       }
     });
     return () => { isMounted = false; };
@@ -1363,6 +1381,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         getTodayWaterGlasses,
         getWeekCalories,
         stateHydrated,
+        cloudSynced,
         markOnboarded,
         resetState,
         clearAllData,

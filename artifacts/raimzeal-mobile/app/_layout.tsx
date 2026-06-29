@@ -89,7 +89,7 @@ function AuthGate() {
   const rationaleShown = useRef(false);
   const { cameraRollStatus, permissionsBootstrapped, hasSeenRationale, markRationaleDismissed, requestCameraRollPermission } = usePermissions();
   const [showRationale, setShowRationale] = useState(false);
-  const { isOnboarded, stateHydrated } = useFitness();
+  const { isOnboarded, stateHydrated, cloudSynced } = useFitness();
 
   useEffect(() => {
     if (loading) return;
@@ -99,16 +99,18 @@ function AuthGate() {
     if (!session && !inAuthGroup) {
       router.replace("/auth/welcome");
     } else if (session && inAuthGroup && segments[1] !== "health-onboarding") {
-      // Wait for AsyncStorage to hydrate before checking onboarding status
-      if (!stateHydrated) return;
+      // Wait for BOTH local hydration AND the cloud sync before deciding — a
+      // returning user's isOnboarded only flips true once their cloud profile loads.
+      if (!stateHydrated || !cloudSynced) return;
       if (!isOnboarded) {
         router.replace("/auth/health-onboarding");
       } else {
         router.replace("/(tabs)");
       }
     } else if (session && !inAuthGroup) {
-      // Already in app — redirect to onboarding if not yet completed
-      if (stateHydrated && !isOnboarded) {
+      // Already in app — redirect to onboarding only once BOTH local + cloud state
+      // are settled, so a returning user isn't bounced before their profile loads.
+      if (stateHydrated && cloudSynced && !isOnboarded) {
         router.replace("/auth/health-onboarding");
       }
     }
@@ -137,7 +139,7 @@ function AuthGate() {
       rationaleShown.current = true;
       setShowRationale(true);
     }
-  }, [session, loading, segments, cameraRollStatus, permissionsBootstrapped, hasSeenRationale, isOnboarded, stateHydrated]);
+  }, [session, loading, segments, cameraRollStatus, permissionsBootstrapped, hasSeenRationale, isOnboarded, stateHydrated, cloudSynced]);
 
   const handleAllow = useCallback(() => {
     setShowRationale(false);
