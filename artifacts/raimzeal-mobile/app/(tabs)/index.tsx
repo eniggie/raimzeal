@@ -27,6 +27,7 @@ import { WorkoutCard } from "@/components/WorkoutCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { QuickGoalSheet, QuickGoalMacro } from "@/components/QuickGoalSheet";
 import { STRIPE_DONATION_URL } from "@/lib/constants";
+import { getTodaysTip, CATEGORY_META } from "@/constants/dailyTips";
 
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
@@ -220,6 +221,27 @@ export default function HomeScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Daily Wellness Tip */}
+      {(() => {
+        const tip = getTodaysTip();
+        const meta = CATEGORY_META[tip.category];
+        return (
+          <GlassCard style={styles.tipCard}>
+            <View style={styles.tipHeader}>
+              <View style={[styles.tipIconWrap, { backgroundColor: meta.color + "22" }]}>
+                <Ionicons name={meta.icon} size={16} color={meta.color} />
+              </View>
+              <Text style={[styles.tipLabel, { color: meta.color }]}>
+                Daily Tip · {meta.label}
+              </Text>
+            </View>
+            <Text style={[styles.tipText, { color: colors.foreground }]}>
+              {tip.text}
+            </Text>
+          </GlassCard>
+        );
+      })()}
 
       {/* Today's Nutrition */}
       <AnimatedPressable
@@ -799,6 +821,20 @@ export default function HomeScreen() {
             }}
           />
         </View>
+        <View style={styles.actionsRow}>
+          <QuickAction
+            icon="headset-outline"
+            label="Guided Audio"
+            color="#A78BFA"
+            bg="#A78BFA20"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/guided-audio");
+            }}
+          />
+          <View style={{ flex: 1 }} />
+          <View style={{ flex: 1 }} />
+        </View>
       </View>
 
       {/* Donation CTA */}
@@ -1343,6 +1379,11 @@ const styles = StyleSheet.create({
   },
   streakText: { fontSize: 16, fontFamily: "Inter_700Bold" },
   ringCard: { padding: 20 },
+  tipCard: { padding: 16, marginBottom: 16 },
+  tipHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  tipIconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  tipLabel: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+  tipText: { fontSize: 14, lineHeight: 20, fontFamily: "Inter_400Regular" },
   nutritionHeader: {
     flexDirection: "row",
     alignItems: "center",

@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "48",
+      "buildNumber": "49",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 48,
+      "versionCode": 49,
       "intentFilters": [
         {
           "action": "VIEW",
