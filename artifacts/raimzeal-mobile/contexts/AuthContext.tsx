@@ -44,7 +44,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithApple: () => Promise<{ error: string | null }>;
-  signInWithGoogleToken: (idToken: string) => Promise<{ error: string | null }>;
+  signInWithGoogleToken: (idToken: string, nonce?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
@@ -140,11 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signInWithGoogleToken = useCallback(async (idToken: string) => {
+  const signInWithGoogleToken = useCallback(async (idToken: string, nonce?: string) => {
     if (!isSupabaseConfigured) return { error: "Supabase not configured" };
     const { error } = await supabase.auth.signInWithIdToken({
       provider: "google",
       token: idToken,
+      // Supabase hashes this and compares to the token's nonce claim (same as the
+      // working Apple flow). Must be the RAW nonce; the hashed form was sent to Google.
+      nonce,
     });
     return { error: error?.message ?? null };
   }, []);

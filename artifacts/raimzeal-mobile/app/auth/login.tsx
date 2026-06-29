@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
+import * as Crypto from "expo-crypto";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -42,6 +43,26 @@ export default function LoginScreen() {
   const { signIn, signInWithApple, signInWithGoogleToken, resetPassword } = useAuth();
 
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+
+  // Controlled nonce for Google: hashed nonce to Google, raw nonce to Supabase
+  // (which hashes + compares) — same as the working Apple flow.
+  const [googleNonce, setGoogleNonce] = useState<{ raw: string; hashed: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const raw = Crypto.randomUUID();
+      const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
+      if (!cancelled) setGoogleNonce({ raw, hashed });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const googleExtraParams = useMemo(
+    () => (googleNonce ? { nonce: googleNonce.hashed } : undefined),
+    [googleNonce],
+  );
+
   // useIdTokenAuthRequest returns a Google id_token (what Supabase needs) directly,
   // unlike useAuthRequest which returns an auth code → "did not return an identity token".
   const [request, , promptAsync] = Google.useIdTokenAuthRequest({
@@ -49,6 +70,7 @@ export default function LoginScreen() {
     iosClientId: extra.googleIosClientId,
     androidClientId: extra.googleAndroidClientId,
     scopes: ["openid", "profile", "email"],
+    extraParams: googleExtraParams,
   });
 
   const [email, setEmail] = useState("");
@@ -149,7 +171,7 @@ export default function LoginScreen() {
       Alert.alert("Terms required", "Please accept the Terms of Use and Community Guidelines before signing in with Google.");
       return;
     }
-    if (!request) return;
+    if (!request || !googleNonce) return;
     setGoogleLoading(true);
     try {
       const result = await promptAsync();
@@ -158,7 +180,7 @@ export default function LoginScreen() {
           result.authentication?.idToken ??
           (result.params as Record<string, string> | undefined)?.["id_token"];
         if (!idToken) throw new Error("Google did not return an identity token");
-        const { error } = await signInWithGoogleToken(idToken);
+        const { error } = await signInWithGoogleToken(idToken, googleNonce?.raw);
         if (error) Alert.alert("Google sign-in failed", error);
       }
       // type "cancel" or "dismiss" = user backed out, no error
