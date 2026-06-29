@@ -265,6 +265,7 @@ interface OFFProduct {
 }
 
 interface OFFSearchResponse {
+  hits?: OFFProduct[];
   products?: OFFProduct[];
 }
 
@@ -4001,24 +4002,24 @@ export default function NutritionScreen() {
 
     try {
       const params = new URLSearchParams({
-        search_terms: trimmed,
-        json: "1",
+        q: trimmed,
         page_size: PAGE_SIZE.toString(),
-        fields: "product_name,nutriments,serving_size,serving_quantity",
+        fields: "product_name,nutriments,serving_size,serving_quantity,code",
       });
+      // OFF's legacy cgi/search.pl and v2 API now return an HTML error page (no
+      // results). The "search-a-licious" endpoint returns JSON {hits:[...]} with
+      // the same nutriments shape the parser already expects.
       const res = await fetch(
-        `https://world.openfoodfacts.org/cgi/search.pl?${params.toString()}`,
+        `https://search.openfoodfacts.org/search?${params.toString()}`,
         {
           signal: controller.signal,
-          // Open Food Facts now requires a User-Agent — without it the search
-          // endpoint returns an HTML error page and no results.
           headers: { "User-Agent": "RAIMZEAL/1.0 (https://raimzeal.com)" },
         }
       );
       if (!res.ok) throw new Error("fetch failed");
       const data: OFFSearchResponse = await res.json();
       const items: FoodListItem[] = [];
-      for (const p of data.products ?? []) {
+      for (const p of data.hits ?? data.products ?? []) {
         const food = parseOFFProduct(p);
         if (food) items.push({ ...food, _kind: "search" });
       }
