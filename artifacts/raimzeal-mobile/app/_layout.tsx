@@ -20,6 +20,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Constants from "expo-constants";
+import * as Sentry from "@sentry/react-native";
+import { PostHogProvider } from "posthog-react-native";
 
 import { BootSplash } from "@/components/BootSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -40,6 +43,21 @@ import {
   scheduleReminders,
 } from "@/lib/notifications";
 import { configureRevenueCat } from "@/lib/revenuecat";
+
+const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+const SENTRY_DSN = extra.sentryDsn;
+const POSTHOG_KEY = extra.posthogKey;
+const POSTHOG_HOST = extra.posthogHost || "https://us.i.posthog.com";
+
+// Crash + error monitoring. Only active in release builds (not Expo Go / dev),
+// and only when a DSN is configured in app.json → extra.sentryDsn.
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: 0.2,
+    enabled: !__DEV__,
+  });
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -148,7 +166,7 @@ function AuthGate() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [interLoaded, interError] = useInterFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -223,7 +241,7 @@ export default function RootLayout() {
     );
   }
 
-  return (
+  const appTree = (
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
@@ -259,7 +277,23 @@ export default function RootLayout() {
       )}
     </SafeAreaProvider>
   );
+
+  // Product analytics. Wraps the app only when a key is configured
+  // (app.json → extra.posthogKey); otherwise renders the app untouched.
+  return POSTHOG_KEY ? (
+    <PostHogProvider
+      apiKey={POSTHOG_KEY}
+      options={{ host: POSTHOG_HOST }}
+      autocapture
+    >
+      {appTree}
+    </PostHogProvider>
+  ) : (
+    appTree
+  );
 }
+
+export default Sentry.wrap(RootLayout);
 
 const styles = StyleSheet.create({
   splashOverlay: {
