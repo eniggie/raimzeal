@@ -389,7 +389,8 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
         const userId = session.user.id;
-        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs, favouritesRemote, pendingRemovesRaw] = await Promise.all([
+        const [profile, workouts, meals, bodyMeasurementsRemote, waterRemote, oviaRemote, prefs, favouritesRemote, pendingRemovesRaw] = await Promise.race([
+          Promise.all([
           fetchProfile(userId),
           fetchWorkoutLogs(userId),
           fetchMealLogs(userId),
@@ -408,6 +409,12 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
             } catch { return []; }
           })(),
           AsyncStorage.getItem(PENDING_REMOVES_KEY).catch(() => null),
+          ]),
+          // Never let a slow/hanging backend block the whole app — time the sync out
+          // after 12s so the UI proceeds with already-hydrated local data.
+          new Promise<never>((_resolve, reject) =>
+            setTimeout(() => reject(new Error("RAIMZEAL: profile sync timed out")), 12000),
+          ),
         ]);
         // Restore the camera-roll rationale flag to AsyncStorage so
         // PermissionsContext picks it up on this fresh install.
@@ -461,7 +468,7 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
         setState((prev) => {
           const remoteSettings = prefs?.appSettings;
-          return {
+          const next = {
             ...prev,
             ...(profile
               ? {
@@ -511,6 +518,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
               ? (remoteSettings.quickFoods as QuickFood[]).slice(0, 8)
               : prev.quickFoods,
           };
+          // Cache the freshly-synced profile so the next launch shows the user's
+          // data instantly — even if the backend is slow/down — instead of a
+          // blank profile that nags them to "complete your profile" again.
+          persist(next);
+          return next;
         });
         setLastSyncedAt(new Date());
 

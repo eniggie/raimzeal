@@ -104,6 +104,15 @@ export default function EditProfileScreen() {
   const { goals: savedMacroGoals, setGoals: saveMacroGoals } = useMacroGoals();
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
+  // If the profile never arrives (e.g. backend hiccup), don't trap the user on an
+  // infinite "Loading profile…" screen that forces an app restart.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (user) { setLoadTimedOut(false); return; }
+    const t = setTimeout(() => setLoadTimedOut(true), 8000);
+    return () => clearTimeout(t);
+  }, [user]);
+
   const [name, setName] = useState(user?.name ?? "");
   const [age, setAge] = useState(user?.age?.toString() ?? "");
   const [height, setHeight] = useState(user?.height?.toString() ?? "");
@@ -205,10 +214,22 @@ export default function EditProfileScreen() {
   // Null guard: profile not yet loaded (context still hydrating)
   if (!user) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15 }}>
-          Loading profile…
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center", padding: 24, gap: 16 }}>
+        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center", lineHeight: 22 }}>
+          {loadTimedOut
+            ? "We couldn't load your profile right now. Your saved data is safe — please go back and try again in a moment."
+            : "Loading profile…"}
         </Text>
+        {loadTimedOut && (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary }}
+          >
+            <Text style={{ color: colors.primaryForeground, fontFamily: "Inter_600SemiBold", fontSize: 15 }}>
+              Go back
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
