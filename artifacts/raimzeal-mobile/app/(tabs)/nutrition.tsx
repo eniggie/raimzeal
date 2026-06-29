@@ -4008,7 +4008,12 @@ export default function NutritionScreen() {
       });
       const res = await fetch(
         `https://world.openfoodfacts.org/cgi/search.pl?${params.toString()}`,
-        { signal: controller.signal }
+        {
+          signal: controller.signal,
+          // Open Food Facts now requires a User-Agent — without it the search
+          // endpoint returns an HTML error page and no results.
+          headers: { "User-Agent": "RAIMZEAL/1.0 (https://raimzeal.com)" },
+        }
       );
       if (!res.ok) throw new Error("fetch failed");
       const data: OFFSearchResponse = await res.json();
