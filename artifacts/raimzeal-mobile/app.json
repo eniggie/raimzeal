@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "47",
+      "buildNumber": "48",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 47,
+      "versionCode": 48,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -139,7 +139,7 @@
       "googleWebClientId": "398551642-v5fe375j2mtj3ikesksn80iofsbvog1t.apps.googleusercontent.com",
       "googleIosClientId": "398551642-rgcdpv3f18hht5ls7jpo2v3djf9h7dei.apps.googleusercontent.com",
       "sentryDsn": "https://d5d1f4e5395b7d2097048b3c5f299a09@o4511650256650240.ingest.us.sentry.io/4511650262614016",
-      "posthogKey": "",
+      "posthogKey": "phc_vL4fXtXvYSeXrHScLwDZR47D5VrwRAi3tz4CRsftSjKn",
       "posthogHost": "https://us.i.posthog.com",
       "eas": {
         "projectId": "352f4ec9-8d51-4d18-8c68-97a1b3be0387"
