@@ -32,7 +32,9 @@ export default function SignupScreen() {
   const { signUp, signInWithApple, signInWithGoogleToken } = useAuth();
 
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
-  const [request, , promptAsync] = Google.useAuthRequest({
+  // useIdTokenAuthRequest returns a Google id_token (what Supabase needs) directly,
+  // unlike useAuthRequest which returns an auth code → "did not return an identity token".
+  const [request, , promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: extra.googleWebClientId,
     iosClientId: extra.googleIosClientId,
     androidClientId: extra.googleAndroidClientId,

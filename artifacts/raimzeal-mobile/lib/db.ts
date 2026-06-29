@@ -54,6 +54,10 @@ export async function upsertProfile(userId: string, profile: Partial<UserProfile
       fitness_level: profile.fitnessLevel,
       goals: profile.goals,
       units: profile.units,
+      blood_type: profile.bloodType,
+      rh_factor: profile.rhFactor,
+      genotype: profile.genotype,
+      biological_sex: profile.biologicalSex,
       updated_at: new Date().toISOString(),
     });
   } catch { /* non-fatal — local state is the source of truth */ }
@@ -62,11 +66,17 @@ export async function upsertProfile(userId: string, profile: Partial<UserProfile
 export async function fetchProfile(userId: string): Promise<Partial<UserProfile> | null> {
   if (!isSupabaseConfigured) return null;
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
+    if (error) {
+      // Surface real failures (RLS, network) so they're visible in Sentry instead
+      // of being silently treated as "no profile" → empty data + re-onboarding.
+      console.warn("fetchProfile failed:", error.message);
+      return null;
+    }
     if (!data) return null;
     return {
       id: data.id,
@@ -77,6 +87,10 @@ export async function fetchProfile(userId: string): Promise<Partial<UserProfile>
       fitnessLevel: data.fitness_level,
       goals: data.goals ?? [],
       units: data.units,
+      bloodType: data.blood_type ?? undefined,
+      rhFactor: data.rh_factor ?? undefined,
+      genotype: data.genotype ?? undefined,
+      biologicalSex: data.biological_sex ?? undefined,
     };
   } catch {
     return null;

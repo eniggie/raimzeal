@@ -480,20 +480,17 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
           const remoteSettings = prefs?.appSettings;
           const next = {
             ...prev,
-            ...(profile
-              ? {
-                  user: {
-                    ...(prev.user ?? {} as UserProfile),
-                    ...profile,
-                    id: userId,
-                    email: session.user.email ?? prev.user?.email ?? "",
-                  },
-                  // Returning user has a cloud profile → they've already onboarded.
-                  // Without this, a fresh install keeps the default isOnboarded:false
-                  // and wrongly re-runs the onboarding wizard, re-asking their data.
-                  isOnboarded: true,
-                }
-              : {}),
+            // Always materialise the user object for a logged-in session (even with
+            // no cloud row yet) so the app has id+email and the profile can be saved
+            // — and so edit-profile shows the form instead of hanging on "Loading".
+            user: {
+              ...(prev.user ?? ({} as UserProfile)),
+              ...(profile ?? {}),
+              id: userId,
+              email: session.user.email ?? prev.user?.email ?? "",
+            },
+            // A cloud profile row means they've already onboarded — don't re-ask.
+            ...(profile ? { isOnboarded: true } : {}),
             workoutLogs: workouts.length > 0 ? workouts : prev.workoutLogs,
             mealLogs: meals.length > 0 ? meals : prev.mealLogs,
             bodyMeasurements: bodyMeasurementsRemote.length > 0 ? bodyMeasurementsRemote : prev.bodyMeasurements,
@@ -1224,7 +1221,10 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       setState((prev) => {
-        const next = { ...prev, user: prev.user ? { ...prev.user, ...updates } : prev.user };
+        // Create the user object even when none exists yet — otherwise a brand-new
+        // user's onboarding/profile entries are silently discarded and never saved
+        // to Supabase, so they look "empty" and get re-onboarded every sign-in.
+        const next = { ...prev, user: { ...(prev.user ?? ({} as UserProfile)), ...updates } };
         persist(next);
         // Background push to Supabase
         if (next.user && isSupabaseConfigured) {

@@ -100,7 +100,7 @@ export default function EditProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, updateProfile } = useFitness();
+  const { user, updateProfile, cloudSynced } = useFitness();
   const { goals: savedMacroGoals, setGoals: saveMacroGoals } = useMacroGoals();
   const { showPermissionToast, permissionToastElement } = usePermissionToast();
 
@@ -143,6 +143,10 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!user || hasSeededFromUser.current) return;
     hasSeededFromUser.current = true;
+    setName(user.name ?? "");
+    setAge(user.age?.toString() ?? "");
+    setHeight(user.height?.toString() ?? "");
+    setWeight(user.weight?.toString() ?? "");
     setBiologicalSex(user.biologicalSex);
     setBloodType(user.bloodType);
     setRhFactor(user.rhFactor);
@@ -211,8 +215,10 @@ export default function EditProfileScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [livePreview]);
 
-  // Null guard: profile not yet loaded (context still hydrating)
-  if (!user) {
+  // Only block while the cloud sync is still pending AND we have no user yet.
+  // Once sync settles, render the form even with an empty profile so the user can
+  // always complete/update it (a brand-new user has id+email but no saved data).
+  if (!user && !cloudSynced) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center", alignItems: "center", padding: 24, gap: 16 }}>
         <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15, textAlign: "center", lineHeight: 22 }}>

@@ -38,7 +38,11 @@ export default function WelcomeScreen() {
   const { signInWithApple, signInWithGoogleToken } = useAuth();
 
   const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
-  const [request, , promptAsync] = Google.useAuthRequest({
+  // useIdTokenAuthRequest (not useAuthRequest) returns a Google id_token directly in
+  // result.params.id_token — which is what Supabase signInWithIdToken needs. The plain
+  // useAuthRequest returns an auth code, so the id_token was always missing → the
+  // "Google did not return an identity token" error even with a working network.
+  const [request, , promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: extra.googleWebClientId,
     iosClientId: extra.googleIosClientId,
     androidClientId: extra.googleAndroidClientId,
