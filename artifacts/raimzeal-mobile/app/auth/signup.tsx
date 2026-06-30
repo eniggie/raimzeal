@@ -1,9 +1,8 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import * as Google from "expo-auth-session/providers/google";
+import React, { useState } from "react";
+import { signInWithGoogleNative } from "@/lib/googleSignIn";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import * as Crypto from "expo-crypto";
 import {
   ActivityIndicator,
   Alert,
@@ -31,37 +30,6 @@ export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signUp, signInWithApple, signInWithGoogleToken } = useAuth();
-
-  const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
-
-  // Controlled nonce for Google: hashed nonce to Google, raw nonce to Supabase
-  // (which hashes + compares) — same as the working Apple flow.
-  const [googleNonce, setGoogleNonce] = useState<{ raw: string; hashed: string } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const raw = Crypto.randomUUID();
-      const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
-      if (!cancelled) setGoogleNonce({ raw, hashed });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const googleExtraParams = useMemo(
-    () => (googleNonce ? { nonce: googleNonce.hashed } : undefined),
-    [googleNonce],
-  );
-
-  // useIdTokenAuthRequest returns a Google id_token (what Supabase needs) directly,
-  // unlike useAuthRequest which returns an auth code → "did not return an identity token".
-  const [request, , promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: extra.googleWebClientId,
-    iosClientId: extra.googleIosClientId,
-    androidClientId: extra.googleAndroidClientId,
-    scopes: ["openid", "profile", "email"],
-    extraParams: googleExtraParams,
-  });
 
   const [appleLoading, setAppleLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -103,20 +71,16 @@ export default function SignupScreen() {
       );
       return;
     }
-    if (!request || !googleNonce) return;
     setGoogleLoading(true);
     try {
-      const result = await promptAsync();
-      if (result.type === "success") {
-        const idToken =
-          result.authentication?.idToken ??
-          (result.params as Record<string, string> | undefined)?.["id_token"];
-        if (!idToken) throw new Error("Google did not return an identity token");
-        const { error } = await signInWithGoogleToken(idToken, googleNonce?.raw);
-        if (error) Alert.alert("Google sign-in failed", error);
+      const { idToken, error: gErr } = await signInWithGoogleNative();
+      if (gErr) {
+        Alert.alert("Google sign-in failed", gErr);
+        return;
       }
-    } catch (e) {
-      Alert.alert("Google sign-in failed", e instanceof Error ? e.message : "Unknown error");
+      if (!idToken) return; // user cancelled
+      const { error } = await signInWithGoogleToken(idToken);
+      if (error) Alert.alert("Google sign-in failed", error);
     } finally {
       setGoogleLoading(false);
     }
@@ -493,7 +457,7 @@ export default function SignupScreen() {
                     { opacity: termsAccepted && responsibilityAccepted ? 1 : 0.4 },
                   ]}
                   onPress={handleGoogleSignup}
-                  disabled={!request || !googleNonce || !termsAccepted || !responsibilityAccepted}
+                  disabled={!termsAccepted || !responsibilityAccepted}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="logo-google" size={18} color="#1f1f1f" />

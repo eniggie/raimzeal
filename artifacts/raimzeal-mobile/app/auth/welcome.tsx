@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,10 +13,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
-import * as Google from "expo-auth-session/providers/google";
+import { signInWithGoogleNative } from "@/lib/googleSignIn";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import * as Crypto from "expo-crypto";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -38,40 +37,6 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { signInWithApple, signInWithGoogleToken } = useAuth();
 
-  const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
-
-  // Controlled nonce for Google: send the HASHED nonce to Google (so the id_token
-  // carries it) and pass the RAW nonce to Supabase, which hashes + compares — exactly
-  // like the working Apple flow. Without this Supabase rejects the token's nonce.
-  const [googleNonce, setGoogleNonce] = useState<{ raw: string; hashed: string } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const raw = Crypto.randomUUID();
-      const hashed = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, raw);
-      if (!cancelled) setGoogleNonce({ raw, hashed });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const googleExtraParams = useMemo(
-    () => (googleNonce ? { nonce: googleNonce.hashed } : undefined),
-    [googleNonce],
-  );
-
-  // useIdTokenAuthRequest (not useAuthRequest) returns a Google id_token directly in
-  // result.params.id_token — which is what Supabase signInWithIdToken needs. The plain
-  // useAuthRequest returns an auth code, so the id_token was always missing → the
-  // "Google did not return an identity token" error even with a working network.
-  const [request, , promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: extra.googleWebClientId,
-    iosClientId: extra.googleIosClientId,
-    androidClientId: extra.googleAndroidClientId,
-    scopes: ["openid", "profile", "email"],
-    extraParams: googleExtraParams,
-  });
-
   const [appleLoading, setAppleLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -83,20 +48,16 @@ export default function WelcomeScreen() {
   }
 
   async function handleGoogleAuth() {
-    if (!request || !googleNonce) return;
     setGoogleLoading(true);
     try {
-      const result = await promptAsync();
-      if (result.type === "success") {
-        const idToken =
-          result.authentication?.idToken ??
-          (result.params as Record<string, string> | undefined)?.["id_token"];
-        if (!idToken) throw new Error("Google did not return an identity token");
-        const { error } = await signInWithGoogleToken(idToken, googleNonce?.raw);
-        if (error) Alert.alert("Google sign-in failed", error);
+      const { idToken, error: gErr } = await signInWithGoogleNative();
+      if (gErr) {
+        Alert.alert("Google sign-in failed", gErr);
+        return;
       }
-    } catch (e) {
-      Alert.alert("Google sign-in failed", e instanceof Error ? e.message : "Unknown error");
+      if (!idToken) return; // user cancelled
+      const { error } = await signInWithGoogleToken(idToken);
+      if (error) Alert.alert("Google sign-in failed", error);
     } finally {
       setGoogleLoading(false);
     }
@@ -175,7 +136,7 @@ export default function WelcomeScreen() {
               <TouchableOpacity
                 style={[styles.googleBtn, { backgroundColor: "#ffffff" }]}
                 onPress={handleGoogleAuth}
-                disabled={!request || !googleNonce || googleLoading}
+                disabled={googleLoading}
                 activeOpacity={0.8}
               >
                 <Ionicons name="logo-google" size={18} color="#1f1f1f" />

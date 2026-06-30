@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "52",
+      "buildNumber": "53",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 52,
+      "versionCode": 53,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -95,6 +95,12 @@
         }
       ],
       "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.398551642-rgcdpv3f18hht5ls7jpo2v3djf9h7dei"
+        }
+      ],
       [
         "react-native-health",
         {
