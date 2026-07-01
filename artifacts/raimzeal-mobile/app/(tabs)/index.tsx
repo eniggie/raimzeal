@@ -32,6 +32,31 @@ import { getTodaysTip, CATEGORY_META } from "@/constants/dailyTips";
 const WATER_GOAL_GLASSES = 10;
 const STEPS_GOAL = 10000;
 
+interface QuickActionDef {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  color: string;
+  route: string;
+  /** True for bottom-tab screens, routed with router.navigate to avoid stacking. */
+  tab?: boolean;
+}
+
+const QUICK_ACTIONS: QuickActionDef[] = [
+  { icon: "body-outline", label: "Log Body", color: "#1AE07E", route: "/body-measurements" },
+  { icon: "bar-chart-outline", label: "Progress", color: "#F5C542", route: "/(tabs)/progress", tab: true },
+  { icon: "people-outline", label: "Community", color: "#1AE07E", route: "/(tabs)/community", tab: true },
+  { icon: "happy-outline", label: "Check-in", color: "#F5C542", route: "/wellness-checkin" },
+  { icon: "leaf-outline", label: "Breathing", color: "#1AE07E", route: "/breathing" },
+  { icon: "medkit-outline", label: "Supplements", color: "#F5C542", route: "/supplements" },
+  { icon: "flower-outline", label: "Period", color: "#F472B6", route: "/period-tracker" },
+  { icon: "heart-outline", label: "Pregnancy", color: "#F472B6", route: "/pregnancy-wellness" },
+  { icon: "pulse-outline", label: "PCOS", color: "#F472B6", route: "/pcos-tracker" },
+  { icon: "sunny-outline", label: "Menopause", color: "#F472B6", route: "/menopause-tracker" },
+  { icon: "stats-chart-outline", label: "Weekly Report", color: "#1AE07E", route: "/weekly-report" },
+  { icon: "flash-outline", label: "Challenges", color: "#F5C542", route: "/challenges" },
+  { icon: "headset-outline", label: "Guided Audio", color: "#A78BFA", route: "/guided-audio" },
+];
+
 const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
 const WELLNESS_STORAGE_PREFIX = "@raimzeal_wellness_v1_";
 
@@ -693,148 +718,19 @@ export default function HomeScreen() {
         Quick Actions
       </Text>
       <View style={styles.actions}>
-        <View style={styles.actionsRow}>
+        {QUICK_ACTIONS.map((a) => (
           <QuickAction
-            icon="body-outline"
-            label="Log Body"
-            color="#1AE07E"
-            bg="#1AE07E20"
+            key={a.label}
+            icon={a.icon}
+            label={a.label}
+            color={a.color}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/body-measurements");
+              if (a.tab) router.navigate(a.route as never);
+              else router.push(a.route as never);
             }}
           />
-          <QuickAction
-            icon="bar-chart-outline"
-            label="Progress"
-            color="#F5C542"
-            bg="#F5C54220"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/progress");
-            }}
-          />
-          <QuickAction
-            icon="people-outline"
-            label="Community"
-            color="#1AE07E"
-            bg="#1AE07E20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.navigate("/(tabs)/community");
-            }}
-          />
-        </View>
-        <View style={styles.actionsRow}>
-          <QuickAction
-            icon="happy-outline"
-            label="Check-in"
-            color="#F5C542"
-            bg="#F5C54220"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/wellness-checkin");
-            }}
-          />
-          <QuickAction
-            icon="leaf-outline"
-            label="Breathing"
-            color="#1AE07E"
-            bg="#1AE07E20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/breathing");
-            }}
-          />
-          <QuickAction
-            icon="medkit-outline"
-            label="Supplements"
-            color="#F5C542"
-            bg="#F5C54220"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/supplements");
-            }}
-          />
-        </View>
-        <View style={styles.actionsRow}>
-          <QuickAction
-            icon="flower-outline"
-            label="Period"
-            color="#F472B6"
-            bg="#F472B620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/period-tracker");
-            }}
-          />
-          <QuickAction
-            icon="heart-outline"
-            label="Pregnancy"
-            color="#F472B6"
-            bg="#F472B620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/pregnancy-wellness");
-            }}
-          />
-          <QuickAction
-            icon="pulse-outline"
-            label="PCOS"
-            color="#F472B6"
-            bg="#F472B620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/pcos-tracker");
-            }}
-          />
-        </View>
-        <View style={styles.actionsRow}>
-          <QuickAction
-            icon="sunny-outline"
-            label="Menopause"
-            color="#F472B6"
-            bg="#F472B620"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/menopause-tracker");
-            }}
-          />
-          <QuickAction
-            icon="stats-chart-outline"
-            label="Weekly Report"
-            color="#1AE07E"
-            bg="#1AE07E20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/weekly-report");
-            }}
-          />
-          <QuickAction
-            icon="flash-outline"
-            label="Challenges"
-            color="#F5C542"
-            bg="#F5C54220"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/challenges");
-            }}
-          />
-        </View>
-        <View style={styles.actionsRow}>
-          <QuickAction
-            icon="headset-outline"
-            label="Guided Audio"
-            color="#A78BFA"
-            bg="#A78BFA20"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/guided-audio");
-            }}
-          />
-          <View style={{ flex: 1 }} />
-          <View style={{ flex: 1 }} />
-        </View>
+        ))}
       </View>
 
       {/* Donation CTA */}
@@ -1334,23 +1230,23 @@ function QuickAction({
   icon,
   label,
   color,
-  bg,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
-  bg: string;
   onPress?: () => void;
 }) {
   const colors = useColors();
   return (
     <AnimatedPressable
       onPress={onPress}
-      style={[styles.actionBtn, { backgroundColor: bg, borderColor: color + "30" }]}
+      style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
       scale={0.93}
     >
-      <Ionicons name={icon} size={24} color={color} />
+      <View style={[styles.actionIconBadge, { backgroundColor: color + "20" }]}>
+        <Ionicons name={icon} size={20} color={color} />
+      </View>
       <Text numberOfLines={2} style={[styles.actionLabel, { color: colors.foreground }]}>{label}</Text>
     </AnimatedPressable>
   );
@@ -1441,10 +1337,13 @@ const styles = StyleSheet.create({
   activityTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   activitySub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   sectionTitle: { fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", marginTop: 4 },
-  actions: { gap: 10 },
-  actionsRow: { flexDirection: "row", gap: 10 },
+  // A real wrapping grid (like CSS grid-cols-3) instead of manually chunked
+  // rows — a trailing item just sits on the left with blank space to its
+  // right, matching the web app's layout, with no invisible spacer views.
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   actionBtn: {
-    flex: 1,
+    flexBasis: "31.5%",
+    flexGrow: 0,
     height: 92,
     paddingHorizontal: 8,
     paddingVertical: 12,
@@ -1453,6 +1352,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  actionIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionLabel: { fontSize: 12, fontFamily: "Inter_500Medium", textAlign: "center" },
   bodyBanner: {
