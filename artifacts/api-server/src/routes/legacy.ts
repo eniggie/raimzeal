@@ -16,6 +16,24 @@ function requireLegacy(_req: Request, _res: Response, next: NextFunction) {
   next();
 }
 
+// Ensure the bucket exists once at startup rather than on every upload request —
+// calling createBucket per-request was hitting Postgres's buckets_pkey unique
+// constraint on every single upload after the first (harmless but noisy).
+async function ensureCommunityImagesBucket() {
+  try {
+    const { error } = await supabaseAdmin.storage.createBucket("community-images", {
+      public: true,
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      fileSizeLimit: 10 * 1024 * 1024,
+    });
+    if (error && !error.message.includes("already exists")) {
+      logger.warn({ error }, "Could not create community-images bucket");
+    }
+  } catch { /* already exists */ }
+}
+
+ensureCommunityImagesBucket();
+
 // ── GET /api/legacy/leaderboard ───────────────────────────────────────────────
 // Returns top 25 active Legacy members ranked by streak → total workouts.
 legacyRouter.get("/legacy/leaderboard", requireAuth, requireLegacy, async (req, res) => {
@@ -97,12 +115,6 @@ legacyRouter.post(
     const safeExt =
       typeof ext === "string" && /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
     const path = `legacy/${userId}/${randomUUID()}.${safeExt}`;
-
-    await supabaseAdmin.storage.createBucket("community-images", {
-      public: true,
-      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-      fileSizeLimit: 10 * 1024 * 1024,
-    });
 
     const { data, error } = await supabaseAdmin.storage
       .from("community-images")
