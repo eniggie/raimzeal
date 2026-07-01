@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import ConfirmSheet from "@/components/ConfirmSheet";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -74,7 +74,15 @@ export default function LegacyScreen() {
   const { user } = useFitness();
   const { tier, loading: tierLoading } = useTier(user?.id ?? null);
 
-  const [tab, setTab] = useState<LegacyTab>("leaderboard");
+  // Allow deep-linking straight to a tab, e.g. from the Home screen's
+  // "Founding Member Certificate" Quick Action → /legacy?tab=certificate
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const initialTab: LegacyTab = (["leaderboard", "report", "plan", "partner", "certificate"] as const).includes(
+    params.tab as LegacyTab
+  )
+    ? (params.tab as LegacyTab)
+    : "leaderboard";
+  const [tab, setTab] = useState<LegacyTab>(initialTab);
 
   // ── Leaderboard state ─────────────────────────────────────────────────────
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);

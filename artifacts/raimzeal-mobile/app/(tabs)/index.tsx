@@ -55,6 +55,12 @@ const QUICK_ACTIONS: QuickActionDef[] = [
   { icon: "stats-chart-outline", label: "Weekly Report", color: "#1AE07E", route: "/weekly-report" },
   { icon: "flash-outline", label: "Challenges", color: "#F5C542", route: "/challenges" },
   { icon: "headset-outline", label: "Guided Audio", color: "#A78BFA", route: "/guided-audio" },
+  // Reuses the existing Profile-tab modal via its already-built ?openCard=1
+  // auto-open param — no new share flow, just a shortcut to the real one.
+  { icon: "share-social-outline", label: "Share Progress", color: "#38BDF8", route: "/(tabs)/profile?openCard=1", tab: true },
+  { icon: "notifications-outline", label: "Reminders", color: "#38BDF8", route: "/reminders" },
+  { icon: "ribbon-outline", label: "Founding Certificate", color: "#F5C542", route: "/legacy?tab=certificate" },
+  { icon: "restaurant-outline", label: "Recipes", color: "#F5C542", route: "/recipes" },
 ];
 
 const SLEEP_STORAGE_PREFIX = "@raimzeal_sleep_v1_";
