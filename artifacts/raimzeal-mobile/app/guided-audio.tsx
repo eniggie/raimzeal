@@ -25,7 +25,8 @@ import { useColors } from "@/hooks/useColors";
 import { GlassCard } from "@/components/GlassCard";
 import { getApiBase } from "@/lib/db";
 
-type Category = "meditation" | "sleep" | "focus" | "breathing";
+// Matches the real backend categories (GET /api/wellness/audio-sessions).
+type Category = "meditation" | "sleep" | "focus" | "breathwork";
 
 interface AudioSession {
   id: string;
@@ -36,12 +37,36 @@ interface AudioSession {
   artwork?: string;
 }
 
-const CATEGORY_ORDER: Category[] = ["meditation", "sleep", "focus", "breathing"];
+// The backend's wire format — snake_case, "tracks" not "sessions".
+interface AudioTrackWire {
+  id: string;
+  title: string;
+  category: string;
+  duration_seconds?: number;
+  preview_url?: string;
+  artist?: string;
+}
+
+function mapWireTrack(t: AudioTrackWire): AudioSession | null {
+  if (!t?.id || !t.title || !t.preview_url) return null;
+  const category: Category = (["meditation", "sleep", "focus", "breathwork"] as const).includes(t.category as Category)
+    ? (t.category as Category)
+    : "focus";
+  return {
+    id: t.id,
+    title: t.title,
+    category,
+    durationSec: t.duration_seconds ?? 0,
+    url: t.preview_url,
+  };
+}
+
+const CATEGORY_ORDER: Category[] = ["meditation", "sleep", "focus", "breathwork"];
 const CATEGORY_META: Record<Category, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
   meditation: { label: "Meditation", icon: "leaf-outline", color: "#1AE07E" },
   sleep: { label: "Sleep", icon: "moon-outline", color: "#A78BFA" },
   focus: { label: "Focus", icon: "headset-outline", color: "#38BDF8" },
-  breathing: { label: "Breathing", icon: "pulse-outline", color: "#F472B6" },
+  breathwork: { label: "Breathwork", icon: "pulse-outline", color: "#F472B6" },
 };
 
 function fmtDuration(sec: number): string {
@@ -71,9 +96,10 @@ export default function GuidedAudioScreen() {
         setErrored(false);
         const res = await fetch(`${getApiBase()}/wellness/audio-sessions`);
         if (!res.ok) throw new Error(`status ${res.status}`);
-        const data: unknown = await res.json();
-        const list = (Array.isArray(data) ? data : (data as { sessions?: AudioSession[] })?.sessions ?? []) as AudioSession[];
-        if (!cancelled) setSessions(list.filter((s) => s && s.url && s.title));
+        const data = (await res.json()) as { tracks?: AudioTrackWire[] } | AudioTrackWire[];
+        const wireTracks = Array.isArray(data) ? data : data?.tracks ?? [];
+        const list = wireTracks.map(mapWireTrack).filter((s): s is AudioSession => s !== null);
+        if (!cancelled) setSessions(list);
       } catch {
         if (!cancelled) {
           setSessions([]);
