@@ -1986,7 +1986,7 @@ export default function ProfileScreen() {
           {(!user?.height || !user?.weight || !user?.goals?.length) && (
             <TouchableOpacity
               activeOpacity={0.75}
-              onPress={() => router.push("/edit-profile")}
+              onPress={() => router.push("/profile-setup-chat")}
             >
               <GlassCard style={[styles.nudgeCard, { borderColor: colors.warning + "55" }]}>
                 <View style={styles.nudgeRow}>
@@ -1996,7 +1996,7 @@ export default function ProfileScreen() {
                       Complete your profile
                     </Text>
                     <Text style={[styles.nudgeSubtitle, { color: colors.mutedForeground }]}>
-                      Add height, weight & goals for personalised Ovia AI recommendations
+                      Answer a couple of quick questions from Ovia for personalised recommendations
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />

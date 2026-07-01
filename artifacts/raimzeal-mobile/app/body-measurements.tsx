@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Crypto from "expo-crypto";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -23,8 +24,11 @@ import { SyncIndicator } from "@/components/SyncIndicator";
 import { useSyncIndicator } from "@/hooks/useSyncIndicator";
 import { CitationNote } from "@/components/CitationNote";
 
+// Must be a real UUID — the backend's `body_measurements.id` column is native
+// `uuid`. A custom "bm_..." string silently fails every sync with
+// "invalid input syntax for type uuid" and the measurement never leaves the device.
 function generateId(): string {
-  return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return Crypto.randomUUID();
 }
 
 function formatDate(dateStr: string): string {

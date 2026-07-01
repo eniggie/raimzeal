@@ -32,8 +32,12 @@ const EMPTY: HealthData = {
 // silent dead-end.
 async function initHealthKit(): Promise<string | null> {
   try {
+    // react-native-health uses `module.exports = HealthKit` (plain CJS, no
+    // `export default`), so `.default` is undefined — fall back to the module
+    // itself when there's no `.default` to unwrap.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const HK = require("react-native-health").default;
+    const mod = require("react-native-health");
+    const HK = mod?.default ?? mod;
     if (!HK || typeof HK.initHealthKit !== "function") {
       return "Apple Health isn't available in this build. Please update to the latest version of RAIMZEAL.";
     }
@@ -64,7 +68,8 @@ async function initHealthKit(): Promise<string | null> {
 async function readiOSData(): Promise<HealthData> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const HK = require("react-native-health").default;
+    const mod = require("react-native-health");
+    const HK = mod?.default ?? mod;
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);

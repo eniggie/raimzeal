@@ -631,6 +631,30 @@ export default function OviaScreen() {
                 ))}
               </View>
 
+              {/* Profile completeness nudge — the AI Tools above are only as
+                  personalised as the data Ovia has. */}
+              {(!user?.age || !user?.height || !user?.weight || !user?.biologicalSex || !user?.goals?.length) && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push("/profile-setup-chat");
+                  }}
+                  style={[styles.profileNudge, { backgroundColor: colors.accent + "14", borderColor: colors.accent + "40" }]}
+                >
+                  <Ionicons name="person-circle-outline" size={22} color={colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.profileNudgeTitle, { color: colors.foreground }]}>
+                      Complete your profile with Ovia
+                    </Text>
+                    <Text style={[styles.profileNudgeSub, { color: colors.mutedForeground }]}>
+                      A couple of quick questions unlock fully personalised plans
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+
               {/* AI Tools section */}
               <View style={styles.aiToolsSection}>
                 <Text style={[styles.aiToolsLabel, { color: colors.mutedForeground }]}>
@@ -1127,6 +1151,18 @@ const styles = StyleSheet.create({
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   upgradeHint: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, marginHorizontal: 4, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   upgradeHintText: { flex: 1, fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 15 },
+  profileNudge: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 16,
+  },
+  profileNudgeTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  profileNudgeSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
   aiToolsSection: { width: "100%", marginTop: 20, gap: 8 },
   aiToolsLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 1.2, textTransform: "uppercase", paddingHorizontal: 4 },
   aiToolsRow: { flexDirection: "row", gap: 10 },
