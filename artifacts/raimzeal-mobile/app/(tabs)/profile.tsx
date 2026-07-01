@@ -779,8 +779,8 @@ export default function ProfileScreen() {
       Alert.alert(
         Platform.OS === "ios" ? "Apple Health" : "Health Connect",
         Platform.OS === "ios"
-          ? "Apple Health is connected. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
-          : "Health Connect is connected. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
+          ? "Connected via Apple HealthKit. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
+          : "Connected via Android Health Connect. RAIMZEAL is reading your steps, heart rate, sleep, weight, and active calories."
       );
     } else if (healthStatus === "denied") {
       Linking.openSettings();

@@ -15,13 +15,14 @@ import { useColors } from "@/hooks/useColors";
 interface CameraRollRationaleModalProps {
   visible: boolean;
   onAllow: () => void;
+  /** @deprecated no longer offers a bypass — the message always proceeds to the
+   * system permission request (App Review 5.1.1(iv)). Kept for caller compatibility. */
   onNotNow: () => void;
 }
 
 export function CameraRollRationaleModal({
   visible,
   onAllow,
-  onNotNow,
 }: CameraRollRationaleModalProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -86,26 +87,21 @@ export function CameraRollRationaleModal({
       fontSize: 16,
       fontFamily: "Inter_600SemiBold",
     },
-    notNowButton: {
-      paddingVertical: 12,
-      alignItems: "center",
-    },
-    notNowText: {
-      color: colors.mutedForeground,
-      fontSize: 15,
-      fontFamily: "Inter_500Medium",
-    },
   });
 
+  // App Review 5.1.1(iv): a custom message shown before the system permission
+  // request must always lead to that request — no button or dismissal path may
+  // let the user delay/skip it. Every way of closing this sheet (backdrop tap,
+  // hardware back, the button) proceeds straight to the OS prompt.
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
       statusBarTranslucent
-      onRequestClose={onNotNow}
+      onRequestClose={onAllow}
     >
-      <Pressable style={styles.overlay} onPress={onNotNow}>
+      <Pressable style={styles.overlay} onPress={onAllow}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.iconWrapper}>
             <Ionicons name="images-outline" size={34} color={colors.secondary} />
@@ -128,15 +124,7 @@ export function CameraRollRationaleModal({
             onPress={onAllow}
             activeOpacity={0.85}
           >
-            <Text style={styles.allowText}>Allow Access</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.notNowButton}
-            onPress={onNotNow}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.notNowText}>Not Now</Text>
+            <Text style={styles.allowText}>Continue</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

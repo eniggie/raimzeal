@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.replit.raimzeal",
-      "buildNumber": "55",
+      "buildNumber": "56",
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -25,12 +25,13 @@
         "NSPhotoLibraryAddUsageDescription": "Allow RAIMZEAL to save progress photos to your photo library.",
         "NSLocationWhenInUseUsageDescription": "Allow RAIMZEAL to access your location to track outdoor workouts and activities.",
         "NSCameraUsageDescription": "Allow RAIMZEAL to access your camera to scan food barcodes.",
-        "NSUserNotificationsUsageDescription": "Allow RAIMZEAL to send you workout reminders and motivational notifications."
+        "NSUserNotificationsUsageDescription": "Allow RAIMZEAL to send you workout reminders and motivational notifications.",
+        "NSMotionUsageDescription": "RAIMZEAL reads your step count and walking activity from Motion & Fitness to show your daily steps on the Home screen and calculate calories burned from walking. For example, if you walk 8,000 steps today, RAIMZEAL uses that count to update your activity ring and daily calorie balance."
       }
     },
     "android": {
       "package": "com.econteur.raimzeal",
-      "versionCode": 55,
+      "versionCode": 56,
       "intentFilters": [
         {
           "action": "VIEW",

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useFitness } from "@/contexts/FitnessContext";
 import { GlassCard } from "@/components/GlassCard";
+import { CitationNote } from "@/components/CitationNote";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 64;
@@ -328,6 +329,11 @@ export default function ProgressScreen() {
           <Text style={[styles.bmiNote, { color: colors.mutedForeground }]}>
             Based on your profile: {user?.weight ?? "—"}kg · {user?.height ?? "—"}cm
           </Text>
+          <CitationNote
+            label="BMI classification"
+            sourceName="CDC Adult BMI Categories"
+            sourceUrl="https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html"
+          />
         </GlassCard>
       )}
 

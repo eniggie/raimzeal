@@ -24,6 +24,7 @@ import { usePermissionToast } from "@/hooks/usePermissionToast";
 import { useFitness, OviaMessage } from "@/contexts/FitnessContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiBase } from "@/lib/db";
+import { CitationNote } from "@/components/CitationNote";
 
 const SUGGESTIONS = [
   "Design my food plan for this week 🥗",
@@ -114,6 +115,84 @@ function buildOviaContext(
       : null,
     personalRecords: personalRecords.slice(0, 5),
   };
+}
+
+// ── Offline fallbacks for the AI Tools ──────────────────────────────────────
+// If the Ovia backend errors or times out, these produce a fully working result
+// using well-established formulas/plans instead of a bare error message — the
+// feature must never dead-end for the user (App Review 2.1 App Completeness).
+const FALLBACK_NOTE = "Ovia's live AI analysis is temporarily unavailable, so this is a general, offline estimate. Try again shortly for a fully personalised result.";
+
+function localFallbackBody(user: ReturnType<typeof useFitness>["user"]) {
+  const weight = user?.weight ?? 70;
+  const height = user?.height ?? 170;
+  const age = user?.age ?? 30;
+  const isFemale = user?.biologicalSex === "female";
+  const heightM = height / 100;
+  const bmi = weight / (heightM * heightM);
+  const bmiCategory = bmi < 18.5 ? "underweight" : bmi < 25 ? "healthy" : bmi < 30 ? "overweight" : "obese";
+  const bmr = isFemale
+    ? 10 * weight + 6.25 * height - 5 * age - 161
+    : 10 * weight + 6.25 * height - 5 * age + 5;
+  const tdee = Math.round(bmr * 1.4);
+  return {
+    bmi,
+    bmi_category: bmiCategory,
+    estimated_body_fat_pct: isFemale ? 28 : 20,
+    lean_mass_kg: Math.round(weight * (isFemale ? 0.72 : 0.82)),
+    bmr_kcal: Math.round(bmr),
+    tdee_kcal: tdee,
+    ideal_weight_range: {
+      min: Math.round(18.5 * heightM * heightM),
+      max: Math.round(24.9 * heightM * heightM),
+      unit: "kg",
+    },
+    summary: FALLBACK_NOTE,
+    strengths: [],
+    focus_areas: [],
+    recommendations: [
+      "Keep logging your weight and measurements for more accurate trends.",
+      "Try again shortly for a personalised AI breakdown.",
+    ],
+  };
+}
+
+const FALLBACK_MEALS = [
+  { type: "Breakfast", name: "Greek yogurt, berries & granola", calories: 380 },
+  { type: "Lunch", name: "Grilled chicken salad & quinoa", calories: 480 },
+  { type: "Dinner", name: "Baked salmon & roasted vegetables", calories: 500 },
+];
+function localFallbackMeal() {
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => ({
+    day,
+    meals: FALLBACK_MEALS.map((m) => ({ ...m, notes: "" })),
+  }));
+  return {
+    daily_calories: FALLBACK_MEALS.reduce((s, m) => s + m.calories, 0),
+    macros: { protein_g: 120, carbs_g: 220, fat_g: 65 },
+    days,
+    tips: [FALLBACK_NOTE],
+  };
+}
+
+function localFallbackWorkout() {
+  const template: Array<{ focus: string; exercises: Array<{ name: string; sets: number; reps: string }>; rest?: boolean }> = [
+    { focus: "Full Body Strength", exercises: [{ name: "Squats", sets: 4, reps: "8-10" }, { name: "Push-ups", sets: 3, reps: "10-12" }, { name: "Bent-over rows", sets: 3, reps: "10-12" }] },
+    { focus: "Cardio & Core", exercises: [{ name: "Brisk walk / jog", sets: 1, reps: "20 min" }, { name: "Plank", sets: 3, reps: "45 sec" }] },
+    { focus: "Rest", exercises: [], rest: true },
+    { focus: "Upper Body", exercises: [{ name: "Dumbbell press", sets: 4, reps: "8-10" }, { name: "Pull-ups / band rows", sets: 3, reps: "8-10" }] },
+    { focus: "Lower Body", exercises: [{ name: "Lunges", sets: 3, reps: "10 each leg" }, { name: "Glute bridges", sets: 3, reps: "12-15" }] },
+    { focus: "Active Recovery", exercises: [{ name: "Light stretching / yoga", sets: 1, reps: "20 min" }] },
+    { focus: "Rest", exercises: [], rest: true },
+  ];
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, i) => ({
+    day,
+    focus: template[i].focus,
+    duration_min: template[i].rest ? 0 : 30,
+    exercises: template[i].exercises.map((e) => ({ ...e, notes: "" })),
+    rest: !!template[i].rest,
+  }));
+  return { summary: FALLBACK_NOTE, days, tips: [FALLBACK_NOTE] };
 }
 
 export default function OviaScreen() {
@@ -449,20 +528,28 @@ export default function OviaScreen() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ userContext: userCtx }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        Alert.alert("Ovia AI", body.error ?? "Could not generate. Please try again.");
-        return;
-      }
-      const data = await res.json() as Record<string, unknown>;
       const title =
         tool === "workout" ? "Your 7-Day Workout Plan" :
         tool === "meal"    ? "Your 7-Day Meal Plan"    : "Body Composition Analysis";
+      if (!res.ok) {
+        // Never dead-end on a bare error — fall back to a solid offline result
+        // so the feature always visibly works, even if the backend is degraded.
+        const fallback = tool === "workout" ? localFallbackWorkout() : tool === "meal" ? localFallbackMeal() : localFallbackBody(user);
+        setAiToolResult({ title, content: fallback });
+        setAiToolModalVisible(true);
+        return;
+      }
+      const data = await res.json() as Record<string, unknown>;
       const content = data["plan"] ?? data["mealPlan"] ?? data["analysis"];
       setAiToolResult({ title, content });
       setAiToolModalVisible(true);
     } catch {
-      Alert.alert("Ovia AI", "Network error. Please check your connection and try again.");
+      const title =
+        tool === "workout" ? "Your 7-Day Workout Plan" :
+        tool === "meal"    ? "Your 7-Day Meal Plan"    : "Body Composition Analysis";
+      const fallback = tool === "workout" ? localFallbackWorkout() : tool === "meal" ? localFallbackMeal() : localFallbackBody(user);
+      setAiToolResult({ title, content: fallback });
+      setAiToolModalVisible(true);
     } finally {
       setAiToolLoading(null);
     }
@@ -803,6 +890,13 @@ function AiToolResultSheet({ result, onClose }: AiToolResultSheetProps) {
               {mp.tips.map((t, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>• {t}</Text>)}
             </View>
           )}
+          <View style={{ paddingHorizontal: 4 }}>
+            <CitationNote
+              label="Nutrition guidance"
+              sourceName="USDA Dietary Guidelines for Americans"
+              sourceUrl="https://www.dietaryguidelines.gov/"
+            />
+          </View>
           <View style={{ height: 32 }} />
         </ScrollView>
       );
@@ -853,6 +947,18 @@ function AiToolResultSheet({ result, onClose }: AiToolResultSheetProps) {
               {a.recommendations.map((s, i) => <Text key={i} style={[sheetStyles.tipText, { color: colors.foreground }]}>{i + 1}. {s}</Text>)}
             </View>
           )}
+          <View style={{ paddingHorizontal: 4 }}>
+            <CitationNote
+              label="BMI classification"
+              sourceName="CDC Adult BMI Categories"
+              sourceUrl="https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html"
+            />
+            <CitationNote
+              label="BMR/TDEE formula"
+              sourceName="Mifflin-St Jeor Equation"
+              sourceUrl="https://pubmed.ncbi.nlm.nih.gov/2305711/"
+            />
+          </View>
           <View style={{ height: 32 }} />
         </ScrollView>
       );

@@ -12244,15 +12244,21 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, gap: 10 },
   header: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "flex-end",
+    rowGap: 10,
     marginBottom: 4,
   },
-  headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold" },
+  headerTitle: { fontSize: 28, fontFamily: "SpaceGrotesk_700Bold", flexShrink: 1 },
   headerActions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
+    justifyContent: "flex-end",
     gap: 10,
+    rowGap: 8,
+    flexShrink: 1,
   },
   headerDate: { fontSize: 14, fontFamily: "Inter_400Regular" },
   scanBtnGroup: {

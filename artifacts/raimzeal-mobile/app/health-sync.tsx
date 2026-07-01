@@ -169,8 +169,8 @@ export default function HealthSyncScreen() {
           <Text style={[styles.platformName, { color: colors.foreground }]}>{PLATFORM_NAME}</Text>
           <Text style={[styles.platformSub, { color: colors.mutedForeground }]}>
             {Platform.OS === "ios"
-              ? "Reads from the Health app on your iPhone"
-              : "Reads from Google Health Connect on your device"}
+              ? "Synced via Apple HealthKit"
+              : "Synced via Android Health Connect"}
           </Text>
         </View>
         <View style={[
