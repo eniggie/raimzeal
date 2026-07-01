@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { oviaRateLimit, oviaDailyRateLimit } from "../lib/rateLimiter";
 import { requireAuth } from "../middleware/auth";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { getUserTier } from "../lib/tier";
 import { cleanChunk } from "../lib/cleanChunk";
 
 const oviaRouter = Router();
@@ -11,9 +12,21 @@ const MAX_MESSAGES = 40;
 const MAX_CONTENT_LENGTH = 4000;
 const MAX_USER_CONTEXT_BYTES = 8192; // ~8 KB — prevents token-stuffing via oversized context
 
+// Daily Ovia AI message quota by subscription tier. Foundation (free) is
+// deliberately lower than paid tiers — every message is a real OpenAI API
+// cost, and an uncapped free tier is a direct path to unbounded API bills.
+// Adjust these numbers as real usage data comes in.
+const OVIA_DAILY_LIMITS: Record<"foundation" | "rise" | "reign" | "legacy", number> = {
+  foundation: 20,
+  rise: 60,
+  reign: 100,
+  legacy: 200,
+};
+
 // ── Per-user daily quota (JWT sub — survives IP rotation) ─────────────────────
-// The Foundation Plan is free forever — all users are on the Foundation Plan.
-// Capped at 10 Ovia AI messages per day on gpt-4o-mini.
+// Shared across /ovia/chat, /ovia/workout-plan, /ovia/meal-plan, and
+// /ovia/body-analysis — one daily budget per user across all Ovia AI features,
+// scaled by tier (see OVIA_DAILY_LIMITS above).
 // Each entry auto-expires after 24 h; the Map stays small because it only grows
 // by one entry per active user per day.
 const userDailyCounters = new Map<string, { count: number; resetAt: number }>();
@@ -265,6 +278,12 @@ When ${firstName} asks for a food plan, daily meal plan, weekly plan, or what to
 PLAN REMINDER PROTOCOL:
 You are ${firstName}'s accountability partner. If today's nutrition data shows meals have not been logged, open every response with a warm reminder: "Hey ${firstName}! You have not logged your meals yet today. Staying on your plan is everything — let us get those meals in." If calories are well below goal by late day, proactively mention it. If they share a food plan with you, reference it in follow-up messages and ask how they are keeping to it. Celebrate every win, no matter how small.
 
+PROACTIVELY CELEBRATE COMPLETED ACTIVITIES — DO THIS EVERY TIME THERE IS SOMETHING TO CELEBRATE:
+Before anything else, scan ${firstName}'s real data above — streak, recent workouts, today's logged meals/water, and personal records. If there is a genuine win sitting there (a workout logged today or this week, a new personal record, a multi-day streak, hitting a water or protein goal), open with real, specific, enthusiastic congratulations naming exactly what they did — never generic praise. Example shape: "${firstName}, you crushed [specific workout] today — that is ${streak} days strong! 🏆🔥" Only skip this opener when there is genuinely nothing new to celebrate since the last message — do not force it or repeat the same celebration twice in a row.
+
+NEVER LIE, NEVER GUESS — THIS IS ABSOLUTE:
+Every number, food name, workout, or fact you state must come from ${firstName}'s real data above, from web_search results, or from your genuine nutrition/fitness/health knowledge. Never invent a statistic, study, food's macro values, or a detail about ${firstName} that is not actually in their data. If you do not know something or the data is not available, say so plainly — "I do not have that data yet, ${firstName}" or "I am not certain, let me check" — then offer the closest honest, useful answer or ask a clarifying question. A confident wrong answer is worse than an honest "I do not know." Always give your best true effort — never a fabricated one.
+
 VITAMINS AND MICRONUTRIENTS EXPERTISE:
 You are fluent in all essential vitamins (A, B1–B12, C, D, E, K) and minerals (calcium, magnesium, zinc, iron, potassium, selenium, iodine, chromium). When ${firstName} asks about vitamins:
 - Name the vitamin
@@ -427,14 +446,18 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     }
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter.
-    // All users share the same generous daily limit on this free non-profit platform.
+    // Limit scales with subscription tier (see OVIA_DAILY_LIMITS) — Foundation
+    // gets a real but bounded daily allowance; paid tiers get progressively more.
     const userId = (req as any).userId as string;
     const oviaModel = "gpt-4o-mini";
-    const oviaLimit = 100;
+    const userTier = await getUserTier(userId);
+    const oviaLimit = OVIA_DAILY_LIMITS[userTier];
     const quota = consumeUserDailyQuota(userId, oviaLimit);
     if (!quota.allowed) {
       res.status(429).json({
-        error: `Daily Ovia AI limit reached (${oviaLimit} messages/day). Please try again tomorrow.`,
+        error: userTier === "foundation"
+          ? `Daily Ovia AI limit reached (${oviaLimit} messages/day) on the free Foundation plan. Upgrade to Rise, Reign, or Legacy for a higher daily limit, or try again tomorrow.`
+          : `Daily Ovia AI limit reached (${oviaLimit} messages/day). Please try again tomorrow.`,
         code: "OVIA_QUOTA_EXCEEDED",
         remaining: 0,
       });
@@ -1019,6 +1042,12 @@ oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res)
 // Generates a personalised 7-day workout plan based on the user's live profile.
 oviaRouter.post("/ovia/workout-plan", oviaRateLimit, requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
+  const workoutPlanTier = await getUserTier(userId);
+  const workoutPlanQuota = consumeUserDailyQuota(userId, OVIA_DAILY_LIMITS[workoutPlanTier]);
+  if (!workoutPlanQuota.allowed) {
+    res.status(429).json({ error: "Daily Ovia AI limit reached. Please try again tomorrow.", code: "OVIA_QUOTA_EXCEEDED" });
+    return;
+  }
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };
@@ -1076,6 +1105,12 @@ Return ONLY this JSON structure (no markdown):
 // Generates a personalised 7-day meal plan based on the user's live profile.
 oviaRouter.post("/ovia/meal-plan", oviaRateLimit, requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
+  const mealPlanTier = await getUserTier(userId);
+  const mealPlanQuota = consumeUserDailyQuota(userId, OVIA_DAILY_LIMITS[mealPlanTier]);
+  if (!mealPlanQuota.allowed) {
+    res.status(429).json({ error: "Daily Ovia AI limit reached. Please try again tomorrow.", code: "OVIA_QUOTA_EXCEEDED" });
+    return;
+  }
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };
@@ -1144,6 +1179,12 @@ Return ONLY this JSON (no markdown):
 // AI body composition analysis from the user's measurements + profile data.
 oviaRouter.post("/ovia/body-analysis", oviaRateLimit, requireAuth, async (req, res) => {
   const userId = (req as any).userId as string;
+  const bodyAnalysisTier = await getUserTier(userId);
+  const bodyAnalysisQuota = consumeUserDailyQuota(userId, OVIA_DAILY_LIMITS[bodyAnalysisTier]);
+  if (!bodyAnalysisQuota.allowed) {
+    res.status(429).json({ error: "Daily Ovia AI limit reached. Please try again tomorrow.", code: "OVIA_QUOTA_EXCEEDED" });
+    return;
+  }
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };
