@@ -1,6 +1,19 @@
 -- =============================================================================
--- RAIMZEAL Community Security Hardening
--- Apply via: Supabase Dashboard → SQL Editor → New query → paste → Run
+-- ⚠️  SUPERSEDED — DO NOT RUN THIS FILE.
+--
+-- The counter triggers below (fn_sync_likes_count / fn_sync_comments_count and
+-- their trg_sync_* triggers) are the SAME ones that migration
+-- supabase/migrations/20260521000000_drop_duplicate_community_triggers.sql
+-- removed because, running alongside the canonical on_like_change /
+-- on_comment_change triggers from 20260520000002, they double-counted every
+-- like and comment. Re-applying this file reintroduces that drift.
+--
+-- The live community schema, RLS, indexes and triggers are defined by the
+-- timestamped migrations in supabase/migrations/. Use those. This file is kept
+-- only for historical reference.
+-- =============================================================================
+
+-- RAIMZEAL Community Security Hardening (historical — see banner above)
 -- =============================================================================
 
 -- ── 1. Auto-maintain likes_count via trigger ──────────────────────────────

@@ -45,7 +45,17 @@ async function syncToGitHub(): Promise<void> {
 
   const remote = `https://x-access-token:${token}@github.com/eniggie/raimzeal.git`;
   console.log("Pushing to GitHub…");
-  execSync(`git push --force "${remote}" HEAD:main`, { stdio: "inherit" });
+  // Redact the token from any failure output. execSync throws an Error whose
+  // message embeds the full command — including the tokenised remote URL — and
+  // this script runs automatically after every merge, so an ordinary push
+  // failure (non-fast-forward, network blip) would otherwise write a live OAuth
+  // token into the logs where it could be harvested.
+  const redact = (s: string) => s.split(token).join("***");
+  try {
+    execSync(`git push --force "${remote}" HEAD:main`, { stdio: "inherit" });
+  } catch (err) {
+    throw new Error(redact(err instanceof Error ? err.message : String(err)));
+  }
   console.log("Synced to GitHub successfully.");
 }
 
