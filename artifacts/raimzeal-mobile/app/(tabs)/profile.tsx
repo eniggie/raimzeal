@@ -2527,6 +2527,13 @@ export default function ProfileScreen() {
               onPress={() => router.push("/recipes")}
             />
             <ActionRow
+              icon="timer-outline"
+              label="Intermittent Fasting"
+              sublabel="16:8 · 18:6 · 20:4 · OMAD · Live timer & streak"
+              color="#BF00FF"
+              onPress={() => router.push("/fasting")}
+            />
+            <ActionRow
               icon="barbell-outline"
               label="Adaptive Workout Suggestions"
               sublabel="Readiness-based daily plan · Reign+"
@@ -2539,6 +2546,13 @@ export default function ProfileScreen() {
               sublabel="7-day plan · Grocery list · Reign+"
               color="#C9A84C"
               onPress={() => router.push("/meal-plan")}
+            />
+            <ActionRow
+              icon="cart-outline"
+              label="Grocery List"
+              sublabel="Build your shopping list · Check off as you go"
+              color="#00FF7F"
+              onPress={() => router.push("/grocery-list")}
               isLast
             />
           </GlassCard>
