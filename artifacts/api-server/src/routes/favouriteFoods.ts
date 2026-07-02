@@ -18,7 +18,7 @@ interface FavIdRow {
 }
 
 favouriteFoodsRouter.get("/user/favourite-foods", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
   try {
     const { data, error } = await supabaseAdmin
       .from("favourite_foods")
@@ -39,7 +39,7 @@ favouriteFoodsRouter.get("/user/favourite-foods", requireAuth, async (req, res) 
 });
 
 favouriteFoodsRouter.post("/user/favourite-foods", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
   const { food } = req.body as { food: Record<string, unknown> };
   if (!food || typeof food.name !== "string") {
     res.status(400).json({ error: "food with a name field is required." });
@@ -73,7 +73,7 @@ favouriteFoodsRouter.post("/user/favourite-foods", requireAuth, async (req, res)
 });
 
 favouriteFoodsRouter.put("/user/favourite-foods/reorder", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
   const { foods } = req.body as { foods: Record<string, unknown>[] };
   if (!Array.isArray(foods)) {
     res.status(400).json({ error: "foods array is required." });
@@ -137,7 +137,7 @@ favouriteFoodsRouter.put("/user/favourite-foods/reorder", requireAuth, async (re
 });
 
 favouriteFoodsRouter.delete("/user/favourite-foods/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
   const id = req.params["id"] as string;
   try {
     const { error } = await supabaseAdmin

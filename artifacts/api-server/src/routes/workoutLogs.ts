@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 const workoutLogsRouter = Router();
 
 workoutLogsRouter.get("/user/workout-logs", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const maxLimit = 500;
   const limit = Math.min(Number(req.query.limit) || 100, maxLimit);
   try {
@@ -43,7 +43,7 @@ const WorkoutLogSchema = z.object({
 });
 
 workoutLogsRouter.post("/user/workout-logs", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = WorkoutLogSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -92,7 +92,7 @@ workoutLogsRouter.post("/user/workout-logs", requireAuth, async (req, res) => {
 });
 
 workoutLogsRouter.delete("/user/workout-logs/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { id } = req.params;
   try {
     const { error } = await supabaseAdmin

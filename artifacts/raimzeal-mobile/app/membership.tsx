@@ -14,7 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { STRIPE_DONATION_URL } from "@/lib/constants";
+import { STRIPE_DONATION_URL, RAIMZY_LINKTREE } from "@/lib/constants";
 import { PLANS, ENTRY_PRICE_MONTHLY } from "@/lib/plans";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -513,7 +513,7 @@ export default function MembershipScreen() {
             Author, music artist, strategist, and the mind behind RAIMZEAL. Explore his books, music, courses, and coaching — built around leadership, wellness, creativity, and business execution.
           </Text>
           <View style={styles.donationLinkCol}>
-            <TouchableOpacity onPress={() => Linking.openURL("https://linktr.ee/Raimzy")}>
+            <TouchableOpacity onPress={() => Linking.openURL(RAIMZY_LINKTREE)}>
               <Text style={styles.donationLink}>linktr.ee/Raimzy — all resources</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => Linking.openURL("https://www.raimzy.com")}>

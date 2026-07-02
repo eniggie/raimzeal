@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 const waterIntakeRouter = Router();
 
 waterIntakeRouter.get("/user/water-intake", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const limit = Math.min(Number(req.query.limit) || 30, 90);
   try {
     const { data, error } = await supabaseAdmin
@@ -29,7 +29,7 @@ const WaterIntakeSchema = z.object({
 });
 
 waterIntakeRouter.put("/user/water-intake/:date", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const date = req.params["date"] as string;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });

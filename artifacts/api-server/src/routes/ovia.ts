@@ -428,7 +428,7 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
 
     // Per-user daily quota — blocks IP-rotation bypass of the IP-based limiter.
     // All users share the same generous daily limit on this free non-profit platform.
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const oviaModel = "gpt-4o-mini";
     const oviaLimit = 100;
     const quota = consumeUserDailyQuota(userId, oviaLimit);
@@ -814,7 +814,7 @@ oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res)
       file,
       model: "whisper-1",
     });
-    req.log?.info({ userId: (req as any).userId }, "POST /ovia/transcribe success");
+    req.log?.info({ userId: req.userId }, "POST /ovia/transcribe success");
     res.json({ text: transcription.text });
   } catch (err) {
     req.log?.error({ err }, "POST /ovia/transcribe error");
@@ -825,7 +825,7 @@ oviaRouter.post("/ovia/transcribe", oviaRateLimit, requireAuth, async (req, res)
 // ── POST /api/ovia/workout-plan ───────────────────────────────────────────────
 // Generates a personalised 7-day workout plan based on the user's live profile.
 oviaRouter.post("/ovia/workout-plan", oviaRateLimit, requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };
@@ -882,7 +882,7 @@ Return ONLY this JSON structure (no markdown):
 // ── POST /api/ovia/meal-plan ──────────────────────────────────────────────────
 // Generates a personalised 7-day meal plan based on the user's live profile.
 oviaRouter.post("/ovia/meal-plan", oviaRateLimit, requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };
@@ -950,7 +950,7 @@ Return ONLY this JSON (no markdown):
 // ── POST /api/ovia/body-analysis ──────────────────────────────────────────────
 // AI body composition analysis from the user's measurements + profile data.
 oviaRouter.post("/ovia/body-analysis", oviaRateLimit, requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const userContext = (req.body as { userContext?: Record<string, unknown> }).userContext ?? {};
 
   const safeCtx: Record<string, unknown> = { ...userContext };

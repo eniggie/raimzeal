@@ -57,7 +57,7 @@ legacyRouter.get("/legacy/leaderboard", requireAuth, requireLegacy, async (req, 
 // ── GET /api/legacy/certificate ───────────────────────────────────────────────
 // Returns founding member data: name, member number, member-since date.
 legacyRouter.get("/legacy/certificate", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
@@ -92,7 +92,7 @@ legacyRouter.post(
   requireLegacy,
   communityMutateLimitHeavy,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { ext } = req.body as { ext?: unknown };
     const safeExt =
       typeof ext === "string" && /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
@@ -130,7 +130,7 @@ legacyRouter.post(
   requireLegacy,
   communityMutateLimitHeavy,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { userName, content, postType, imageUrl } = req.body as {
       userName?: unknown; content?: unknown; postType?: unknown; imageUrl?: unknown;
     };
@@ -184,7 +184,7 @@ legacyRouter.post(
 
 // ── GET /api/legacy/health-report/latest ─────────────────────────────────────
 legacyRouter.get("/legacy/health-report/latest", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const [latest] = await db
     .select()
@@ -199,7 +199,7 @@ legacyRouter.get("/legacy/health-report/latest", requireAuth, requireLegacy, asy
 // ── POST /api/legacy/health-report/generate ───────────────────────────────────
 // Gathers this month's data for the user and asks Ovia to write a health report.
 legacyRouter.post("/legacy/health-report/generate", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -304,7 +304,7 @@ Write a comprehensive, encouraging report covering: what went well, areas to imp
 // ── POST /api/legacy/coaching-plan ───────────────────────────────────────────
 // Generates a personalised 4-week training + nutrition plan via Ovia AI.
 legacyRouter.post("/legacy/coaching-plan", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const { data: profile } = await supabaseAdmin
     .from("profiles")
@@ -354,7 +354,7 @@ Keep it actionable, achievable, and aligned with RAIMZEAL's fitness and food the
 
 // ── GET /api/legacy/partner ───────────────────────────────────────────────────
 legacyRouter.get("/legacy/partner", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const [partnership] = await db
     .select()
@@ -394,7 +394,7 @@ legacyRouter.post(
   requireAuth,
   requireLegacy,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { userName } = req.body as { userName?: unknown };
 
     if (typeof userName !== "string" || !userName.trim()) {
@@ -475,7 +475,7 @@ legacyRouter.post(
 
 // ── POST /api/legacy/partner/end ─────────────────────────────────────────────
 legacyRouter.post("/legacy/partner/end", requireAuth, requireLegacy, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   await db
     .update(legacyPartnerships)

@@ -17,7 +17,7 @@ const _pool = new pg.Pool({
 });
 
 streakFreezeRouter.get("/user/streak", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data } = await supabaseAdmin
       .from("profiles")
@@ -33,7 +33,7 @@ streakFreezeRouter.get("/user/streak", requireAuth, async (req, res) => {
 });
 
 streakFreezeRouter.post("/user/streak/freeze", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     // Atomic decrement — PostgreSQL evaluates the WHERE condition and the SET
     // expression in the same statement, so concurrent requests cannot both

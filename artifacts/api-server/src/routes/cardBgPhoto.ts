@@ -34,7 +34,7 @@ cardBgPhotoRouter.post(
   requireAuth,
   generalWriteRateLimit,
   async (req, res) => {
-    const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
     const parse = UploadUrlBodySchema.safeParse(req.body);
     if (!parse.success) {
       res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -64,7 +64,7 @@ cardBgPhotoRouter.get(
   "/user/card-bg-photo/download-url",
   requireAuth,
   async (req, res) => {
-    const userId = (req as any).userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const userId = req.userId as string; // eslint-disable-line @typescript-eslint/no-explicit-any
     const parse = DownloadUrlQuerySchema.safeParse(req.query);
     if (!parse.success) {
       res.status(400).json({ error: "path query param required." });

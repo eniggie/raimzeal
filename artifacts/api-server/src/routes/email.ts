@@ -16,8 +16,13 @@ const emailRouter = Router();
 // crafting a GET request — the link must carry a valid token signed with a
 // server secret known only to us.
 
+// If neither secret env var is configured, fall back to a secret generated once at
+// process boot rather than a hardcoded string — a hardcoded fallback would be
+// visible in the built server bundle and would let anyone forge unsubscribe tokens.
+const generatedUnsubscribeSecret = crypto.randomBytes(32).toString("hex");
+
 function getUnsubscribeSecret(): string {
-  return process.env["UNSUBSCRIBE_SECRET"] ?? process.env["INTERNAL_API_SECRET"] ?? "raimzeal-unsubscribe-fallback";
+  return process.env["UNSUBSCRIBE_SECRET"] ?? process.env["INTERNAL_API_SECRET"] ?? generatedUnsubscribeSecret;
 }
 
 function makeUnsubscribeToken(email: string): string {
@@ -690,7 +695,7 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
   if (!email || !userName) { res.status(400).json({ error: "email and userName are required." }); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "Invalid email address." }); return; }
 
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   try {
     await db.insert(digestSubscribers).values({ email, userName, userId, active: true })

@@ -58,7 +58,7 @@ function generateCode(): string {
 // collected during signup is persisted to the database.
 
 authRouter.post("/auth/sync-profile", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userError || !userData?.user) {
@@ -95,7 +95,7 @@ authRouter.post("/auth/sync-profile", requireAuth, generalWriteRateLimit, async 
 
 authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const parsed = parseBody(SendSmsCodeSchema, req.body);
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
 
@@ -136,7 +136,7 @@ authRouter.post("/auth/send-sms-code", authSendCodeRateLimit, requireAuth, async
 
 authRouter.post("/auth/verify-sms-code", emailVerifyRateLimit, requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const parsed = parseBody(VerifySmsCodeSchema, req.body);
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     const { code } = parsed.data;

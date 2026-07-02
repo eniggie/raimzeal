@@ -8,7 +8,7 @@ import { generalWriteRateLimit } from "../lib/rateLimiter";
 const userProfileRouter = Router();
 
 userProfileRouter.get("/user/profile", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data, error } = await supabaseAdmin
       .from("profiles")
@@ -48,7 +48,7 @@ const ProfileUpdateSchema = z.object({
 });
 
 userProfileRouter.put("/user/profile", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = ProfileUpdateSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -101,7 +101,7 @@ userProfileRouter.put("/user/profile", requireAuth, generalWriteRateLimit, async
 });
 
 userProfileRouter.get("/user/app-data", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const [profileRes, workoutLogsRes, mealLogsRes, bodyMeasRes, waterRes, scheduledRes, coachRes] = await Promise.all([
       supabaseAdmin.from("profiles").select("*").eq("id", userId).single(),

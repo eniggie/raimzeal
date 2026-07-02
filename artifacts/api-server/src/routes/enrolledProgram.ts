@@ -9,7 +9,7 @@ const enrolledProgramRouter = Router();
 const DAYS_PER_WEEK = 5;
 
 enrolledProgramRouter.get("/user/enrolled-program", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data, error } = await supabaseAdmin
       .from("enrolled_programs")
@@ -34,7 +34,7 @@ const EnrollSchema = z.object({
 });
 
 enrolledProgramRouter.post("/user/enrolled-program", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = EnrollSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -119,7 +119,7 @@ const AdvanceSchema = z.object({
 });
 
 enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = AdvanceSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -207,7 +207,7 @@ enrolledProgramRouter.patch("/user/enrolled-program", requireAuth, async (req, r
 });
 
 enrolledProgramRouter.delete("/user/enrolled-program", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     await supabaseAdmin
       .from("enrolled_programs")

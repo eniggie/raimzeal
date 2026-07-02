@@ -39,7 +39,7 @@ communityRouter.post(
   requireAuth,
   communityMutateLimitHeavy,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
 
     const { ext } = req.body as { ext?: unknown };
 
@@ -97,7 +97,7 @@ communityRouter.get(
 
     // Inner Circle is visible to all authenticated users.
     if (legacyOnly) {
-      const userId = (req as any).userId as string | undefined;
+      const userId = req.userId as string | undefined;
       if (!userId) {
         res.status(401).json({ error: "Authentication required" });
         return;
@@ -210,7 +210,7 @@ communityRouter.post(
   requireAuth,
   communityMutateLimitHeavy,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { userName, content, postType, imageUrl } = req.body as {
       userName?: unknown;
       content?: unknown;
@@ -283,7 +283,7 @@ communityRouter.post(
   requireAuth,
   communityMutateLimitLight,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { postId } = req.params;
 
     const supabase = getAdminClient();
@@ -326,7 +326,7 @@ communityRouter.post(
   requireAuth,
   communityMutateLimitLight,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { postId } = req.params;
     const { userName, content } = req.body as {
       userName?: unknown;
@@ -375,7 +375,7 @@ communityRouter.delete(
   requireAuth,
   communityMutateLimitLight,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { postId } = req.params;
 
     const supabase = getAdminClient();
@@ -418,7 +418,7 @@ communityRouter.delete(
   requireAuth,
   communityMutateLimitLight,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { postId, commentId } = req.params;
 
     const supabase = getAdminClient();
@@ -464,7 +464,7 @@ communityRouter.post(
   requireAuth,
   communityMutateLimitLight,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const { postId } = req.params;
     const raw = (req.body as { reason?: string }).reason ?? "other";
     const reason: ReportReason = VALID_REASONS.includes(raw as ReportReason)
@@ -558,7 +558,7 @@ communityRouter.delete(
   "/community/user-data",
   requireAuth,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
     const supabase = getAdminClient();
 
     const results = await Promise.allSettled([

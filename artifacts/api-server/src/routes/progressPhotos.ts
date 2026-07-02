@@ -21,7 +21,7 @@ async function ensureBucket() {
 ensureBucket();
 
 progressPhotosRouter.get("/user/progress-photos", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data, error } = await supabaseAdmin
       .from("progress_photos")
@@ -45,7 +45,7 @@ progressPhotosRouter.get("/user/progress-photos", requireAuth, async (req, res) 
 });
 
 progressPhotosRouter.post("/user/progress-photos/upload-url", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { filename, contentType } = req.body as { filename: string; contentType: string };
   if (!filename || !contentType) { res.status(400).json({ error: "filename and contentType required." }); return; }
   const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -65,7 +65,7 @@ progressPhotosRouter.post("/user/progress-photos/upload-url", requireAuth, async
 });
 
 progressPhotosRouter.post("/user/progress-photos", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { storage_path, caption, weight_kg, body_fat_pct, taken_at } = req.body as {
     storage_path: string; caption?: string; weight_kg?: number; body_fat_pct?: number; taken_at?: string;
   };
@@ -86,7 +86,7 @@ progressPhotosRouter.post("/user/progress-photos", requireAuth, async (req, res)
 });
 
 progressPhotosRouter.delete("/user/progress-photos/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const id = req.params["id"] as string;
   try {
     const { data } = await supabaseAdmin

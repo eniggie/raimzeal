@@ -8,7 +8,7 @@ import { generalWriteRateLimit } from "../lib/rateLimiter";
 const personalRecordsRouter = Router();
 
 personalRecordsRouter.get("/user/personal-records", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data, error } = await supabaseAdmin
       .from("personal_records")
@@ -31,7 +31,7 @@ const PRSchema = z.object({
 });
 
 personalRecordsRouter.post("/user/personal-records", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = PRSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." }); return; }
   const { exercise_name, value_type, value, achieved_at } = parse.data;
@@ -66,7 +66,7 @@ const CheckPRSchema = z.object({
  * Batches all existing-PR lookups into a single query to avoid N+1.
  */
 personalRecordsRouter.post("/user/personal-records/check", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = CheckPRSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -126,7 +126,7 @@ personalRecordsRouter.post("/user/personal-records/check", requireAuth, async (r
 });
 
 personalRecordsRouter.delete("/user/personal-records/:id", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { id } = req.params;
   try {
     await supabaseAdmin.from("personal_records").delete().eq("id", id).eq("user_id", userId);

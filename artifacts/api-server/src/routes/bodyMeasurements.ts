@@ -8,7 +8,7 @@ import { generalWriteRateLimit } from "../lib/rateLimiter";
 const bodyMeasurementsRouter = Router();
 
 bodyMeasurementsRouter.get("/user/body-measurements", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const limit = Math.min(Number(req.query.limit) || 100, 365);
   try {
     const { data, error } = await supabaseAdmin
@@ -37,7 +37,7 @@ const BodyMeasurementSchema = z.object({
 });
 
 bodyMeasurementsRouter.post("/user/body-measurements", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = BodyMeasurementSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -110,7 +110,7 @@ bodyMeasurementsRouter.post("/user/body-measurements", requireAuth, generalWrite
 });
 
 bodyMeasurementsRouter.delete("/user/body-measurements/:id", requireAuth, generalWriteRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { id } = req.params;
   try {
     const { error } = await supabaseAdmin
