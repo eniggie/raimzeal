@@ -4433,12 +4433,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         if (canAskAgain) {
+          // App Review 5.1.1(iv): the custom pre-prompt must always lead to
+          // the system permission request — no button may bypass it, and the
+          // button must not read "Allow Access". The single button here
+          // always re-triggers the OS prompt.
           Alert.alert(
             "Photo Library Access",
             "RAIMZEAL needs access to your photo library to set a background image for your card.",
             [
               {
-                text: "Allow Access",
+                text: "Continue",
                 onPress: async () => {
                   const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                   if (retryStatus === "granted") {
@@ -4448,7 +4452,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   }
                 },
               },
-              { text: "Not Now", style: "cancel" },
             ],
           );
         } else {
@@ -4467,12 +4470,16 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
       const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         if (canAskAgain) {
+          // App Review 5.1.1(iv): the custom pre-prompt must always lead to
+          // the system permission request — no button may bypass it, and the
+          // button must not read "Allow Access". The single button here
+          // always re-triggers the OS prompt.
           Alert.alert(
             "Photo Library Access",
             "RAIMZEAL needs access to your photo library to update this preset's background.",
             [
               {
-                text: "Allow Access",
+                text: "Continue",
                 onPress: async () => {
                   const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                   if (retryStatus === "granted") {
@@ -4483,7 +4490,6 @@ const CardCustomizationModal = forwardRef<CardCustomizationModalHandle, Props>(f
                   }
                 },
               },
-              { text: "Not Now", style: "cancel" },
             ],
           );
         } else {

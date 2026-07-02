@@ -342,6 +342,16 @@ export default function BodyMeasurementsScreen() {
               </View>
             </View>
 
+            {bmiValue && bmiInfo && (
+              <View style={{ width: "100%", paddingHorizontal: 4, marginTop: -8, marginBottom: 12 }}>
+                <CitationNote
+                  label="BMI classification"
+                  sourceName="CDC Adult BMI Categories"
+                  sourceUrl="https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html"
+                />
+              </View>
+            )}
+
             {/* Body Composition Insights */}
             {sortedMeasurements.length >= 2 ? (() => {
               const oldest = sortedMeasurements[sortedMeasurements.length - 1];
@@ -363,17 +373,10 @@ export default function BodyMeasurementsScreen() {
                     ⚖️ Total change since first entry: <Text style={{ fontFamily: "Inter_600SemiBold" }}>{totalChange >= 0 ? "+" : ""}{totalChange.toFixed(1)} {unitLabel}</Text>
                   </Text>
                   {bmiValue && bmiInfo && (
-                    <>
-                      <Text style={[styles.insightRow, { color: colors.foreground }]}>
-                        🩺 BMI <Text style={{ fontFamily: "Inter_600SemiBold", color: bmiInfo.color }}>{bmiValue.toFixed(1)} — {bmiInfo.label}</Text>
-                        {bmiValue < 18.5 ? " (aim for 18.5–24.9)" : bmiValue < 25 ? " — great range to maintain" : bmiValue < 30 ? " (aim for below 25)" : " (consult a healthcare professional)"}
-                      </Text>
-                      <CitationNote
-                        label="BMI classification"
-                        sourceName="CDC Adult BMI Categories"
-                        sourceUrl="https://www.cdc.gov/bmi/adult-calculator/bmi-categories.html"
-                      />
-                    </>
+                    <Text style={[styles.insightRow, { color: colors.foreground }]}>
+                      🩺 BMI <Text style={{ fontFamily: "Inter_600SemiBold", color: bmiInfo.color }}>{bmiValue.toFixed(1)} — {bmiInfo.label}</Text>
+                      {bmiValue < 18.5 ? " (aim for 18.5–24.9)" : bmiValue < 25 ? " — great range to maintain" : bmiValue < 30 ? " (aim for below 25)" : " (consult a healthcare professional)"}
+                    </Text>
                   )}
                   <Text style={[styles.insightRow, { color: colors.mutedForeground }]}>
                     📅 Tracked over {Math.round(daysDiff)} days across {sortedMeasurements.length} entries

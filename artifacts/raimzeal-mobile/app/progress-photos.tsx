@@ -330,12 +330,16 @@ export default function ProgressPhotosScreen() {
       const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         if (canAskAgain) {
+          // App Review 5.1.1(iv): the custom pre-prompt must always lead to
+          // the system permission request — no button may bypass it, and the
+          // button must not read "Allow Access". The single button here always
+          // re-triggers the OS prompt.
           Alert.alert(
             "Photo Library Access",
             "RAIMZEAL needs access to your photo library to add progress photos and track your transformation over time.",
             [
               {
-                text: "Allow Access",
+                text: "Continue",
                 onPress: async () => {
                   const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                   if (retryStatus === "granted") {
@@ -345,7 +349,6 @@ export default function ProgressPhotosScreen() {
                   }
                 },
               },
-              { text: "Not Now", style: "cancel" },
             ],
           );
         } else {
@@ -376,12 +379,16 @@ export default function ProgressPhotosScreen() {
     const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       if (canAskAgain) {
+        // App Review 5.1.1(iv): the custom pre-prompt must always lead to the
+        // system permission request — no button may bypass it, and the button
+        // must not read "Allow Access". The single button here always
+        // re-triggers the OS prompt.
         Alert.alert(
           "Camera Access",
           "RAIMZEAL needs access to your camera to take progress photos directly in the app.",
           [
             {
-              text: "Allow Access",
+              text: "Continue",
               onPress: async () => {
                 const { status: retryStatus, canAskAgain: retryCanAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
                 if (retryStatus === "granted") {
@@ -391,7 +398,6 @@ export default function ProgressPhotosScreen() {
                 }
               },
             },
-            { text: "Not Now", style: "cancel" },
           ],
         );
       } else {

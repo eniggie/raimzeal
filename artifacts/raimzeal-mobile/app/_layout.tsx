@@ -87,7 +87,7 @@ function AuthGate() {
   const router = useRouter();
   const notificationsInitialised = useRef(false);
   const rationaleShown = useRef(false);
-  const { cameraRollStatus, permissionsBootstrapped, hasSeenRationale, markRationaleDismissed, requestCameraRollPermission } = usePermissions();
+  const { cameraRollStatus, permissionsBootstrapped, hasSeenRationale, requestCameraRollPermission } = usePermissions();
   const [showRationale, setShowRationale] = useState(false);
   const { isOnboarded, stateHydrated, cloudSynced } = useFitness();
 
@@ -148,21 +148,12 @@ function AuthGate() {
     });
   }, [requestCameraRollPermission]);
 
-  const handleNotNow = useCallback(() => {
-    setShowRationale(false);
-    // Persist the dismissal so the pre-prompt is never shown again while the
-    // OS permission remains undetermined. The flag is cleared automatically
-    // once the OS reaches a definitive granted/denied state.
-    markRationaleDismissed().catch(() => {});
-  }, [markRationaleDismissed]);
-
   return (
     <>
       <Slot />
       <CameraRollRationaleModal
         visible={showRationale}
         onAllow={handleAllow}
-        onNotNow={handleNotNow}
       />
     </>
   );

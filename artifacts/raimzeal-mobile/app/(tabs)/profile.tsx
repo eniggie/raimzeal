@@ -200,7 +200,6 @@ export default function ProfileScreen() {
     cameraStatus,
     refreshCameraStatus,
     hasSeenRationale,
-    markRationaleDismissed,
     resetRationale,
     requestCameraRollPermission,
     updateCameraRollStatus,
@@ -745,11 +744,6 @@ export default function ProfileScreen() {
     if (result === "denied") {
       showPermissionToast("Photo access blocked — tap to open Settings", "camera-outline");
     }
-  }
-
-  async function handlePhotoRationaleNotNow() {
-    setShowPhotoRationaleModal(false);
-    await markRationaleDismissed();
   }
 
   async function handleCameraAccessPress() {
@@ -1620,7 +1614,6 @@ export default function ProfileScreen() {
       <CameraRollRationaleModal
         visible={showPhotoRationaleModal}
         onAllow={handlePhotoRationaleAllow}
-        onNotNow={handlePhotoRationaleNotNow}
       />
 
       {/* Card customization modal */}
@@ -2325,10 +2318,10 @@ export default function ProfileScreen() {
             {healthAvailable && (
               <SettingPickerRow
                 icon={Platform.OS === "ios" ? "heart-outline" : "fitness-outline"}
-                label={Platform.OS === "ios" ? "Apple Health" : "Health Connect"}
+                label={Platform.OS === "ios" ? "Apple HealthKit" : "Health Connect"}
                 sublabel={
                   healthStatus === "authorized"
-                    ? (Platform.OS === "ios" ? "Allowed — reading from Apple Health" : "Allowed — reading from Health Connect")
+                    ? (Platform.OS === "ios" ? "Allowed — reading from Apple HealthKit" : "Allowed — reading from Health Connect")
                     : healthStatus === "denied"
                     ? "Denied — tap to open Settings"
                     : healthStatus === "loading"
@@ -2480,7 +2473,7 @@ export default function ProfileScreen() {
           <GlassCard style={styles.actionsCard}>
             <ActionRow
               icon="heart"
-              label={Platform.OS === "ios" ? "Apple Health" : "Health Connect"}
+              label={Platform.OS === "ios" ? "Apple HealthKit" : "Health Connect"}
               sublabel="Steps · Sleep · Heart rate · Weight"
               color={Platform.OS === "ios" ? "#ff3b30" : "#34a853"}
               onPress={() => router.push("/health-sync")}

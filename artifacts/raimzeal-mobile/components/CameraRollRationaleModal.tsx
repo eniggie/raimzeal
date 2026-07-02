@@ -15,9 +15,6 @@ import { useColors } from "@/hooks/useColors";
 interface CameraRollRationaleModalProps {
   visible: boolean;
   onAllow: () => void;
-  /** @deprecated no longer offers a bypass — the message always proceeds to the
-   * system permission request (App Review 5.1.1(iv)). Kept for caller compatibility. */
-  onNotNow: () => void;
 }
 
 export function CameraRollRationaleModal({

@@ -337,7 +337,7 @@ export function useHealthSync() {
       Alert.alert(
         "Connect Health Data",
         Platform.OS === "ios"
-          ? "RAIMZEAL will read steps, heart rate, sleep, weight, and active calories from Apple Health to personalise your insights. You can revoke access any time in the Health app."
+          ? "RAIMZEAL will read steps, heart rate, sleep, weight, and active calories from Apple HealthKit to personalise your insights. You can revoke access any time in the Health app."
           : "RAIMZEAL will read steps, heart rate, sleep, weight, and active calories from Health Connect to personalise your insights. You can revoke access any time in Health Connect.",
         [
           { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
