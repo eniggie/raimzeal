@@ -5,69 +5,97 @@ import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Loader2 } from 'lucide-react';
 import { useAppState, type UserProfile } from '@/lib/store';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { SyncStatusProvider } from '@/contexts/SyncStatusContext';
 import { supabaseConfigured } from '@/lib/supabase';
 import { SyncIndicator } from '@/components/SyncIndicator';
+import { BrandedLoader } from '@/components/BrandedLoader';
 
-// Every route below is code-split with React.lazy() so a first-time visitor
+// Wraps React.lazy() so a failed dynamic import — which after a new deploy
+// usually means the chunk's content hash changed and the old file is gone (the
+// classic "ChunkLoadError" that leaves an already-open tab blank) — triggers a
+// single full reload to fetch the fresh index.html and chunk map. The flag is
+// cleared on any successful load so each deploy gets its own one-shot retry.
+const CHUNK_RELOAD_KEY = 'raimzeal_chunk_reloaded';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+) {
+  return lazy(() =>
+    factory()
+      .then((m) => {
+        try { sessionStorage.removeItem(CHUNK_RELOAD_KEY); } catch { /* ignore */ }
+        return m;
+      })
+      .catch((err) => {
+        let alreadyReloaded = false;
+        try { alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1'; } catch { /* ignore */ }
+        if (!alreadyReloaded) {
+          try { sessionStorage.setItem(CHUNK_RELOAD_KEY, '1'); } catch { /* ignore */ }
+          window.location.reload();
+          // Never resolve — the page is reloading; avoids flashing the error UI.
+          return new Promise<{ default: T }>(() => {});
+        }
+        throw err;
+      }),
+  );
+}
+
+// Every route below is code-split with lazyWithRetry() so a first-time visitor
 // only downloads the JS for the page they land on, instead of the whole app.
-const Onboarding = lazy(() => import('@/pages/Onboarding').then(m => ({ default: m.Onboarding })));
-const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })));
-const OAuthSetup = lazy(() => import('@/pages/OAuthSetup').then(m => ({ default: m.OAuthSetup })));
-const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
-const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
-const VerifyEmail = lazy(() => import('@/pages/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
-const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
-const Signup = lazy(() => import('@/pages/Signup'));
-const VerifyEmailOTP = lazy(() => import('@/pages/VerifyEmailOTP'));
-const VerifyPhone = lazy(() => import('@/pages/VerifyPhone'));
-const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
-const Workouts = lazy(() => import('@/pages/Workouts').then(m => ({ default: m.Workouts })));
-const WorkoutDetail = lazy(() => import('@/pages/WorkoutDetail').then(m => ({ default: m.WorkoutDetail })));
-const WorkoutPlayer = lazy(() => import('@/pages/WorkoutPlayer').then(m => ({ default: m.WorkoutPlayer })));
-const Exercises = lazy(() => import('@/pages/Exercises').then(m => ({ default: m.Exercises })));
-const ExerciseDetail = lazy(() => import('@/pages/ExerciseDetail').then(m => ({ default: m.ExerciseDetail })));
-const Tracking = lazy(() => import('@/pages/Tracking').then(m => ({ default: m.Tracking })));
-const Calendar = lazy(() => import('@/pages/Calendar').then(m => ({ default: m.Calendar })));
-const Nutrition = lazy(() => import('@/pages/Nutrition').then(m => ({ default: m.Nutrition })));
-const Programs = lazy(() => import('@/pages/Programs').then(m => ({ default: m.Programs })));
-const Coach = lazy(() => import('@/pages/Coach').then(m => ({ default: m.Coach })));
-const Community = lazy(() => import('@/pages/Community').then(m => ({ default: m.Community })));
-const Legacy = lazy(() => import('@/pages/Legacy').then(m => ({ default: m.Legacy })));
-const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
-const Membership = lazy(() => import('@/pages/Membership').then(m => ({ default: m.Membership })));
-const WorkoutCreator = lazy(() => import('@/pages/WorkoutCreator').then(m => ({ default: m.WorkoutCreator })));
-const ProgressPhotos = lazy(() => import('@/pages/ProgressPhotos').then(m => ({ default: m.ProgressPhotos })));
-const MacroTargets = lazy(() => import('@/pages/MacroTargets').then(m => ({ default: m.MacroTargets })));
-const DeleteAccount = lazy(() => import('@/pages/DeleteAccount').then(m => ({ default: m.DeleteAccount })));
-const SleepTracking = lazy(() => import('@/pages/SleepTracking').then(m => ({ default: m.SleepTracking })));
-const PersonalRecords = lazy(() => import('@/pages/PersonalRecords').then(m => ({ default: m.PersonalRecords })));
-const PublicProfile = lazy(() => import('@/pages/PublicProfile').then(m => ({ default: m.PublicProfile })));
-const PublicProfileSettings = lazy(() => import('@/pages/PublicProfileSettings').then(m => ({ default: m.PublicProfileSettings })));
-const Privacy = lazy(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })));
-const TermsOfService = lazy(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })));
-const Support = lazy(() => import('@/pages/Support').then(m => ({ default: m.Support })));
-const Download = lazy(() => import('@/pages/Download').then(m => ({ default: m.Download })));
-const Welcome = lazy(() => import('@/pages/Welcome').then(m => ({ default: m.Welcome })));
-const Breathing = lazy(() => import('@/pages/Breathing').then(m => ({ default: m.Breathing })));
-const Calculators = lazy(() => import('@/pages/Calculators').then(m => ({ default: m.Calculators })));
-const Recipes = lazy(() => import('@/pages/Recipes').then(m => ({ default: m.Recipes })));
-const HabitTracker = lazy(() => import('@/pages/HabitTracker').then(m => ({ default: m.HabitTracker })));
-const Supplements = lazy(() => import('@/pages/Supplements').then(m => ({ default: m.Supplements })));
-const AdminSettings = lazy(() => import('@/pages/AdminSettings').then(m => ({ default: m.AdminSettings })));
-const NotFound = lazy(() => import('@/pages/not-found'));
+const Onboarding = lazyWithRetry(() => import('@/pages/Onboarding').then(m => ({ default: m.Onboarding })));
+const Login = lazyWithRetry(() => import('@/pages/Login').then(m => ({ default: m.Login })));
+const OAuthSetup = lazyWithRetry(() => import('@/pages/OAuthSetup').then(m => ({ default: m.OAuthSetup })));
+const ForgotPassword = lazyWithRetry(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazyWithRetry(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const VerifyEmail = lazyWithRetry(() => import('@/pages/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
+const AuthCallback = lazyWithRetry(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
+const Signup = lazyWithRetry(() => import('@/pages/Signup'));
+const VerifyEmailOTP = lazyWithRetry(() => import('@/pages/VerifyEmailOTP'));
+const VerifyPhone = lazyWithRetry(() => import('@/pages/VerifyPhone'));
+const Home = lazyWithRetry(() => import('@/pages/Home').then(m => ({ default: m.Home })));
+const Workouts = lazyWithRetry(() => import('@/pages/Workouts').then(m => ({ default: m.Workouts })));
+const WorkoutDetail = lazyWithRetry(() => import('@/pages/WorkoutDetail').then(m => ({ default: m.WorkoutDetail })));
+const WorkoutPlayer = lazyWithRetry(() => import('@/pages/WorkoutPlayer').then(m => ({ default: m.WorkoutPlayer })));
+const Exercises = lazyWithRetry(() => import('@/pages/Exercises').then(m => ({ default: m.Exercises })));
+const ExerciseDetail = lazyWithRetry(() => import('@/pages/ExerciseDetail').then(m => ({ default: m.ExerciseDetail })));
+const Tracking = lazyWithRetry(() => import('@/pages/Tracking').then(m => ({ default: m.Tracking })));
+const Calendar = lazyWithRetry(() => import('@/pages/Calendar').then(m => ({ default: m.Calendar })));
+const Nutrition = lazyWithRetry(() => import('@/pages/Nutrition').then(m => ({ default: m.Nutrition })));
+const Programs = lazyWithRetry(() => import('@/pages/Programs').then(m => ({ default: m.Programs })));
+const Coach = lazyWithRetry(() => import('@/pages/Coach').then(m => ({ default: m.Coach })));
+const Community = lazyWithRetry(() => import('@/pages/Community').then(m => ({ default: m.Community })));
+const Legacy = lazyWithRetry(() => import('@/pages/Legacy').then(m => ({ default: m.Legacy })));
+const Settings = lazyWithRetry(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const Membership = lazyWithRetry(() => import('@/pages/Membership').then(m => ({ default: m.Membership })));
+const WorkoutCreator = lazyWithRetry(() => import('@/pages/WorkoutCreator').then(m => ({ default: m.WorkoutCreator })));
+const ProgressPhotos = lazyWithRetry(() => import('@/pages/ProgressPhotos').then(m => ({ default: m.ProgressPhotos })));
+const MacroTargets = lazyWithRetry(() => import('@/pages/MacroTargets').then(m => ({ default: m.MacroTargets })));
+const DeleteAccount = lazyWithRetry(() => import('@/pages/DeleteAccount').then(m => ({ default: m.DeleteAccount })));
+const SleepTracking = lazyWithRetry(() => import('@/pages/SleepTracking').then(m => ({ default: m.SleepTracking })));
+const PersonalRecords = lazyWithRetry(() => import('@/pages/PersonalRecords').then(m => ({ default: m.PersonalRecords })));
+const PublicProfile = lazyWithRetry(() => import('@/pages/PublicProfile').then(m => ({ default: m.PublicProfile })));
+const PublicProfileSettings = lazyWithRetry(() => import('@/pages/PublicProfileSettings').then(m => ({ default: m.PublicProfileSettings })));
+const Privacy = lazyWithRetry(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })));
+const TermsOfService = lazyWithRetry(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })));
+const Support = lazyWithRetry(() => import('@/pages/Support').then(m => ({ default: m.Support })));
+const Download = lazyWithRetry(() => import('@/pages/Download').then(m => ({ default: m.Download })));
+const Welcome = lazyWithRetry(() => import('@/pages/Welcome').then(m => ({ default: m.Welcome })));
+const Breathing = lazyWithRetry(() => import('@/pages/Breathing').then(m => ({ default: m.Breathing })));
+const Calculators = lazyWithRetry(() => import('@/pages/Calculators').then(m => ({ default: m.Calculators })));
+const Recipes = lazyWithRetry(() => import('@/pages/Recipes').then(m => ({ default: m.Recipes })));
+const HabitTracker = lazyWithRetry(() => import('@/pages/HabitTracker').then(m => ({ default: m.HabitTracker })));
+const Supplements = lazyWithRetry(() => import('@/pages/Supplements').then(m => ({ default: m.Supplements })));
+const AdminSettings = lazyWithRetry(() => import('@/pages/AdminSettings').then(m => ({ default: m.AdminSettings })));
+const NotFound = lazyWithRetry(() => import('@/pages/not-found'));
 
 // ─── Route-level loading fallback ──────────────────────────────────────────────
 
 function RouteFallback() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-    </div>
-  );
+  // Shown while a route's code-split chunk downloads (including the very first
+  // paint), so use the branded loader for a cohesive first impression.
+  return <BrandedLoader />;
 }
 
 // ─── Redirect helper ──────────────────────────────────────────────────────────
@@ -189,11 +217,7 @@ function AppContent() {
 
   // Loading — waiting for Supabase to restore session
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <BrandedLoader label="Restoring your session…" />;
   }
 
   // Not authenticated
@@ -218,11 +242,7 @@ function AppContent() {
   // defaults. While the cloud load is in flight, show the loader instead.
   if (!state.isOnboarded) {
     if (!cloudSynced) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      );
+      return <BrandedLoader label="Syncing your data…" />;
     }
     const meta = user?.user_metadata ?? {};
     const hasFullFitnessData =
