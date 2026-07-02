@@ -7,7 +7,7 @@ import {
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
   Target, Trophy, Globe, Trash2, Camera,
   Wind, Calculator, ChefHat, ListChecks, Pill, Settings2, Loader2, Shield,
-  Timer, ShoppingCart,
+  Timer, ShoppingCart, Sparkles, HeartPulse, Award,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -825,6 +825,42 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="flex-1">
                   <div className="font-medium">Grocery List</div>
                   <div className="text-sm text-muted-foreground">Build your shopping list, check off as you go</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/wellness">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                  <HeartPulse className="w-5 h-5 text-rose-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Wellness Check-in</div>
+                  <div className="text-sm text-muted-foreground">Mood, energy &amp; stress → daily readiness</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/mindfulness">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-violet-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Mindfulness &amp; Gratitude</div>
+                  <div className="text-sm text-muted-foreground">Journal, 5-min timer &amp; daily streak</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/achievements">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Achievements</div>
+                  <div className="text-sm text-muted-foreground">Earn badges as you hit milestones</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>

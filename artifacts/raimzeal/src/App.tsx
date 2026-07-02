@@ -88,6 +88,9 @@ const Recipes = lazyWithRetry(() => import('@/pages/Recipes').then(m => ({ defau
 const HabitTracker = lazyWithRetry(() => import('@/pages/HabitTracker').then(m => ({ default: m.HabitTracker })));
 const Fasting = lazyWithRetry(() => import('@/pages/Fasting').then(m => ({ default: m.Fasting })));
 const GroceryList = lazyWithRetry(() => import('@/pages/GroceryList').then(m => ({ default: m.GroceryList })));
+const Mindfulness = lazyWithRetry(() => import('@/pages/Mindfulness').then(m => ({ default: m.Mindfulness })));
+const WellnessCheckin = lazyWithRetry(() => import('@/pages/WellnessCheckin').then(m => ({ default: m.WellnessCheckin })));
+const Achievements = lazyWithRetry(() => import('@/pages/Achievements').then(m => ({ default: m.Achievements })));
 const Supplements = lazyWithRetry(() => import('@/pages/Supplements').then(m => ({ default: m.Supplements })));
 const AdminSettings = lazyWithRetry(() => import('@/pages/AdminSettings').then(m => ({ default: m.AdminSettings })));
 const NotFound = lazyWithRetry(() => import('@/pages/not-found'));
@@ -389,6 +392,15 @@ function AppContent() {
       </Route>
       <Route path="/grocery">
         <GroceryList />
+      </Route>
+      <Route path="/mindfulness">
+        <Mindfulness />
+      </Route>
+      <Route path="/wellness">
+        <WellnessCheckin />
+      </Route>
+      <Route path="/achievements">
+        <Achievements state={state} />
       </Route>
       <Route path="/habits">
         <HabitTracker />
