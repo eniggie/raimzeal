@@ -60,7 +60,7 @@ import { usePer100gDefault } from "@/hooks/usePer100gDefault";
 import { useSwipeHint } from "@/hooks/useSwipeHint";
 import { useToastSwipeHint } from "@/hooks/useToastSwipeHint";
 import { useToggleFavorite } from "@/hooks/useToggleFavorite";
-import { useFitness, MealLog, FavoriteFood, type QuickFood } from "@/contexts/FitnessContext";
+import { useFitness, MealLog, FavoriteFood, type QuickFood, localDateStr } from "@/contexts/FitnessContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchUserPreferences, upsertUserPreferences, type UserPreferences } from "@/lib/db";
 import { useMacroGoals, MacroGoals } from "@/contexts/MacroGoalsContext";
@@ -4960,7 +4960,7 @@ export default function NutritionScreen() {
     const canToggleServing = !!(selectedFoodServingLabel && selectedFoodNutrients100g);
     const meal: MealLog = {
       id: Date.now().toString(),
-      date: new Date().toISOString().split("T")[0],
+      date: localDateStr(),
       name,
       calories: Math.round(calories * factor),
       protein: Math.round(protein * factor * 10) / 10,
@@ -5066,7 +5066,7 @@ export default function NutritionScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const meal: MealLog = {
       id: Date.now().toString(),
-      date: new Date().toISOString().split("T")[0],
+      date: localDateStr(),
       name,
       calories: parseInt(manualForm.calories, 10) || 0,
       protein: parseFloat(manualForm.protein) || 0,

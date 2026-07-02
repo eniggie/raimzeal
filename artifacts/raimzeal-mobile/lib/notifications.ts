@@ -318,6 +318,20 @@ export async function scheduleReminders(
       // Skip unsupported triggers
     }
   }
+
+  // cancelAllScheduledNotificationsAsync() above also wiped the Smart Water
+  // interval reminders (they aren't part of ReminderSettings/CONFIGS). Re-schedule
+  // them here so enabling any daily reminder — or a cold start — never silently
+  // stops the water reminders the user still has switched on.
+  try {
+    const waterConfig = await loadWaterReminderConfig();
+    if (waterConfig.enabled) {
+      count += await scheduleWaterIntervalReminders(waterConfig);
+    }
+  } catch {
+    // Non-fatal — daily reminders were still scheduled above.
+  }
+
   return count;
 }
 

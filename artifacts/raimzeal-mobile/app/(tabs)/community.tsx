@@ -207,10 +207,14 @@ export default function CommunityScreen() {
         )
       );
     } catch {
+      // Roll back by re-applying the SAME toggle to the already-optimistically-
+      // updated state — applying the identical expression twice returns to the
+      // original like/count. The previous inverted expression adjusted the count
+      // in the wrong direction and left it off by ±2.
       setPosts((prev) =>
         prev.map((p) =>
           p.id === postId
-            ? { ...p, liked: !p.liked, likesCount: p.liked ? p.likesCount + 1 : p.likesCount - 1 }
+            ? { ...p, liked: !p.liked, likesCount: p.liked ? p.likesCount - 1 : p.likesCount + 1 }
             : p
         )
       );

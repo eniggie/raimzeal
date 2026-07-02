@@ -200,8 +200,11 @@ export default function CycleSyncScreen() {
   useEffect(() => {
     AsyncStorage.getItem(PERIOD_KEY).then((raw) => {
       if (!raw) return;
-      const data = JSON.parse(raw) as { periods?: { startDate: string }[]; avgCycleLength?: number; avgPeriodLength?: number };
-      const lastPeriod = data.periods?.[data.periods.length - 1]?.startDate ?? null;
+      // Period Tracker persists { cycles, avgCycleLength, avgPeriodLength } under
+      // this key — not `periods`. Reading `periods` here left lastPeriod null, so
+      // the phase was always "unknown" no matter how many cycles the user logged.
+      const data = JSON.parse(raw) as { cycles?: { startDate: string }[]; avgCycleLength?: number; avgPeriodLength?: number };
+      const lastPeriod = data.cycles?.[data.cycles.length - 1]?.startDate ?? null;
       const avgCycle = data.avgCycleLength ?? 28;
       const avgPeriod = data.avgPeriodLength ?? 5;
       setPhaseInfo(detectPhase(lastPeriod, avgCycle, avgPeriod));

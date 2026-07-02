@@ -295,10 +295,17 @@ async function queuePendingRemove(serverId: string, foodId: string, userId: stri
   }
 }
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+// Use the LOCAL calendar date, not the UTC date. The nutrition/progress screens
+// label and bucket entries by the user's local "today", so stamping and querying
+// with the UTC date made daily totals reset at the wrong time of day (e.g. ~8 pm
+// local for UTC-negative users) and mislabelled just-logged entries.
+export const localDateStr = (d: Date = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const todayStr = () => localDateStr();
 
 const dateOffset = (daysAgo: number) =>
-  new Date(Date.now() - daysAgo * 86400000).toISOString().split("T")[0];
+  localDateStr(new Date(Date.now() - daysAgo * 86400000));
 
 const INITIAL_OVIA_MESSAGES: OviaMessage[] = [
   {
@@ -791,7 +798,11 @@ export function FitnessProvider({ children }: { children: React.ReactNode }) {
   const addBodyMeasurement = useCallback(
     (m: BodyMeasurement) => {
       setState((prev) => {
-        const next = { ...prev, bodyMeasurements: [m, ...prev.bodyMeasurements] };
+        // Append (newest last) to match the ascending order remote hydration
+        // uses (fetchBodyMeasurements orders date ascending). Prepending here
+        // produced a mixed order, so consumers that read the last element as the
+        // current weight (Progress, Home) broke right after logging.
+        const next = { ...prev, bodyMeasurements: [...prev.bodyMeasurements, m] };
         persist(next);
         if (isSupabaseConfigured) {
           supabase.auth.getSession().then(({ data: { session } }) => {

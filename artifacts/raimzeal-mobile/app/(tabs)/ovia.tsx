@@ -1,4 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+// Expo's streaming-capable fetch. React Native's global fetch (whatwg-fetch)
+// does not implement Response.body / ReadableStream, so `response.body.getReader()`
+// was always undefined on device and every Ovia chat message failed. expo/fetch
+// provides a real streaming body on iOS, Android, and web.
+import { fetch as streamingFetch } from "expo/fetch";
 import { Audio } from "@/lib/audio-compat";
 import * as FileSystem from "expo-file-system";
 import {
@@ -67,7 +72,9 @@ function buildOviaContext(
   const todayCarbs = todayMeals.reduce((s, m) => s + m.carbs, 0);
   const todayFat = todayMeals.reduce((s, m) => s + m.fat, 0);
   const todayWater = waterIntake.find((w) => w.date === today)?.glasses ?? 0;
-  const latestMeasurement = bodyMeasurements[0] ?? null;
+  // bodyMeasurements is ordered oldest-first (ascending), so the latest is the
+  // last element — reading [0] fed the AI coach the user's oldest weight.
+  const latestMeasurement = bodyMeasurements[bodyMeasurements.length - 1] ?? null;
   const recent = workoutLogs.slice(0, 5).map((w) => ({
     name: w.workoutName,
     calories: w.caloriesBurned,
@@ -198,7 +205,7 @@ export default function OviaScreen() {
         const userCtx = buildOviaContext(
           user, streak, workoutLogs, mealLogs, bodyMeasurements, waterIntake, personalRecords
         );
-        const response = await fetch(`${getApiBase()}/ovia/chat`, {
+        const response = await streamingFetch(`${getApiBase()}/ovia/chat`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -274,7 +281,7 @@ export default function OviaScreen() {
     const abortController = new AbortController();
     fetchAbortRef.current = abortController;
     try {
-      const response = await fetch(`${getApiBase()}/ovia/chat`, {
+      const response = await streamingFetch(`${getApiBase()}/ovia/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
