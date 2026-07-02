@@ -86,6 +86,8 @@ const Breathing = lazyWithRetry(() => import('@/pages/Breathing').then(m => ({ d
 const Calculators = lazyWithRetry(() => import('@/pages/Calculators').then(m => ({ default: m.Calculators })));
 const Recipes = lazyWithRetry(() => import('@/pages/Recipes').then(m => ({ default: m.Recipes })));
 const HabitTracker = lazyWithRetry(() => import('@/pages/HabitTracker').then(m => ({ default: m.HabitTracker })));
+const Fasting = lazyWithRetry(() => import('@/pages/Fasting').then(m => ({ default: m.Fasting })));
+const GroceryList = lazyWithRetry(() => import('@/pages/GroceryList').then(m => ({ default: m.GroceryList })));
 const Supplements = lazyWithRetry(() => import('@/pages/Supplements').then(m => ({ default: m.Supplements })));
 const AdminSettings = lazyWithRetry(() => import('@/pages/AdminSettings').then(m => ({ default: m.AdminSettings })));
 const NotFound = lazyWithRetry(() => import('@/pages/not-found'));
@@ -381,6 +383,12 @@ function AppContent() {
       </Route>
       <Route path="/recipes">
         <Recipes />
+      </Route>
+      <Route path="/fasting">
+        <Fasting />
+      </Route>
+      <Route path="/grocery">
+        <GroceryList />
       </Route>
       <Route path="/habits">
         <HabitTracker />

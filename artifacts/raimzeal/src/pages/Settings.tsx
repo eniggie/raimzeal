@@ -7,6 +7,7 @@ import {
   LogOut, Scale, Edit2, Check, X, Heart, ExternalLink, Download, Lock,
   Target, Trophy, Globe, Trash2, Camera,
   Wind, Calculator, ChefHat, ListChecks, Pill, Settings2, Loader2, Shield,
+  Timer, ShoppingCart,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -800,6 +801,30 @@ ${healthProfileHtml ? `<div class="section">${healthProfileHtml}</div>` : ''}
                 <div className="flex-1">
                   <div className="font-medium">Healthy Recipes</div>
                   <div className="text-sm text-muted-foreground">Curated meals for your health profile</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/fasting">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                  <Timer className="w-5 h-5 text-violet-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Intermittent Fasting</div>
+                  <div className="text-sm text-muted-foreground">16:8 · 18:6 · OMAD · Live timer & streak</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </Link>
+            <Link href="/grocery">
+              <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Grocery List</div>
+                  <div className="text-sm text-muted-foreground">Build your shopping list, check off as you go</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>
