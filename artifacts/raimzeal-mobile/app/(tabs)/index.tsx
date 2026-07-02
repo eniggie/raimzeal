@@ -26,7 +26,7 @@ import { MacroRing } from "@/components/MacroRing";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { QuickGoalSheet, QuickGoalMacro } from "@/components/QuickGoalSheet";
-import { STRIPE_DONATION_URL } from "@/lib/constants";
+import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
 import { getTodaysTip, CATEGORY_META } from "@/constants/dailyTips";
 
 const WATER_GOAL_GLASSES = 10;
@@ -739,31 +739,33 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* Donation CTA */}
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          Linking.openURL(STRIPE_DONATION_URL);
-        }}
-        style={[styles.donationCard, { backgroundColor: colors.card, borderColor: colors.primary + "44" }]}
-      >
-        <View style={styles.donationLeft}>
-          <View style={[styles.donationIconWrap, { backgroundColor: colors.primary + "20" }]}>
-            <Ionicons name="heart" size={20} color={colors.primary} />
+      {/* Donation CTA — web only; external donation links violate store billing rules */}
+      {DONATION_ACTIVE && (
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            Linking.openURL(STRIPE_DONATION_URL);
+          }}
+          style={[styles.donationCard, { backgroundColor: colors.card, borderColor: colors.primary + "44" }]}
+        >
+          <View style={styles.donationLeft}>
+            <View style={[styles.donationIconWrap, { backgroundColor: colors.primary + "20" }]}>
+              <Ionicons name="heart" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.donationTitle, { color: colors.foreground }]}>
+                Someone funded this session.{"\n"}
+                <Text style={{ color: colors.primary }}>It wasn't you.</Text>
+              </Text>
+              <Text style={[styles.donationSub, { color: colors.mutedForeground }]}>
+                Support the mission — any amount
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.donationTitle, { color: colors.foreground }]}>
-              Someone funded this session.{"\n"}
-              <Text style={{ color: colors.primary }}>It wasn't you.</Text>
-            </Text>
-            <Text style={[styles.donationSub, { color: colors.mutedForeground }]}>
-              Support the mission — any amount
-            </Text>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
 
       {/* Body Stats Banner */}
       {latestWeight && (

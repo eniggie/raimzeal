@@ -14,7 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { STRIPE_DONATION_URL } from "@/lib/constants";
+import { STRIPE_DONATION_URL, DONATION_ACTIVE } from "@/lib/constants";
 import { PLANS, ENTRY_PRICE_MONTHLY } from "@/lib/plans";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -237,11 +237,7 @@ export default function MembershipScreen() {
       if (!pkg) {
         Alert.alert(
           "Not Available",
-          "This plan is not yet available for purchase in your region. Please try again later or visit raimzeal.com.",
-          [
-            { text: "Visit Website", onPress: () => Linking.openURL("https://raimzeal.com/membership") },
-            { text: "OK", style: "cancel" },
-          ]
+          "This plan isn't available for purchase right now. Please check back soon."
         );
         return;
       }
@@ -492,20 +488,23 @@ export default function MembershipScreen() {
             The Foundation Plan is free forever — no subscription, no catch.
           </Text>
           <Text style={[styles.donationBody, { color: colors.mutedForeground }]}>
-            The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale.{"\n\n"}A voluntary donation keeps the staff and platform running for everyone — you are never required to give anything.
+            The Foundation Plan is free forever, built for fitness, food therapy, wellness, and healthcare support. Your health was never up for sale.
+            {DONATION_ACTIVE && "\n\nA voluntary donation keeps the staff and platform running for everyone — you are never required to give anything."}
           </Text>
-          <TouchableOpacity
-            style={styles.donateBtn}
-            onPress={() =>
-              Linking.openURL(STRIPE_DONATION_URL).catch(() => {
-                Linking.openURL("mailto:support@raimzeal.com?subject=Donation");
-              })
-            }
-            activeOpacity={0.8}
-          >
-            <Ionicons name="heart" size={15} color="#fff" />
-            <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
-          </TouchableOpacity>
+          {DONATION_ACTIVE && (
+            <TouchableOpacity
+              style={styles.donateBtn}
+              onPress={() =>
+                Linking.openURL(STRIPE_DONATION_URL).catch(() => {
+                  Linking.openURL("mailto:support@raimzeal.com?subject=Donation");
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <Ionicons name="heart" size={15} color="#fff" />
+              <Text style={styles.donateBtnText}>Donate — Any Amount</Text>
+            </TouchableOpacity>
+          )}
           <Text style={[styles.donationLinksLabel, { color: colors.foreground }]}>
             RAIMZY — Dr. Ephraim Oviawe PHD, MBA, MTS, CST, AMA, DMIPRO, CSM, PMP
           </Text>
