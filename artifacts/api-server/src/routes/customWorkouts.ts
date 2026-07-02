@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 const customWorkoutsRouter = Router();
 
 customWorkoutsRouter.get("/user/workouts", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data, error } = await supabaseAdmin
       .from("custom_workouts")
@@ -40,7 +40,7 @@ const WorkoutSchema = z.object({
 });
 
 customWorkoutsRouter.post("/user/workouts", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = WorkoutSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." }); return; }
   const { name, description, estimated_duration_min, exercises } = parse.data;
@@ -78,7 +78,7 @@ customWorkoutsRouter.post("/user/workouts", requireAuth, async (req, res) => {
 });
 
 customWorkoutsRouter.delete("/user/workouts/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const id = req.params["id"] as string;
   try {
     await supabaseAdmin.from("custom_workouts").delete().eq("id", id).eq("user_id", userId);

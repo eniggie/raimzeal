@@ -7,7 +7,7 @@ import { logger } from "../lib/logger";
 const mealLogsRouter = Router();
 
 mealLogsRouter.get("/user/meal-logs", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const limit = Math.min(Number(req.query.limit) || 200, 1000);
   try {
     const { data, error } = await supabaseAdmin
@@ -36,7 +36,7 @@ const MealLogSchema = z.object({
 });
 
 mealLogsRouter.post("/user/meal-logs", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = MealLogSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
@@ -81,7 +81,7 @@ mealLogsRouter.post("/user/meal-logs", requireAuth, async (req, res) => {
 });
 
 mealLogsRouter.put("/user/meal-logs/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { id } = req.params;
   const parse = MealLogSchema.omit({ id: true }).safeParse(req.body);
   if (!parse.success) {
@@ -106,7 +106,7 @@ mealLogsRouter.put("/user/meal-logs/:id", requireAuth, async (req, res) => {
 });
 
 mealLogsRouter.delete("/user/meal-logs/:id", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const { id } = req.params;
   try {
     const { error } = await supabaseAdmin

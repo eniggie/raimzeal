@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Switch, Route, Router as WouterRouter, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { queryClient } from './lib/queryClient';
@@ -12,51 +12,63 @@ import { SyncStatusProvider } from '@/contexts/SyncStatusContext';
 import { supabaseConfigured } from '@/lib/supabase';
 import { SyncIndicator } from '@/components/SyncIndicator';
 
-import { Onboarding } from '@/pages/Onboarding';
-import { Login } from '@/pages/Login';
-import { OAuthSetup } from '@/pages/OAuthSetup';
-import { ForgotPassword } from '@/pages/ForgotPassword';
-import { ResetPassword } from '@/pages/ResetPassword';
-import { VerifyEmail } from '@/pages/VerifyEmail';
-import { AuthCallback } from '@/pages/AuthCallback';
-import Signup from '@/pages/Signup';
-import VerifyEmailOTP from '@/pages/VerifyEmailOTP';
-import VerifyPhone from '@/pages/VerifyPhone';
-import { Home } from '@/pages/Home';
-import { Workouts } from '@/pages/Workouts';
-import { WorkoutDetail } from '@/pages/WorkoutDetail';
-import { WorkoutPlayer } from '@/pages/WorkoutPlayer';
-import { Exercises } from '@/pages/Exercises';
-import { ExerciseDetail } from '@/pages/ExerciseDetail';
-import { Tracking } from '@/pages/Tracking';
-import { Calendar } from '@/pages/Calendar';
-import { Nutrition } from '@/pages/Nutrition';
-import { Programs } from '@/pages/Programs';
-import { Coach } from '@/pages/Coach';
-import { Community } from '@/pages/Community';
-import { Legacy } from '@/pages/Legacy';
-import { Settings } from '@/pages/Settings';
-import { Membership } from '@/pages/Membership';
-import { WorkoutCreator } from '@/pages/WorkoutCreator';
-import { ProgressPhotos } from '@/pages/ProgressPhotos';
-import { MacroTargets } from '@/pages/MacroTargets';
-import { DeleteAccount } from '@/pages/DeleteAccount';
-import { SleepTracking } from '@/pages/SleepTracking';
-import { PersonalRecords } from '@/pages/PersonalRecords';
-import { PublicProfile } from '@/pages/PublicProfile';
-import { PublicProfileSettings } from '@/pages/PublicProfileSettings';
-import { Privacy } from '@/pages/Privacy';
-import { TermsOfService } from '@/pages/TermsOfService';
-import { Support } from '@/pages/Support';
-import { Download } from '@/pages/Download';
-import { Welcome } from '@/pages/Welcome';
-import { Breathing } from '@/pages/Breathing';
-import { Calculators } from '@/pages/Calculators';
-import { Recipes } from '@/pages/Recipes';
-import { HabitTracker } from '@/pages/HabitTracker';
-import { Supplements } from '@/pages/Supplements';
-import { AdminSettings } from '@/pages/AdminSettings';
-import NotFound from '@/pages/not-found';
+// Every route below is code-split with React.lazy() so a first-time visitor
+// only downloads the JS for the page they land on, instead of the whole app.
+const Onboarding = lazy(() => import('@/pages/Onboarding').then(m => ({ default: m.Onboarding })));
+const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })));
+const OAuthSetup = lazy(() => import('@/pages/OAuthSetup').then(m => ({ default: m.OAuthSetup })));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const VerifyEmail = lazy(() => import('@/pages/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
+const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
+const Signup = lazy(() => import('@/pages/Signup'));
+const VerifyEmailOTP = lazy(() => import('@/pages/VerifyEmailOTP'));
+const VerifyPhone = lazy(() => import('@/pages/VerifyPhone'));
+const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })));
+const Workouts = lazy(() => import('@/pages/Workouts').then(m => ({ default: m.Workouts })));
+const WorkoutDetail = lazy(() => import('@/pages/WorkoutDetail').then(m => ({ default: m.WorkoutDetail })));
+const WorkoutPlayer = lazy(() => import('@/pages/WorkoutPlayer').then(m => ({ default: m.WorkoutPlayer })));
+const Exercises = lazy(() => import('@/pages/Exercises').then(m => ({ default: m.Exercises })));
+const ExerciseDetail = lazy(() => import('@/pages/ExerciseDetail').then(m => ({ default: m.ExerciseDetail })));
+const Tracking = lazy(() => import('@/pages/Tracking').then(m => ({ default: m.Tracking })));
+const Calendar = lazy(() => import('@/pages/Calendar').then(m => ({ default: m.Calendar })));
+const Nutrition = lazy(() => import('@/pages/Nutrition').then(m => ({ default: m.Nutrition })));
+const Programs = lazy(() => import('@/pages/Programs').then(m => ({ default: m.Programs })));
+const Coach = lazy(() => import('@/pages/Coach').then(m => ({ default: m.Coach })));
+const Community = lazy(() => import('@/pages/Community').then(m => ({ default: m.Community })));
+const Legacy = lazy(() => import('@/pages/Legacy').then(m => ({ default: m.Legacy })));
+const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })));
+const Membership = lazy(() => import('@/pages/Membership').then(m => ({ default: m.Membership })));
+const WorkoutCreator = lazy(() => import('@/pages/WorkoutCreator').then(m => ({ default: m.WorkoutCreator })));
+const ProgressPhotos = lazy(() => import('@/pages/ProgressPhotos').then(m => ({ default: m.ProgressPhotos })));
+const MacroTargets = lazy(() => import('@/pages/MacroTargets').then(m => ({ default: m.MacroTargets })));
+const DeleteAccount = lazy(() => import('@/pages/DeleteAccount').then(m => ({ default: m.DeleteAccount })));
+const SleepTracking = lazy(() => import('@/pages/SleepTracking').then(m => ({ default: m.SleepTracking })));
+const PersonalRecords = lazy(() => import('@/pages/PersonalRecords').then(m => ({ default: m.PersonalRecords })));
+const PublicProfile = lazy(() => import('@/pages/PublicProfile').then(m => ({ default: m.PublicProfile })));
+const PublicProfileSettings = lazy(() => import('@/pages/PublicProfileSettings').then(m => ({ default: m.PublicProfileSettings })));
+const Privacy = lazy(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })));
+const TermsOfService = lazy(() => import('@/pages/TermsOfService').then(m => ({ default: m.TermsOfService })));
+const Support = lazy(() => import('@/pages/Support').then(m => ({ default: m.Support })));
+const Download = lazy(() => import('@/pages/Download').then(m => ({ default: m.Download })));
+const Welcome = lazy(() => import('@/pages/Welcome').then(m => ({ default: m.Welcome })));
+const Breathing = lazy(() => import('@/pages/Breathing').then(m => ({ default: m.Breathing })));
+const Calculators = lazy(() => import('@/pages/Calculators').then(m => ({ default: m.Calculators })));
+const Recipes = lazy(() => import('@/pages/Recipes').then(m => ({ default: m.Recipes })));
+const HabitTracker = lazy(() => import('@/pages/HabitTracker').then(m => ({ default: m.HabitTracker })));
+const Supplements = lazy(() => import('@/pages/Supplements').then(m => ({ default: m.Supplements })));
+const AdminSettings = lazy(() => import('@/pages/AdminSettings').then(m => ({ default: m.AdminSettings })));
+const NotFound = lazy(() => import('@/pages/not-found'));
+
+// ─── Route-level loading fallback ──────────────────────────────────────────────
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 // ─── Redirect helper ──────────────────────────────────────────────────────────
 
@@ -231,6 +243,7 @@ function AppContent() {
       {/* Per-write sync indicator — bottom-right pill */}
       <SyncIndicator status={writeSyncStatus} />
 
+    <Suspense fallback={<RouteFallback />}>
     <Switch>
       <Route path="/">
         <Home state={state} onUpdateWater={updateWaterIntake} onUpdateSettings={updateSettings} />
@@ -341,6 +354,7 @@ function AppContent() {
       </Route>
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
     </>
     </SyncStatusProvider>
   );
@@ -356,6 +370,7 @@ function App() {
         <AuthProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
             <Toaster />
+            <Suspense fallback={<RouteFallback />}>
             <Switch>
               {/* Public / pre-auth routes */}
               <Route path="/signup"><SignupRoute /></Route>
@@ -392,6 +407,7 @@ function App() {
               {/* All other routes — handled by AppContent based on auth state */}
               <Route><AppContent /></Route>
             </Switch>
+            </Suspense>
           </WouterRouter>
         </AuthProvider>
       </TooltipProvider>

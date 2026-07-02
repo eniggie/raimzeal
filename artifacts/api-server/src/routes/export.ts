@@ -19,7 +19,7 @@ function toCSV(rows: Record<string, unknown>[]): string {
 }
 
 exportRouter.get("/user/export", requireAuth, exportRateLimit, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const format = ((req.query.format as string) || "json").toLowerCase();
 
   try {

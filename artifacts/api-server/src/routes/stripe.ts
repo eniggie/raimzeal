@@ -40,8 +40,8 @@ stripeRouter.get("/stripe/donation-health", async (_req, res) => {
 // Shared handler used by both route aliases below.
 // Accepts { tier, interval } — both are required.
 async function handleCheckoutSession(req: Request, res: Response) {
-  const userId = (req as any).userId as string;
-  const userEmail = (req as any).userEmail as string | undefined;
+  const userId = req.userId as string;
+  const userEmail = req.userEmail as string | undefined;
   const body = req.body as Record<string, unknown>;
 
   // Support legacy field names used by older cached bundles
@@ -123,7 +123,7 @@ async function handleCheckoutSession(req: Request, res: Response) {
 // write it to the Supabase profiles row. Used as a reliable fallback for the
 // membership page after checkout, in case the webhook hasn't fired yet.
 stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   try {
     const stripe = await getUncachableStripeClient();
@@ -135,11 +135,11 @@ stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
       .eq("id", userId)
       .maybeSingle();
 
-    let customerId = (profile as any)?.stripe_customer_id as string | null | undefined;
+    let customerId = profile?.stripe_customer_id as string | null | undefined;
 
     // If no customer ID stored yet, look up by email in Stripe
     if (!customerId) {
-      const email = (profile as any)?.email as string | undefined;
+      const email = profile?.email as string | undefined;
       if (email) {
         const customers = await stripe.customers.list({ email, limit: 1 });
         customerId = customers.data[0]?.id;
@@ -196,7 +196,7 @@ stripeRouter.get("/stripe/sync-subscription", requireAuth, async (req, res) => {
 
 // POST /api/stripe/portal-session — open Stripe Billing Portal for active subscribers
 stripeRouter.post("/stripe/portal-session", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
 
   const origin =
     req.headers.origin ??
@@ -213,10 +213,10 @@ stripeRouter.post("/stripe/portal-session", requireAuth, async (req, res) => {
       .eq("id", userId)
       .maybeSingle();
 
-    let customerId = (profile as any)?.stripe_customer_id as string | null | undefined;
+    let customerId = profile?.stripe_customer_id as string | null | undefined;
 
     if (!customerId) {
-      const email = (profile as any)?.email as string | undefined;
+      const email = profile?.email as string | undefined;
       if (email) {
         const customers = await stripe.customers.list({ email, limit: 1 });
         customerId = customers.data[0]?.id;

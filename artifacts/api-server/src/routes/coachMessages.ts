@@ -9,7 +9,7 @@ const coachMessagesRouter = Router();
 const MAX_HISTORY = 60;
 
 coachMessagesRouter.get("/user/coach-messages", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const limit = Math.min(Number(req.query.limit) || MAX_HISTORY, MAX_HISTORY);
   try {
     const { data, error } = await supabaseAdmin
@@ -39,7 +39,7 @@ const BatchSchema = z.object({
 
 // Save a batch of messages (typically a user+coach pair after each exchange)
 coachMessagesRouter.post("/user/coach-messages/batch", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = BatchSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });

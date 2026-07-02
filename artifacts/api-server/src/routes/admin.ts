@@ -13,7 +13,7 @@ const router: IRouter = Router();
  * so it always reflects the current Supabase state).
  */
 async function requireAdminRole(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const userId = (req as any).userId as string | undefined;
+  const userId = req.userId as string | undefined;
   if (!userId) {
     res.status(401).json({ error: "Authentication required." });
     return;
@@ -84,7 +84,7 @@ router.put("/admin/alert-settings", requireAuth, requireAdminRole, async (req, r
     return;
   }
 
-  logger.info({ alertEmail, userId: (req as any).userId }, "Alert email updated via admin API");
+  logger.info({ alertEmail, userId: req.userId }, "Alert email updated via admin API");
   res.json({ alertEmail, source: "database" });
 });
 

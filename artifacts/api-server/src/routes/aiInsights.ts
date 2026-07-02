@@ -166,7 +166,7 @@ aiInsightsRouter.post(
   "/api/ai/insights",
   requireAuth,
   async (req, res) => {
-    const userId = (req as any).userId as string;
+    const userId = req.userId as string;
 
     const { allowed, remaining } = consumeInsightQuota(userId);
     if (!allowed) {

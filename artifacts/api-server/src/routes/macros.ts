@@ -48,7 +48,7 @@ export function computeMacros(profile: {
 }
 
 macrosRouter.get("/user/macros", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data } = await supabaseAdmin
       .from("profiles")
@@ -82,7 +82,7 @@ const MacrosSchema = z.object({
 });
 
 macrosRouter.put("/user/macros", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = MacrosSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." }); return; }
   const { calories, protein, carbs, fat, auto } = parse.data;
@@ -96,7 +96,7 @@ macrosRouter.put("/user/macros", requireAuth, async (req, res) => {
 });
 
 macrosRouter.delete("/user/macros", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     await supabaseAdmin.from("profiles").update({ macro_targets: null }).eq("id", userId);
     res.json({ success: true, message: "Reverted to auto-computed targets." });

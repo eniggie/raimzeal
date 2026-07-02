@@ -54,7 +54,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          "vendor-react": ["react", "react-dom"],
+          // Note: react/react-dom are intentionally not split into their own
+          // manual chunk — they're needed synchronously by the entry point,
+          // so Rollup always folds them into the main chunk regardless; a
+          // "vendor-react" entry here only produced an empty, unused chunk file.
           "vendor-router": ["wouter"],
           "vendor-ui": [
             "@radix-ui/react-dialog",

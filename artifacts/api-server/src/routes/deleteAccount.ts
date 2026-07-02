@@ -6,7 +6,7 @@ import { logger } from "../lib/logger";
 const deleteAccountRouter = Router();
 
 deleteAccountRouter.post("/user/delete", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     await Promise.allSettled([
       supabaseAdmin.from("workout_logs").delete().eq("user_id", userId),

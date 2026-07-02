@@ -50,7 +50,7 @@ const PublicProfileSchema = z.object({
 });
 
 publicProfileRouter.put("/user/public-profile", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   const parse = PublicProfileSchema.safeParse(req.body);
   if (!parse.success) { res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." }); return; }
 
@@ -76,7 +76,7 @@ publicProfileRouter.put("/user/public-profile", requireAuth, async (req, res) =>
 });
 
 publicProfileRouter.get("/user/public-profile", requireAuth, async (req, res) => {
-  const userId = (req as any).userId as string;
+  const userId = req.userId as string;
   try {
     const { data } = await supabaseAdmin
       .from("profiles")
