@@ -727,14 +727,18 @@ export function Nutrition({ state, onAddMeal, onUpdateMeal, onUpdateWater, onRem
     const cal = parseFloat(manualEntry.calories);
     const name = manualEntry.name.trim();
     if (!name || !cal) return;
+    // Clamp to non-negative. The server schema rejects negative macros/calories,
+    // so a negative value would be saved locally but silently fail to sync (and
+    // then vanish on the next cloud load) while skewing the day's totals.
+    const nonNeg = (raw: string) => Math.max(0, parseFloat(raw) || 0);
     const meal: MealLog = {
       id: crypto.randomUUID(),
       date: selectedDate,
       name,
-      calories: cal,
-      protein: parseFloat(manualEntry.protein) || 0,
-      carbs: parseFloat(manualEntry.carbs) || 0,
-      fat: parseFloat(manualEntry.fat) || 0,
+      calories: Math.max(0, cal),
+      protein: nonNeg(manualEntry.protein),
+      carbs: nonNeg(manualEntry.carbs),
+      fat: nonNeg(manualEntry.fat),
       mealType: selectedMealType,
     };
     onAddMeal(meal);

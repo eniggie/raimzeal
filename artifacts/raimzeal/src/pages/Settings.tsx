@@ -119,6 +119,19 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, l
       } catch { /* fallback to SVG below */ }
       const u = state.user;
       const wUnit = state.settings.weightUnit ?? 'lbs';
+
+      // Escape any user-controlled text before interpolating it into the report
+      // HTML. Meal/workout/exercise names and the profile name are free text (and
+      // meal names can come from AI photo analysis), so without this a value like
+      // `<img src=x onerror=...>` would execute when the downloaded report is
+      // opened, and any `<`/`>`/`&` would corrupt the layout.
+      const esc = (v: string | number | undefined | null) =>
+        String(v ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
       const exportDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       const exportDateShort = new Date().toISOString().slice(0, 10);
 
@@ -132,22 +145,22 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, l
         `<div class="stat-card"><div class="stat-icon">${icon}</div><div class="stat-val">${val}</div><div class="stat-lbl">${label}</div></div>`;
 
       const profileField = (label: string, value: string | number | undefined) =>
-        `<div class="pf-item"><div class="pf-label">${label}</div><div class="pf-value">${value ?? '—'}</div></div>`;
+        `<div class="pf-item"><div class="pf-label">${esc(label)}</div><div class="pf-value">${value == null ? '—' : esc(value)}</div></div>`;
 
       const workoutTableRows = state.workoutLogs.slice(0, 200).map(w =>
-        `<tr><td>${w.date ?? ''}</td><td class="fw600">${w.workoutName ?? ''}</td><td>${w.duration ? w.duration + ' min' : '—'}</td><td>${w.caloriesBurned ? w.caloriesBurned + ' kcal' : '—'}</td></tr>`
+        `<tr><td>${esc(w.date)}</td><td class="fw600">${esc(w.workoutName)}</td><td>${w.duration ? w.duration + ' min' : '—'}</td><td>${w.caloriesBurned ? w.caloriesBurned + ' kcal' : '—'}</td></tr>`
       ).join('');
 
       const mealTableRows = state.mealLogs.slice(0, 200).map(m =>
-        `<tr><td>${m.date ?? ''}</td><td class="fw600">${m.name ?? ''}</td><td>${m.mealType ?? ''}</td><td class="num">${m.calories ?? 0}</td><td class="num green">${m.protein ?? 0}g</td><td class="num orange">${m.carbs ?? 0}g</td><td class="num blue">${m.fat ?? 0}g</td></tr>`
+        `<tr><td>${esc(m.date)}</td><td class="fw600">${esc(m.name)}</td><td>${esc(m.mealType)}</td><td class="num">${m.calories ?? 0}</td><td class="num green">${m.protein ?? 0}g</td><td class="num orange">${m.carbs ?? 0}g</td><td class="num blue">${m.fat ?? 0}g</td></tr>`
       ).join('');
 
       const bodyTableRows = state.bodyMeasurements.slice(0, 200).map(b =>
-        `<tr><td>${b.date ?? ''}</td><td class="fw600">${b.weight ?? '—'} ${wUnit}</td><td>${b.chest ?? '—'}</td><td>${b.waist ?? '—'}</td><td>${b.hips ?? '—'}</td></tr>`
+        `<tr><td>${esc(b.date)}</td><td class="fw600">${b.weight ?? '—'} ${wUnit}</td><td>${b.chest ?? '—'}</td><td>${b.waist ?? '—'}</td><td>${b.hips ?? '—'}</td></tr>`
       ).join('');
 
       const prTableRows = state.personalRecords.slice(0, 200).map(pr =>
-        `<tr><td class="fw600">${pr.exercise ?? ''}</td><td class="num">${pr.weight ?? '—'} ${wUnit}</td><td>${pr.date ?? ''}</td></tr>`
+        `<tr><td class="fw600">${esc(pr.exercise)}</td><td class="num">${pr.weight ?? '—'} ${wUnit}</td><td>${esc(pr.date)}</td></tr>`
       ).join('');
 
       const waterTableRows = state.waterIntake.slice(0, 200).map(w =>
@@ -167,7 +180,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, l
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>RAIMZEAL Health &amp; Fitness Report — ${u?.name ?? 'User'}</title>
+<title>RAIMZEAL Health &amp; Fitness Report — ${esc(u?.name ?? 'User')}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f4f0;color:#1a1a1a;min-height:100vh}
@@ -278,7 +291,7 @@ export function Settings({ state, onUpdateSettings, onUpdateProfile, onLogout, l
   <div class="report-title">Health &amp; Fitness Report</div>
   <div class="report-subtitle">Personal health data export · All data is private and belongs to you</div>
   <div class="header-meta">
-    <div class="header-meta-item"><div class="header-meta-label">Member</div><div class="header-meta-value">${u?.name ?? 'User'}</div></div>
+    <div class="header-meta-item"><div class="header-meta-label">Member</div><div class="header-meta-value">${esc(u?.name ?? 'User')}</div></div>
     <div class="header-meta-item"><div class="header-meta-label">Email</div><div class="header-meta-value">${u?.email ?? '—'}</div></div>
     <div class="header-meta-item"><div class="header-meta-label">Generated</div><div class="header-meta-value">${exportDate}</div></div>
     <div class="header-meta-item"><div class="header-meta-label">Member Since</div><div class="header-meta-value">${u?.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US',{year:'numeric',month:'short'}) : '—'}</div></div>

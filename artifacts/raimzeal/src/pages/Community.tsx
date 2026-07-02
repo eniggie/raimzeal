@@ -329,10 +329,17 @@ export function Community() {
       setPendingImageFile(null);
       setPendingImagePreview(null);
 
-      const res = await fetch('/api/community/posts', {
+      // Inner Circle posts must go to the dedicated Legacy endpoint, which sets
+      // is_legacy_post = true. The public /community/posts endpoint ignores the
+      // isLegacyPost flag entirely, so posting there would leak a private
+      // Inner Circle post into the public feed (and it would never appear in the
+      // Inner Circle tab, which filters on is_legacy_post = true).
+      const isInnerCircle = communityTab === 'inner-circle';
+      const endpoint = isInnerCircle ? '/api/legacy/community/posts' : '/api/community/posts';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userName: displayName, content, postType, imageUrl: imageUrl ?? undefined, isLegacyPost: communityTab === 'inner-circle' }),
+        body: JSON.stringify({ userName: displayName, content, postType, imageUrl: imageUrl ?? undefined }),
       });
       if (res.ok) {
         const json = await res.json() as { post: Record<string, unknown> };

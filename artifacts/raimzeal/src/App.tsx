@@ -153,6 +153,11 @@ function AppContent() {
   // Only runs when the user has full fitness data (age/height/weight/goals) stored in metadata.
   // Users from the quick /signup form will go through OAuthSetup for fitness data collection.
   useEffect(() => {
+    // Wait for the cloud profile to load before deciding the user needs
+    // onboarding. `state.isOnboarded` is false on every fresh device until the
+    // cloud load completes, so acting earlier would overwrite the user's real
+    // cloud profile with stale signup-time metadata (and inject sample data).
+    if (!cloudSynced) return;
     if (user && user.email_confirmed_at && !state.isOnboarded) {
       const provider = (user.app_metadata as Record<string, unknown>)?.provider as string | undefined;
       const isOAuth = provider && provider !== 'email';
@@ -172,12 +177,15 @@ function AppContent() {
           fitnessLevel: (meta.fitnessLevel as UserProfile['fitnessLevel']) ?? 'beginner',
           goals: (meta.goals as string[]) ?? [],
           units: (meta.units as 'metric' | 'imperial' | undefined) ?? 'imperial',
+          bloodType: (meta.bloodType as UserProfile['bloodType']) ?? undefined,
+          rhFactor: (meta.rhFactor as UserProfile['rhFactor']) ?? undefined,
+          genotype: (meta.genotype as UserProfile['genotype']) ?? undefined,
           createdAt: user.created_at,
         };
         completeOnboarding(profile);
       }
     }
-  }, [user, state.isOnboarded, completeOnboarding]);
+  }, [user, state.isOnboarded, completeOnboarding, cloudSynced]);
 
   // Loading — waiting for Supabase to restore session
   if (loading) {
@@ -204,7 +212,18 @@ function AppContent() {
   // Profile setup for users without fitness data:
   // - All OAuth users (Google/Apple)
   // - Email users created via /signup (quick form — no fitness data in metadata)
+  // Wait for the cloud load first: an existing user signing in on a fresh
+  // browser has isOnboarded=false until their cloud profile arrives, and
+  // rendering OAuthSetup before then lets them overwrite a real profile with
+  // defaults. While the cloud load is in flight, show the loader instead.
   if (!state.isOnboarded) {
+    if (!cloudSynced) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      );
+    }
     const meta = user?.user_metadata ?? {};
     const hasFullFitnessData =
       !!(meta.age && meta.height && meta.weight && (meta.goals as string[])?.length > 0);

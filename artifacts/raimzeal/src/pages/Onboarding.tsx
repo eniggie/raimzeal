@@ -100,6 +100,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
             weight: parseInt(formData.weight),
             fitnessLevel: formData.fitnessLevel,
             goals: formData.goals,
+            units: formData.units,
             ...(formData.bloodType && { bloodType: formData.bloodType }),
             ...(formData.rhFactor && { rhFactor: formData.rhFactor }),
             ...(formData.genotype && { genotype: formData.genotype }),
@@ -435,7 +436,7 @@ export function Onboarding({ onLogin }: OnboardingProps) {
                   <div className="space-y-2">
                     <Label>Genotype (optional)</Label>
                     <div className="flex flex-wrap gap-2">
-                      {['AA', 'AS', 'AC', 'SS', 'SC', 'CC'].map((g) => (
+                      {['AA', 'AS', 'AC', 'SS', 'SC'].map((g) => (
                         <button
                           key={g}
                           type="button"

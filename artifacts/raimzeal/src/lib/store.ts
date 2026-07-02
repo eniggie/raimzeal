@@ -579,7 +579,13 @@ export function useAppState(userId?: string | null, userEmail?: string | null) {
   };
 
   const updateWaterIntake = (glasses: number) => {
-    const today = new Date().toISOString().split('T')[0];
+    // Use the LOCAL calendar date, matching how Nutrition.tsx computes "today"
+    // for display. Keying the write to the UTC date instead meant that whenever
+    // the local date differed from UTC, each tap wrote to a different day than
+    // the one shown — so the on-screen count never moved and hydration was
+    // logged against the wrong day.
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     setState(prev => {
       const existing = prev.waterIntake.find(w => w.date === today);
       if (existing) {

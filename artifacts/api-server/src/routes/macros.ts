@@ -34,8 +34,8 @@ export function computeMacros(profile: {
   const tdee = bmr * activityMultiplier;
 
   const goals = profile.goals ?? [];
-  const wantsLose = goals.includes("lose_weight");
-  const wantsGain = goals.includes("build_muscle") || goals.includes("gain_weight");
+  const wantsLose = goals.includes("fat_loss") || goals.includes("lose_weight");
+  const wantsGain = goals.includes("muscle_gain") || goals.includes("build_muscle") || goals.includes("gain_weight");
   const calorieMultiplier = wantsLose ? 0.85 : wantsGain ? 1.15 : 1.0;
 
   const calories = Math.round(tdee * calorieMultiplier);

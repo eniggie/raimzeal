@@ -67,7 +67,10 @@ export function Login({ onBack }: LoginProps) {
           error.message.toLowerCase().includes('email not confirmed') ||
           error.message.toLowerCase().includes('not confirmed')
         ) {
-          sessionStorage.setItem('pending_auth', JSON.stringify({ email, password }));
+          // Note: we deliberately do NOT persist the password anywhere. The
+          // verify-email page only needs the address, passed via the query
+          // string; stashing plaintext credentials in sessionStorage (which
+          // nothing ever read) needlessly exposed them to any script on the origin.
           setLocation(`${BASE}/verify-email?email=${encodeURIComponent(email)}`);
         } else {
           setError('Incorrect email or password.');
