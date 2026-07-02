@@ -18,6 +18,7 @@ deleteAccountRouter.post("/user/delete", requireAuth, async (req, res) => {
       supabaseAdmin.from("favourite_foods").delete().eq("user_id", userId),
       supabaseAdmin.from("progress_photos").delete().eq("user_id", userId),
       supabaseAdmin.from("sleep_logs").delete().eq("user_id", userId),
+      supabaseAdmin.from("push_tokens").delete().eq("user_id", userId),
     ]);
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);

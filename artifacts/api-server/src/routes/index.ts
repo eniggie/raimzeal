@@ -29,6 +29,7 @@ import enrolledProgramRouter from "./enrolledProgram";
 import legacyRouter from "./legacy";
 import aiInsightsRouter from "./aiInsights";
 import adminRouter from "./admin";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(enrolledProgramRouter);
 router.use(legacyRouter);
 router.use(aiInsightsRouter);
 router.use(adminRouter);
+router.use(notificationsRouter);
 
 export default router;

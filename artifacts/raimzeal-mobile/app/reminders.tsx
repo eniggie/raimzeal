@@ -27,6 +27,7 @@ import {
   saveWaterReminderConfig,
   scheduleReminders,
   scheduleWaterIntervalReminders,
+  sendTestPush,
 } from "@/lib/notifications";
 
 const REMINDER_ORDER: (keyof ReminderSettings)[] = [
@@ -56,6 +57,26 @@ export default function RemindersScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeCount, setActiveCount] = useState(0);
+  const [testingPush, setTestingPush] = useState(false);
+
+  const handleTestPush = useCallback(async () => {
+    setTestingPush(true);
+    try {
+      const sent = await sendTestPush();
+      if (sent > 0) {
+        showPermissionToast("Test notification sent — check your device 🔔");
+      } else {
+        Alert.alert(
+          "No device registered",
+          "We couldn't find a device to notify. Make sure notifications are enabled, then try again."
+        );
+      }
+    } catch (err) {
+      Alert.alert("Couldn't send test", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setTestingPush(false);
+    }
+  }, [showPermissionToast]);
 
   useEffect(() => {
     loadReminderSettings().then(setSettings);
@@ -434,6 +455,21 @@ export default function RemindersScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Test push — verifies the full remote notification path */}
+        <TouchableOpacity
+          onPress={handleTestPush}
+          disabled={testingPush}
+          style={[
+            styles.testPushBtn,
+            { borderColor: colors.border, backgroundColor: colors.card, opacity: testingPush ? 0.6 : 1 },
+          ]}
+        >
+          <Ionicons name="notifications-outline" size={18} color={colors.primary} />
+          <Text style={[styles.testPushText, { color: colors.foreground }]}>
+            {testingPush ? "Sending…" : "Send a test notification"}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
       {permissionToastElement}
     </View>
@@ -573,6 +609,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
+  },
+  testPushBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  testPushText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
   intervalRow: {
     flexDirection: "row",

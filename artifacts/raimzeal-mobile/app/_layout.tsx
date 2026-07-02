@@ -37,6 +37,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   configureNotificationHandler,
   loadReminderSettings,
+  registerPushToken,
   requestNotificationPermissions,
   scheduleReminders,
 } from "@/lib/notifications";
@@ -55,6 +56,8 @@ async function initNotifications() {
     await configureNotificationHandler();
     const granted = await requestNotificationPermissions();
     if (!granted) return;
+    // Register this device for server-sent push (re-engagement, future alerts).
+    await registerPushToken();
     const settings = await loadReminderSettings();
     const hasAnyOn = Object.values(settings).some(Boolean);
     if (hasAnyOn) await scheduleReminders(settings);

@@ -10,6 +10,7 @@ import { Platform } from "react-native";
 import * as Crypto from "expo-crypto";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getApiBase } from "@/lib/db";
+import { unregisterPushToken } from "@/lib/notifications";
 
 async function triggerWelcomeEmail(email: string, name: string, accessToken?: string): Promise<void> {
   try {
@@ -151,6 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured) return;
+    // Detach this device's push token first (needs the still-valid session), so
+    // a logged-out user on a shared device stops receiving this account's pushes.
+    await unregisterPushToken().catch(() => {});
     await supabase.auth.signOut();
   }, []);
 

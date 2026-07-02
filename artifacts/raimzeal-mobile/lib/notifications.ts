@@ -14,6 +14,9 @@
 import type * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Linking, Platform } from "react-native";
+import Constants from "expo-constants";
+import { supabase } from "./supabase";
+import { getApiBase } from "./db";
 
 async function getNotifications() {
   return await import("expo-notifications");
@@ -265,6 +268,93 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
   const { status } = await N.requestPermissionsAsync();
   return status === "granted";
+}
+
+const PUSH_TOKEN_KEY = "@raimzeal_push_token";
+
+/**
+ * Registers this device's Expo push token with the server for the current user,
+ * enabling server-sent (remote) notifications — the daily local reminders can't
+ * re-engage a user who isn't in the app. Safe to call on every authenticated
+ * launch: the server upserts on the token, which also re-points it at the
+ * current user if accounts were switched on this device. Never throws.
+ */
+export async function registerPushToken(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const N = await getNotifications();
+    const { status } = await N.getPermissionsAsync();
+    if (status !== "granted") return;
+
+    const projectId =
+      (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+    const tokenResp = await N.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    const token = tokenResp.data;
+    if (!token) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const res = await fetch(`${getApiBase()}/notifications/register-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ token, platform: Platform.OS }),
+    });
+    if (res.ok) {
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+    }
+  } catch (err) {
+    console.warn("[registerPushToken] failed (non-fatal):", err);
+  }
+}
+
+/**
+ * Asks the server to send a test push to this user's devices — exercises the
+ * full device → server → Expo → device path. Returns how many were delivered,
+ * or throws with a friendly message the caller can surface.
+ */
+export async function sendTestPush(): Promise<number> {
+  await registerPushToken(); // make sure this device is on file first
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Please sign in to test notifications.");
+  const res = await fetch(`${getApiBase()}/notifications/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "Could not send a test notification.");
+  }
+  const body = (await res.json()) as { sent?: number };
+  return body.sent ?? 0;
+}
+
+/** Removes this device's push token from the server (e.g. on logout). */
+export async function unregisterPushToken(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const token = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+    if (!token) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+    await fetch(`${getApiBase()}/notifications/unregister-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ token }),
+    });
+    await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+  } catch (err) {
+    console.warn("[unregisterPushToken] failed (non-fatal):", err);
+  }
 }
 
 export async function loadReminderSettings(): Promise<ReminderSettings> {
