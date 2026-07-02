@@ -21,6 +21,7 @@ import { Animated, Platform, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { BootSplash } from "@/components/BootSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CameraRollRationaleModal } from "@/components/CameraRollRationaleModal";
@@ -193,6 +194,10 @@ export default function RootLayout() {
 
   const splashFadeAnim = useRef(new Animated.Value(1)).current;
   const [splashDone, setSplashDone] = useState(false);
+  // Branded heartbeat animation that plays once on top of the skeleton, on web
+  // and native alike, the first time the app becomes ready this launch.
+  const [brandSplashDone, setBrandSplashDone] = useState(false);
+  const handleBrandSplashDone = useCallback(() => setBrandSplashDone(true), []);
 
   useEffect(() => {
     if (!appReady) return;
@@ -257,6 +262,7 @@ export default function RootLayout() {
           <BootSplash tab={bootPrefs.lastTab} />
         </Animated.View>
       )}
+      {!brandSplashDone && <AnimatedSplash onDone={handleBrandSplashDone} />}
     </SafeAreaProvider>
   );
 }

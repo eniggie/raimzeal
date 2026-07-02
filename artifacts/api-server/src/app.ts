@@ -46,12 +46,29 @@ app.post(
 
       // Also process billing events to update Supabase profiles (subscription tier,
       // status, period end). The payload was already verified above so we trust it.
+      const { handleBillingEvent, isDuplicate, markProcessed } = await import("./lib/billingWebhookHandler");
+      const event = JSON.parse((req.body as Buffer).toString("utf8")) as Parameters<typeof handleBillingEvent>[0];
+
+      // Idempotency: skip billing application if we've already applied this event
+      // (Stripe delivers at-least-once and retries on any non-2xx).
+      let alreadyApplied = false;
       try {
-        const { handleBillingEvent } = await import("./lib/billingWebhookHandler");
-        const event = JSON.parse((req.body as Buffer).toString("utf8")) as Parameters<typeof handleBillingEvent>[0];
-        await handleBillingEvent(event);
+        alreadyApplied = await isDuplicate(event.id);
       } catch (err) {
-        logger.error({ err }, "Billing event processing failed — non-fatal");
+        logger.error({ err, eventId: event.id }, "Webhook idempotency check failed — processing anyway");
+      }
+
+      if (!alreadyApplied) {
+        // Apply the billing change, THEN mark processed. If application throws
+        // (transient Supabase/Stripe error), we respond 500 so Stripe retries
+        // and the tier/status change is not silently lost. stripe-replit-sync's
+        // own sync is idempotent, so re-running it on retry is safe.
+        await handleBillingEvent(event);
+        try {
+          await markProcessed(event.id);
+        } catch (err) {
+          logger.error({ err, eventId: event.id }, "Failed to record processed webhook event (handling succeeded)");
+        }
       }
 
       res.status(200).json({ received: true });
@@ -114,6 +131,14 @@ app.use(
     },
   }),
 );
+// Endpoints that legitimately receive large base64 payloads (a full meal photo
+// for AI analysis, or a voice recording for transcription) need a much larger
+// body limit than the tight 64 kb default used for every other JSON route.
+// These scoped parsers run before the global one and mark the body as parsed,
+// so the 64 kb parser below no-ops for these paths only.
+app.use("/api/user/meal-photo/analyze", express.json({ limit: "15mb" }));
+app.use("/api/ovia/transcribe", express.json({ limit: "30mb" }));
+
 app.use(express.json({ limit: "64kb" }));
 app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 
@@ -125,6 +150,11 @@ app.use("/api", router);
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof SyntaxError && "status" in err && (err as any).status === 400) {
     res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  // body-parser raises this when a request exceeds the configured size limit.
+  if ((err as any)?.type === "entity.too.large") {
+    res.status(413).json({ error: "Request payload too large." });
     return;
   }
   logger.error({ err }, "Unhandled Express error");

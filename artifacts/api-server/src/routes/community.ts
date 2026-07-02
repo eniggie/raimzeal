@@ -489,7 +489,6 @@ communityRouter.post(
         reported_user_id: post.user_id,
         post_id: postId,
         reason,
-        status: "open",
       });
       if (error) {
         req.log.error({ err: error, userId, postId }, "POST /community/posts/:postId/report error");

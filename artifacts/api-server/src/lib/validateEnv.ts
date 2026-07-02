@@ -22,8 +22,8 @@ const OPTIONAL: Array<{ key: string; feature: string }> = [
   { key: "TWILIO_AUTH_TOKEN", feature: "SMS OTP delivery" },
   { key: "TWILIO_FROM_NUMBER", feature: "SMS OTP delivery" },
   { key: "BRAVE_SEARCH_API_KEY", feature: "Ovia AI web search (degrades to knowledge-only answers when absent)" },
-  { key: "INTERNAL_API_SECRET", feature: "digest send-now auth + unsubscribe token signing (falls back to a per-boot random secret when absent, invalidating unsubscribe links on restart)" },
-  { key: "UNSUBSCRIBE_SECRET", feature: "unsubscribe token signing (falls back to INTERNAL_API_SECRET, then a per-boot random secret)" },
+  { key: "INTERNAL_API_SECRET", feature: "digest send-now auth + unsubscribe token signing (unsubscribe falls back to a key derived from SUPABASE_SERVICE_ROLE_KEY; send-now rejects all requests when absent)" },
+  { key: "UNSUBSCRIBE_SECRET", feature: "unsubscribe token signing (falls back to INTERNAL_API_SECRET, then a key derived from SUPABASE_SERVICE_ROLE_KEY)" },
 ];
 
 export function validateEnv(): void {

@@ -71,6 +71,21 @@ function consumeUserDailyQuota(userId: string, limit: number): { allowed: boolea
   return { allowed: true, remaining: limit - entry.count };
 }
 
+// Periodically evict expired entries so these in-memory maps don't grow without
+// bound (one entry per distinct user, forever, on a long-lived process). Runs
+// hourly and is unref'd so it never keeps the process alive on its own.
+const QUOTA_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
+const quotaSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of userDailyCounters) {
+    if (now > entry.resetAt) userDailyCounters.delete(userId);
+  }
+  for (const [userId, entry] of conversationHistory) {
+    if (now - entry.updatedAt > HISTORY_TTL_MS) conversationHistory.delete(userId);
+  }
+}, QUOTA_SWEEP_INTERVAL_MS);
+if (typeof quotaSweep.unref === "function") quotaSweep.unref();
+
 // ── Prompt-injection guard ────────────────────────────────────────────────────
 // Detect common attempts to override the system prompt or impersonate a new AI
 // persona. These patterns cover the most prevalent jailbreak families without
@@ -392,6 +407,10 @@ You are ${firstName}'s complete wellness partner, food coach, fitness guide, and
 //   3. requireAuth         — JWT validation via Supabase; rejects with 401 if token absent/invalid
 //   4. handler             — per-user daily quota (JWT sub, survives IP rotation)
 oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, async (req, res) => {
+  // Aborts the OpenAI stream when the client disconnects (see res.on("close")
+  // registration once the SSE response starts). Declared here so the catch can
+  // distinguish an expected client-abort teardown from a real error.
+  const clientAbort = new AbortController();
   try {
     const { messages, userContext, weeklyDigest } = req.body as {
       messages: Array<{ role: string; content: string }>;
@@ -404,17 +423,21 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
       return;
     }
 
-    if (messages.length > MAX_MESSAGES) {
-      res.status(400).json({ error: "Too many messages in conversation." });
-      return;
-    }
-
-    for (const m of messages) {
-      if (typeof m.content === "string" && m.content.length > MAX_CONTENT_LENGTH) {
-        res.status(400).json({ error: "Message content too long." });
-        return;
-      }
-    }
+    // Both clients replay their full conversation history on every request, which
+    // grows without bound. Rather than hard-failing a long-running chat with a
+    // 400 (which used to break the conversation permanently once it passed ~20
+    // exchanges), keep only the most recent MAX_MESSAGES turns and truncate any
+    // over-long single message. This bounds prompt size while letting chat
+    // continue indefinitely.
+    const boundedMessages = (messages.length > MAX_MESSAGES ? messages.slice(-MAX_MESSAGES) : messages).map(
+      (m) => ({
+        ...m,
+        content:
+          typeof m.content === "string" && m.content.length > MAX_CONTENT_LENGTH
+            ? m.content.slice(0, MAX_CONTENT_LENGTH)
+            : m.content,
+      }),
+    );
 
     // Reject oversized userContext payloads to prevent token-stuffing attacks
     // (an authenticated user sending a huge context object inflates OpenAI costs).
@@ -442,7 +465,7 @@ oviaRouter.post("/ovia/chat", oviaRateLimit, oviaDailyRateLimit, requireAuth, as
     }
 
     // Prompt-injection guard — reject messages that try to override the system persona
-    for (const m of messages) {
+    for (const m of boundedMessages) {
       if (m.role === "user" && typeof m.content === "string" && hasPromptInjection(m.content)) {
         res.status(400).json({ error: "Message not allowed." });
         return;
@@ -474,15 +497,19 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     }
 
     // Resolve the new user turn (last user message in the incoming array).
-    const incomingUserMessage = [...messages].reverse().find((m) => m.role === "user");
+    const incomingUserMessage = [...boundedMessages].reverse().find((m) => m.role === "user");
 
-    // Load server-side history and prepend it so Ovia remembers recent turns
-    // even when the client does not replay history in its request payload.
-    const historyMessages = getHistory(userId);
-
-    const clientMessages = messages
+    const clientMessages = boundedMessages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+    // Only fall back to server-side history when the client did NOT replay its
+    // own conversation (e.g. it sent just the single new user turn). Both current
+    // clients replay their full history, so prepending server history as well
+    // duplicated every recent turn in the prompt — roughly doubling token use and
+    // feeding the model a visibly repeated conversation. When the client already
+    // sent context, trust it and skip the server copy.
+    const historyMessages = clientMessages.length <= 1 ? getHistory(userId) : [];
 
     const chatMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
@@ -496,6 +523,15 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+
+    // If the client disconnects (unmount / cancel / navigation), abort the
+    // OpenAI stream instead of running it to completion — otherwise we keep
+    // billing tokens, execute tools (web search, profile writes), and persist an
+    // unseen reply that then pollutes the user's next request context.
+    res.on("close", () => {
+      if (!res.writableEnded) clientAbort.abort();
+    });
+
     // Send quota remaining as first event so the client can update its counter
     res.write(`data: ${JSON.stringify({ quotaRemaining: quota.remaining })}\n\n`);
 
@@ -551,7 +587,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
       stream: true,
       tools,
       tool_choice: "auto",
-    });
+    }, { signal: clientAbort.signal });
 
     let toolCallId = "";
     let toolCallName = "";
@@ -632,7 +668,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             } as Parameters<typeof openai.chat.completions.create>[0]["messages"][0],
           ],
           stream: true,
-        });
+        }, { signal: clientAbort.signal });
 
         const searchBuf = new SentenceBuffer();
         for await (const c of continuation) {
@@ -709,7 +745,7 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
             } as Parameters<typeof openai.chat.completions.create>[0]["messages"][0],
           ],
           stream: true,
-        });
+        }, { signal: clientAbort.signal });
 
         const profileBuf = new SentenceBuffer();
         for await (const c of profileContinuation) {
@@ -749,13 +785,20 @@ CRITICAL: Keep the entire message under 280 words. Do NOT end with a follow-up q
     }
 
     // Persist this turn to server-side history so Ovia remembers it next time.
-    if (incomingUserMessage && assistantReplyAccumulator) {
+    // Skip if the client aborted — a partial, unseen reply must not pollute the
+    // stored context used to build the next request.
+    if (incomingUserMessage && assistantReplyAccumulator && !clientAbort.signal.aborted) {
       appendToHistory(userId, incomingUserMessage.content, assistantReplyAccumulator);
     }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err) {
+    // A client disconnect aborts the OpenAI stream with an AbortError — that's
+    // expected teardown, not a failure, and the socket is already gone.
+    if (clientAbort.signal.aborted || res.writableEnded) {
+      return;
+    }
     req.log.error({ err }, "OVIA chat error");
     if (!res.headersSent) {
       res.status(500).json({ error: "OVIA AI is temporarily unavailable" });

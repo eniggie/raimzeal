@@ -219,8 +219,8 @@ legacyRouter.post("/legacy/health-report/generate", requireAuth, requireLegacy, 
     supabaseAdmin.from("workout_logs").select("workout_name, date, duration, calories_burned").eq("user_id", userId).gte("date", monthStart).lte("date", monthEnd).order("date", { ascending: false }),
     supabaseAdmin.from("meal_logs").select("date, calories, protein, carbs, fat").eq("user_id", userId).gte("date", monthStart).lte("date", monthEnd),
     supabaseAdmin.from("body_measurements").select("date, weight, chest, waist, hips").eq("user_id", userId).order("date", { ascending: false }).limit(5),
-    supabaseAdmin.from("sleep_logs").select("date, hours, quality").eq("user_id", userId).gte("date", monthStart).lte("date", monthEnd),
-    supabaseAdmin.from("personal_records").select("exercise_name, value, unit").eq("user_id", userId).order("created_at", { ascending: false }).limit(5),
+    supabaseAdmin.from("sleep_logs").select("slept_at, hours, quality").eq("user_id", userId).gte("slept_at", monthStart).lte("slept_at", monthEnd),
+    supabaseAdmin.from("personal_records").select("exercise_name, value, value_type").eq("user_id", userId).order("achieved_at", { ascending: false }).limit(5),
   ]);
 
   const profile = profileRes.data;
@@ -268,7 +268,7 @@ SLEEP (${sleepLogs.length} nights logged):
 - Avg: ${avgSleep ?? "not logged"} hours/night
 
 PERSONAL RECORDS:
-${prs.slice(0, 5).map((r) => `- ${r.exercise_name}: ${r.value} ${r.unit}`).join("\n") || "No records"}
+${prs.slice(0, 5).map((r) => `- ${r.exercise_name}: ${r.value} ${r.value_type}`).join("\n") || "No records"}
 
 Write a comprehensive, encouraging report covering: what went well, areas to improve, nutrition insights, recovery observations, and 3 specific action points for next month.
 `.trim();

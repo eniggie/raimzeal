@@ -68,17 +68,29 @@ authRouter.post("/auth/sync-profile", requireAuth, generalWriteRateLimit, async 
     const user = userData.user;
     const meta = user.user_metadata ?? {};
 
-    const { error: upsertError } = await supabaseAdmin.from("profiles").upsert({
+    // Only persist fields that metadata actually provides. Writing `null` for an
+    // absent field would clobber values the user later set via the profile editor
+    // or Ovia (which update `profiles` directly, never auth metadata) on every
+    // sign-in — and would violate the NOT NULL constraint on `name`. This upsert
+    // is therefore purely additive: it backfills signup contact info, never erases.
+    const metaName = meta.full_name ?? meta.name;
+    const payload: Record<string, unknown> = {
       id: userId,
-      name: meta.full_name ?? meta.name ?? null,
-      full_name: meta.full_name ?? meta.name ?? null,
-      phone: meta.phone ?? null,
-      phone_e164: meta.phone_e164 ?? null,
-      country: meta.country ?? null,
-      city: meta.city ?? null,
       email_verified: !!user.email_confirmed_at,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "id", ignoreDuplicates: false });
+    };
+    if (metaName != null && metaName !== "") {
+      payload["name"] = metaName;
+      payload["full_name"] = metaName;
+    }
+    if (meta.phone != null) payload["phone"] = meta.phone;
+    if (meta.phone_e164 != null) payload["phone_e164"] = meta.phone_e164;
+    if (meta.country != null) payload["country"] = meta.country;
+    if (meta.city != null) payload["city"] = meta.city;
+
+    const { error: upsertError } = await supabaseAdmin
+      .from("profiles")
+      .upsert(payload, { onConflict: "id", ignoreDuplicates: false });
 
     if (upsertError) {
       req.log?.warn({ err: upsertError }, "Profile upsert error — non-fatal");

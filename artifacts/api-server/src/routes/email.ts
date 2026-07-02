@@ -16,13 +16,23 @@ const emailRouter = Router();
 // crafting a GET request — the link must carry a valid token signed with a
 // server secret known only to us.
 
-// If neither secret env var is configured, fall back to a secret generated once at
-// process boot rather than a hardcoded string — a hardcoded fallback would be
-// visible in the built server bundle and would let anyone forge unsubscribe tokens.
-const generatedUnsubscribeSecret = crypto.randomBytes(32).toString("hex");
+// When neither dedicated secret env var is configured, derive the signing key
+// from the Supabase service-role key (a required, secret env var never shipped
+// to clients). This is strictly better than a hardcoded fallback (which would be
+// visible in the repo/bundle and forgeable) AND better than a per-boot random
+// value (which would invalidate the one-click unsubscribe links in already-sent
+// emails on every restart and differ across load-balanced replicas). Deriving
+// from a stable secret keeps links valid across restarts and identical across
+// instances while remaining unguessable.
+const derivedUnsubscribeSecret = createHmac(
+  "sha256",
+  process.env["SUPABASE_SERVICE_ROLE_KEY"] ?? crypto.randomBytes(32).toString("hex"),
+)
+  .update("raimzeal-unsubscribe-token-v1")
+  .digest("hex");
 
 function getUnsubscribeSecret(): string {
-  return process.env["UNSUBSCRIBE_SECRET"] ?? process.env["INTERNAL_API_SECRET"] ?? generatedUnsubscribeSecret;
+  return process.env["UNSUBSCRIBE_SECRET"] ?? process.env["INTERNAL_API_SECRET"] ?? derivedUnsubscribeSecret;
 }
 
 function makeUnsubscribeToken(email: string): string {
@@ -600,7 +610,6 @@ export async function sendMidWeekMotivation(to: string, userName: string): Promi
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
 const EmailSendSchema = z.object({
-  to: z.string().email("Invalid email address."),
   userName: z.string().min(1).max(100),
   type: z.enum(["motivation", "tip", "custom", "weekly", "welcome", "midweek"]),
   message: z.string().max(2000, "Custom message too long — max 2000 characters.").optional(),
@@ -612,7 +621,16 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
     res.status(400).json({ error: parse.error.errors[0]?.message ?? "Invalid request." });
     return;
   }
-  const { to, userName, type, message } = parse.data;
+  const { userName, type, message } = parse.data;
+
+  // The recipient is ALWAYS the authenticated caller — never a body-supplied
+  // address. This prevents the endpoint from being abused as an open mailer to
+  // deliver RAIMZEAL-branded email to arbitrary victims.
+  const to = req.userEmail;
+  if (!to) {
+    res.status(400).json({ error: "Your account has no email address on file." });
+    return;
+  }
 
   if (type === "weekly") {
     try { await sendWeeklyDigest(to, userName); req.log.info({ to }, "Weekly digest sent"); res.json({ success: true, message: "Weekly digest sent." }); }
@@ -653,7 +671,7 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
     await transporter.sendMail({
       from: `"Ovia AI — RAIMZEAL" <${fromAddress}>`, to, subject,
       text: `${bodyText}\n\nOpen the app: https://www.raimzeal.com\nRAIMZY resources: https://linktr.ee/Raimzy\n\n— Your Ovia AI Coach · RAIMZEAL`,
-      html: buildSimpleHtmlEmail(subject, bodyText.replace(/\n/g, "<br />")),
+      html: buildSimpleHtmlEmail(subject, escapeHtml(bodyText).replace(/\n/g, "<br />")),
     });
     req.log.info({ to, type }, "Email sent"); res.json({ success: true, message: "Email sent." });
   } catch (err) {
@@ -663,9 +681,12 @@ emailRouter.post("/email/send", requireAuth, emailSendRateLimit, async (req, res
 });
 
 emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req, res) => {
-  const { to, userName } = req.body as { to: string; userName: string };
-  if (!to || !userName) { res.status(400).json({ error: "to and userName are required." }); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.status(400).json({ error: "Invalid email address." }); return; }
+  const { userName } = req.body as { userName: string };
+  // Send the code only to the authenticated caller's own address — never a
+  // body-supplied one — so it can't be used to spam RAIMZEAL "security" mail.
+  const to = req.userEmail;
+  if (!to) { res.status(400).json({ error: "Your account has no email address on file." }); return; }
+  if (!userName) { res.status(400).json({ error: "userName is required." }); return; }
 
   const transporter = createTransporter();
   if (!transporter) { res.status(503).json({ error: "Email service not configured." }); return; }
@@ -691,9 +712,13 @@ emailRouter.post("/email/verify", requireAuth, emailVerifyRateLimit, async (req,
 });
 
 emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit, async (req, res) => {
-  const { email, userName } = req.body as { email: string; userName: string };
-  if (!email || !userName) { res.status(400).json({ error: "email and userName are required." }); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: "Invalid email address." }); return; }
+  const { userName } = req.body as { userName: string };
+  // Subscribe only the caller's own address, from the verified JWT — never a
+  // body-supplied email — so nobody can subscribe (email-bomb) a victim or
+  // overwrite another subscriber's owning userId.
+  const email = req.userEmail;
+  if (!email) { res.status(400).json({ error: "Your account has no email address on file." }); return; }
+  if (!userName) { res.status(400).json({ error: "userName is required." }); return; }
 
   const userId = req.userId as string;
 
@@ -709,8 +734,10 @@ emailRouter.post("/email/digest/subscribe", requireAuth, emailSubscribeRateLimit
 });
 
 emailRouter.post("/email/digest/unsubscribe", requireAuth, emailUnsubscribeRateLimit, async (req, res) => {
-  const { email } = req.body as { email: string };
-  if (!email) { res.status(400).json({ error: "email is required." }); return; }
+  // Unsubscribe only the caller's own address (verified JWT), never a
+  // body-supplied one — otherwise any user could unsubscribe anyone else.
+  const email = req.userEmail;
+  if (!email) { res.status(400).json({ error: "Your account has no email address on file." }); return; }
   try {
     await db.update(digestSubscribers).set({ active: false }).where(eq(digestSubscribers.email, email));
     req.log.info({ email }, "Digest subscriber deactivated");

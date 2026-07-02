@@ -19,6 +19,16 @@ function consumeInsightQuota(userId: string): { allowed: boolean; remaining: num
   return { allowed: true, remaining: DAILY_LIMIT - entry.count };
 }
 
+// Evict expired counters hourly so the map doesn't grow one-entry-per-user
+// forever. Unref'd so it never keeps the process alive on its own.
+const insightSweep = setInterval(() => {
+  const now = Date.now();
+  for (const [userId, entry] of insightDailyCounters) {
+    if (now > entry.resetAt) insightDailyCounters.delete(userId);
+  }
+}, 60 * 60 * 1000);
+if (typeof insightSweep.unref === "function") insightSweep.unref();
+
 interface HabitInsightData {
   habits: Array<{ name: string; streak: number; completedThisWeek: number; totalDays: number }>;
   completedToday: number;
@@ -168,12 +178,6 @@ aiInsightsRouter.post(
   async (req, res) => {
     const userId = req.userId as string;
 
-    const { allowed, remaining } = consumeInsightQuota(userId);
-    if (!allowed) {
-      res.status(429).json({ error: "Daily AI insight limit reached. Resets in 24 hours. ⏰" });
-      return;
-    }
-
     const { type, data } = req.body as { type: string; data: unknown };
 
     if (!type || !["habit", "sleep", "balance", "weekly_report"].includes(type)) {
@@ -189,6 +193,14 @@ aiInsightsRouter.post(
       else prompt = buildBalancePrompt(data as BalanceInsightData);
     } catch {
       res.status(400).json({ error: "Invalid data payload" });
+      return;
+    }
+
+    // Consume quota only after the request is known to be valid, so a malformed
+    // request (bad type / data) never burns one of the user's daily insights.
+    const { allowed, remaining } = consumeInsightQuota(userId);
+    if (!allowed) {
+      res.status(429).json({ error: "Daily AI insight limit reached. Resets in 24 hours. ⏰" });
       return;
     }
 

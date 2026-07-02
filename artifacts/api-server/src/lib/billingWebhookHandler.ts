@@ -108,7 +108,7 @@ async function deactivateDigestForCustomer(customerId: string): Promise<void> {
 // retries on non-2xx or network timeout), we short-circuit and return 200
 // immediately rather than re-applying the DB update.
 
-async function isDuplicate(eventId: string): Promise<boolean> {
+export async function isDuplicate(eventId: string): Promise<boolean> {
   const { data } = await supabaseAdmin
     .from("stripe_webhook_events")
     .select("id")
@@ -117,7 +117,7 @@ async function isDuplicate(eventId: string): Promise<boolean> {
   return !!data;
 }
 
-async function markProcessed(eventId: string): Promise<void> {
+export async function markProcessed(eventId: string): Promise<void> {
   await supabaseAdmin
     .from("stripe_webhook_events")
     .insert({ id: eventId });
@@ -286,13 +286,23 @@ export async function handleBillingWebhook(req: Request, res: Response): Promise
       res.json({ received: true });
       return;
     }
-    await markProcessed(event.id);
   } catch (err) {
     logger.error({ err, eventId: event.id }, "Idempotency check failed — processing anyway");
   }
 
   try {
+    // Handle FIRST, then record the event as processed. Recording before
+    // handling meant a transient failure (e.g. a Stripe/Supabase blip) left the
+    // event marked done, so Stripe's retry was skipped as a duplicate and the
+    // subscription change was silently lost. Marking only after success lets the
+    // retry re-apply it; a duplicate row insert on a genuine redelivery is
+    // ignored below so at-least-once handling stays idempotent for the caller.
     await handleBillingEvent(event);
+    try {
+      await markProcessed(event.id);
+    } catch (err) {
+      logger.error({ err, eventId: event.id }, "Failed to record processed webhook event (handling succeeded)");
+    }
     res.json({ received: true });
   } catch (err) {
     logger.error({ err }, "Billing webhook handler error");
